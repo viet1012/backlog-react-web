@@ -13,8 +13,10 @@ import {
   Select,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material'
+import type { PaletteMode, Theme } from '@mui/material/styles'
 import type { GridPaginationModel } from '@mui/x-data-grid'
 import { useEffect, useMemo, useState } from 'react'
 import { DataTable } from '../components/DataTable'
@@ -39,7 +41,27 @@ const filterLabels: Record<keyof ReportFilters, string> = {
   productionDate: 'Production Date',
 }
 
-export function DashboardPage() {
+const glassPanelSx = (theme: Theme) => ({
+  backgroundColor:
+    theme.palette.mode === 'dark'
+      ? 'rgba(15, 23, 42, 0.64)'
+      : 'rgba(255, 255, 255, 0.72)',
+  backgroundImage: 'none',
+  border: `1px solid ${theme.palette.divider}`,
+  boxShadow:
+    theme.palette.mode === 'dark'
+      ? '0 12px 34px rgba(0, 0, 0, 0.18)'
+      : '0 12px 30px rgba(15, 23, 42, 0.07)',
+  backdropFilter: 'blur(14px)',
+  borderRadius: 4,
+})
+
+interface DashboardPageProps {
+  mode: PaletteMode
+  onToggleMode: () => void
+}
+
+export function DashboardPage({ mode, onToggleMode }: DashboardPageProps) {
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(20)
   const [data, setData] = useState<ProductionOrder[]>([])
@@ -132,34 +154,88 @@ export function DashboardPage() {
   }, [page, pageSize, filters, refreshKey])
 
   return (
-    <Container maxWidth={false} disableGutters sx={{ px: 2.5, py: 2 }}>
+    <Container
+      maxWidth={false}
+      disableGutters
+      sx={{
+        px: 3,
+        py: 2,
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }}
+    >
       <Stack
         direction="row"
-        sx={{ mb: 1.5, alignItems: 'center', justifyContent: 'space-between' }}
+        sx={(theme) => ({
+          ...glassPanelSx(theme),
+          mb: 1.5,
+          px: 2,
+          py: 1.5,
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        })}
       >
         <Box>
           <Typography variant="h5" component="h1" sx={{ fontWeight: 700 }}>
             Production Backlog
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Monitor and manage production orders
+            Monitor production status, process flow and delivery progress.
           </Typography>
         </Box>
 
         <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+          <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+            <Box
+              sx={{
+                width: 7,
+                height: 7,
+                borderRadius: '50%',
+                bgcolor: error ? 'error.main' : 'success.main',
+                boxShadow: error ? 'none' : '0 0 0 4px rgba(34,197,94,0.1)',
+              }}
+            />
+            <Typography variant="caption" color="text.secondary">
+              {error ? 'Connection issue' : 'Live'}
+            </Typography>
+          </Stack>
           <Typography variant="caption" color="text.secondary">
             Last updated:{' '}
             {lastUpdated ? lastUpdated.toLocaleTimeString() : 'Not yet loaded'}
           </Typography>
-          <Button
-            variant="outlined"
+          <IconButton
+            aria-label="Refresh backlog"
+            title="Refresh"
             size="small"
-            startIcon={<span aria-hidden>↻</span>}
             onClick={() => setRefreshKey((value) => value + 1)}
             disabled={loading}
+            sx={{
+              border: '1px solid rgba(148, 163, 184, 0.24)',
+              bgcolor: 'rgba(255,255,255,0.04)',
+              '&:hover': { bgcolor: 'rgba(96,165,250,0.14)' },
+            }}
           >
-            Refresh
-          </Button>
+            {'\u21bb'}
+          </IconButton>
+          <Tooltip
+            title={
+              mode === 'light' ? 'Switch to dark mode' : 'Switch to light mode'
+            }
+          >
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={onToggleMode}
+              startIcon={
+                <span aria-hidden>{mode === 'light' ? '\u263c' : '\u263e'}</span>
+              }
+              sx={{ minWidth: 86 }}
+            >
+              {mode === 'light' ? 'Light' : 'Dark'}
+            </Button>
+          </Tooltip>
         </Stack>
       </Stack>
 
@@ -172,46 +248,77 @@ export function DashboardPage() {
         }}
       >
         {[
-          { label: 'Total Orders', value: totalElements, note: 'All matching orders' },
-          { label: 'WIP', value: pageSummary.wip, note: 'Current page' },
-          { label: 'Waiting', value: pageSummary.waiting, note: 'Current page' },
-          { label: 'Completed', value: pageSummary.completed, note: 'Current page' },
+          {
+            label: 'Total Orders',
+            value: totalElements,
+            note: 'All matching orders',
+            accent: '#60a5fa',
+          },
+          { label: 'WIP', value: pageSummary.wip, note: 'Current page', accent: '#f59e0b' },
+          { label: 'Waiting', value: pageSummary.waiting, note: 'Current page', accent: '#38bdf8' },
+          { label: 'Completed', value: pageSummary.completed, note: 'Current page', accent: '#22c55e' },
         ].map((item) => (
-          <Card key={item.label} variant="outlined" sx={{ px: 2, py: 1.25 }}>
-            <Typography variant="caption" color="text.secondary">
-              {item.label}
-            </Typography>
-            <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline' }}>
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                {item.value.toLocaleString()}
-              </Typography>
-              <Typography variant="caption" color="text.disabled">
-                {item.note}
-              </Typography>
+          <Card
+            key={item.label}
+            sx={(theme) => ({
+              ...glassPanelSx(theme),
+              px: 2,
+              py: 1.2,
+              borderTop: `2px solid ${item.accent}`,
+              transition: 'transform 170ms ease',
+              '&:hover': { transform: 'translateY(-1px)' },
+            })}
+          >
+            <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
+              <Box
+                sx={{
+                  width: 9,
+                  height: 9,
+                  flex: '0 0 auto',
+                  borderRadius: '50%',
+                  bgcolor: item.accent,
+                  boxShadow: `0 0 0 5px ${item.accent}18`,
+                }}
+              />
+              <Box>
+                <Typography variant="caption" color="text.secondary">
+                  {item.label}
+                </Typography>
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline' }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                    {item.value.toLocaleString()}
+                  </Typography>
+                  <Typography variant="caption" color="text.disabled">
+                    {item.note}
+                  </Typography>
+                </Stack>
+              </Box>
             </Stack>
           </Card>
         ))}
       </Box>
 
-      <Card variant="outlined" sx={{ mb: 1.5, p: 1.5 }}>
+      <Card
+        sx={(theme) => ({ ...glassPanelSx(theme), mb: 1.5, p: 1.5 })}
+      >
         <Box
           sx={{
             display: 'grid',
             gridTemplateColumns:
-              'minmax(280px, 2fr) repeat(4, minmax(135px, 1fr)) minmax(155px, 1fr) auto',
+              'minmax(280px, 2fr) repeat(4, minmax(135px, 1fr)) minmax(155px, 1fr) auto auto',
             gap: 1.25,
             alignItems: 'center',
           }}
         >
           <TextField
-            placeholder="Search VBELN, Global Code, Product..."
+            placeholder="Search sales order, global code, product..."
             size="small"
             value={filters.search}
             onChange={(event) => updateFilter('search', event.target.value)}
             slotProps={{
               input: {
                 startAdornment: (
-                  <InputAdornment position="start">⌕</InputAdornment>
+                  <InputAdornment position="start">{'\u2315'}</InputAdornment>
                 ),
                 endAdornment: filters.search ? (
                   <InputAdornment position="end">
@@ -220,7 +327,7 @@ export function DashboardPage() {
                       aria-label="Clear search"
                       onClick={() => updateFilter('search', '')}
                     >
-                      ×
+                      {'\u00d7'}
                     </IconButton>
                   </InputAdornment>
                 ) : null,
@@ -274,6 +381,15 @@ export function DashboardPage() {
           >
             Clear Filters
           </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() => setRefreshKey((value) => value + 1)}
+            disabled={loading}
+            sx={{ whiteSpace: 'nowrap' }}
+          >
+            Refresh
+          </Button>
         </Box>
 
         {activeFilters.length > 0 && (
@@ -291,6 +407,14 @@ export function DashboardPage() {
                 size="small"
                 label={`${filterLabels[name]}: ${value}`}
                 onDelete={() => updateFilter(name, '')}
+                sx={(theme) => ({
+                  bgcolor:
+                    theme.palette.mode === 'dark'
+                      ? 'rgba(96,165,250,0.09)'
+                      : 'rgba(37,99,235,0.07)',
+                  border: `1px solid ${theme.palette.divider}`,
+                  '&:hover': { filter: 'brightness(1.15)' },
+                })}
               />
             ))}
             <Button size="small" onClick={clearFilters}>
@@ -307,8 +431,25 @@ export function DashboardPage() {
       )}
 
       <Card
-        variant="outlined"
-        sx={{ height: 'max(430px, calc(100vh - 350px))', overflow: 'hidden' }}
+        sx={(theme) => ({
+          flex: 1,
+          minHeight: 0,
+          overflow: 'hidden',
+
+          bgcolor:
+            theme.palette.mode === 'dark'
+              ? '#101a2b'
+              : '#ffffff',
+
+          backgroundImage: 'none',
+
+          border: `1px solid ${theme.palette.divider}`,
+
+          boxShadow:
+            theme.palette.mode === 'dark'
+              ? '0 16px 45px rgba(0,0,0,0.25)'
+              : '0 14px 36px rgba(15,23,42,0.09)',
+        })}
       >
         <DataTable
           data={data}
