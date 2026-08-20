@@ -37,6 +37,7 @@ const menuGroups: MenuGroupConfig[] = [
     id: 'shipping',
     label: 'SHIPPING',
     items: [
+      { label: 'Shipment', path: '/shipment', icon: 'H' },
       { label: 'Export List', path: '/export-list', icon: 'E' },
       { label: 'Sales Status', path: '/sales-status', icon: 'S' },
     ],

@@ -8,7 +8,7 @@ import { ExportListPage } from './pages/ExportListPage'
 import { OdbfPage } from './pages/OdbfPage'
 import { SalesStatusPage } from './pages/SalesStatusPage'
 import { createDashboardTheme } from './theme/dashboardTheme'
-
+import { ShipmentPage } from './pages/ShipmentPage'
 const THEME_STORAGE_KEY = 'backlog-theme-mode'
 
 function App() {
@@ -45,6 +45,10 @@ function App() {
             <Route path="odbf" element={<OdbfPage />} />
             <Route path="export-list" element={<ExportListPage />} />
             <Route path="sales-status" element={<SalesStatusPage />} />
+            <Route
+              path="/shipment"
+              element={<ShipmentPage />}
+            />
             <Route path="*" element={<Navigate to="/backlog" replace />} />
           </Route>
         </Routes>
