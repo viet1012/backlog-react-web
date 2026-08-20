@@ -25,14 +25,20 @@ export function formatDateInput(
 }
 
 export function getDefaultShipmentDateRange() {
-    const toDate = new Date()
+    const today = new Date()
 
-    toDate.setHours(0, 0, 0, 0)
+    today.setHours(0, 0, 0, 0)
 
-    const fromDate = new Date(toDate)
-
+    // FROM = today - 6 days
+    const fromDate = new Date(today)
     fromDate.setDate(
-        toDate.getDate() - 13,
+        today.getDate() - 6,
+    )
+
+    // TO = today + 7 days
+    const toDate = new Date(today)
+    toDate.setDate(
+        today.getDate() + 7,
     )
 
     return {

@@ -158,7 +158,7 @@ export function ShipmentHeatmap({
                 border:
                     `1px solid ${theme.palette.divider}`,
 
-                borderRadius: 2,
+                borderRadius: 1,
 
                 bgcolor:
                     'background.paper',
@@ -638,7 +638,7 @@ function HeatmapCell({
                         alignItems: 'center',
                         justifyContent: 'center',
 
-                        borderRadius: 1.25,
+                        borderRadius: 0.25,
 
                         bgcolor:
                             ratioColor(
