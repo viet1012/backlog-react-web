@@ -4,7 +4,6 @@ import {
   Button,
   Card,
   Chip,
-  Container,
   FormControl,
   IconButton,
   InputAdornment,
@@ -20,8 +19,12 @@ import type { PaletteMode, Theme } from '@mui/material/styles'
 import type { GridPaginationModel } from '@mui/x-data-grid'
 import { useEffect, useMemo, useState } from 'react'
 import { DataTable } from '../components/DataTable'
+import { PageHeader } from '../components/common/PageHeader'
+import { PageShell } from '../components/common/PageShell'
+import { UpdatedStatus } from '../components/common/UpdatedStatus'
 import { getReports, type ReportFilters } from '../services/reportService'
 import type { ProductionOrder } from '../types/report'
+import { RefreshButton } from '../components/common/RefreshButton'
 
 const initialFilters: ReportFilters = {
   search: '',
@@ -154,93 +157,39 @@ export function DashboardPage({ mode, onToggleMode }: DashboardPageProps) {
   }, [page, pageSize, filters, refreshKey])
 
   return (
-    <Container
-      maxWidth={false}
-      disableGutters
-      sx={{
-        px: 1,
-        py: 1,
-        width: '100%',
-        height: '100%',
-        minWidth: 0,
-        minHeight: 0,
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-      }}
-    >
-      <Stack
-        direction="row"
-        sx={(theme) => ({
-          ...glassPanelSx(theme),
-          mb: 1,
-          px: 2,
-          py: 1.5,
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        })}
-      >
-        <Box>
-          <Typography variant="h5" component="h1" sx={{ fontWeight: 700 }}>
-            Production Backlog
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Monitor production status, process flow and delivery progress.
-          </Typography>
-        </Box>
-
-        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-          <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-            <Box
-              sx={{
-                width: 7,
-                height: 7,
-                borderRadius: '50%',
-                bgcolor: error ? 'error.main' : 'success.main',
-                boxShadow: error ? 'none' : '0 0 0 4px rgba(34,197,94,0.1)',
-              }}
+    <PageShell>
+      <PageHeader
+        title="PRODUCTION BACKLOG"
+        subtitle="Monitor production status, process flow and delivery progress."
+        status={
+          <UpdatedStatus updatedAt={lastUpdated} error={Boolean(error)} />
+        }
+        actions={
+          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+            <RefreshButton
+              loading={loading}
+              onClick={() => setRefreshKey((value) => value + 1)}
             />
-            <Typography variant="caption" color="text.secondary">
-              {error ? 'Connection issue' : 'Live'}
-            </Typography>
-          </Stack>
-          <Typography variant="caption" color="text.secondary">
-            Last updated:{' '}
-            {lastUpdated ? lastUpdated.toLocaleTimeString() : 'Not yet loaded'}
-          </Typography>
-          <IconButton
-            aria-label="Refresh backlog"
-            title="Refresh"
-            size="small"
-            onClick={() => setRefreshKey((value) => value + 1)}
-            disabled={loading}
-            sx={{
-              border: '1px solid rgba(148, 163, 184, 0.24)',
-              bgcolor: 'rgba(255,255,255,0.04)',
-              '&:hover': { bgcolor: 'rgba(96,165,250,0.14)' },
-            }}
-          >
-            {'\u21bb'}
-          </IconButton>
-          <Tooltip
-            title={
-              mode === 'light' ? 'Switch to dark mode' : 'Switch to light mode'
-            }
-          >
-            <Button
-              size="small"
-              variant="outlined"
-              onClick={onToggleMode}
-              startIcon={
-                <span aria-hidden>{mode === 'light' ? '\u263c' : '\u263e'}</span>
+            <Tooltip
+              title={
+                mode === 'light' ? 'Switch to dark mode' : 'Switch to light mode'
               }
-              sx={{ minWidth: 86 }}
             >
-              {mode === 'light' ? 'Light' : 'Dark'}
-            </Button>
-          </Tooltip>
-        </Stack>
-      </Stack>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={onToggleMode}
+                startIcon={
+                  <span aria-hidden>{mode === 'light' ? '\u263c' : '\u263e'}</span>
+                }
+                sx={{ minWidth: 86 }}
+              >
+                {mode === 'light' ? 'Light' : 'Dark'}
+              </Button>
+            </Tooltip>
+          </Stack>
+        }
+      />
 
       <Box
         sx={{
@@ -463,7 +412,7 @@ export function DashboardPage({ mode, onToggleMode }: DashboardPageProps) {
           onPaginationChange={handlePaginationChange}
         />
       </Card>
-    </Container>
+    </PageShell>
   )
 }
 

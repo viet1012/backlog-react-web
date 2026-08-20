@@ -1,37 +1,12 @@
+import { API_BASE_URL } from '../config/api'
 import type { ShipmentFulfillment } from '../types/shipment'
-
-const API_BASE_URL =
-    import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'
+import {
+    nullableString,
+    numberValue,
+    requiredString,
+} from '../utils/apiMapper'
 
 type ApiShipmentFulfillment = Record<string, unknown>
-
-function nullableString(value: unknown): string | null {
-    return value === null || value === undefined
-        ? null
-        : String(value)
-}
-
-function requiredString(value: unknown, field: string): string {
-    if (
-        value === null ||
-        value === undefined ||
-        String(value).trim() === ''
-    ) {
-        throw new Error(`Shipment API missing field: ${field}`)
-    }
-
-    return String(value)
-}
-
-function numberValue(value: unknown): number {
-    if (value === null || value === undefined) {
-        return 0
-    }
-
-    const parsed = Number(value)
-
-    return Number.isNaN(parsed) ? 0 : parsed
-}
 
 function mapShipment(
     item: ApiShipmentFulfillment,
@@ -60,25 +35,64 @@ export async function getShipmentFulfillment(
     toD: string,
     signal?: AbortSignal,
 ): Promise<ShipmentFulfillment[]> {
+    // =========================
+    // VALIDATE
+    // =========================
+
+    if (!fromD) {
+        throw new Error(
+            'From Date is required',
+        )
+    }
+
+    if (!toD) {
+        throw new Error(
+            'To Date is required',
+        )
+    }
+
+    if (fromD > toD) {
+        throw new Error(
+            'From Date cannot be after To Date',
+        )
+    }
+
+    // =========================
+    // QUERY PARAMS
+    // =========================
+
     const query = new URLSearchParams({
         fromD,
         toD,
     })
 
+    // =========================
+    // API
+    // =========================
+
     const response = await fetch(
         `${API_BASE_URL}/api/shipment-fulfillment?${query.toString()}`,
         {
+            method: 'GET',
             signal,
+            headers: {
+                Accept: 'application/json',
+            },
         },
     )
 
     if (!response.ok) {
         throw new Error(
-            `Shipment API request failed: ${response.status}`,
+            `Shipment API request failed: ${response.status} ${response.statusText}`,
         )
     }
 
-    const result = await response.json()
+    // =========================
+    // RESPONSE
+    // =========================
+
+    const result: unknown =
+        await response.json()
 
     if (!Array.isArray(result)) {
         throw new Error(
@@ -86,10 +100,25 @@ export async function getShipmentFulfillment(
         )
     }
 
+    // =========================
+    // MAPPING
+    // =========================
+
     return result.map(
-        (item) =>
-            mapShipment(
+        (item, index) => {
+            if (
+                typeof item !== 'object' ||
+                item === null ||
+                Array.isArray(item)
+            ) {
+                throw new Error(
+                    `Invalid shipment data at index ${index}`,
+                )
+            }
+
+            return mapShipment(
                 item as ApiShipmentFulfillment,
-            ),
+            )
+        },
     )
 }

@@ -1,4 +1,10 @@
+import { API_BASE_URL } from '../config/api'
 import type { ProductionOrder } from '../types/report'
+import {
+  nullableNumber,
+  nullableString,
+  requiredString,
+} from '../utils/apiMapper'
 
 export interface PageResponse<T> {
   content: T[]
@@ -28,35 +34,12 @@ const emptyFilters: ReportFilters = {
   productionDate: '',
 }
 
-// const API_BASE_URL =
-//   import.meta.env.VITE_API_BASE_URL ?? 'http://192.168.122.16:9100'
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'
 const DEFAULT_PAGE_SIZE = 20
 
 type ApiBacklog = Record<string, unknown>
 
 interface ApiPageResponse extends Omit<PageResponse<ApiBacklog>, 'content'> {
   content: ApiBacklog[]
-}
-
-function requiredString(value: unknown, field: string): string {
-  if (value === null || value === undefined || value === '') {
-    throw new Error(`API response is missing required field: ${field}`)
-  }
-
-  return String(value)
-}
-
-function nullableString(value: unknown): string | null {
-  return value === null || value === undefined ? null : String(value)
-}
-
-function nullableNumber(value: unknown): number | null {
-  if (value === null || value === undefined) return null
-
-  const numberValue = Number(value)
-  return Number.isNaN(numberValue) ? null : numberValue
 }
 
 function mapApiBacklog(item: ApiBacklog): ProductionOrder {
