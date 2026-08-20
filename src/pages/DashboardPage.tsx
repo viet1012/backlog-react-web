@@ -160,7 +160,10 @@ export function DashboardPage({ mode, onToggleMode }: DashboardPageProps) {
       sx={{
         px: 3,
         py: 2,
-        height: '100vh',
+        width: '100%',
+        height: '100%',
+        minWidth: 0,
+        minHeight: 0,
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
