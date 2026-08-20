@@ -158,8 +158,8 @@ export function DashboardPage({ mode, onToggleMode }: DashboardPageProps) {
       maxWidth={false}
       disableGutters
       sx={{
-        px: 3,
-        py: 2,
+        px: 1,
+        py: 1,
         width: '100%',
         height: '100%',
         minWidth: 0,
@@ -173,7 +173,7 @@ export function DashboardPage({ mode, onToggleMode }: DashboardPageProps) {
         direction="row"
         sx={(theme) => ({
           ...glassPanelSx(theme),
-          mb: 1.5,
+          mb: 1,
           px: 2,
           py: 1.5,
           alignItems: 'center',
@@ -247,7 +247,7 @@ export function DashboardPage({ mode, onToggleMode }: DashboardPageProps) {
           display: 'grid',
           gridTemplateColumns: 'repeat(4, minmax(150px, 1fr))',
           gap: 1.5,
-          mb: 1.5,
+          mb: 1,
         }}
       >
         {[
@@ -302,7 +302,7 @@ export function DashboardPage({ mode, onToggleMode }: DashboardPageProps) {
       </Box>
 
       <Card
-        sx={(theme) => ({ ...glassPanelSx(theme), mb: 1.5, p: 1.5 })}
+        sx={(theme) => ({ ...glassPanelSx(theme), mb: 1, p: 1.5 })}
       >
         <Box
           sx={{
