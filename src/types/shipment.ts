@@ -20,3 +20,9 @@ export interface ShipmentHeatmapRow {
     shipBy: string
     cells: Record<string, ShipmentHeatmapCell>
 }
+
+export interface ShipmentDetailFilter {
+    cusId: string
+    shipBy: string
+    exportDate?: string
+}

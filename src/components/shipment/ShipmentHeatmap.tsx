@@ -15,6 +15,18 @@ import { ShipByBadge } from '../common/shipment/ShipByBadge'
 interface ShipmentHeatmapProps {
     dates: string[]
     rows: ShipmentHeatmapRow[]
+
+    selectedRowKey?: string | null
+    selectedCellKey?: string | null
+
+    onRowClick?: (
+        row: ShipmentHeatmapRow,
+    ) => void
+
+    onCellClick?: (
+        row: ShipmentHeatmapRow,
+        date: string,
+    ) => void
 }
 
 
@@ -142,6 +154,10 @@ function ratioColor(
 export function ShipmentHeatmap({
     dates,
     rows,
+    selectedRowKey,
+    selectedCellKey,
+    onRowClick,
+    onCellClick,
 }: ShipmentHeatmapProps) {
 
     const today =
@@ -233,50 +249,63 @@ export function ShipmentHeatmap({
             ROWS
         ================================================= */}
 
-                {rows.map((row) => (
+                {rows.map((row) => {
+                    const rowSelected =
+                        selectedRowKey === row.key
 
-                    <Box
-                        key={row.key}
-                        sx={{
-                            display: 'contents',
+                    return (
+                        <Box
+                            key={row.key}
+                            sx={{
+                                display: 'contents',
+                            }}
+                        >
+                            <CustomerCell
+                                cusId={row.cusId}
+                                shipBy={row.shipBy}
+                                selected={rowSelected}
+                                onClick={() =>
+                                    onRowClick?.(row)
+                                }
+                            />
 
-                            '&:hover > *': {
-                                bgcolor:
-                                    'action.hover',
-                            },
-                        }}
-                    >
+                            {dates.map((date) => {
+                                const cell =
+                                    row.cells[date]
 
-                        <CustomerCell
-                            cusId={row.cusId}
-                            shipBy={row.shipBy}
-                        />
+                                const cellKey =
+                                    `${row.key}-${date}`
 
+                                return (
+                                    <HeatmapCell
+                                        key={cellKey}
+                                        cell={cell}
+                                        weekend={isWeekend(date)}
+                                        today={date === today}
 
-                        {dates.map((date) => {
+                                        selected={
+                                            selectedCellKey === cellKey
+                                        }
 
-                            const cell =
-                                row.cells[date]
+                                        rowSelected={
+                                            rowSelected
+                                        }
 
-                            return (
-                                <HeatmapCell
-                                    key={
-                                        `${row.key}-${date}`
-                                    }
-                                    cell={cell}
-                                    weekend={
-                                        isWeekend(date)
-                                    }
-                                    today={
-                                        date === today
-                                    }
-                                />
-                            )
-                        })}
-
-                    </Box>
-
-                ))}
+                                        onClick={
+                                            cell
+                                                ? () =>
+                                                    onCellClick?.(
+                                                        row,
+                                                        date,
+                                                    )
+                                                : undefined
+                                        }
+                                    />
+                                )
+                            })}
+                        </Box>
+                    )
+                })}
 
             </Box>
 
@@ -462,14 +491,19 @@ function DateHeaderCell({
 interface CustomerCellProps {
     cusId: string
     shipBy: string
+    selected?: boolean
+    onClick?: () => void
 }
 
 function CustomerCell({
     cusId,
     shipBy,
+    selected = false,
+    onClick,
 }: CustomerCellProps) {
     return (
         <Box
+            onClick={onClick}
             sx={(theme) => ({
                 position: 'sticky',
                 left: 0,
@@ -484,6 +518,8 @@ function CustomerCell({
                 flexDirection: 'column',
                 justifyContent: 'center',
 
+                cursor: 'pointer',
+
                 borderRight:
                     `1px solid ${theme.palette.divider}`,
 
@@ -492,25 +528,28 @@ function CustomerCell({
 
                 bgcolor:
                     theme.palette.background.paper,
+                boxShadow: selected
+                    ? `inset 2px 0 0 ${theme.palette.primary.main},
+       inset 0 1px 0 ${theme.palette.primary.main},
+       inset 0 -1px 0 ${theme.palette.primary.main}`
+                    : 'none',
+                '&:hover': {
+                    bgcolor: 'action.hover',
+                },
             })}
         >
             <Typography
                 noWrap
-                title={cusId}
                 sx={{
-                    maxWidth: 165,
                     fontSize: 11.5,
                     fontWeight: 750,
-                    lineHeight: 1.2,
                 }}
             >
                 {cusId}
             </Typography>
 
             <Box sx={{ mt: 0.4 }}>
-                <ShipByBadge
-                    shipBy={shipBy}
-                />
+                <ShipByBadge shipBy={shipBy} />
             </Box>
         </Box>
     )
@@ -518,22 +557,27 @@ function CustomerCell({
 // =========================================================
 // HEATMAP CELL
 // =========================================================
-
 interface HeatmapCellProps {
     cell:
     | ShipmentHeatmapRow['cells'][string]
     | undefined
 
     weekend: boolean
-
     today: boolean
-}
 
+    selected?: boolean
+    rowSelected?: boolean
+
+    onClick?: () => void
+}
 
 function HeatmapCell({
     cell,
     weekend,
     today,
+    selected = false,
+    rowSelected = false,
+    onClick,
 }: HeatmapCellProps) {
 
     if (!cell) {
@@ -563,6 +607,12 @@ function HeatmapCell({
                         theme.palette.mode === 'dark'
                             ? 'repeating-linear-gradient(135deg, transparent, transparent 5px, rgba(255,255,255,0.015) 5px, rgba(255,255,255,0.015) 10px)'
                             : 'repeating-linear-gradient(135deg, transparent, transparent 5px, rgba(15,23,42,0.018) 5px, rgba(15,23,42,0.018) 10px)',
+
+                    // highlight row kể cả cell trống
+                    boxShadow: rowSelected
+                        ? `inset 0 1px 0 ${theme.palette.primary.main},
+                       inset 0 -1px 0 ${theme.palette.primary.main}`
+                        : 'none',
                 })}
             />
         )
@@ -594,15 +644,19 @@ function HeatmapCell({
         >
 
             <Box
+                onClick={onClick}
                 sx={(theme) => ({
                     minHeight: 38,
 
                     p: 0.55,
 
                     display: 'flex',
-
                     alignItems: 'center',
                     justifyContent: 'center',
+
+                    cursor: onClick
+                        ? 'pointer'
+                        : 'default',
 
                     borderRight:
                         `1px solid ${theme.palette.divider}`,
@@ -620,6 +674,17 @@ function HeatmapCell({
                                     ? '#111b2a'
                                     : '#fafbfc'
                                 : 'background.paper',
+
+                    // CHỈ highlight OUTER CELL
+                    boxShadow:
+                        selected
+                            ? `inset 0 0 0 2px ${theme.palette.primary.main}`
+                            : rowSelected
+                                ? `inset 0 0 0 1px ${theme.palette.primary.main}`
+                                : 'none',
+
+                    transition:
+                        'box-shadow 120ms ease',
                 })}
             >
 

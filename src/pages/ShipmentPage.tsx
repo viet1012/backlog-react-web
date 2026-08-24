@@ -8,6 +8,11 @@ import {
   Typography,
 } from '@mui/material'
 
+import type {
+  SxProps,
+  Theme,
+} from '@mui/material'
+
 import {
   useEffect,
   useMemo,
@@ -28,12 +33,22 @@ import {
   getDefaultShipmentDateRange,
 } from '../components/shipment/shipmentHeatmapUtils'
 
-import { getShipmentFulfillment } from '../services/shipmentService'
+import {
+  getShipmentDetail,
+  getShipmentFulfillment,
+} from '../services/shipmentService'
+
 import { uiTokens } from '../theme/uiTokens'
 
 import type {
+  ShipmentDetailFilter,
   ShipmentFulfillment,
 } from '../types/shipment'
+
+import type {
+  ProductionOrder,
+} from '../types/report'
+import { ShipmentDetailDialog } from '../components/common/shipment/ShipmentDetailDialog'
 
 
 const defaultRange =
@@ -41,6 +56,11 @@ const defaultRange =
 
 
 export function ShipmentPage() {
+
+  // =========================================================
+  // HEATMAP STATE
+  // =========================================================
+
   const [data, setData] =
     useState<ShipmentFulfillment[]>([])
 
@@ -56,6 +76,21 @@ export function ShipmentPage() {
   const [refreshKey, setRefreshKey] =
     useState(0)
 
+
+  const [
+    selectedRowKey,
+    setSelectedRowKey,
+  ] = useState<string | null>(null)
+
+  const [
+    selectedCellKey,
+    setSelectedCellKey,
+  ] = useState<string | null>(null)
+
+  // =========================================================
+  // DATE FILTER
+  // =========================================================
+
   const [fromD, setFromD] =
     useState(defaultRange.fromD)
 
@@ -70,18 +105,41 @@ export function ShipmentPage() {
 
 
   // =========================================================
-  // LOAD DATA
+  // DETAIL DIALOG STATE
+  // =========================================================
+
+  const [detailOpen, setDetailOpen] =
+    useState(false)
+
+  const [detailFilter, setDetailFilter] =
+    useState<ShipmentDetailFilter | null>(null)
+
+  const [detailData, setDetailData] =
+    useState<ProductionOrder[]>([])
+
+  const [detailLoading, setDetailLoading] =
+    useState(false)
+
+  const [detailError, setDetailError] =
+    useState<string | null>(null)
+
+
+  // =========================================================
+  // LOAD HEATMAP DATA
   // =========================================================
 
   useEffect(() => {
+
     const controller =
       new AbortController()
 
     async function loadData() {
+
       setLoading(true)
       setError(null)
 
       try {
+
         const result =
           await getShipmentFulfillment(
             appliedFromD,
@@ -90,16 +148,24 @@ export function ShipmentPage() {
           )
 
         setData(result)
-        setLastUpdated(new Date())
+
+        setLastUpdated(
+          new Date(),
+        )
+
       } catch (requestError) {
+
         if (!controller.signal.aborted) {
+
           setError(
             requestError instanceof Error
               ? requestError.message
               : 'Unable to load shipment fulfillment',
           )
         }
+
       } finally {
+
         if (!controller.signal.aborted) {
           setLoading(false)
         }
@@ -111,6 +177,7 @@ export function ShipmentPage() {
     return () => {
       controller.abort()
     }
+
   }, [
     appliedFromD,
     appliedToD,
@@ -122,43 +189,53 @@ export function ShipmentPage() {
   // HEATMAP DATA
   // =========================================================
 
-  const dates = useMemo(
-    () =>
-      buildDateRange(
+  const dates =
+    useMemo(
+      () =>
+        buildDateRange(
+          appliedFromD,
+          appliedToD,
+        ),
+      [
         appliedFromD,
         appliedToD,
-      ),
-    [
-      appliedFromD,
-      appliedToD,
-    ],
-  )
+      ],
+    )
 
-  const rows = useMemo(
-    () =>
-      buildShipmentRows(data),
-    [data],
-  )
+
+  const rows =
+    useMemo(
+      () =>
+        buildShipmentRows(data),
+      [data],
+    )
 
 
   // =========================================================
-  // DATE FILTER
+  // DATE FILTER ACTIONS
   // =========================================================
 
   function handleApplyDate() {
+
     if (!fromD || !toD) {
+
       setError(
         'Please select From Date and To Date',
       )
+
       return
     }
 
+
     if (fromD > toD) {
+
       setError(
         'From Date cannot be after To Date',
       )
+
       return
     }
+
 
     setError(null)
 
@@ -168,74 +245,168 @@ export function ShipmentPage() {
 
 
   function handleResetTwoWeeks() {
+
     const range =
       getDefaultShipmentDateRange()
 
-    setFromD(range.fromD)
-    setToD(range.toD)
+    setFromD(
+      range.fromD,
+    )
 
-    setAppliedFromD(range.fromD)
-    setAppliedToD(range.toD)
+    setToD(
+      range.toD,
+    )
+
+    setAppliedFromD(
+      range.fromD,
+    )
+
+    setAppliedToD(
+      range.toD,
+    )
   }
 
 
   function handleRefresh() {
+
     setRefreshKey(
-      (value) => value + 1,
+      (value) =>
+        value + 1,
     )
+  }
+
+
+  // =========================================================
+  // OPEN DETAIL
+  // =========================================================
+
+  async function openShipmentDetail(
+    filter: ShipmentDetailFilter,
+  ) {
+
+    setDetailFilter(
+      filter,
+    )
+
+    setDetailOpen(true)
+
+    setDetailLoading(true)
+
+    setDetailError(null)
+
+    setDetailData([])
+
+    try {
+
+      const result =
+        await getShipmentDetail(
+          filter,
+        )
+
+      setDetailData(
+        result,
+      )
+
+    } catch (requestError) {
+
+      setDetailError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'Unable to load shipment detail',
+      )
+
+    } finally {
+
+      setDetailLoading(false)
+    }
+  }
+
+
+  // =========================================================
+  // CLOSE DETAIL
+  // =========================================================
+
+  function handleCloseDetail() {
+
+    setDetailOpen(false)
+
+    setDetailError(null)
   }
 
 
   // =========================================================
   // COMMON CONTROL STYLE
   // =========================================================
-  const dateFieldSx = (theme: any) => {
-    const dark =
-      theme.palette.mode === 'dark'
-
-    return {
-      width: 145,
-
-      '& .MuiInputBase-root': {
-        ...controlSx,
-
-        bgcolor: dark
-          ? 'rgba(30, 41, 59, 0.72)'
-          : '#ffffff',
-
-        color: 'text.primary',
-      },
-
-      '& .MuiOutlinedInput-notchedOutline': {
-        borderColor: dark
-          ? 'rgba(148, 163, 184, 0.22)'
-          : theme.palette.divider,
-      },
-
-      '&:hover .MuiOutlinedInput-notchedOutline': {
-        borderColor:
-          theme.palette.primary.main,
-      },
-
-      '& .MuiInputLabel-root': {
-        color: 'text.secondary',
-      },
-
-      '& input::-webkit-calendar-picker-indicator': {
-        filter: dark
-          ? 'invert(1) opacity(0.8)'
-          : 'none',
-      },
-    }
-  }
 
   const controlSx = {
-    height: uiTokens.control.height,
-    fontSize: uiTokens.control.fontSize,
+    height:
+      uiTokens.control.height,
+
+    fontSize:
+      uiTokens.control.fontSize,
   }
 
 
+  const dateFieldSx:
+    SxProps<Theme> =
+    (theme) => {
+
+      const dark =
+        theme.palette.mode === 'dark'
+
+      return {
+
+        width: 145,
+
+        '& .MuiInputBase-root': {
+          ...controlSx,
+
+          bgcolor:
+            dark
+              ? 'rgba(30, 41, 59, 0.72)'
+              : '#ffffff',
+
+          color:
+            'text.primary',
+        },
+
+        '& .MuiOutlinedInput-notchedOutline':
+        {
+          borderColor:
+            dark
+              ? 'rgba(148, 163, 184, 0.22)'
+              : theme.palette.divider,
+        },
+
+        '&:hover .MuiOutlinedInput-notchedOutline':
+        {
+          borderColor:
+            theme.palette.primary.main,
+        },
+
+        '& .MuiInputLabel-root':
+        {
+          color:
+            'text.secondary',
+        },
+
+        '& input::-webkit-calendar-picker-indicator':
+        {
+          filter:
+            dark
+              ? 'invert(1) opacity(0.8)'
+              : 'none',
+        },
+      }
+    }
+
+
+  // =========================================================
+  // UI
+  // =========================================================
+
   return (
+
     <PageShell>
 
       {/* =====================================================
@@ -245,49 +416,66 @@ export function ShipmentPage() {
       <PageHeader
         title="SHIPMENT FULFILLMENT"
         subtitle="Monitor shipment fulfillment and delivery readiness."
+
         status={
           <UpdatedStatus
-            updatedAt={lastUpdated}
-            error={Boolean(error)}
+            updatedAt={
+              lastUpdated
+            }
+            error={
+              Boolean(error)
+            }
           />
         }
+
         actions={
           <RefreshButton
             loading={loading}
-            onClick={handleRefresh}
+            onClick={
+              handleRefresh
+            }
           />
         }
       />
 
 
       {/* =====================================================
-          DATE FILTER
+          DATE RANGE
       ===================================================== */}
+
       <Stack
         direction="row"
         spacing={0.75}
+
         sx={(theme) => {
-          const dark = theme.palette.mode === 'dark'
+
+          const dark =
+            theme.palette.mode === 'dark'
 
           return {
+
             px: 1.5,
             py: 1,
 
-            alignItems: 'center',
+            alignItems:
+              'center',
 
-            bgcolor: dark
-              ? 'rgba(15, 23, 42, 0.72)'
-              : 'rgba(255, 255, 255, 0.82)',
+            bgcolor:
+              dark
+                ? 'rgba(15, 23, 42, 0.72)'
+                : 'rgba(255, 255, 255, 0.82)',
 
-            border: `1px solid ${dark
-              ? 'rgba(148, 163, 184, 0.18)'
-              : theme.palette.divider
+            border:
+              `1px solid ${dark
+                ? 'rgba(148, 163, 184, 0.18)'
+                : theme.palette.divider
               }`,
 
             borderRadius:
               uiTokens.card.borderRadius,
 
-            backdropFilter: 'blur(12px)',
+            backdropFilter:
+              'blur(12px)',
           }
         }}
       >
@@ -295,8 +483,12 @@ export function ShipmentPage() {
         <Typography
           sx={{
             fontSize: 11,
+
             fontWeight: 700,
-            color: 'text.secondary',
+
+            color:
+              'text.secondary',
+
             mr: 0.5,
           }}
         >
@@ -304,27 +496,36 @@ export function ShipmentPage() {
         </Typography>
 
 
-        {/* FROM DATE */}
+        {/* FROM */}
 
         <TextField
           label="From"
+
           type="date"
+
           size="small"
+
           value={fromD}
+
           onChange={(event) =>
-            setFromD(event.target.value)
+            setFromD(
+              event.target.value,
+            )
           }
+
           slotProps={{
             inputLabel: {
               shrink: true,
             },
           }}
+
           sx={dateFieldSx}
         />
 
 
         <Typography
           color="text.secondary"
+
           sx={{
             fontSize: 12,
           }}
@@ -333,21 +534,29 @@ export function ShipmentPage() {
         </Typography>
 
 
-        {/* TO DATE */}
+        {/* TO */}
 
         <TextField
           label="To"
+
           type="date"
+
           size="small"
+
           value={toD}
+
           onChange={(event) =>
-            setToD(event.target.value)
+            setToD(
+              event.target.value,
+            )
           }
+
           slotProps={{
             inputLabel: {
               shrink: true,
             },
           }}
+
           sx={dateFieldSx}
         />
 
@@ -356,9 +565,15 @@ export function ShipmentPage() {
 
         <Button
           size="small"
+
           variant="contained"
+
           disabled={loading}
-          onClick={handleApplyDate}
+
+          onClick={
+            handleApplyDate
+          }
+
           sx={{
             minWidth: 60,
             ...controlSx,
@@ -368,22 +583,24 @@ export function ShipmentPage() {
         </Button>
 
 
-        {/* RESET 14 DAYS */}
+        {/* 14 DAYS */}
 
         <Button
           size="small"
+
           variant="outlined"
+
           disabled={loading}
+
           onClick={
             handleResetTwoWeeks
           }
+
           sx={controlSx}
         >
           14 Days
         </Button>
 
-
-        {/* PUSH LEGEND TO RIGHT */}
 
         <Box
           sx={{
@@ -404,11 +621,13 @@ export function ShipmentPage() {
       ===================================================== */}
 
       {error && (
+
         <Alert
           severity="error"
         >
           {error}
         </Alert>
+
       )}
 
 
@@ -423,9 +642,11 @@ export function ShipmentPage() {
           minWidth: 0,
           minHeight: 0,
 
-          position: 'relative',
+          position:
+            'relative',
         }}
       >
+
         {loading &&
           data.length === 0 ? (
 
@@ -446,13 +667,85 @@ export function ShipmentPage() {
 
         ) : (
 
-          <ShipmentHeatmap
-            dates={dates}
-            rows={rows}
-          />
+            <ShipmentHeatmap
+              dates={dates}
+              rows={rows}
+
+              selectedRowKey={selectedRowKey}
+              selectedCellKey={selectedCellKey}
+
+              onRowClick={(row) => {
+                setSelectedRowKey(
+                  row.key,
+                )
+
+                setSelectedCellKey(
+                  null,
+                )
+
+                void openShipmentDetail({
+                  cusId:
+                    row.cusId,
+
+                  shipBy:
+                    row.shipBy,
+                })
+              }}
+
+              onCellClick={(row, date) => {
+                setSelectedRowKey(
+                  null,
+                )
+
+                setSelectedCellKey(
+                  `${row.key}-${date}`,
+                )
+
+                void openShipmentDetail({
+                  cusId:
+                    row.cusId,
+
+                  shipBy:
+                    row.shipBy,
+
+                  exportDate:
+                    date,
+                })
+              }}
+            />
 
         )}
+
       </Box>
+
+
+      {/* =====================================================
+          DETAIL POPUP
+      ===================================================== */}
+
+      <ShipmentDetailDialog
+        open={detailOpen}
+
+        filter={
+          detailFilter
+        }
+
+        data={
+          detailData
+        }
+
+        loading={
+          detailLoading
+        }
+
+        error={
+          detailError
+        }
+
+        onClose={
+          handleCloseDetail
+        }
+      />
 
     </PageShell>
   )
