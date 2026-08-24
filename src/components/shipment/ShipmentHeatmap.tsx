@@ -475,7 +475,7 @@ function CustomerCell({
                 left: 0,
                 zIndex: 2,
 
-                minHeight: 54,
+                minHeight: 38,
 
                 px: 1.25,
                 py: 0.5,
@@ -540,7 +540,7 @@ function HeatmapCell({
         return (
             <Box
                 sx={(theme) => ({
-                    minHeight: 52,
+                    minHeight: 42,
 
                     borderRight:
                         `1px solid ${theme.palette.divider}`,
@@ -595,7 +595,7 @@ function HeatmapCell({
 
             <Box
                 sx={(theme) => ({
-                    minHeight: 52,
+                    minHeight: 38,
 
                     p: 0.55,
 
@@ -627,7 +627,7 @@ function HeatmapCell({
                     sx={{
                         width: '100%',
 
-                        minHeight: 40,
+                        minHeight: 32,
 
                         px: 0.5,
                         py: 0.4,

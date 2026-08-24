@@ -189,6 +189,45 @@ export function ShipmentPage() {
   // =========================================================
   // COMMON CONTROL STYLE
   // =========================================================
+  const dateFieldSx = (theme: any) => {
+    const dark =
+      theme.palette.mode === 'dark'
+
+    return {
+      width: 145,
+
+      '& .MuiInputBase-root': {
+        ...controlSx,
+
+        bgcolor: dark
+          ? 'rgba(30, 41, 59, 0.72)'
+          : '#ffffff',
+
+        color: 'text.primary',
+      },
+
+      '& .MuiOutlinedInput-notchedOutline': {
+        borderColor: dark
+          ? 'rgba(148, 163, 184, 0.22)'
+          : theme.palette.divider,
+      },
+
+      '&:hover .MuiOutlinedInput-notchedOutline': {
+        borderColor:
+          theme.palette.primary.main,
+      },
+
+      '& .MuiInputLabel-root': {
+        color: 'text.secondary',
+      },
+
+      '& input::-webkit-calendar-picker-indicator': {
+        filter: dark
+          ? 'invert(1) opacity(0.8)'
+          : 'none',
+      },
+    }
+  }
 
   const controlSx = {
     height: uiTokens.control.height,
@@ -224,25 +263,33 @@ export function ShipmentPage() {
       {/* =====================================================
           DATE FILTER
       ===================================================== */}
-
       <Stack
         direction="row"
         spacing={0.75}
-        sx={(theme) => ({
-          px: 1.5,
-          py: 1,
+        sx={(theme) => {
+          const dark = theme.palette.mode === 'dark'
 
-          alignItems: 'center',
+          return {
+            px: 1.5,
+            py: 1,
 
-          bgcolor:
-            'background.paper',
+            alignItems: 'center',
 
-          border:
-            `1px solid ${theme.palette.divider}`,
+            bgcolor: dark
+              ? 'rgba(15, 23, 42, 0.72)'
+              : 'rgba(255, 255, 255, 0.82)',
 
-          borderRadius:
-            uiTokens.card.borderRadius,
-        })}
+            border: `1px solid ${dark
+              ? 'rgba(148, 163, 184, 0.18)'
+              : theme.palette.divider
+              }`,
+
+            borderRadius:
+              uiTokens.card.borderRadius,
+
+            backdropFilter: 'blur(12px)',
+          }
+        }}
       >
 
         <Typography
@@ -265,21 +312,14 @@ export function ShipmentPage() {
           size="small"
           value={fromD}
           onChange={(event) =>
-            setFromD(
-              event.target.value,
-            )
+            setFromD(event.target.value)
           }
           slotProps={{
             inputLabel: {
               shrink: true,
             },
           }}
-          sx={{
-            width: 145,
-
-            '& .MuiInputBase-root':
-              controlSx,
-          }}
+          sx={dateFieldSx}
         />
 
 
@@ -301,21 +341,14 @@ export function ShipmentPage() {
           size="small"
           value={toD}
           onChange={(event) =>
-            setToD(
-              event.target.value,
-            )
+            setToD(event.target.value)
           }
           slotProps={{
             inputLabel: {
               shrink: true,
             },
           }}
-          sx={{
-            width: 145,
-
-            '& .MuiInputBase-root':
-              controlSx,
-          }}
+          sx={dateFieldSx}
         />
 
 
