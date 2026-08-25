@@ -16,6 +16,17 @@ export interface PageResponse<T> {
   last: boolean
 }
 
+export interface BacklogFilterItem {
+  field: string
+  operator: string
+  value: string
+}
+
+export interface BacklogFilterRequest {
+  filters: BacklogFilterItem[]
+  logicOperator: 'and' | 'or'
+}
+
 export interface ReportFilters {
   search: string
   status: string
@@ -118,6 +129,51 @@ export async function getReports(
   }
 
   const response = await fetch(`${API_BASE_URL}/api/backlogs?${query}`, {
+    signal,
+  })
+
+  if (!response.ok) {
+    throw new Error(`API request failed with status ${response.status}`)
+  }
+
+  const result = (await response.json()) as ApiPageResponse
+
+  if (!Array.isArray(result.content)) {
+    throw new Error('API response has invalid content')
+  }
+
+  return {
+    ...result,
+    content: result.content.map(mapApiBacklog),
+  }
+}
+
+export async function searchReports(
+  page: number,
+  pageSize: number,
+  filterRequest: BacklogFilterRequest,
+  signal?: AbortSignal,
+): Promise<PageResponse<ProductionOrder>> {
+  if (!Number.isInteger(page) || page < 0) {
+    throw new RangeError('Page must be a non-negative integer')
+  }
+
+  if (!Number.isInteger(pageSize) || pageSize <= 0) {
+    throw new RangeError('Page size must be a positive integer')
+  }
+
+  const query = new URLSearchParams({
+    page: String(page),
+    size: String(pageSize),
+  })
+
+  const response = await fetch(`${API_BASE_URL}/api/backlogs/search?${query}`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(filterRequest),
     signal,
   })
 

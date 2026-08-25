@@ -2,6 +2,7 @@ import {
   DataGrid,
   GridToolbarColumnsButton,
   GridToolbarContainer,
+  type GridFilterModel,
   type GridPaginationModel,
 } from '@mui/x-data-grid'
 import { backlogColumns } from './backlog/backlogColumns'
@@ -13,6 +14,8 @@ interface DataTableProps {
   page: number
   pageSize: number
   totalElements: number
+  filterModel: GridFilterModel
+  onFilterChange: (model: GridFilterModel) => void
   onPaginationChange: (model: GridPaginationModel) => void
 }
 
@@ -42,6 +45,8 @@ export function DataTable({
   page,
   pageSize,
   totalElements,
+  filterModel,
+  onFilterChange,
   onPaginationChange,
 }: DataTableProps) {
   return (
@@ -53,6 +58,9 @@ export function DataTable({
       loading={loading}
 
       paginationMode="server"
+      filterMode="server"
+      filterModel={filterModel}
+      onFilterModelChange={onFilterChange}
       rowCount={totalElements}
 
       paginationModel={{
@@ -82,6 +90,13 @@ export function DataTable({
           height: '100%',
 
           border: 0,
+
+          // =========================================
+          // HIDE SORT ICON ON HEADER
+          // =========================================
+          '& .MuiDataGrid-sortIcon': {
+            display: 'none',
+          },
 
           color: dark
             ? '#dbe7f8'
@@ -148,21 +163,18 @@ export function DataTable({
               `1px solid ${theme.palette.divider}`,
           },
 
-          '& .MuiDataGrid-virtualScroller::-webkit-scrollbar':
-          {
+          '& .MuiDataGrid-virtualScroller::-webkit-scrollbar': {
             width: 10,
             height: 10,
           },
 
-          '& .MuiDataGrid-virtualScroller::-webkit-scrollbar-track':
-          {
+          '& .MuiDataGrid-virtualScroller::-webkit-scrollbar-track': {
             bgcolor: dark
               ? '#0d1625'
               : '#e5eaf0',
           },
 
-          '& .MuiDataGrid-virtualScroller::-webkit-scrollbar-thumb':
-          {
+          '& .MuiDataGrid-virtualScroller::-webkit-scrollbar-thumb': {
             bgcolor: dark
               ? '#33445e'
               : '#aab5c4',
@@ -176,8 +188,7 @@ export function DataTable({
             borderRadius: 8,
           },
 
-          '& .MuiDataGrid-virtualScroller::-webkit-scrollbar-thumb:hover':
-          {
+          '& .MuiDataGrid-virtualScroller::-webkit-scrollbar-thumb:hover': {
             bgcolor: dark
               ? '#49617f'
               : '#8392a7',

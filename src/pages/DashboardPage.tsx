@@ -16,15 +16,23 @@ import {
   Typography,
 } from '@mui/material'
 import type { PaletteMode, Theme } from '@mui/material/styles'
-import type { GridPaginationModel } from '@mui/x-data-grid'
+import {
+  GridLogicOperator,
+  type GridFilterModel,
+  type GridPaginationModel,
+} from '@mui/x-data-grid'
 import { useEffect, useMemo, useState } from 'react'
 import { DataTable } from '../components/DataTable'
 import { PageHeader } from '../components/common/PageHeader'
 import { PageShell } from '../components/common/PageShell'
 import { UpdatedStatus } from '../components/common/UpdatedStatus'
-import { getReports, type ReportFilters } from '../services/reportService'
+import {
+  searchReports,
+  type ReportFilters,
+} from '../services/reportService'
 import type { ProductionOrder } from '../types/report'
 import { RefreshButton } from '../components/common/RefreshButton'
+import { toBacklogFilterRequest } from '../utils/backlogFilter'
 
 const initialFilters: ReportFilters = {
   search: '',
@@ -72,6 +80,10 @@ export function DashboardPage({ mode, onToggleMode }: DashboardPageProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [filters, setFilters] = useState<ReportFilters>(initialFilters)
+  const [gridFilterModel, setGridFilterModel] = useState<GridFilterModel>({
+    items: [],
+    logicOperator: GridLogicOperator.And,
+  })
   const [refreshKey, setRefreshKey] = useState(0)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
@@ -119,6 +131,11 @@ export function DashboardPage({ mode, onToggleMode }: DashboardPageProps) {
     setPage(model.page)
   }
 
+  function handleGridFilterChange(model: GridFilterModel) {
+    setGridFilterModel(model)
+    setPage(0)
+  }
+
   useEffect(() => {
     const controller = new AbortController()
 
@@ -127,11 +144,11 @@ export function DashboardPage({ mode, onToggleMode }: DashboardPageProps) {
       setError(null)
 
       try {
-        const response = await getReports(
+        const response = await searchReports(
           page,
-          filters,
-          controller.signal,
           pageSize,
+          toBacklogFilterRequest(gridFilterModel),
+          controller.signal,
         )
 
         setData(response.content)
@@ -154,7 +171,7 @@ export function DashboardPage({ mode, onToggleMode }: DashboardPageProps) {
 
     void loadReports()
     return () => controller.abort()
-  }, [page, pageSize, filters, refreshKey])
+  }, [page, pageSize, gridFilterModel, refreshKey])
 
   return (
     <PageShell>
@@ -409,6 +426,8 @@ export function DashboardPage({ mode, onToggleMode }: DashboardPageProps) {
           page={page}
           pageSize={pageSize}
           totalElements={totalElements}
+          filterModel={gridFilterModel}
+          onFilterChange={handleGridFilterChange}
           onPaginationChange={handlePaginationChange}
         />
       </Card>
