@@ -15,7 +15,6 @@ import {
   AssessmentOutlined,
   ChevronLeftRounded,
   ChevronRightRounded,
-  ExpandLessRounded,
   ExpandMoreRounded,
   FactoryOutlined,
   Inventory2Outlined,
@@ -94,6 +93,10 @@ const menuGroups: MenuGroupConfig[] = [
   },
 ]
 
+const sidebarTransition = 'width 200ms ease'
+const labelTransition = 'opacity 150ms ease, transform 180ms ease'
+const iconTransition = 'transform 160ms ease'
+
 
 // =========================================================
 // SIDEBAR
@@ -147,8 +150,14 @@ export function LeftSidebar() {
             ? '4px 0 18px rgba(0,0,0,0.16)'
             : '4px 0 18px rgba(15,23,42,0.04)',
 
-        transition:
-          'width 180ms ease',
+        transition: sidebarTransition,
+
+        '@media (prefers-reduced-motion: reduce)': {
+          transition: 'none',
+          '& *': {
+            transition: 'none !important',
+          },
+        },
 
         zIndex: 10,
       })}
@@ -160,32 +169,33 @@ export function LeftSidebar() {
 
       <Box
         sx={{
+          position: 'relative',
           height: 58,
-
-          px: collapsed ? 1 : 1.5,
 
           display: 'flex',
           alignItems: 'center',
-
-          justifyContent:
-            collapsed
-              ? 'center'
-              : 'space-between',
 
           flexShrink: 0,
         }}
       >
 
-        {!collapsed && (
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-
-              minWidth: 0,
-            }}
-          >
+        <Box
+          aria-hidden={collapsed}
+          sx={{
+            position: 'absolute',
+            left: 12,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            width: 156,
+            minWidth: 0,
+            opacity: collapsed ? 0 : 1,
+            overflow: 'hidden',
+            pointerEvents: collapsed ? 'none' : 'auto',
+            transform: collapsed ? 'translateX(-8px)' : 'translateX(0)',
+            transition: labelTransition,
+          }}
+        >
 
             {/* LOGO */}
 
@@ -239,8 +249,7 @@ export function LeftSidebar() {
                 Factory Operations
               </Typography>
             </Box>
-          </Box>
-        )}
+        </Box>
 
 
         {/* COLLAPSE BUTTON */}
@@ -261,6 +270,8 @@ export function LeftSidebar() {
               )
             }
             sx={{
+              position: 'absolute',
+              right: 12,
               width: 28,
               height: 28,
 
@@ -333,19 +344,26 @@ export function LeftSidebar() {
 
               {/* GROUP HEADER */}
 
-              {!collapsed && (
-                <ListItemButton
+              <ListItemButton
+                  aria-hidden={collapsed}
+                  tabIndex={collapsed ? -1 : 0}
                   onClick={() =>
                     toggleGroup(group.id)
                   }
                   sx={{
-                    minHeight: 30,
+                    minHeight: collapsed ? 0 : 30,
+                    height: collapsed ? 0 : 30,
 
                     mx: 0.75,
                     px: 1,
-                    py: 0.25,
+                    py: collapsed ? 0 : 0.25,
 
                     borderRadius: 1.5,
+                    opacity: collapsed ? 0 : 1,
+                    overflow: 'hidden',
+                    pointerEvents: collapsed ? 'none' : 'auto',
+                    transform: collapsed ? 'translateX(-6px)' : 'translateX(0)',
+                    transition: `${labelTransition}, height 180ms ease, min-height 180ms ease, padding 180ms ease`,
 
                     '&:hover': {
                       bgcolor:
@@ -371,27 +389,15 @@ export function LeftSidebar() {
                     }}
                   />
 
-                  {groupOpen
-                    ? (
-                      <ExpandLessRounded
-                        sx={{
-                          fontSize: 16,
-                          color:
-                            'text.secondary',
-                        }}
-                      />
-                    )
-                    : (
-                      <ExpandMoreRounded
-                        sx={{
-                          fontSize: 16,
-                          color:
-                            'text.secondary',
-                        }}
-                      />
-                    )}
+                  <ExpandMoreRounded
+                    sx={{
+                      fontSize: 16,
+                      color: 'text.secondary',
+                      transform: groupOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: iconTransition,
+                    }}
+                  />
                 </ListItemButton>
-              )}
 
 
               {/* GROUP ITEMS */}
@@ -468,9 +474,15 @@ export function LeftSidebar() {
                                 '0 4px 4px 0',
 
                               bgcolor:
-                                active
-                                  ? 'primary.main'
-                                  : 'transparent',
+                                'primary.main',
+
+                              opacity: active ? 1 : 0,
+                              transform: active ? 'scaleY(1)' : 'scaleY(0)',
+                              transformOrigin: 'center',
+                              transition: 'transform 180ms ease, opacity 180ms ease',
+                              boxShadow: active
+                                ? `0 0 6px ${theme.palette.primary.main}`
+                                : 'none',
                             },
 
                             '&:hover': {
@@ -479,6 +491,10 @@ export function LeftSidebar() {
 
                               color:
                                 'text.primary',
+
+                              '& .MuiListItemIcon-root svg': {
+                                transform: 'translateX(2px) scale(1.05)',
+                              },
                             },
 
                             '&.Mui-selected': {
@@ -518,6 +534,8 @@ export function LeftSidebar() {
 
                               '& svg': {
                                 fontSize: 18,
+                                transform: 'translateX(0) scale(1)',
+                                transition: iconTransition,
                               },
                             }}
                           >
@@ -527,13 +545,18 @@ export function LeftSidebar() {
 
                           {/* LABEL */}
 
-                          {!collapsed && (
-                            <ListItemText
+                          <ListItemText
+                              aria-hidden={collapsed}
                               primary={
                                 item.label
                               }
                               sx={{
-                                ml: 0.5,
+                                ml: collapsed ? 0 : 0.5,
+                                maxWidth: collapsed ? 0 : 150,
+                                opacity: collapsed ? 0 : 1,
+                                overflow: 'hidden',
+                                transform: collapsed ? 'translateX(-6px)' : 'translateX(0)',
+                                transition: `${labelTransition}, max-width 180ms ease, margin 180ms ease`,
                               }}
                               slotProps={{
                                 primary: {
@@ -550,7 +573,6 @@ export function LeftSidebar() {
                                 },
                               }}
                             />
-                          )}
 
                         </ListItemButton>
                       )
@@ -607,8 +629,16 @@ export function LeftSidebar() {
           FOOTER
       ===================================================== */}
 
-      {!collapsed && (
-        <>
+      <Box
+        aria-hidden={collapsed}
+        sx={{
+          maxHeight: collapsed ? 0 : 48,
+          opacity: collapsed ? 0 : 1,
+          overflow: 'hidden',
+          transform: collapsed ? 'translateX(-6px)' : 'translateX(0)',
+          transition: `${labelTransition}, max-height 180ms ease`,
+        }}
+      >
           <Divider />
 
           <Box
@@ -626,8 +656,7 @@ export function LeftSidebar() {
               Production Backlog System
             </Typography>
           </Box>
-        </>
-      )}
+      </Box>
 
     </Box>
   )

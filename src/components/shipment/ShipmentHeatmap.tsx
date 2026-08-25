@@ -646,6 +646,7 @@ function HeatmapCell({
             <Box
                 onClick={onClick}
                 sx={(theme) => ({
+                    position: 'relative',
                     minHeight: 38,
 
                     p: 0.55,
@@ -684,7 +685,24 @@ function HeatmapCell({
                                 : 'none',
 
                     transition:
-                        'box-shadow 120ms ease',
+                        'transform 160ms ease, box-shadow 160ms ease',
+
+                    '&:hover': {
+                        zIndex: 1,
+                        transform: 'scale(1.02)',
+                        boxShadow: selected
+                            ? `inset 0 0 0 2px ${theme.palette.primary.main}, 0 3px 10px ${theme.palette.action.selected}`
+                            : rowSelected
+                                ? `inset 0 0 0 1px ${theme.palette.primary.main}, 0 3px 10px ${theme.palette.action.selected}`
+                                : `0 3px 10px ${theme.palette.action.selected}`,
+                    },
+
+                    '@media (prefers-reduced-motion: reduce)': {
+                        transition: 'none',
+                        '&:hover': {
+                            transform: 'none',
+                        },
+                    },
                 })}
             >
 
@@ -718,14 +736,11 @@ function HeatmapCell({
                             'transform 120ms ease, filter 120ms ease, box-shadow 120ms ease',
 
                         '&:hover': {
-                            transform:
-                                'translateY(-1px)',
+                            filter: 'brightness(1.04)',
+                        },
 
-                            filter:
-                                'brightness(1.04)',
-
-                            boxShadow:
-                                '0 3px 8px rgba(15,23,42,0.18)',
+                        '@media (prefers-reduced-motion: reduce)': {
+                            transition: 'none',
                         },
                     }}
                 >
