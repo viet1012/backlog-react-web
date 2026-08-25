@@ -1,6 +1,5 @@
 import { CssBaseline, ThemeProvider } from '@mui/material'
-import type { PaletteMode } from '@mui/material/styles'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { MainLayout } from './components/layout/MainLayout'
 import { DashboardPage } from './pages/DashboardPage'
@@ -9,18 +8,41 @@ import { OdbfPage } from './pages/OdbfPage'
 import { SalesStatusPage } from './pages/SalesStatusPage'
 import { createDashboardTheme } from './theme/dashboardTheme'
 import { ShipmentPage } from './pages/ShipmentPage'
-const THEME_STORAGE_KEY = 'backlog-theme-mode'
+
+type ThemeMode = 'light' | 'dark'
+
+const THEME_STORAGE_KEY = 'themeMode'
+const DEFAULT_THEME_MODE: ThemeMode = 'light'
+
+function getInitialThemeMode(): ThemeMode {
+  try {
+    const storedMode = localStorage.getItem(THEME_STORAGE_KEY)
+
+    if (storedMode === 'light' || storedMode === 'dark') {
+      return storedMode
+    }
+  } catch {
+    // Keep the application's default when storage is unavailable.
+  }
+
+  return DEFAULT_THEME_MODE
+}
 
 function App() {
-  const [mode, setMode] = useState<PaletteMode>(() => {
-    const savedMode = localStorage.getItem(THEME_STORAGE_KEY)
-    return savedMode === 'dark' ? 'dark' : 'light'
-  })
+  const [mode, setMode] = useState<ThemeMode>(getInitialThemeMode)
   const theme = useMemo(() => createDashboardTheme(mode), [mode])
 
-  useEffect(() => {
-    localStorage.setItem(THEME_STORAGE_KEY, mode)
-  }, [mode])
+  function toggleThemeMode() {
+    const nextMode: ThemeMode = mode === 'light' ? 'dark' : 'light'
+
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, nextMode)
+    } catch {
+      // Theme switching should still work when storage is unavailable.
+    }
+
+    setMode(nextMode)
+  }
 
   return (
     <ThemeProvider theme={theme}>
@@ -34,11 +56,7 @@ function App() {
               element={
                 <DashboardPage
                   mode={mode}
-                  onToggleMode={() =>
-                    setMode((current) =>
-                      current === 'light' ? 'dark' : 'light',
-                    )
-                  }
+                  onToggleMode={toggleThemeMode}
                 />
               }
             />
