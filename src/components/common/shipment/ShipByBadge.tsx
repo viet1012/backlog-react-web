@@ -9,6 +9,7 @@ import {
     BoltOutlined,
     HelpOutlineOutlined,
 } from '@mui/icons-material'
+import { uiTokens } from '../../../theme/uiTokens'
 
 interface ShipByBadgeProps {
     shipBy?: string | null
@@ -118,7 +119,7 @@ export function ShipByBadge({
             <Typography
                 noWrap
                 sx={{
-                    fontSize: 9.5,
+                    fontSize: uiTokens.kpi.secondaryFontSize,
                     fontWeight: 650,
                     lineHeight: 1,
                     color: 'inherit',

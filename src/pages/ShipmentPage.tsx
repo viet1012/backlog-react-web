@@ -38,7 +38,7 @@ import {
   getShipmentFulfillment,
 } from '../services/shipmentService'
 
-import { uiTokens } from '../theme/uiTokens'
+import { glassPanelSx, uiTokens } from '../theme/uiTokens'
 
 import type {
   ShipmentDetailFilter,
@@ -360,34 +360,6 @@ export function ShipmentPage() {
 
         '& .MuiInputBase-root': {
           ...controlSx,
-
-          bgcolor:
-            dark
-              ? 'rgba(30, 41, 59, 0.72)'
-              : '#ffffff',
-
-          color:
-            'text.primary',
-        },
-
-        '& .MuiOutlinedInput-notchedOutline':
-        {
-          borderColor:
-            dark
-              ? 'rgba(148, 163, 184, 0.22)'
-              : theme.palette.divider,
-        },
-
-        '&:hover .MuiOutlinedInput-notchedOutline':
-        {
-          borderColor:
-            theme.palette.primary.main,
-        },
-
-        '& .MuiInputLabel-root':
-        {
-          color:
-            'text.secondary',
         },
 
         '& input::-webkit-calendar-picker-indicator':
@@ -448,11 +420,8 @@ export function ShipmentPage() {
         spacing={0.75}
 
         sx={(theme) => {
-
-          const dark =
-            theme.palette.mode === 'dark'
-
           return {
+            ...glassPanelSx(theme),
 
             px: 1.5,
             py: 1,
@@ -460,29 +429,16 @@ export function ShipmentPage() {
             alignItems:
               'center',
 
-            bgcolor:
-              dark
-                ? 'rgba(15, 23, 42, 0.72)'
-                : 'rgba(255, 255, 255, 0.82)',
-
-            border:
-              `1px solid ${dark
-                ? 'rgba(148, 163, 184, 0.18)'
-                : theme.palette.divider
-              }`,
-
             borderRadius:
               uiTokens.card.borderRadius,
 
-            backdropFilter:
-              'blur(12px)',
           }
         }}
       >
 
         <Typography
           sx={{
-            fontSize: 11,
+            fontSize: uiTokens.typography.inputLabel,
 
             fontWeight: 700,
 

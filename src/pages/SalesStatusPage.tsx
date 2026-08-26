@@ -1,14 +1,16 @@
-import { Box, Typography } from '@mui/material'
+import { Card, Typography } from '@mui/material'
+import { PageHeader } from '../components/common/PageHeader'
+import { PageShell } from '../components/common/PageShell'
 
 export function SalesStatusPage() {
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography component="h1" variant="h5" sx={{ fontWeight: 700 }}>
-        Sales Status
-      </Typography>
-      <Typography color="text.secondary" sx={{ mt: 1 }}>
+    <PageShell>
+      <PageHeader title="Sales Status" />
+      <Card sx={{ p: 2 }}>
+        <Typography color="text.secondary">
         Coming soon
-      </Typography>
-    </Box>
+        </Typography>
+      </Card>
+    </PageShell>
   )
 }

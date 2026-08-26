@@ -29,6 +29,7 @@ import {
   NavLink,
   useLocation,
 } from 'react-router-dom'
+import { uiTokens } from '../../theme/uiTokens'
 
 
 // =========================================================
@@ -137,10 +138,7 @@ export function LeftSidebar() {
 
         overflow: 'hidden',
 
-        bgcolor:
-          theme.palette.mode === 'dark'
-            ? 'rgba(12, 20, 34, 0.96)'
-            : 'rgba(250, 252, 255, 0.96)',
+        bgcolor: 'background.paper',
 
         borderRight:
           `1px solid ${theme.palette.divider}`,
@@ -164,142 +162,211 @@ export function LeftSidebar() {
     >
 
       {/* =====================================================
-          BRAND / HEADER
-      ===================================================== */}
+    BRAND / HEADER
+===================================================== */}
 
       <Box
         sx={{
           position: 'relative',
-          height: 58,
+
+          height: collapsed ? 52 : 68,
+          minHeight: collapsed ? 52 : 68,
 
           display: 'flex',
           alignItems: 'center',
 
+          px: collapsed ? 0 : 1.25,
+
           flexShrink: 0,
+
+          transition:
+            'height 200ms ease, padding 200ms ease',
         }}
       >
+        {/* ============================
+      EXPANDED
+  ============================ */}
 
-        <Box
-          aria-hidden={collapsed}
-          sx={{
-            position: 'absolute',
-            left: 12,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-            width: 156,
-            minWidth: 0,
-            opacity: collapsed ? 0 : 1,
-            overflow: 'hidden',
-            pointerEvents: collapsed ? 'none' : 'auto',
-            transform: collapsed ? 'translateX(-8px)' : 'translateX(0)',
-            transition: labelTransition,
-          }}
-        >
-
-            {/* LOGO */}
-
+        {!collapsed && (
+          <>
             <Box
               sx={{
-                width: 32,
-                height: 32,
+                flex: 1,
+                minWidth: 0,
 
-                display: 'grid',
-                placeItems: 'center',
+                display: 'flex',
+                alignItems: 'center',
 
-                flexShrink: 0,
+                gap: 1,
 
-                borderRadius: 1.5,
-
-                bgcolor: 'primary.main',
-                color: 'primary.contrastText',
-
-                '& svg': {
-                  fontSize: 19,
-                },
+                pr: 4,
               }}
             >
-              <FactoryOutlined />
-            </Box>
+              {/* LOGO */}
 
+              <Box
+                sx={(theme) => ({
+                  width: 34,
+                  height: 34,
 
-            {/* TITLE */}
+                  flexShrink: 0,
 
-            <Box sx={{ minWidth: 0 }}>
-              <Typography
-                noWrap
+                  display: 'grid',
+                  placeItems: 'center',
+
+                  borderRadius: uiTokens.control.borderRadius,
+
+                  bgcolor: 'primary.main',
+                  color: 'primary.contrastText',
+
+                  boxShadow:
+                    theme.palette.mode === 'dark'
+                      ? '0 3px 10px rgba(0,0,0,.25)'
+                      : '0 3px 10px rgba(37,99,235,.18)',
+
+                  '& svg': {
+                    fontSize: 19,
+                  },
+                })}
+              >
+                <FactoryOutlined />
+              </Box>
+
+              {/* TITLE */}
+
+              <Box
                 sx={{
-                  fontSize: 13,
-                  fontWeight: 800,
-                  lineHeight: 1.25,
+                  flex: 1,
+                  minWidth: 0,
                 }}
               >
-                Production Control
-              </Typography>
+                <Typography
+                  noWrap
+                  sx={{
+                    fontSize: uiTokens.sidebar.appTitleFontSize,
+                    fontWeight: 800,
+                    lineHeight: 1.2,
 
-              <Typography
-                noWrap
-                color="text.secondary"
+                    color: 'text.primary',
+                  }}
+                >
+                  Production Control
+                </Typography>
+
+                <Typography
+                  noWrap
+                  sx={{
+                    mt: 0.35,
+
+                    fontSize: uiTokens.sidebar.subtitleFontSize,
+                    fontWeight: 500,
+                    lineHeight: 1.2,
+
+                    color: 'text.secondary',
+                  }}
+                >
+                  Factory Operations
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* COLLAPSE */}
+
+            <Tooltip
+              title="Collapse sidebar"
+              placement="right"
+              arrow
+            >
+              <IconButton
+                size="small"
+                onClick={() =>
+                  setCollapsed(true)
+                }
                 sx={{
-                  mt: 0.15,
-                  fontSize: 10,
-                  lineHeight: 1.2,
+                  position: 'absolute',
+
+                  right: 8,
+
+                  width: 26,
+                  height: 26,
+
+                  color: 'text.secondary',
+
+                  bgcolor: 'action.hover',
+
+                  border: '1px solid',
+                  borderColor: 'divider',
+
+                  '&:hover': {
+                    color: 'primary.main',
+                    bgcolor: 'action.selected',
+                  },
                 }}
               >
-                Factory Operations
-              </Typography>
-            </Box>
-        </Box>
-
-
-        {/* COLLAPSE BUTTON */}
-
-        <Tooltip
-          title={
-            collapsed
-              ? 'Expand sidebar'
-              : 'Collapse sidebar'
-          }
-          placement="right"
-        >
-          <IconButton
-            size="small"
-            onClick={() =>
-              setCollapsed(
-                (value) => !value,
-              )
-            }
-            sx={{
-              position: 'absolute',
-              right: 12,
-              width: 28,
-              height: 28,
-
-              border: '1px solid',
-              borderColor: 'divider',
-
-              bgcolor: 'action.hover',
-
-              '&:hover': {
-                bgcolor: 'action.selected',
-              },
-            }}
-          >
-            {collapsed
-              ? (
-                <ChevronRightRounded
-                  fontSize="small"
-                />
-              )
-              : (
                 <ChevronLeftRounded
-                  fontSize="small"
+                  sx={{ fontSize: 18 }}
                 />
-              )}
-          </IconButton>
-        </Tooltip>
-      </Box>
+              </IconButton>
+            </Tooltip>
+          </>
+        )}
 
+        {/* ============================
+      COLLAPSED
+  ============================ */}
+
+        {collapsed && (
+          <Tooltip
+            title="Expand sidebar"
+            placement="right"
+            arrow
+          >
+            <IconButton
+              onClick={() =>
+                setCollapsed(false)
+              }
+              sx={(theme) => ({
+                mx: 'auto',
+
+                width: 34,
+                height: 34,
+
+                color: 'primary.main',
+
+                bgcolor:
+                  theme.palette.mode === 'dark'
+                    ? 'rgba(59,130,246,.12)'
+                    : 'rgba(37,99,235,.08)',
+
+                border: '1px solid',
+
+                borderColor:
+                  theme.palette.mode === 'dark'
+                    ? 'rgba(96,165,250,.22)'
+                    : 'rgba(37,99,235,.14)',
+
+                transition:
+                  'background-color 150ms ease, transform 150ms ease',
+
+                '&:hover': {
+                  bgcolor:
+                    theme.palette.mode === 'dark'
+                      ? 'rgba(59,130,246,.20)'
+                      : 'rgba(37,99,235,.14)',
+
+                  transform: 'scale(1.05)',
+                },
+              })}
+            >
+              <ChevronRightRounded
+                sx={{
+                  fontSize: 21,
+                }}
+              />
+            </IconButton>
+          </Tooltip>
+        )}
+      </Box>
 
       <Divider />
 
@@ -323,7 +390,7 @@ export function LeftSidebar() {
 
           '&::-webkit-scrollbar-thumb': {
             bgcolor: 'action.selected',
-            borderRadius: 10,
+            borderRadius: '4px',
           },
         }}
       >
@@ -345,59 +412,59 @@ export function LeftSidebar() {
               {/* GROUP HEADER */}
 
               <ListItemButton
-                  aria-hidden={collapsed}
-                  tabIndex={collapsed ? -1 : 0}
-                  onClick={() =>
-                    toggleGroup(group.id)
-                  }
-                  sx={{
-                    minHeight: collapsed ? 0 : 30,
-                    height: collapsed ? 0 : 30,
+                aria-hidden={collapsed}
+                tabIndex={collapsed ? -1 : 0}
+                onClick={() =>
+                  toggleGroup(group.id)
+                }
+                sx={{
+                  minHeight: collapsed ? 0 : 30,
+                  height: collapsed ? 0 : 30,
 
-                    mx: 0.75,
-                    px: 1,
-                    py: collapsed ? 0 : 0.25,
+                  mx: 0.75,
+                  px: 1,
+                  py: collapsed ? 0 : 0.25,
 
-                    borderRadius: 1.5,
-                    opacity: collapsed ? 0 : 1,
-                    overflow: 'hidden',
-                    pointerEvents: collapsed ? 'none' : 'auto',
-                    transform: collapsed ? 'translateX(-6px)' : 'translateX(0)',
-                    transition: `${labelTransition}, height 180ms ease, min-height 180ms ease, padding 180ms ease`,
+                  borderRadius: uiTokens.control.borderRadius,
+                  opacity: collapsed ? 0 : 1,
+                  overflow: 'hidden',
+                  pointerEvents: collapsed ? 'none' : 'auto',
+                  transform: collapsed ? 'translateX(-6px)' : 'translateX(0)',
+                  transition: `${labelTransition}, height 180ms ease, min-height 180ms ease, padding 180ms ease`,
 
-                    '&:hover': {
-                      bgcolor:
-                        'action.hover',
+                  '&:hover': {
+                    bgcolor:
+                      'action.hover',
+                  },
+                }}
+              >
+                <ListItemText
+                  primary={group.label}
+                  slotProps={{
+                    primary: {
+                      sx: {
+                        fontSize: uiTokens.sidebar.sectionFontSize,
+                        fontWeight: 700,
+
+                        letterSpacing:
+                          '0.08em',
+
+                        color:
+                          'text.secondary',
+                      },
                     },
                   }}
-                >
-                  <ListItemText
-                    primary={group.label}
-                    slotProps={{
-                      primary: {
-                        sx: {
-                          fontSize: 9.5,
-                          fontWeight: 800,
+                />
 
-                          letterSpacing:
-                            '0.08em',
-
-                          color:
-                            'text.secondary',
-                        },
-                      },
-                    }}
-                  />
-
-                  <ExpandMoreRounded
-                    sx={{
-                      fontSize: 16,
-                      color: 'text.secondary',
-                      transform: groupOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                      transition: iconTransition,
-                    }}
-                  />
-                </ListItemButton>
+                <ExpandMoreRounded
+                  sx={{
+                    fontSize: 16,
+                    color: 'text.secondary',
+                    transform: groupOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: iconTransition,
+                  }}
+                />
+              </ListItemButton>
 
 
               {/* GROUP ITEMS */}
@@ -447,7 +514,7 @@ export function LeftSidebar() {
                                 ? 'center'
                                 : 'flex-start',
 
-                            borderRadius: 1.5,
+                            borderRadius: uiTokens.control.borderRadius,
 
                             color: active
                               ? 'primary.main'
@@ -546,33 +613,33 @@ export function LeftSidebar() {
                           {/* LABEL */}
 
                           <ListItemText
-                              aria-hidden={collapsed}
-                              primary={
-                                item.label
-                              }
-                              sx={{
-                                ml: collapsed ? 0 : 0.5,
-                                maxWidth: collapsed ? 0 : 150,
-                                opacity: collapsed ? 0 : 1,
-                                overflow: 'hidden',
-                                transform: collapsed ? 'translateX(-6px)' : 'translateX(0)',
-                                transition: `${labelTransition}, max-width 180ms ease, margin 180ms ease`,
-                              }}
-                              slotProps={{
-                                primary: {
-                                  noWrap: true,
+                            aria-hidden={collapsed}
+                            primary={
+                              item.label
+                            }
+                            sx={{
+                              ml: collapsed ? 0 : 0.5,
+                              maxWidth: collapsed ? 0 : 150,
+                              opacity: collapsed ? 0 : 1,
+                              overflow: 'hidden',
+                              transform: collapsed ? 'translateX(-6px)' : 'translateX(0)',
+                              transition: `${labelTransition}, max-width 180ms ease, margin 180ms ease`,
+                            }}
+                            slotProps={{
+                              primary: {
+                                noWrap: true,
 
-                                  sx: {
-                                    fontSize: 12,
+                                sx: {
+                                  fontSize: uiTokens.sidebar.menuFontSize,
 
-                                    fontWeight:
-                                      active
-                                        ? 700
-                                        : 500,
-                                  },
+                                  fontWeight:
+                                    active
+                                      ? 700
+                                      : 500,
                                 },
-                              }}
-                            />
+                              },
+                            }}
+                          />
 
                         </ListItemButton>
                       )
@@ -639,23 +706,23 @@ export function LeftSidebar() {
           transition: `${labelTransition}, max-height 180ms ease`,
         }}
       >
-          <Divider />
+        <Divider />
 
-          <Box
+        <Box
+          sx={{
+            px: 1.5,
+            py: 1,
+          }}
+        >
+          <Typography
+            color="text.disabled"
             sx={{
-              px: 1.5,
-              py: 1,
+              fontSize: uiTokens.sidebar.sectionFontSize,
             }}
           >
-            <Typography
-              color="text.disabled"
-              sx={{
-                fontSize: 9.5,
-              }}
-            >
-              Production Backlog System
-            </Typography>
-          </Box>
+            Production Backlog System
+          </Typography>
+        </Box>
       </Box>
 
     </Box>

@@ -1,8 +1,9 @@
 import { Box, Stack, Typography } from '@mui/material'
+import { uiTokens } from '../../theme/uiTokens'
 
 const legendTextSx = {
   fontFamily: 'monospace',
-  fontSize: 10,
+  fontSize: uiTokens.kpi.secondaryFontSize,
   color: 'text.secondary',
 }
 

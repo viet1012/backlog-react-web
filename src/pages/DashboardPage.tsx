@@ -1,7 +1,6 @@
 import {
   Alert,
   Box,
-  Button,
   Card,
   Chip,
   FormControl,
@@ -15,7 +14,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import type { PaletteMode, Theme } from '@mui/material/styles'
+import type { PaletteMode } from '@mui/material/styles'
 import {
   GridLogicOperator,
   type GridFilterModel,
@@ -33,6 +32,8 @@ import {
 import type { ProductionOrder } from '../types/report'
 import { RefreshButton } from '../components/common/RefreshButton'
 import { toBacklogFilterRequest } from '../utils/backlogFilter'
+import { uiTokens } from '../theme/uiTokens'
+import { AppButton } from '../components/common/AppButton'
 
 const initialFilters: ReportFilters = {
   search: '',
@@ -51,21 +52,6 @@ const filterLabels: Record<keyof ReportFilters, string> = {
   shipBy: 'Ship By',
   productionDate: 'Production Date',
 }
-
-const glassPanelSx = (theme: Theme) => ({
-  backgroundColor:
-    theme.palette.mode === 'dark'
-      ? 'rgba(15, 23, 42, 0.64)'
-      : 'rgba(255, 255, 255, 0.72)',
-  backgroundImage: 'none',
-  border: `1px solid ${theme.palette.divider}`,
-  boxShadow:
-    theme.palette.mode === 'dark'
-      ? '0 12px 34px rgba(0, 0, 0, 0.18)'
-      : '0 12px 30px rgba(15, 23, 42, 0.07)',
-  backdropFilter: 'blur(14px)',
-  borderRadius: 4,
-})
 
 interface DashboardPageProps {
   mode: PaletteMode
@@ -192,17 +178,17 @@ export function DashboardPage({ mode, onToggleMode }: DashboardPageProps) {
                 mode === 'light' ? 'Switch to dark mode' : 'Switch to light mode'
               }
             >
-              <Button
-                size="small"
+              <AppButton
                 variant="outlined"
                 onClick={onToggleMode}
-                startIcon={
-                  <span aria-hidden>{mode === 'light' ? '\u263c' : '\u263e'}</span>
+                icon={
+                  <span aria-hidden>
+                    {mode === 'light' ? '☼' : '☾'}
+                  </span>
                 }
-                sx={{ minWidth: 86 }}
               >
                 {mode === 'light' ? 'Light' : 'Dark'}
-              </Button>
+              </AppButton>
             </Tooltip>
           </Stack>
         }
@@ -213,7 +199,8 @@ export function DashboardPage({ mode, onToggleMode }: DashboardPageProps) {
           display: 'grid',
           gridTemplateColumns: 'repeat(4, minmax(150px, 1fr))',
           gap: 1.5,
-          mb: 1,
+          mb: .5,
+
         }}
       >
         {[
@@ -229,35 +216,44 @@ export function DashboardPage({ mode, onToggleMode }: DashboardPageProps) {
         ].map((item) => (
           <Card
             key={item.label}
-            sx={(theme) => ({
-              ...glassPanelSx(theme),
+            sx={{
               px: 2,
               py: 1.2,
               borderTop: `2px solid ${item.accent}`,
-              transition: 'transform 170ms ease',
+              transition: 'transform 170ms ease, box-shadow 170ms ease',
               '&:hover': { transform: 'translateY(-1px)' },
-            })}
+            }}
           >
             <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
               <Box
                 sx={{
-                  width: 9,
-                  height: 9,
+                  width: 3,
+                  height: 28,
                   flex: '0 0 auto',
-                  borderRadius: '50%',
+                  borderRadius: '1px',
                   bgcolor: item.accent,
-                  boxShadow: `0 0 0 5px ${item.accent}18`,
                 }}
               />
               <Box>
-                <Typography variant="caption" color="text.secondary">
+                <Typography
+                  color="text.secondary"
+                  sx={{ fontSize: uiTokens.kpi.labelFontSize }}
+                >
                   {item.label}
                 </Typography>
                 <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline' }}>
-                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                  <Typography
+                    sx={{
+                      fontSize: uiTokens.kpi.valueFontSize,
+                      fontWeight: 800,
+                    }}
+                  >
                     {item.value.toLocaleString()}
                   </Typography>
-                  <Typography variant="caption" color="text.disabled">
+                  <Typography
+                    color="text.disabled"
+                    sx={{ fontSize: uiTokens.kpi.secondaryFontSize }}
+                  >
                     {item.note}
                   </Typography>
                 </Stack>
@@ -268,7 +264,11 @@ export function DashboardPage({ mode, onToggleMode }: DashboardPageProps) {
       </Box>
 
       <Card
-        sx={(theme) => ({ ...glassPanelSx(theme), mb: 1, p: 1.5 })}
+        elevation={0}
+        sx={{
+          mb: 0.5,
+          p: 1.25,
+        }}
       >
         <Box
           sx={{
@@ -276,6 +276,8 @@ export function DashboardPage({ mode, onToggleMode }: DashboardPageProps) {
             gridTemplateColumns:
               'minmax(280px, 2fr) repeat(4, minmax(135px, 1fr)) minmax(155px, 1fr) auto auto',
             gap: 1.25,
+
+
             alignItems: 'center',
           }}
         >
@@ -342,23 +344,22 @@ export function DashboardPage({ mode, onToggleMode }: DashboardPageProps) {
             }
             slotProps={{ inputLabel: { shrink: true } }}
           />
-          <Button
-            size="small"
+          <AppButton
             onClick={clearFilters}
             disabled={activeFilters.length === 0}
-            sx={{ whiteSpace: 'nowrap' }}
           >
             Clear Filters
-          </Button>
-          <Button
-            size="small"
+          </AppButton>
+
+          <AppButton
             variant="outlined"
-            onClick={() => setRefreshKey((value) => value + 1)}
-            disabled={loading}
-            sx={{ whiteSpace: 'nowrap' }}
+            onClick={() =>
+              setRefreshKey((value) => value + 1)
+            }
+            loading={loading}
           >
             Refresh
-          </Button>
+          </AppButton>
         </Box>
 
         {activeFilters.length > 0 && (
@@ -376,19 +377,11 @@ export function DashboardPage({ mode, onToggleMode }: DashboardPageProps) {
                 size="small"
                 label={`${filterLabels[name]}: ${value}`}
                 onDelete={() => updateFilter(name, '')}
-                sx={(theme) => ({
-                  bgcolor:
-                    theme.palette.mode === 'dark'
-                      ? 'rgba(96,165,250,0.09)'
-                      : 'rgba(37,99,235,0.07)',
-                  border: `1px solid ${theme.palette.divider}`,
-                  '&:hover': { filter: 'brightness(1.15)' },
-                })}
               />
             ))}
-            <Button size="small" onClick={clearFilters}>
+            <AppButton onClick={clearFilters}>
               Clear All
-            </Button>
+            </AppButton>
           </Stack>
         )}
       </Card>
@@ -400,25 +393,11 @@ export function DashboardPage({ mode, onToggleMode }: DashboardPageProps) {
       )}
 
       <Card
-        sx={(theme) => ({
+        sx={{
           flex: 1,
           minHeight: 0,
           overflow: 'hidden',
-
-          bgcolor:
-            theme.palette.mode === 'dark'
-              ? '#101a2b'
-              : '#ffffff',
-
-          backgroundImage: 'none',
-
-          border: `1px solid ${theme.palette.divider}`,
-
-          boxShadow:
-            theme.palette.mode === 'dark'
-              ? '0 16px 45px rgba(0,0,0,0.25)'
-              : '0 14px 36px rgba(15,23,42,0.09)',
-        })}
+        }}
       >
         <DataTable
           data={data}

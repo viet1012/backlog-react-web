@@ -10,6 +10,7 @@ import type {
     ShipmentHeatmapRow,
 } from '../../types/shipment'
 import { ShipByBadge } from '../common/shipment/ShipByBadge'
+import { uiTokens } from '../../theme/uiTokens'
 
 
 interface ShipmentHeatmapProps {
@@ -174,15 +175,15 @@ export function ShipmentHeatmap({
                 border:
                     `1px solid ${theme.palette.divider}`,
 
-                borderRadius: 1,
+                borderRadius: uiTokens.card.borderRadius,
 
                 bgcolor:
                     'background.paper',
 
                 boxShadow:
                     theme.palette.mode === 'dark'
-                        ? '0 8px 24px rgba(0,0,0,0.16)'
-                        : '0 8px 24px rgba(15,23,42,0.05)',
+                        ? '0 2px 8px rgba(0,0,0,0.16)'
+                        : '0 2px 8px rgba(15,23,42,0.05)',
 
                 '&::-webkit-scrollbar': {
                     width: 9,
@@ -195,7 +196,7 @@ export function ShipmentHeatmap({
                             ? '#475569'
                             : '#cbd5e1',
 
-                    borderRadius: 8,
+                    borderRadius: '4px',
                 },
 
                 '&::-webkit-scrollbar-track': {
@@ -352,7 +353,7 @@ function CustomerHeaderCell() {
 
                 <Typography
                     sx={{
-                        fontSize: 11,
+                        fontSize: uiTokens.table.headerFontSize,
                         fontWeight: 800,
                         letterSpacing: 0.4,
                     }}
@@ -364,7 +365,7 @@ function CustomerHeaderCell() {
                     sx={{
                         mt: 0.1,
 
-                        fontSize: 9.5,
+                        fontSize: uiTokens.sidebar.sectionFontSize,
                         fontWeight: 500,
 
                         color:
@@ -440,7 +441,7 @@ function DateHeaderCell({
 
             <Typography
                 sx={{
-                    fontSize: 11,
+                    fontSize: uiTokens.table.headerFontSize,
                     fontWeight: 800,
 
                     lineHeight: 1.1,
@@ -461,7 +462,7 @@ function DateHeaderCell({
                 sx={{
                     mt: 0.35,
 
-                    fontSize: 9,
+                    fontSize: uiTokens.sidebar.sectionFontSize,
                     fontWeight: 700,
 
                     lineHeight: 1,
@@ -541,7 +542,7 @@ function CustomerCell({
             <Typography
                 noWrap
                 sx={{
-                    fontSize: 11.5,
+                    fontSize: uiTokens.table.cellFontSize,
                     fontWeight: 750,
                 }}
             >
@@ -747,7 +748,7 @@ function HeatmapCell({
 
                     <Typography
                         sx={{
-                            fontSize: 12,
+                            fontSize: uiTokens.table.cellFontSize,
                             fontWeight: 900,
 
                             lineHeight: 1.1,
@@ -764,7 +765,7 @@ function HeatmapCell({
                         sx={{
                             mt: 0.2,
 
-                            fontSize: 8.5,
+                            fontSize: uiTokens.sidebar.sectionFontSize,
                             fontWeight: 650,
 
                             lineHeight: 1,
@@ -818,7 +819,7 @@ function TooltipContent({
                 sx={{
                     mb: 0.5,
 
-                    fontSize: 11,
+                    fontSize: uiTokens.kpi.secondaryFontSize,
                     fontWeight: 800,
                 }}
             >
@@ -870,7 +871,7 @@ function TooltipRow({
 
                 gap: 2,
 
-                fontSize: 10,
+                fontSize: uiTokens.kpi.secondaryFontSize,
             }}
         >
 

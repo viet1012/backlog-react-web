@@ -27,6 +27,11 @@ import type {
 import type {
     ProductionOrder,
 } from '../../../types/report'
+import { uiTokens } from '../../../theme/uiTokens'
+import {
+    dataGridHeaderSx,
+    preventColumnHeaderSort,
+} from '../../../theme/dataGridHeaderStyles'
 
 
 interface ShipmentDetailDialogProps {
@@ -77,14 +82,6 @@ export function ShipmentDetailDialog({
             open={open}
             onClose={onClose}
             fullScreen
-            slotProps={{
-                paper: {
-                    sx: {
-                        m: 0,
-                        borderRadius: 0,
-                    },
-                },
-            }}
         >
 
             {/* HEADER */}
@@ -99,10 +96,7 @@ export function ShipmentDetailDialog({
                     alignItems: 'center',
                     justifyContent: 'space-between',
 
-                    bgcolor:
-                        theme.palette.mode === 'dark'
-                            ? '#131f33'
-                            : '#f6f8fb',
+                    bgcolor: 'transparent',
 
                     borderBottom:
                         `1px solid ${theme.palette.divider}`,
@@ -113,7 +107,7 @@ export function ShipmentDetailDialog({
 
                     <Typography
                         sx={{
-                            fontSize: 17,
+                            fontSize: uiTokens.dialogTypography.titleFontSize,
                             fontWeight: 800,
                         }}
                     >
@@ -124,7 +118,7 @@ export function ShipmentDetailDialog({
                         <Typography
                             sx={{
                                 mt: 0.15,
-                                fontSize: 11,
+                                fontSize: uiTokens.typography.updatedStatus,
                                 color: 'text.secondary',
                             }}
                         >
@@ -193,7 +187,7 @@ export function ShipmentDetailDialog({
                             bgcolor: 'error.main',
                             color: 'error.contrastText',
 
-                            fontSize: 12,
+                            fontSize: uiTokens.typography.body,
                         }}
                     >
                         {error}
@@ -240,6 +234,8 @@ export function ShipmentDetailDialog({
 
                             disableRowSelectionOnClick
 
+                            onColumnHeaderClick={preventColumnHeaderSort}
+
                             pageSizeOptions={[
                                 20,
                                 50,
@@ -261,124 +257,7 @@ export function ShipmentDetailDialog({
 
                             showToolbar
 
-                            sx={(theme) => {
-                                const dark =
-                                    theme.palette.mode === 'dark'
-
-                                return {
-                                    width: '100%',
-                                    height: '100%',
-
-                                    border: 0,
-
-                                    color:
-                                        dark
-                                            ? '#dbe7f8'
-                                            : '#243047',
-
-                                    bgcolor:
-                                        dark
-                                            ? '#101a2b'
-                                            : '#ffffff',
-
-
-                                    // HEADER
-                                    '& .MuiDataGrid-columnHeaders': {
-                                        bgcolor:
-                                            dark
-                                                ? '#17243a'
-                                                : '#eef3f8',
-
-                                        borderBottom:
-                                            `1px solid ${theme.palette.divider}`,
-                                    },
-
-
-                                    '& .MuiDataGrid-columnHeaderTitle': {
-                                        fontWeight: 700,
-                                        fontSize: 12,
-
-                                        color:
-                                            dark
-                                                ? '#cbd8eb'
-                                                : '#3b4a61',
-                                    },
-
-
-                                    // CELL
-                                    '& .MuiDataGrid-cell': {
-                                        borderColor:
-                                            theme.palette.divider,
-
-                                        fontSize: 12,
-                                    },
-
-
-                                    // EVEN ROW
-                                    '& .MuiDataGrid-row:nth-of-type(even)': {
-                                        bgcolor:
-                                            dark
-                                                ? '#121e31'
-                                                : '#f8fafc',
-                                    },
-
-
-                                    // HOVER
-                                    '& .MuiDataGrid-row:hover': {
-                                        bgcolor:
-                                            dark
-                                                ? '#1b3150'
-                                                : '#eef5ff',
-                                    },
-
-
-                                    // FOOTER
-                                    '& .MuiDataGrid-footerContainer': {
-                                        minHeight: 46,
-
-                                        bgcolor:
-                                            dark
-                                                ? '#131f33'
-                                                : '#f6f8fb',
-
-                                        borderTop:
-                                            `1px solid ${theme.palette.divider}`,
-                                    },
-
-
-                                    // SCROLLBAR
-                                    '& .MuiDataGrid-virtualScroller::-webkit-scrollbar': {
-                                        width: 10,
-                                        height: 10,
-                                    },
-
-
-                                    '& .MuiDataGrid-virtualScroller::-webkit-scrollbar-track': {
-                                        bgcolor:
-                                            dark
-                                                ? '#0d1625'
-                                                : '#e5eaf0',
-                                    },
-
-
-                                    '& .MuiDataGrid-virtualScroller::-webkit-scrollbar-thumb': {
-                                        bgcolor:
-                                            dark
-                                                ? '#33445e'
-                                                : '#aab5c4',
-
-                                        borderRadius: 8,
-                                    },
-
-
-                                    '& .MuiDataGrid-virtualScroller::-webkit-scrollbar-thumb:hover': {
-                                        bgcolor:
-                                            dark
-                                                ? '#49617f'
-                                                : '#8392a7',
-                                    },
-                                }
-                            }}
+                            sx={dataGridHeaderSx}
                         />
 
                     </Box>
