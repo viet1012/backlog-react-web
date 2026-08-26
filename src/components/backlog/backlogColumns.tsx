@@ -29,29 +29,18 @@ function FilterHeader({
   field,
   label,
 }: FilterHeaderProps) {
-
-  const apiRef =
-    useGridApiContext()
-
-  function openFilterPanel() {
-    apiRef.current.showFilterPanel(
-      field,
-    )
-  }
+  const apiRef = useGridApiContext()
 
   return (
     <span
       role="button"
       tabIndex={0}
-
       onClick={(event) => {
-        // Quan trọng:
-        // không cho click header chạy sorting
+        event.preventDefault()
         event.stopPropagation()
 
-        openFilterPanel()
+        apiRef.current.showColumnMenu(field)
       }}
-
       onKeyDown={(event) => {
         if (
           event.key === 'Enter'
@@ -60,19 +49,17 @@ function FilterHeader({
           event.preventDefault()
           event.stopPropagation()
 
-          openFilterPanel()
+          apiRef.current.showColumnMenu(field)
+
+          // keyboard sẽ xử lý riêng nếu cần
         }
       }}
-
       style={{
         width: '100%',
         height: '100%',
-
         display: 'flex',
         alignItems: 'center',
-
         overflow: 'hidden',
-
         cursor: 'pointer',
       }}
     >
@@ -88,7 +75,6 @@ function FilterHeader({
     </span>
   )
 }
-
 
 // =========================================================
 // CELL RENDERERS

@@ -5,6 +5,10 @@ import {
   nullableString,
   requiredString,
 } from '../utils/apiMapper'
+import {
+  isExcelFilterField,
+  type ExcelFilterField,
+} from '../config/backlogFilterFields'
 
 export interface PageResponse<T> {
   content: T[]
@@ -19,12 +23,164 @@ export interface PageResponse<T> {
 export interface BacklogFilterItem {
   field: string
   operator: string
-  value: string
+  value?: string
+  values?: string[]
+}
+// =========================================================
+// FILTER OPTIONS CACHE
+// =========================================================
+
+const FILTER_OPTIONS_CACHE_TTL = 10 * 60 * 1000 // 10 phút
+
+interface FilterOptionsCacheEntry {
+  values: string[]
+  expiresAt: number
+}
+
+const filterOptionsCache = new Map<
+  ExcelFilterField,
+  FilterOptionsCacheEntry
+>()
+
+// tránh gọi trùng API nếu user mở cùng filter liên tục
+const filterOptionsPending = new Map<
+  ExcelFilterField,
+  Promise<string[]>
+>()
+
+
+export async function getBacklogFilterOptions(
+  field: ExcelFilterField,
+  signal?: AbortSignal,
+): Promise<string[]> {
+  if (!isExcelFilterField(field)) {
+    throw new Error(`Unsupported backlog filter field: ${field}`)
+  }
+
+  // =======================================================
+  // 1. CHECK CACHE
+  // =======================================================
+
+  const now = Date.now()
+
+  const cached = filterOptionsCache.get(field)
+
+  if (cached && cached.expiresAt > now) {
+    return cached.values
+  }
+
+  if (cached) {
+    filterOptionsCache.delete(field)
+  }
+
+  // =======================================================
+  // 2. CHECK REQUEST ĐANG CHẠY
+  // =======================================================
+
+  const pending = filterOptionsPending.get(field)
+
+  if (pending) {
+    return pending
+  }
+
+  // =======================================================
+  // 3. CALL API
+  // =======================================================
+
+  const request = (async (): Promise<string[]> => {
+    const query = new URLSearchParams({
+      field,
+    })
+
+    const response = await fetch(
+      `${API_BASE_URL}/api/backlogs/filter-options?${query.toString()}`,
+      {
+        headers: {
+          Accept: 'application/json',
+        },
+        signal,
+      },
+    )
+
+    if (!response.ok) {
+      throw new Error(
+        `API request failed with status ${response.status}`,
+      )
+    }
+
+    const result: unknown = await response.json()
+
+    const values =
+      Array.isArray(result)
+        ? result
+        : typeof result === 'object'
+          && result !== null
+          && 'values' in result
+          && Array.isArray(result.values)
+          ? result.values
+          : null
+
+    if (
+      !values ||
+      !values.every(
+        (value) =>
+          value === null ||
+          typeof value === 'string',
+      )
+    ) {
+      throw new Error(
+        'Filter options response is invalid',
+      )
+    }
+
+    // =====================================================
+    // NORMALIZE + REMOVE DUPLICATE
+    // =====================================================
+
+    const normalizedValues = [
+      ...new Set(
+        values.map(
+          (value) => value ?? '',
+        ),
+      ),
+    ].sort((left, right) =>
+      left.localeCompare(right),
+    )
+
+    // =====================================================
+    // SAVE CACHE
+    // =====================================================
+
+    filterOptionsCache.set(field, {
+      values: normalizedValues,
+      expiresAt:
+        Date.now() +
+        FILTER_OPTIONS_CACHE_TTL,
+    })
+
+    return normalizedValues
+  })()
+
+  filterOptionsPending.set(
+    field,
+    request,
+  )
+
+  try {
+    return await request
+  } finally {
+    filterOptionsPending.delete(field)
+  }
 }
 
 export interface BacklogFilterRequest {
   filters: BacklogFilterItem[]
   logicOperator: 'and' | 'or'
+}
+
+export interface BacklogSortRequest {
+  field: ExcelFilterField
+  direction: 'asc' | 'desc'
 }
 
 export interface ReportFilters {
@@ -153,6 +309,7 @@ export async function searchReports(
   pageSize: number,
   filterRequest: BacklogFilterRequest,
   signal?: AbortSignal,
+  sortRequest?: BacklogSortRequest,
 ): Promise<PageResponse<ProductionOrder>> {
   if (!Number.isInteger(page) || page < 0) {
     throw new RangeError('Page must be a non-negative integer')
@@ -166,6 +323,13 @@ export async function searchReports(
     page: String(page),
     size: String(pageSize),
   })
+
+  if (sortRequest) {
+    if (!isExcelFilterField(sortRequest.field)) {
+      throw new Error(`Unsupported backlog sort field: ${sortRequest.field}`)
+    }
+    query.set('sort', `${sortRequest.field},${sortRequest.direction}`)
+  }
 
   const response = await fetch(`${API_BASE_URL}/api/backlogs/search?${query}`, {
     method: 'POST',

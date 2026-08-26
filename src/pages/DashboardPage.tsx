@@ -14,26 +14,43 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
+
 import type { PaletteMode } from '@mui/material/styles'
+
 import {
   GridLogicOperator,
   type GridFilterModel,
   type GridPaginationModel,
+  type GridSortModel,
 } from '@mui/x-data-grid'
-import { useEffect, useMemo, useState } from 'react'
+
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
+
 import { DataTable } from '../components/DataTable'
+import { AppButton } from '../components/common/AppButton'
 import { PageHeader } from '../components/common/PageHeader'
 import { PageShell } from '../components/common/PageShell'
+import { RefreshButton } from '../components/common/RefreshButton'
 import { UpdatedStatus } from '../components/common/UpdatedStatus'
+
 import {
   searchReports,
   type ReportFilters,
 } from '../services/reportService'
-import type { ProductionOrder } from '../types/report'
-import { RefreshButton } from '../components/common/RefreshButton'
-import { toBacklogFilterRequest } from '../utils/backlogFilter'
+
 import { uiTokens } from '../theme/uiTokens'
-import { AppButton } from '../components/common/AppButton'
+import type { ProductionOrder } from '../types/report'
+import { toBacklogFilterRequest } from '../utils/backlogFilter'
+import { isExcelFilterField } from '../config/backlogFilterFields'
+
+
+// =========================================================
+// INITIAL FILTERS
+// =========================================================
 
 const initialFilters: ReportFilters = {
   search: '',
@@ -44,6 +61,11 @@ const initialFilters: ReportFilters = {
   productionDate: '',
 }
 
+
+// =========================================================
+// FILTER LABELS
+// =========================================================
+
 const filterLabels: Record<keyof ReportFilters, string> = {
   search: 'Search',
   status: 'Status',
@@ -53,61 +75,182 @@ const filterLabels: Record<keyof ReportFilters, string> = {
   productionDate: 'Production Date',
 }
 
+
+// =========================================================
+// PROPS
+// =========================================================
+
 interface DashboardPageProps {
   mode: PaletteMode
   onToggleMode: () => void
 }
 
-export function DashboardPage({ mode, onToggleMode }: DashboardPageProps) {
-  const [page, setPage] = useState(0)
-  const [pageSize, setPageSize] = useState(20)
-  const [data, setData] = useState<ProductionOrder[]>([])
-  const [totalElements, setTotalElements] = useState(0)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [filters, setFilters] = useState<ReportFilters>(initialFilters)
-  const [gridFilterModel, setGridFilterModel] = useState<GridFilterModel>({
+
+// =========================================================
+// PAGE
+// =========================================================
+
+export function DashboardPage({
+  mode,
+  onToggleMode,
+}: DashboardPageProps) {
+
+  // =======================================================
+  // PAGINATION
+  // =======================================================
+
+  const [page, setPage] =
+    useState(0)
+
+  const [pageSize, setPageSize] =
+    useState(20)
+
+
+  // =======================================================
+  // DATA
+  // =======================================================
+
+  const [data, setData] =
+    useState<ProductionOrder[]>([])
+
+  const [totalElements, setTotalElements] =
+    useState(0)
+
+
+  // =======================================================
+  // UI
+  // =======================================================
+
+  const [loading, setLoading] =
+    useState(false)
+
+  const [error, setError] =
+    useState<string | null>(null)
+
+  const [refreshKey, setRefreshKey] =
+    useState(0)
+
+  const [lastUpdated, setLastUpdated] =
+    useState<Date | null>(null)
+
+
+  // =======================================================
+  // TOP FILTER BAR
+  // =======================================================
+
+  const [filters, setFilters] =
+    useState<ReportFilters>(initialFilters)
+
+
+  // =======================================================
+  // GRID FILTER
+  // =======================================================
+
+  const [
+    gridFilterModel,
+    setGridFilterModel,
+  ] = useState<GridFilterModel>({
     items: [],
     logicOperator: GridLogicOperator.And,
   })
-  const [refreshKey, setRefreshKey] = useState(0)
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+
+
+  // =======================================================
+  // GRID SORT
+  // =======================================================
+
+  const [
+    sortModel,
+    setSortModel,
+  ] = useState<GridSortModel>([])
+
+
+  // =======================================================
+  // ACTIVE FILTERS
+  // =======================================================
 
   const activeFilters = useMemo(
     () =>
-      (Object.entries(filters) as Array<[keyof ReportFilters, string]>).filter(
-        ([, value]) => value !== '',
-      ),
+      (
+        Object.entries(filters) as Array<
+          [keyof ReportFilters, string]
+        >
+      ).filter(([, value]) => value !== ''),
     [filters],
   )
 
+
+  // =======================================================
+  // KPI
+  // =======================================================
+
   const pageSummary = useMemo(() => {
-    const normalizedStatuses = data.map((order) =>
-      order.Status?.toUpperCase() ?? '',
-    )
+    const statuses =
+      data.map(
+        (order) =>
+          order.Status?.toUpperCase() ?? '',
+      )
 
     return {
-      wip: normalizedStatuses.filter((status) => status.includes('WIP')).length,
-      waiting: normalizedStatuses.filter(
-        (status) => status.includes('WAIT') || status === 'NYI',
-      ).length,
-      completed: normalizedStatuses.filter(
-        (status) => status.includes('DONE') || status.includes('COMPLETE'),
-      ).length,
+      wip:
+        statuses.filter(
+          (status) =>
+            status.includes('WIP'),
+        ).length,
+
+      waiting:
+        statuses.filter(
+          (status) =>
+            status.includes('WAIT')
+            || status === 'NYI',
+        ).length,
+
+      completed:
+        statuses.filter(
+          (status) =>
+            status.includes('DONE')
+            || status.includes('COMPLETE'),
+        ).length,
     }
   }, [data])
 
-  function updateFilter(name: keyof ReportFilters, value: string) {
-    setFilters((currentFilters) => ({ ...currentFilters, [name]: value }))
+
+  // =======================================================
+  // TOP FILTER HANDLERS
+  // =======================================================
+
+  function updateFilter(
+    name: keyof ReportFilters,
+    value: string,
+  ) {
+    setFilters((current) => ({
+      ...current,
+      [name]: value,
+    }))
+
     setPage(0)
   }
+
 
   function clearFilters() {
     setFilters(initialFilters)
+
+    setGridFilterModel({
+      items: [],
+      logicOperator: GridLogicOperator.And,
+    })
+
     setPage(0)
   }
 
-  function handlePaginationChange(model: GridPaginationModel) {
+
+  // =======================================================
+  // PAGINATION
+  // =======================================================
+
+  function handlePaginationChange(
+    model: GridPaginationModel,
+  ) {
     if (model.pageSize !== pageSize) {
       setPageSize(model.pageSize)
       setPage(0)
@@ -117,33 +260,178 @@ export function DashboardPage({ mode, onToggleMode }: DashboardPageProps) {
     setPage(model.page)
   }
 
-  function handleGridFilterChange(model: GridFilterModel) {
+
+  // =======================================================
+  // GRID FILTER
+  // =======================================================
+
+  function handleGridFilterChange(
+    model: GridFilterModel,
+  ) {
     setGridFilterModel(model)
     setPage(0)
   }
 
+
+  // =======================================================
+  // SORT
+  // =======================================================
+
+  function handleSortChange(
+    model: GridSortModel,
+  ) {
+    setSortModel(model)
+    setPage(0)
+  }
+
+
+  // =======================================================
+  // LOAD DATA
+  // =======================================================
+
   useEffect(() => {
-    const controller = new AbortController()
+    const controller =
+      new AbortController()
 
     async function loadReports() {
       setLoading(true)
       setError(null)
 
       try {
-        const response = await searchReports(
-          page,
-          pageSize,
-          toBacklogFilterRequest(gridFilterModel),
-          controller.signal,
-        )
+        const gridRequest =
+          toBacklogFilterRequest(
+            gridFilterModel,
+          )
+
+        const topFilters = []
+
+        // ===============================
+        // SEARCH
+        // ===============================
+
+        const search =
+          filters.search.trim()
+
+        if (search) {
+          topFilters.push({
+            field: 'VBELN',
+            operator: 'contains',
+            value: search,
+          })
+        }
+
+        // ===============================
+        // STATUS
+        // ===============================
+
+        if (filters.status) {
+          topFilters.push({
+            field: 'Status',
+            operator: 'equals',
+            value: filters.status,
+          })
+        }
+
+        // ===============================
+        // DIVISION
+        // ===============================
+
+        if (filters.div) {
+          topFilters.push({
+            field: 'Div',
+            operator: 'equals',
+            value: filters.div,
+          })
+        }
+
+        // ===============================
+        // CURRENT PROCESS
+        // ===============================
+
+        if (filters.currentProcess) {
+          topFilters.push({
+            field: 'CurrentProcess',
+            operator: 'equals',
+            value: filters.currentProcess,
+          })
+        }
+
+        // ===============================
+        // SHIP BY
+        // ===============================
+
+        if (filters.shipBy) {
+          topFilters.push({
+            field: 'ShipBy',
+            operator: 'equals',
+            value: filters.shipBy,
+          })
+        }
+
+        // ===============================
+        // PRODUCTION DATE
+        // ===============================
+
+        if (filters.productionDate) {
+          topFilters.push({
+            field: 'ProductionD',
+            operator: 'is',
+            value: filters.productionDate,
+          })
+        }
+
+        // ===============================
+        // MERGE FILTER
+        // ===============================
+
+        const request = {
+          filters: [
+            ...gridRequest.filters,
+            ...topFilters,
+          ],
+
+          logicOperator: 'and' as const,
+        }
+
+        // ===============================
+        // API
+        // ===============================
+
+        const response =
+          await searchReports(
+            page,
+            pageSize,
+            request,
+            controller.signal,
+
+            sortModel[0]
+              && sortModel[0].sort
+              && isExcelFilterField(
+                sortModel[0].field,
+              )
+              ? {
+                field: sortModel[0].field,
+                direction: sortModel[0].sort,
+              }
+              : undefined,
+          )
 
         setData(response.content)
-        setTotalElements(response.totalElements)
-        setLastUpdated(new Date())
+
+        setTotalElements(
+          response.totalElements,
+        )
+
+        setLastUpdated(
+          new Date(),
+        )
       } catch (requestError) {
-        if (!controller.signal.aborted) {
+        if (
+          !controller.signal.aborted
+        ) {
           setData([])
           setTotalElements(0)
+
           setError(
             requestError instanceof Error
               ? requestError.message
@@ -151,56 +439,112 @@ export function DashboardPage({ mode, onToggleMode }: DashboardPageProps) {
           )
         }
       } finally {
-        if (!controller.signal.aborted) setLoading(false)
+        if (
+          !controller.signal.aborted
+        ) {
+          setLoading(false)
+        }
       }
     }
 
     void loadReports()
-    return () => controller.abort()
-  }, [page, pageSize, gridFilterModel, refreshKey])
+
+    return () => {
+      controller.abort()
+    }
+  }, [
+    page,
+    pageSize,
+    filters,
+    gridFilterModel,
+    refreshKey,
+
+    // Tạm thời để đây để UI refresh khi sort đổi.
+    // Backend sort sẽ nối sau.
+    sortModel,
+  ])
+
+
+  // =======================================================
+  // RENDER
+  // =======================================================
 
   return (
     <PageShell>
+
+      {/* ===================================================
+          HEADER
+      =================================================== */}
+
       <PageHeader
         title="PRODUCTION BACKLOG"
         subtitle="Monitor production status, process flow and delivery progress."
         status={
-          <UpdatedStatus updatedAt={lastUpdated} error={Boolean(error)} />
+          <UpdatedStatus
+            updatedAt={lastUpdated}
+            error={Boolean(error)}
+          />
         }
         actions={
-          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+          <Stack
+            direction="row"
+            spacing={1.5}
+            sx={{
+              alignItems: 'center',
+            }}
+          >
             <RefreshButton
               loading={loading}
-              onClick={() => setRefreshKey((value) => value + 1)}
+              onClick={() =>
+                setRefreshKey(
+                  (value) => value + 1,
+                )
+              }
             />
+
             <Tooltip
               title={
-                mode === 'light' ? 'Switch to dark mode' : 'Switch to light mode'
+                mode === 'light'
+                  ? 'Switch to dark mode'
+                  : 'Switch to light mode'
               }
             >
-              <AppButton
-                variant="outlined"
-                onClick={onToggleMode}
-                icon={
-                  <span aria-hidden>
-                    {mode === 'light' ? '☼' : '☾'}
-                  </span>
-                }
-              >
-                {mode === 'light' ? 'Light' : 'Dark'}
-              </AppButton>
+              <span>
+                <AppButton
+                  variant="outlined"
+                  onClick={onToggleMode}
+                  icon={
+                    <span aria-hidden>
+                      {mode === 'light'
+                        ? '☼'
+                        : '☾'}
+                    </span>
+                  }
+                >
+                  {mode === 'light'
+                    ? 'Light'
+                    : 'Dark'}
+                </AppButton>
+              </span>
             </Tooltip>
           </Stack>
         }
       />
 
+
+      {/* ===================================================
+          KPI
+      =================================================== */}
+
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(4, minmax(150px, 1fr))',
-          gap: 1.5,
-          mb: .5,
 
+          gridTemplateColumns:
+            'repeat(4, minmax(150px, 1fr))',
+
+          gap: 1.5,
+          mb: 0.5,
         }}
       >
         {[
@@ -210,49 +554,107 @@ export function DashboardPage({ mode, onToggleMode }: DashboardPageProps) {
             note: 'All matching orders',
             accent: '#60a5fa',
           },
-          { label: 'WIP', value: pageSummary.wip, note: 'Current page', accent: '#f59e0b' },
-          { label: 'Waiting', value: pageSummary.waiting, note: 'Current page', accent: '#38bdf8' },
-          { label: 'Completed', value: pageSummary.completed, note: 'Current page', accent: '#22c55e' },
+          {
+            label: 'WIP',
+            value: pageSummary.wip,
+            note: 'Current page',
+            accent: '#f59e0b',
+          },
+          {
+            label: 'Waiting',
+            value: pageSummary.waiting,
+            note: 'Current page',
+            accent: '#38bdf8',
+          },
+          {
+            label: 'Completed',
+            value: pageSummary.completed,
+            note: 'Current page',
+            accent: '#22c55e',
+          },
         ].map((item) => (
           <Card
             key={item.label}
             sx={{
               px: 2,
               py: 1.2,
-              borderTop: `2px solid ${item.accent}`,
-              transition: 'transform 170ms ease, box-shadow 170ms ease',
-              '&:hover': { transform: 'translateY(-1px)' },
+
+              borderTop:
+                `2px solid ${item.accent}`,
+
+              transition:
+                'transform 170ms ease, box-shadow 170ms ease',
+
+              '&:hover': {
+                transform:
+                  'translateY(-1px)',
+              },
             }}
           >
-            <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
+            <Stack
+              direction="row"
+              spacing={1.25}
+              sx={{
+                alignItems: 'center',
+              }}
+            >
               <Box
                 sx={{
                   width: 3,
                   height: 28,
+
                   flex: '0 0 auto',
+
                   borderRadius: '1px',
-                  bgcolor: item.accent,
+
+                  bgcolor:
+                    item.accent,
                 }}
               />
+
               <Box>
                 <Typography
                   color="text.secondary"
-                  sx={{ fontSize: uiTokens.kpi.labelFontSize }}
+                  sx={{
+                    fontSize:
+                      uiTokens
+                        .kpi
+                        .labelFontSize,
+                  }}
                 >
                   {item.label}
                 </Typography>
-                <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline' }}>
+
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{
+                    alignItems:
+                      'baseline',
+                  }}
+                >
                   <Typography
                     sx={{
-                      fontSize: uiTokens.kpi.valueFontSize,
+                      fontSize:
+                        uiTokens
+                          .kpi
+                          .valueFontSize,
+
                       fontWeight: 800,
                     }}
                   >
-                    {item.value.toLocaleString()}
+                    {item.value
+                      .toLocaleString()}
                   </Typography>
+
                   <Typography
                     color="text.disabled"
-                    sx={{ fontSize: uiTokens.kpi.secondaryFontSize }}
+                    sx={{
+                      fontSize:
+                        uiTokens
+                          .kpi
+                          .secondaryFontSize,
+                    }}
                   >
                     {item.note}
                   </Typography>
@@ -262,6 +664,11 @@ export function DashboardPage({ mode, onToggleMode }: DashboardPageProps) {
           </Card>
         ))}
       </Box>
+
+
+      {/* ===================================================
+          TOP FILTER PANEL
+      =================================================== */}
 
       <Card
         elevation={0}
@@ -273,124 +680,254 @@ export function DashboardPage({ mode, onToggleMode }: DashboardPageProps) {
         <Box
           sx={{
             display: 'grid',
+
             gridTemplateColumns:
               'minmax(280px, 2fr) repeat(4, minmax(135px, 1fr)) minmax(155px, 1fr) auto auto',
+
             gap: 1.25,
 
-
-            alignItems: 'center',
+            alignItems:
+              'center',
           }}
         >
+
+          {/* SEARCH */}
+
           <TextField
             placeholder="Search sales order, global code, product..."
             size="small"
             value={filters.search}
-            onChange={(event) => updateFilter('search', event.target.value)}
+            onChange={(event) =>
+              updateFilter(
+                'search',
+                event.target.value,
+              )
+            }
             slotProps={{
               input: {
                 startAdornment: (
-                  <InputAdornment position="start">{'\u2315'}</InputAdornment>
-                ),
-                endAdornment: filters.search ? (
-                  <InputAdornment position="end">
-                    <IconButton
-                      size="small"
-                      aria-label="Clear search"
-                      onClick={() => updateFilter('search', '')}
-                    >
-                      {'\u00d7'}
-                    </IconButton>
+                  <InputAdornment position="start">
+                    ⌕
                   </InputAdornment>
-                ) : null,
+                ),
+
+                endAdornment:
+                  filters.search
+                    ? (
+                      <InputAdornment position="end">
+                        <IconButton
+                          size="small"
+                          aria-label="Clear search"
+                          onClick={() =>
+                            updateFilter(
+                              'search',
+                              '',
+                            )
+                          }
+                        >
+                          ×
+                        </IconButton>
+                      </InputAdornment>
+                    )
+                    : null,
               },
             }}
           />
+
 
           <FilterSelect
             id="status"
             label="Status"
             value={filters.status}
-            options={['DONE', 'WIP', 'WIP_FG', 'NYI']}
-            onChange={(value) => updateFilter('status', value)}
+            options={[
+              'DONE',
+              'WIP',
+              'WIP_FG',
+              'NYI',
+            ]}
+            onChange={(value) =>
+              updateFilter(
+                'status',
+                value,
+              )
+            }
           />
+
+
           <FilterSelect
             id="division"
             label="Division"
             value={filters.div}
-            options={['PR']}
-            onChange={(value) => updateFilter('div', value)}
+            options={[
+              'PR',
+            ]}
+            onChange={(value) =>
+              updateFilter(
+                'div',
+                value,
+              )
+            }
           />
+
+
           <FilterSelect
             id="process"
             label="Current Process"
-            value={filters.currentProcess}
-            options={['Packing', 'Packing Received', 'Inspection', 'SGDT']}
-            onChange={(value) => updateFilter('currentProcess', value)}
+            value={
+              filters.currentProcess
+            }
+            options={[
+              'Packing',
+              'Packing Received',
+              'Inspection',
+              'SGDT',
+            ]}
+            onChange={(value) =>
+              updateFilter(
+                'currentProcess',
+                value,
+              )
+            }
           />
+
+
           <FilterSelect
             id="ship-by"
             label="Ship By"
             value={filters.shipBy}
-            options={['AIR', 'EXP', 'SEA']}
-            onChange={(value) => updateFilter('shipBy', value)}
+            options={[
+              'AIR',
+              'EXP',
+              'SEA',
+            ]}
+            onChange={(value) =>
+              updateFilter(
+                'shipBy',
+                value,
+              )
+            }
           />
+
+
           <TextField
             label="Production Date"
             type="date"
             size="small"
-            value={filters.productionDate}
-            onChange={(event) =>
-              updateFilter('productionDate', event.target.value)
+            value={
+              filters.productionDate
             }
-            slotProps={{ inputLabel: { shrink: true } }}
+            onChange={(event) =>
+              updateFilter(
+                'productionDate',
+                event.target.value,
+              )
+            }
+            slotProps={{
+              inputLabel: {
+                shrink: true,
+              },
+            }}
           />
+
+
           <AppButton
+            variant="outlined"
             onClick={clearFilters}
-            disabled={activeFilters.length === 0}
+            disabled={
+              activeFilters.length === 0
+              && gridFilterModel.items.length === 0
+            }
           >
             Clear Filters
           </AppButton>
 
+
           <AppButton
             variant="outlined"
-            onClick={() =>
-              setRefreshKey((value) => value + 1)
-            }
             loading={loading}
+            onClick={() =>
+              setRefreshKey(
+                (value) =>
+                  value + 1,
+              )
+            }
           >
             Refresh
           </AppButton>
+
         </Box>
+
+
+        {/* ===============================================
+            ACTIVE FILTERS
+        =============================================== */}
 
         {activeFilters.length > 0 && (
           <Stack
             direction="row"
             spacing={1}
-            sx={{ mt: 1.25, alignItems: 'center' }}
+            useFlexGap
+            sx={{
+              mt: 1.25,
+              alignItems: 'center',
+              flexWrap: 'wrap',
+            }}
           >
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              color="text.secondary"
+            >
               Active filters:
             </Typography>
-            {activeFilters.map(([name, value]) => (
-              <Chip
-                key={name}
-                size="small"
-                label={`${filterLabels[name]}: ${value}`}
-                onDelete={() => updateFilter(name, '')}
-              />
-            ))}
-            <AppButton onClick={clearFilters}>
+
+            {activeFilters.map(
+              ([name, value]) => (
+                <Chip
+                  key={name}
+                  size="small"
+                  label={
+                    `${filterLabels[name]}: ${value}`
+                  }
+                  onDelete={() =>
+                    updateFilter(
+                      name,
+                      '',
+                    )
+                  }
+                />
+              ),
+            )}
+
+            <AppButton
+              variant="outlined"
+              onClick={clearFilters}
+            >
               Clear All
             </AppButton>
           </Stack>
         )}
       </Card>
 
+
+      {/* ===================================================
+          ERROR
+      =================================================== */}
+
       {error && (
-        <Alert severity="error" sx={{ mb: 1.5 }}>
+        <Alert
+          severity="error"
+          sx={{
+            mb: 1.5,
+          }}
+        >
           {error}
         </Alert>
       )}
+
+
+      {/* ===================================================
+          TABLE
+      =================================================== */}
 
       <Card
         sx={{
@@ -402,43 +939,98 @@ export function DashboardPage({ mode, onToggleMode }: DashboardPageProps) {
         <DataTable
           data={data}
           loading={loading}
+
           page={page}
           pageSize={pageSize}
           totalElements={totalElements}
-          filterModel={gridFilterModel}
-          onFilterChange={handleGridFilterChange}
-          onPaginationChange={handlePaginationChange}
+
+          filterModel={
+            gridFilterModel
+          }
+
+          sortModel={
+            sortModel
+          }
+
+          onFilterChange={
+            handleGridFilterChange
+          }
+
+          onSortChange={
+            handleSortChange
+          }
+
+          onPaginationChange={
+            handlePaginationChange
+          }
         />
       </Card>
+
     </PageShell>
   )
 }
+
+
+// =========================================================
+// FILTER SELECT
+// =========================================================
 
 interface FilterSelectProps {
   id: string
   label: string
   value: string
   options: string[]
-  onChange: (value: string) => void
+  onChange: (
+    value: string,
+  ) => void
 }
 
-function FilterSelect({ id, label, value, options, onChange }: FilterSelectProps) {
+
+function FilterSelect({
+  id,
+  label,
+  value,
+  options,
+  onChange,
+}: FilterSelectProps) {
+
   return (
     <FormControl size="small">
-      <InputLabel id={`${id}-filter-label`}>{label}</InputLabel>
+
+      <InputLabel
+        id={`${id}-filter-label`}
+      >
+        {label}
+      </InputLabel>
+
       <Select
-        labelId={`${id}-filter-label`}
+        labelId={
+          `${id}-filter-label`
+        }
         label={label}
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) =>
+          onChange(
+            event.target.value,
+          )
+        }
       >
-        <MenuItem value="">All</MenuItem>
-        {options.map((option) => (
-          <MenuItem key={option} value={option}>
-            {option}
-          </MenuItem>
-        ))}
+        <MenuItem value="">
+          All
+        </MenuItem>
+
+        {options.map(
+          (option) => (
+            <MenuItem
+              key={option}
+              value={option}
+            >
+              {option}
+            </MenuItem>
+          ),
+        )}
       </Select>
+
     </FormControl>
   )
 }
