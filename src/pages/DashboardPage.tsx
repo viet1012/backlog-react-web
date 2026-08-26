@@ -18,8 +18,6 @@ import {
 import type { PaletteMode } from '@mui/material/styles'
 
 import {
-  GridLogicOperator,
-  type GridFilterModel,
   type GridPaginationModel,
   type GridSortModel,
 } from '@mui/x-data-grid'
@@ -39,12 +37,12 @@ import { UpdatedStatus } from '../components/common/UpdatedStatus'
 
 import {
   searchReports,
+  type BacklogFilterItem,
   type ReportFilters,
 } from '../services/reportService'
 
 import { uiTokens } from '../theme/uiTokens'
 import type { ProductionOrder } from '../types/report'
-import { toBacklogFilterRequest } from '../utils/backlogFilter'
 import { isExcelFilterField } from '../config/backlogFilterFields'
 
 
@@ -146,13 +144,8 @@ export function DashboardPage({
   // GRID FILTER
   // =======================================================
 
-  const [
-    gridFilterModel,
-    setGridFilterModel,
-  ] = useState<GridFilterModel>({
-    items: [],
-    logicOperator: GridLogicOperator.And,
-  })
+  const [excelFilters, setExcelFilters] =
+    useState<BacklogFilterItem[]>([])
 
 
   // =======================================================
@@ -235,10 +228,7 @@ export function DashboardPage({
   function clearFilters() {
     setFilters(initialFilters)
 
-    setGridFilterModel({
-      items: [],
-      logicOperator: GridLogicOperator.And,
-    })
+    setExcelFilters([])
 
     setPage(0)
   }
@@ -265,10 +255,10 @@ export function DashboardPage({
   // GRID FILTER
   // =======================================================
 
-  function handleGridFilterChange(
-    model: GridFilterModel,
+  function handleExcelFiltersChange(
+    nextFilters: BacklogFilterItem[],
   ) {
-    setGridFilterModel(model)
+    setExcelFilters(nextFilters)
     setPage(0)
   }
 
@@ -298,12 +288,7 @@ export function DashboardPage({
       setError(null)
 
       try {
-        const gridRequest =
-          toBacklogFilterRequest(
-            gridFilterModel,
-          )
-
-        const topFilters = []
+        const topFilters: BacklogFilterItem[] = []
 
         // ===============================
         // SEARCH
@@ -386,7 +371,7 @@ export function DashboardPage({
 
         const request = {
           filters: [
-            ...gridRequest.filters,
+            ...excelFilters,
             ...topFilters,
           ],
 
@@ -456,7 +441,7 @@ export function DashboardPage({
     page,
     pageSize,
     filters,
-    gridFilterModel,
+    excelFilters,
     refreshKey,
 
     // Tạm thời để đây để UI refresh khi sort đổi.
@@ -835,7 +820,7 @@ export function DashboardPage({
             onClick={clearFilters}
             disabled={
               activeFilters.length === 0
-              && gridFilterModel.items.length === 0
+              && excelFilters.length === 0
             }
           >
             Clear Filters
@@ -944,16 +929,16 @@ export function DashboardPage({
           pageSize={pageSize}
           totalElements={totalElements}
 
-          filterModel={
-            gridFilterModel
+          excelFilters={
+            excelFilters
           }
 
           sortModel={
             sortModel
           }
 
-          onFilterChange={
-            handleGridFilterChange
+          onExcelFiltersChange={
+            handleExcelFiltersChange
           }
 
           onSortChange={

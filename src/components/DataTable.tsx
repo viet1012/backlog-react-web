@@ -2,7 +2,6 @@ import {
   DataGrid,
   GridToolbarColumnsButton,
   GridToolbarContainer,
-  type GridFilterModel,
   type GridPaginationModel,
   type GridSortModel,
 } from '@mui/x-data-grid'
@@ -16,6 +15,7 @@ import {
   dataGridHeaderSx,
   preventColumnHeaderSort,
 } from '../theme/dataGridHeaderStyles'
+import type { BacklogFilterItem } from '../services/reportService'
 
 interface DataTableProps {
   data: ProductionOrder[]
@@ -25,10 +25,10 @@ interface DataTableProps {
   pageSize: number
   totalElements: number
 
-  filterModel: GridFilterModel
+  excelFilters: BacklogFilterItem[]
   sortModel: GridSortModel
 
-  onFilterChange: (model: GridFilterModel) => void
+  onExcelFiltersChange: (filters: BacklogFilterItem[]) => void
   onSortChange: (model: GridSortModel) => void
   onPaginationChange: (model: GridPaginationModel) => void
 }
@@ -56,24 +56,31 @@ export function DataTable({
   pageSize,
   totalElements,
 
-  filterModel,
+  excelFilters,
   sortModel,
 
-  onFilterChange,
+  onExcelFiltersChange,
   onSortChange,
   onPaginationChange,
 }: DataTableProps) {
 
   return (
     <ExcelColumnFilterProvider
-      filterModel={filterModel}
-      onFilterChange={onFilterChange}
+      excelFilters={excelFilters}
+      onExcelFiltersChange={onExcelFiltersChange}
     >
       <DataGrid
         rows={data}
         columns={backlogColumns}
 
-        getRowId={(row) => row.AUFNR}
+        getRowId={(row) =>
+          [
+            row.VBELN ?? '',
+            row.ZGLOBAL_CODE ?? '',
+            row.PIER_AUFNR ?? '',
+            row.AUFNR ?? '',
+          ].join('|')
+        }
 
         loading={loading}
 
@@ -81,10 +88,8 @@ export function DataTable({
         filterMode="server"
         sortingMode="server"
 
-        filterModel={filterModel}
         sortModel={sortModel}
 
-        onFilterModelChange={onFilterChange}
         onSortModelChange={onSortChange}
 
         rowCount={totalElements}

@@ -1,29 +1,10 @@
-import type {
-  GridFilterModel,
-} from '@mui/x-data-grid'
-
-import {
-  createContext,
-  useContext,
-} from 'react'
-
-import type {
-  ExcelFilterField,
-} from '../../config/backlogFilterFields'
-
-
-// =========================================================
-// CONTEXT TYPE
-// =========================================================
+import { createContext, useContext } from 'react'
+import type { ExcelFilterField } from '../../config/backlogFilterFields'
+import type { BacklogFilterItem } from '../../services/reportService'
 
 export interface ExcelFilterContextValue {
-
-  filterModel: GridFilterModel
-
-  onFilterChange: (
-    model: GridFilterModel,
-  ) => void
-
+  excelFilters: BacklogFilterItem[]
+  onExcelFiltersChange: (filters: BacklogFilterItem[]) => void
   openFilter: (
     field: ExcelFilterField,
     label: string,
@@ -31,33 +12,19 @@ export interface ExcelFilterContextValue {
   ) => void
 }
 
-
-// =========================================================
-// CONTEXT
-// =========================================================
-
 export const ExcelFilterContext =
-  createContext<
-    ExcelFilterContextValue | null
-  >(null)
-
-
-// =========================================================
-// HOOK
-// =========================================================
+  createContext<ExcelFilterContextValue | null>(null)
 
 export function useExcelColumnFilter() {
-
-  const context =
-    useContext(
-      ExcelFilterContext,
-    )
-
+  const context = useContext(ExcelFilterContext)
   if (!context) {
     throw new Error(
-      'Excel column menu must be rendered inside ExcelColumnFilterProvider',
+      'Excel column filter must be rendered inside ExcelColumnFilterProvider',
     )
   }
-
   return context
+}
+
+export function useOptionalExcelColumnFilter() {
+  return useContext(ExcelFilterContext)
 }

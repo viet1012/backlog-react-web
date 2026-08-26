@@ -1,4 +1,6 @@
 /* oxlint-disable react/only-export-components -- this file intentionally exports DataGrid column definitions containing render functions */
+import FilterAltRoundedIcon
+  from '@mui/icons-material/FilterAltRounded'
 
 import {
   Chip,
@@ -14,6 +16,7 @@ import {
 import type {
   ProductionOrder,
 } from '../../types/report'
+import { useOptionalExcelColumnFilter } from './excelFilterContext'
 
 
 // =========================================================
@@ -29,18 +32,29 @@ function FilterHeader({
   field,
   label,
 }: FilterHeaderProps) {
-  const apiRef = useGridApiContext()
+
+  const apiRef =
+    useGridApiContext()
+
+  const excelFilter = useOptionalExcelColumnFilter()
+  const isFiltered = excelFilter?.excelFilters.some(
+    (filter) => filter.field === field,
+  ) ?? false
 
   return (
     <span
       role="button"
       tabIndex={0}
+
       onClick={(event) => {
         event.preventDefault()
         event.stopPropagation()
 
-        apiRef.current.showColumnMenu(field)
+        apiRef.current.showColumnMenu(
+          field,
+        )
       }}
+
       onKeyDown={(event) => {
         if (
           event.key === 'Enter'
@@ -49,29 +63,63 @@ function FilterHeader({
           event.preventDefault()
           event.stopPropagation()
 
-          apiRef.current.showColumnMenu(field)
-
-          // keyboard sẽ xử lý riêng nếu cần
+          apiRef.current.showColumnMenu(
+            field,
+          )
         }
       }}
+
       style={{
         width: '100%',
         height: '100%',
+
         display: 'flex',
         alignItems: 'center',
+
+        gap: 5,
+
         overflow: 'hidden',
         cursor: 'pointer',
       }}
     >
+
+      {/* ================================
+          COLUMN NAME
+      ================================= */}
+
       <span
         style={{
+          minWidth: 0,
+
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
+
+          fontWeight:
+            isFiltered
+              ? 700
+              : undefined,
         }}
       >
         {label}
       </span>
+
+
+      {/* ================================
+          ACTIVE FILTER INDICATOR
+      ================================= */}
+
+      {isFiltered && (
+        <FilterAltRoundedIcon
+          color="primary"
+
+          sx={{
+            fontSize: 16,
+            flexShrink: 0,
+          }}
+        />
+      )}
+
     </span>
   )
 }
