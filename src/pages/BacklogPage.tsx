@@ -78,7 +78,7 @@ const filterLabels: Record<keyof ReportFilters, string> = {
 // PROPS
 // =========================================================
 
-interface DashboardPageProps {
+interface BacklogPageProps {
   mode: PaletteMode
   onToggleMode: () => void
 }
@@ -88,10 +88,10 @@ interface DashboardPageProps {
 // PAGE
 // =========================================================
 
-export function DashboardPage({
+export function BacklogPage({
   mode,
   onToggleMode,
-}: DashboardPageProps) {
+}: BacklogPageProps) {
 
   // =======================================================
   // PAGINATION

@@ -21,6 +21,17 @@ import {
   LocalShippingOutlined,
   ReceiptLongOutlined,
   SpaceDashboardOutlined,
+
+  PrecisionManufacturingOutlined,
+  SettingsSuggestOutlined,
+  FactCheckOutlined,
+  InventoryOutlined,
+  EventNoteOutlined,
+  AccountBalanceOutlined,
+  DeleteSweepOutlined,
+  TrendingUpOutlined,
+  SpeedOutlined,
+  AccessTimeOutlined,
 } from '@mui/icons-material'
 
 import type { ReactNode } from 'react'
@@ -54,41 +65,150 @@ interface MenuGroupConfig {
 // =========================================================
 
 const menuGroups: MenuGroupConfig[] = [
+
+  // =========================================================
+  // PRODUCTION
+  // =========================================================
+
   {
-    id: 'order-control',
-    label: 'ORDER CONTROL',
+    id: 'production',
+    label: 'PRODUCTION',
+
     items: [
       {
-        label: 'Backlog Detail',
-        path: '/backlog',
-        icon: <SpaceDashboardOutlined />,
+        label: 'SPH',
+        path: '/sph',
+        icon: (
+          <PrecisionManufacturingOutlined />
+        ),
       },
+
       {
-        label: 'ODBF',
-        path: '/odbf',
-        icon: <Inventory2Outlined />,
+        label: 'Asakai',
+        path: '/asakai',
+        icon: (
+          <SettingsSuggestOutlined />
+        ),
+      },
+
+      {
+        label: 'Cost Monitoring',
+        path: '/cost-monitoring',
+        icon: (
+          <TrendingUpOutlined />
+        ),
       },
     ],
   },
 
+
+  // =========================================================
+  // PLANNING
+  // =========================================================
+
   {
-    id: 'shipping',
-    label: 'SHIPPING',
+    id: 'planning',
+    label: 'PLANNING',
+
     items: [
       {
-        label: 'Shipment',
-        path: '/shipment',
-        icon: <LocalShippingOutlined />,
+        label: 'Backlog',
+        path: '/backlog',
+        icon: (
+          <SpaceDashboardOutlined />
+        ),
       },
+
+      {
+        label: 'Fac Confirm',
+        path: '/fac-confirm',
+        icon: (
+          <FactCheckOutlined />
+        ),
+      },
+
+      {
+        label: 'ODBF',
+        path: '/odbf',
+        icon: (
+          <Inventory2Outlined />
+        ),
+      },
+
       {
         label: 'Export List',
         path: '/export-list',
-        icon: <ReceiptLongOutlined />,
+        icon: (
+          <ReceiptLongOutlined />
+        ),
       },
+
       {
-        label: 'Sales Status',
-        path: '/sales-status',
-        icon: <AssessmentOutlined />,
+        label: 'Packing List',
+        path: '/packing-list',
+        icon: (
+          <InventoryOutlined />
+        ),
+      },
+
+      {
+        label: 'Shipping Schedule',
+        path: '/shipping-schedule',
+        icon: (
+          <EventNoteOutlined />
+        ),
+      },
+    ],
+  },
+
+
+  // =========================================================
+  // MANAGEMENT
+  // =========================================================
+
+  {
+    id: 'management',
+    label: 'MANAGEMENT',
+
+    items: [
+      {
+        label: 'BOSB',
+        path: '/bosb',
+        icon: (
+          <AccountBalanceOutlined />
+        ),
+      },
+
+      {
+        label: 'Deadstock',
+        path: '/deadstock',
+        icon: (
+          <DeleteSweepOutlined />
+        ),
+      },
+
+      {
+        label: 'PL',
+        path: '/pl',
+        icon: (
+          <AssessmentOutlined />
+        ),
+      },
+
+      {
+        label: 'KPI',
+        path: '/kpi',
+        icon: (
+          <SpeedOutlined />
+        ),
+      },
+
+      {
+        label: 'OT',
+        path: '/ot',
+        icon: (
+          <AccessTimeOutlined />
+        ),
       },
     ],
   },
@@ -720,7 +840,7 @@ export function LeftSidebar() {
               fontSize: uiTokens.sidebar.sectionFontSize,
             }}
           >
-            Production Backlog System
+            Production System
           </Typography>
         </Box>
       </Box>
