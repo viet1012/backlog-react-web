@@ -1,8 +1,8 @@
 import type { SvgIconComponent } from '@mui/icons-material'
 import { Box, Typography } from '@mui/material'
-import { glassPanelSx } from '../../theme/uiTokens'
 import { PageHeader } from './PageHeader'
 import { PageShell } from './PageShell'
+import { GlassPanel } from './GlassPanel'
 
 interface PlaceholderPageProps {
   title: string
@@ -19,10 +19,8 @@ export function PlaceholderPage({
     <PageShell>
       <PageHeader title={title} subtitle={subtitle} />
 
-      <Box
-        component="main"
-        sx={(theme) => ({
-          ...glassPanelSx(theme),
+      <GlassPanel
+        sx={{
           minHeight: 0,
           flex: 1,
           display: 'grid',
@@ -30,7 +28,7 @@ export function PlaceholderPage({
           px: { xs: 2, sm: 4 },
           py: { xs: 4, sm: 6 },
           textAlign: 'center',
-        })}
+        }}
       >
         <Box sx={{ width: '100%', maxWidth: 520 }}>
           <Box
@@ -61,7 +59,7 @@ export function PlaceholderPage({
             This workspace is ready for the upcoming {title} functionality.
           </Typography>
         </Box>
-      </Box>
+      </GlassPanel>
     </PageShell>
   )
 }

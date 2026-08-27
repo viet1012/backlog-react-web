@@ -38,7 +38,8 @@ import {
   getShipmentFulfillment,
 } from '../services/shipmentService'
 
-import { glassPanelSx, uiTokens } from '../theme/uiTokens'
+import { uiTokens } from '../theme/uiTokens'
+import { GlassPanel } from '../components/common/GlassPanel'
 
 import type {
   ShipmentDetailFilter,
@@ -415,26 +416,12 @@ export function ShipmentPage() {
           DATE RANGE
       ===================================================== */}
 
-      <Stack
-        direction="row"
-        spacing={0.75}
-
-        sx={(theme) => {
-          return {
-            ...glassPanelSx(theme),
-
-            px: 1.5,
-            py: 1,
-
-            alignItems:
-              'center',
-
-            borderRadius:
-              uiTokens.card.borderRadius,
-
-          }
-        }}
-      >
+      <GlassPanel sx={{ px: 1.5, py: 1 }}>
+        <Stack
+          direction="row"
+          spacing={0.75}
+          sx={{ alignItems: 'center' }}
+        >
 
         <Typography
           sx={{
@@ -569,7 +556,8 @@ export function ShipmentPage() {
 
         <ShipmentLegend />
 
-      </Stack>
+        </Stack>
+      </GlassPanel>
 
 
       {/* =====================================================

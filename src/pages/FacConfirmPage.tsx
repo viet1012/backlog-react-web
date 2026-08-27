@@ -5,12 +5,21 @@ import {
   FormControl,
   InputLabel,
   MenuItem,
-  Paper,
   Select,
-  Stack,
   TextField,
   Typography,
 } from '@mui/material'
+
+import PrecisionManufacturingRoundedIcon
+  from '@mui/icons-material/PrecisionManufacturingRounded'
+
+import LocalFireDepartmentRoundedIcon
+  from '@mui/icons-material/LocalFireDepartmentRounded'
+
+import ConstructionRoundedIcon
+  from '@mui/icons-material/ConstructionRounded'
+
+import { alpha } from '@mui/material/styles'
 import {
   useCallback,
   useEffect,
@@ -45,6 +54,9 @@ import type {
 import { PageHeader } from '../components/common/PageHeader'
 import { UpdatedStatus } from '../components/common/UpdatedStatus'
 import { RefreshButton } from '../components/common/RefreshButton'
+import { PageShell } from '../components/common/PageShell'
+import { GlassPanel } from '../components/common/GlassPanel'
+import { uiTokens } from '../theme/uiTokens'
 
 // =========================================================
 // DEFAULT DATE
@@ -72,6 +84,20 @@ function getToday(): string {
 // =========================================================
 // PAGE
 // =========================================================
+function getProcessGroupIcon(
+  processGroup: FacConfirmProcessGroup,
+) {
+  switch (processGroup) {
+    case 'Fine':
+      return PrecisionManufacturingRoundedIcon
+
+    case 'Heat':
+      return LocalFireDepartmentRoundedIcon
+
+    case 'Rough':
+      return ConstructionRoundedIcon
+  }
+}
 
 export function FacConfirmPage() {
 
@@ -419,18 +445,7 @@ export function FacConfirmPage() {
   // =======================================================
 
   return (
-    <Box
-      sx={{
-        height: '100%',
-        minHeight: 0,
-
-        display: 'flex',
-        flexDirection: 'column',
-
-        gap: 1.5,
-        p: 2,
-      }}
-    >
+    <PageShell>
 
       {/* =================================================
           HEADER
@@ -466,58 +481,59 @@ export function FacConfirmPage() {
           FILTER BAR
       ================================================= */}
 
-      <Paper
-        elevation={0}
-        sx={(theme) => ({
-          p: 1.25,
-          borderRadius: 2.5,
-
-          background:
-            theme.palette.mode === 'dark'
-              ? 'rgba(15,23,42,0.62)'
-              : 'rgba(255,255,255,0.72)',
-
-          border:
-            theme.palette.mode === 'dark'
-              ? '1px solid rgba(255,255,255,0.08)'
-              : '1px solid rgba(255,255,255,0.82)',
-
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-
-          boxShadow:
-            theme.palette.mode === 'dark'
-              ? '0 8px 24px rgba(0,0,0,0.12)'
-              : '0 8px 24px rgba(15,23,42,0.05)',
-        })}
+      <GlassPanel
+        sx={{
+          p: 1,
+          flexShrink: 0,
+        }}
       >
-        <Stack
-          spacing={1}
+        <Box
           sx={{
+            display: 'flex',
+
             flexDirection: {
               xs: 'column',
-              md: 'row',
+              sm: 'row',
             },
 
             alignItems: {
               xs: 'stretch',
-              md: 'center',
+              sm: 'center',
             },
+
+            gap: 0.75,
           }}
         >
 
-          {/* DIVISION */}
+          {/* =====================================================
+        DIVISION
+    ===================================================== */}
 
           <FormControl
             size="small"
             sx={{
-              minWidth: {
+              width: {
                 xs: '100%',
-                md: 125,
+                sm: 125,
               },
 
+              flexShrink: 0,
+
               '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
+                height: 44,
+                borderRadius: uiTokens.control.borderRadius,
+              },
+
+              '& .MuiSelect-select': {
+                display: 'flex',
+                alignItems: 'center',
+
+                fontSize: 12.5,
+                fontWeight: 600,
+              },
+
+              '& .MuiInputLabel-root': {
+                fontSize: 12,
               },
             }}
           >
@@ -528,8 +544,12 @@ export function FacConfirmPage() {
             <Select
               label="Division"
               value={div}
+
               onChange={(event) => {
-                setDiv(event.target.value)
+                setDiv(
+                  event.target.value,
+                )
+
                 resetPage()
               }}
             >
@@ -552,7 +572,9 @@ export function FacConfirmPage() {
           </FormControl>
 
 
-          {/* EXPORT DATE */}
+          {/* =====================================================
+        EXPORT DATE
+    ===================================================== */}
 
           <TextField
             label="Export Date"
@@ -562,7 +584,10 @@ export function FacConfirmPage() {
             value={expD}
 
             onChange={(event) => {
-              setExpD(event.target.value)
+              setExpD(
+                event.target.value,
+              )
+
               resetPage()
             }}
 
@@ -575,26 +600,66 @@ export function FacConfirmPage() {
             sx={{
               width: {
                 xs: '100%',
-                md: 170,
+                sm: 160,
               },
 
+              flexShrink: 0,
+
               '& .MuiOutlinedInput-root': {
-                borderRadius: 2,
+                height: 44,
+                borderRadius: uiTokens.control.borderRadius,
+              },
+
+              '& .MuiInputBase-input': {
+                fontSize: 12.5,
+                fontWeight: 600,
+              },
+
+              '& .MuiInputLabel-root': {
+                fontSize: 12,
               },
             }}
           />
 
 
-          {/* PROCESS GROUP */}
           {/* =====================================================
-    PROCESS GROUP
-===================================================== */}
+        SEPARATOR
+    ===================================================== */}
+
+          <Box
+            sx={(theme) => ({
+              display: {
+                xs: 'none',
+                sm: 'block',
+              },
+
+              width: '1px',
+              height: 26,
+
+              mx: 0.2,
+
+              flexShrink: 0,
+
+              bgcolor:
+                alpha(
+                  theme.palette.text.primary,
+                  0.10,
+                ),
+            })}
+          />
+
+
+          {/* =====================================================
+        PROCESS GROUPS
+    ===================================================== */}
 
           <Box
             sx={{
               display: 'flex',
-              alignItems: 'stretch',
-              gap: 0.7,
+              alignItems: 'center',
+
+              gap: 0.65,
+
               flex: 1,
               minWidth: 0,
 
@@ -612,13 +677,21 @@ export function FacConfirmPage() {
               const selected =
                 item.processGroup === procGrp
 
+              const ProcessIcon =
+                getProcessGroupIcon(
+                  item.processGroup,
+                )
+
               return (
                 <Button
                   key={item.processGroup}
 
-                  disabled={processGroupsLoading}
+                  disabled={
+                    processGroupsLoading
+                  }
 
                   onClick={() => {
+
                     setProcGrp(
                       item.processGroup,
                     )
@@ -632,57 +705,83 @@ export function FacConfirmPage() {
                   }}
 
                   sx={(theme) => ({
-                    minWidth: 145,
-                    height: 48,
+                    minWidth: 148,
+                    height: 44,
 
                     px: 1.25,
-                    py: 0.55,
 
                     flexShrink: 0,
 
-                    borderRadius: 2,
+                    borderRadius:
+                      uiTokens.control.borderRadius,
 
                     textTransform: 'none',
 
                     justifyContent: 'flex-start',
 
-                    border: selected
-                      ? `1px solid ${theme.palette.primary.main}`
-                      : theme.palette.mode === 'dark'
-                        ? '1px solid rgba(255,255,255,0.08)'
-                        : '1px solid rgba(15,23,42,0.08)',
+                    border:
+                      `1px solid ${selected
+                        ? alpha(
+                          theme.palette.primary.main,
+                          0.55,
+                        )
+                        : alpha(
+                          theme.palette.text.primary,
+                          0.08,
+                        )
+                      }`,
 
-                    background: selected
-                      ? theme.palette.mode === 'dark'
-                        ? 'rgba(37,99,235,0.18)'
-                        : 'rgba(37,99,235,0.08)'
-                      : theme.palette.mode === 'dark'
-                        ? 'rgba(255,255,255,0.03)'
-                        : 'rgba(255,255,255,0.42)',
+                    backgroundColor:
+                      selected
+                        ? alpha(
+                          theme.palette.primary.main,
+                          theme.palette.mode === 'dark'
+                            ? 0.16
+                            : 0.07,
+                        )
+                        : alpha(
+                          theme.palette.background.paper,
+                          theme.palette.mode === 'dark'
+                            ? 0.28
+                            : 0.52,
+                        ),
 
-                    color: selected
-                      ? 'primary.main'
-                      : 'text.primary',
+                    color:
+                      selected
+                        ? 'primary.main'
+                        : 'text.primary',
 
-                    boxShadow: selected
-                      ? '0 3px 10px rgba(37,99,235,0.12)'
-                      : 'none',
+                    boxShadow:
+                      selected
+                        ? `0 2px 10px ${alpha(
+                          theme.palette.primary.main,
+                          0.10,
+                        )
+                        }`
+                        : 'none',
 
-                    backdropFilter: 'blur(12px)',
-                    WebkitBackdropFilter: 'blur(12px)',
+                    backdropFilter:
+                      'blur(10px)',
 
-                    transition: 'all 160ms ease',
+                    WebkitBackdropFilter:
+                      'blur(10px)',
+
+                    transition:
+                      'background-color 160ms ease, border-color 160ms ease, transform 160ms ease',
 
                     '&:hover': {
-                      background: selected
-                        ? theme.palette.mode === 'dark'
-                          ? 'rgba(37,99,235,0.24)'
-                          : 'rgba(37,99,235,0.12)'
-                        : theme.palette.mode === 'dark'
-                          ? 'rgba(255,255,255,0.06)'
-                          : 'rgba(255,255,255,0.78)',
+                      backgroundColor:
+                        selected
+                          ? alpha(
+                            theme.palette.primary.main,
+                            theme.palette.mode === 'dark'
+                              ? 0.22
+                              : 0.11,
+                          )
+                          : theme.palette.action.hover,
 
-                      transform: 'translateY(-1px)',
+                      transform:
+                        'translateY(-1px)',
                     },
                   })}
                 >
@@ -691,154 +790,150 @@ export function FacConfirmPage() {
                       width: '100%',
 
                       display: 'flex',
-                      flexDirection: 'column',
+                      alignItems: 'center',
 
-                      alignItems: 'flex-start',
-                      justifyContent: 'center',
+                      gap: 0.8,
 
-                      lineHeight: 1,
+                      minWidth: 0,
                     }}
                   >
-
-                    {/* NAME */}
-
-                    <Typography
-                      sx={{
-                        fontSize: 12.5,
-                        fontWeight: 800,
-
-                        lineHeight: 1.1,
-
-                        color: selected
-                          ? 'primary.main'
-                          : 'text.primary',
-                      }}
-                    >
-                      {item.processGroup}
-                    </Typography>
-
-
-                    {/* COUNT + QTY */}
+                    {/* ICON */}
 
                     <Box
-                      sx={{
-                        mt: 0.45,
+                      sx={(theme) => ({
+                        width: 28,
+                        height: 28,
+
+                        flexShrink: 0,
 
                         display: 'flex',
                         alignItems: 'center',
+                        justifyContent: 'center',
 
-                        whiteSpace: 'nowrap',
+                        borderRadius: 1.5,
+
+                        color: selected
+                          ? 'primary.main'
+                          : 'text.secondary',
+
+                        backgroundColor: selected
+                          ? alpha(
+                            theme.palette.primary.main,
+                            0.12,
+                          )
+                          : alpha(
+                            theme.palette.text.primary,
+                            0.045,
+                          ),
+                      })}
+                    >
+                      <ProcessIcon
+                        sx={{
+                          fontSize: 17,
+                        }}
+                      />
+                    </Box>
+
+
+                    {/* CONTENT */}
+
+                    <Box
+                      sx={{
+                        minWidth: 0,
+
+                        display: 'flex',
+                        flexDirection: 'column',
+
+                        alignItems: 'flex-start',
+                        justifyContent: 'center',
                       }}
                     >
+                      {/* NAME */}
 
-                      {/* DOT */}
+                      <Typography
+                        sx={{
+                          fontSize: 12.5,
+                          fontWeight: 800,
+
+                          lineHeight: 1,
+
+                          color: selected
+                            ? 'primary.main'
+                            : 'text.primary',
+                        }}
+                      >
+                        {item.processGroup}
+                      </Typography>
+
+
+                      {/* PO + QTY */}
 
                       <Box
                         sx={{
-                          width: 4,
-                          height: 4,
+                          mt: 0.5,
 
-                          mr: 0.55,
+                          display: 'flex',
+                          alignItems: 'center',
 
-                          borderRadius: '50%',
-
-                          bgcolor: selected
-                            ? 'primary.main'
-                            : 'text.disabled',
-                        }}
-                      />
-
-
-                      {/* ORDER COUNT */}
-
-                      <Typography
-                        component="span"
-                        sx={{
-                          fontSize: 10.5,
-                          fontWeight: 600,
-
-                          color: selected
-                            ? 'primary.main'
-                            : 'text.secondary',
+                          whiteSpace: 'nowrap',
                         }}
                       >
-                        PO {item.orderCount.toLocaleString()}
-                      </Typography>
+                        <Typography
+                          component="span"
+                          sx={{
+                            fontSize: 10.5,
+                            fontWeight: 600,
 
+                            lineHeight: 1,
 
-                      {/* SEPARATOR */}
+                            color: selected
+                              ? 'primary.main'
+                              : 'text.secondary',
+                          }}
+                        >
+                          PO {item.orderCount.toLocaleString()}
+                        </Typography>
 
-                      <Typography
-                        component="span"
-                        sx={{
-                          mx: 0.55,
+                        <Box
+                          sx={{
+                            width: 3,
+                            height: 3,
 
-                          fontSize: 10,
-                          color: 'text.disabled',
-                        }}
-                      >
-                        ·
-                      </Typography>
+                            mx: 0.65,
 
+                            borderRadius: '50%',
 
-                      {/* FINAL QTY */}
+                            bgcolor: selected
+                              ? 'primary.main'
+                              : 'text.disabled',
+                          }}
+                        />
 
-                      <Typography
-                        component="span"
-                        sx={{
-                          fontSize: 10.5,
-                          fontWeight: 600,
+                        <Typography
+                          component="span"
+                          sx={{
+                            fontSize: 10.5,
+                            fontWeight: 600,
 
-                          color: selected
-                            ? 'primary.main'
-                            : 'text.secondary',
-                        }}
-                      >
-                        Qty {item.totalFinalQty.toLocaleString()}
-                      </Typography>
+                            lineHeight: 1,
 
+                            color: selected
+                              ? 'primary.main'
+                              : 'text.secondary',
+                          }}
+                        >
+                          Qty {item.totalFinalQty.toLocaleString()}
+                        </Typography>
+                      </Box>
                     </Box>
-
                   </Box>
                 </Button>
               )
             })}
           </Box>
 
-          {/* SUMMARY */}
-
-          <Box
-            sx={{
-              ml: {
-                md: 'auto',
-              },
-
-              px: 1.1,
-              py: 0.7,
-
-              borderRadius: 2,
-
-              bgcolor:
-                'rgba(37,99,235,0.06)',
-
-              border:
-                '1px solid rgba(37,99,235,0.10)',
-            }}
-          >
-            <Typography
-              sx={{
-                fontSize: 11.5,
-                fontWeight: 700,
-                color: 'primary.main',
-              }}
-            >
-              {div} · {procGrp}
-            </Typography>
-          </Box>
-
-        </Stack>
-      </Paper>
-
+        </Box>
+      </GlassPanel>
       {/* =================================================
           ERROR
       ================================================= */}
@@ -964,6 +1059,6 @@ export function FacConfirmPage() {
 
       </Box>
 
-    </Box>
+    </PageShell>
   )
 }
