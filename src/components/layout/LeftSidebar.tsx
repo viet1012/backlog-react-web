@@ -12,211 +12,39 @@ import {
 } from '@mui/material'
 
 import {
-  AssessmentOutlined,
   ChevronLeftRounded,
   ChevronRightRounded,
   ExpandMoreRounded,
   FactoryOutlined,
-  Inventory2Outlined,
-  LocalShippingOutlined,
-  ReceiptLongOutlined,
-  SpaceDashboardOutlined,
-
-  PrecisionManufacturingOutlined,
-  SettingsSuggestOutlined,
-  FactCheckOutlined,
-  InventoryOutlined,
-  EventNoteOutlined,
-  AccountBalanceOutlined,
-  DeleteSweepOutlined,
-  TrendingUpOutlined,
-  SpeedOutlined,
-  AccessTimeOutlined,
 } from '@mui/icons-material'
 
-import type { ReactNode } from 'react'
-import { useState } from 'react'
+import {
+  useState,
+} from 'react'
+
 import {
   NavLink,
   useLocation,
 } from 'react-router-dom'
-import { uiTokens } from '../../theme/uiTokens'
 
+import {
+  uiTokens,
+} from '../../theme/uiTokens'
 
-// =========================================================
-// TYPES
-// =========================================================
+import {
+  groupAccent,
+  menuGroups,
+} from './sidebarConfig'
 
-interface MenuItemConfig {
-  label: string
-  path: string
-  icon: ReactNode
-}
-
-interface MenuGroupConfig {
-  id: string
-  label: string
-  items: MenuItemConfig[]
-}
-
-
-// =========================================================
-// MENU CONFIG
-// =========================================================
-
-const menuGroups: MenuGroupConfig[] = [
-
-  // =========================================================
-  // PRODUCTION
-  // =========================================================
-
-  {
-    id: 'production',
-    label: 'PRODUCTION',
-
-    items: [
-      {
-        label: 'SPH',
-        path: '/sph',
-        icon: (
-          <PrecisionManufacturingOutlined />
-        ),
-      },
-
-      {
-        label: 'Asakai',
-        path: '/asakai',
-        icon: (
-          <SettingsSuggestOutlined />
-        ),
-      },
-
-      {
-        label: 'Cost Monitoring',
-        path: '/cost-monitoring',
-        icon: (
-          <TrendingUpOutlined />
-        ),
-      },
-    ],
-  },
-
-
-  // =========================================================
-  // PLANNING
-  // =========================================================
-
-  {
-    id: 'planning',
-    label: 'PLANNING',
-
-    items: [
-      {
-        label: 'Backlog',
-        path: '/backlog',
-        icon: (
-          <SpaceDashboardOutlined />
-        ),
-      },
-
-      {
-        label: 'Fac Confirm',
-        path: '/fac-confirm',
-        icon: (
-          <FactCheckOutlined />
-        ),
-      },
-
-      {
-        label: 'ODBF',
-        path: '/odbf',
-        icon: (
-          <Inventory2Outlined />
-        ),
-      },
-
-      {
-        label: 'Export List',
-        path: '/export-list',
-        icon: (
-          <ReceiptLongOutlined />
-        ),
-      },
-
-      {
-        label: 'Packing List',
-        path: '/packing-list',
-        icon: (
-          <InventoryOutlined />
-        ),
-      },
-
-      {
-        label: 'Shipping Schedule',
-        path: '/shipping-schedule',
-        icon: (
-          <EventNoteOutlined />
-        ),
-      },
-    ],
-  },
-
-
-  // =========================================================
-  // MANAGEMENT
-  // =========================================================
-
-  {
-    id: 'management',
-    label: 'MANAGEMENT',
-
-    items: [
-      {
-        label: 'BOSB',
-        path: '/bosb',
-        icon: (
-          <AccountBalanceOutlined />
-        ),
-      },
-
-      {
-        label: 'Deadstock',
-        path: '/deadstock',
-        icon: (
-          <DeleteSweepOutlined />
-        ),
-      },
-
-      {
-        label: 'PL',
-        path: '/pl',
-        icon: (
-          <AssessmentOutlined />
-        ),
-      },
-
-      {
-        label: 'KPI',
-        path: '/kpi',
-        icon: (
-          <SpeedOutlined />
-        ),
-      },
-
-      {
-        label: 'OT',
-        path: '/ot',
-        icon: (
-          <AccessTimeOutlined />
-        ),
-      },
-    ],
-  },
-]
-
-const sidebarTransition = 'width 200ms ease'
-const labelTransition = 'opacity 150ms ease, transform 180ms ease'
-const iconTransition = 'transform 160ms ease'
+import {
+  getBrandCardSx,
+  getFooterSx,
+  getGroupHeaderSx,
+  getMenuItemSx,
+  getSidebarSx,
+  iconTransition,
+  labelTransition,
+} from './sidebarStyles'
 
 
 // =========================================================
@@ -224,136 +52,148 @@ const iconTransition = 'transform 160ms ease'
 // =========================================================
 
 export function LeftSidebar() {
-  const location = useLocation()
 
-  const [collapsed, setCollapsed] =
-    useState(false)
-
-  const [openGroups, setOpenGroups] =
-    useState<Record<string, boolean>>({
-      'order-control': true,
-      shipping: true,
-    })
+  const location =
+    useLocation()
 
 
-  function toggleGroup(id: string) {
-    setOpenGroups((current) => ({
-      ...current,
-      [id]: !current[id],
-    }))
+  // =======================================================
+  // COLLAPSE
+  // =======================================================
+
+  const [
+    collapsed,
+    setCollapsed,
+  ] = useState(false)
+
+
+  // =======================================================
+  // GROUP STATE
+  // =======================================================
+
+  const [
+    openGroups,
+    setOpenGroups,
+  ] = useState<Record<string, boolean>>({
+    production: true,
+    planning: true,
+    management: true,
+  })
+
+
+  function toggleGroup(
+    id: string,
+  ) {
+
+    setOpenGroups(
+      (current) => ({
+        ...current,
+
+        [id]:
+          !current[id],
+      }),
+    )
   }
 
+
+  // =======================================================
+  // RENDER
+  // =======================================================
 
   return (
     <Box
       component="aside"
-      sx={(theme) => ({
-        width: collapsed ? 60 : 220,
-        height: '100vh',
 
-        flexShrink: 0,
-
-        display: 'flex',
-        flexDirection: 'column',
-
-        overflow: 'hidden',
-
-        bgcolor: 'background.paper',
-
-        borderRight:
-          `1px solid ${theme.palette.divider}`,
-
-        boxShadow:
-          theme.palette.mode === 'dark'
-            ? '4px 0 18px rgba(0,0,0,0.16)'
-            : '4px 0 18px rgba(15,23,42,0.04)',
-
-        transition: sidebarTransition,
-
-        '@media (prefers-reduced-motion: reduce)': {
-          transition: 'none',
-          '& *': {
-            transition: 'none !important',
-          },
-        },
-
-        zIndex: 10,
-      })}
+      sx={(theme) =>
+        getSidebarSx(
+          theme,
+          collapsed,
+        )
+      }
     >
 
-      {/* =====================================================
-    BRAND / HEADER
-===================================================== */}
+      {/* ===================================================
+          HEADER
+      =================================================== */}
 
       <Box
         sx={{
-          position: 'relative',
+          position:
+            'relative',
 
-          height: collapsed ? 52 : 68,
-          minHeight: collapsed ? 52 : 68,
+          height:
+            collapsed
+              ? 52
+              : 68,
 
-          display: 'flex',
-          alignItems: 'center',
+          minHeight:
+            collapsed
+              ? 52
+              : 68,
 
-          px: collapsed ? 0 : 1.25,
+          display:
+            'flex',
 
-          flexShrink: 0,
+          alignItems:
+            'center',
+
+          px:
+            collapsed
+              ? 0
+              : 1.25,
+
+          flexShrink:
+            0,
 
           transition:
             'height 200ms ease, padding 200ms ease',
         }}
       >
-        {/* ============================
-      EXPANDED
-  ============================ */}
+
+        {/* ===============================================
+            EXPANDED
+        =============================================== */}
 
         {!collapsed && (
           <>
+
             <Box
-              sx={{
-                flex: 1,
-                minWidth: 0,
-
-                display: 'flex',
-                alignItems: 'center',
-
-                gap: 1,
-
-                pr: 4,
-              }}
+              sx={(theme) =>
+                getBrandCardSx(
+                  theme,
+                )
+              }
             >
               {/* LOGO */}
-
               <Box
-                sx={(theme) => ({
-                  width: 34,
-                  height: 34,
+                sx={{
+                  width: 32,
+                  height: 32,
 
                   flexShrink: 0,
 
                   display: 'grid',
                   placeItems: 'center',
 
-                  borderRadius: uiTokens.control.borderRadius,
+                  borderRadius: '10px',
 
-                  bgcolor: 'primary.main',
-                  color: 'primary.contrastText',
+                  color: '#fff',
+
+                  background:
+                    'linear-gradient(135deg, #2563eb 0%, #38bdf8 100%)',
 
                   boxShadow:
-                    theme.palette.mode === 'dark'
-                      ? '0 3px 10px rgba(0,0,0,.25)'
-                      : '0 3px 10px rgba(37,99,235,.18)',
+                    '0 5px 14px rgba(37,99,235,0.24)',
 
                   '& svg': {
-                    fontSize: 19,
+                    fontSize: 18,
                   },
-                })}
+                }}
               >
                 <FactoryOutlined />
               </Box>
 
               {/* TITLE */}
-
               <Box
                 sx={{
                   flex: 1,
@@ -363,11 +203,14 @@ export function LeftSidebar() {
                 <Typography
                   noWrap
                   sx={{
-                    fontSize: uiTokens.sidebar.appTitleFontSize,
+                    fontSize: 12.5,
                     fontWeight: 800,
-                    lineHeight: 1.2,
+                    lineHeight: 1.15,
 
                     color: 'text.primary',
+
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
                   }}
                 >
                   Production Control
@@ -376,13 +219,16 @@ export function LeftSidebar() {
                 <Typography
                   noWrap
                   sx={{
-                    mt: 0.35,
+                    mt: 0.2,
 
-                    fontSize: uiTokens.sidebar.subtitleFontSize,
+                    fontSize: 10,
                     fontWeight: 500,
-                    lineHeight: 1.2,
+                    lineHeight: 1.15,
 
                     color: 'text.secondary',
+
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
                   }}
                 >
                   Factory Operations
@@ -390,7 +236,7 @@ export function LeftSidebar() {
               </Box>
             </Box>
 
-            {/* COLLAPSE */}
+            {/* COLLAPSE BUTTON */}
 
             <Tooltip
               title="Collapse sidebar"
@@ -399,41 +245,61 @@ export function LeftSidebar() {
             >
               <IconButton
                 size="small"
+
                 onClick={() =>
                   setCollapsed(true)
                 }
+
                 sx={{
-                  position: 'absolute',
+                  position:
+                    'absolute',
 
-                  right: 8,
+                  right:
+                    8,
 
-                  width: 26,
-                  height: 26,
+                  width:
+                    26,
 
-                  color: 'text.secondary',
+                  height:
+                    26,
 
-                  bgcolor: 'action.hover',
+                  color:
+                    'text.secondary',
 
-                  border: '1px solid',
-                  borderColor: 'divider',
+                  bgcolor:
+                    'action.hover',
+
+                  border:
+                    '1px solid',
+
+                  borderColor:
+                    'divider',
 
                   '&:hover': {
-                    color: 'primary.main',
-                    bgcolor: 'action.selected',
+                    color:
+                      'primary.main',
+
+                    bgcolor:
+                      'action.selected',
                   },
                 }}
               >
                 <ChevronLeftRounded
-                  sx={{ fontSize: 18 }}
+                  sx={{
+                    fontSize:
+                      18,
+                  }}
                 />
               </IconButton>
             </Tooltip>
+
           </>
         )}
 
-        {/* ============================
-      COLLAPSED
-  ============================ */}
+
+        {/* ===============================================
+            COLLAPSED
+        =============================================== */}
 
         {collapsed && (
           <Tooltip
@@ -442,23 +308,36 @@ export function LeftSidebar() {
             arrow
           >
             <IconButton
-              onClick={() =>
+              onClick={() => {
                 setCollapsed(false)
-              }
+
+                setOpenGroups({
+                  production: true,
+                  planning: true,
+                  management: true,
+                })
+              }}
+
               sx={(theme) => ({
-                mx: 'auto',
+                mx:
+                  'auto',
 
-                width: 34,
-                height: 34,
+                width:
+                  34,
 
-                color: 'primary.main',
+                height:
+                  34,
+
+                color:
+                  'primary.main',
 
                 bgcolor:
                   theme.palette.mode === 'dark'
                     ? 'rgba(59,130,246,.12)'
                     : 'rgba(37,99,235,.08)',
 
-                border: '1px solid',
+                border:
+                  '1px solid',
 
                 borderColor:
                   theme.palette.mode === 'dark'
@@ -474,376 +353,406 @@ export function LeftSidebar() {
                       ? 'rgba(59,130,246,.20)'
                       : 'rgba(37,99,235,.14)',
 
-                  transform: 'scale(1.05)',
+                  transform:
+                    'scale(1.05)',
                 },
               })}
             >
               <ChevronRightRounded
                 sx={{
-                  fontSize: 21,
+                  fontSize:
+                    21,
                 }}
               />
             </IconButton>
           </Tooltip>
         )}
+
       </Box>
+
 
       <Divider />
 
 
-      {/* =====================================================
+      {/* ===================================================
           MENU
-      ===================================================== */}
+      =================================================== */}
 
       <Box
         sx={{
-          flex: 1,
+          flex:
+            1,
 
-          overflowX: 'hidden',
-          overflowY: 'auto',
+          overflowX:
+            'hidden',
 
-          py: 0.75,
+          overflowY:
+            'auto',
+
+          py:
+            0.75,
 
           '&::-webkit-scrollbar': {
-            width: 4,
+            width:
+              4,
           },
 
           '&::-webkit-scrollbar-thumb': {
-            bgcolor: 'action.selected',
-            borderRadius: '4px',
+            bgcolor:
+              'action.selected',
+
+            borderRadius:
+              '4px',
           },
         }}
       >
 
-        {menuGroups.map((group) => {
-          const groupOpen =
-            openGroups[group.id]
+        {menuGroups.map(
+          (group) => {
 
-          return (
-            <Box
-              key={group.id}
-              sx={{
-                mb: collapsed
-                  ? 0.75
-                  : 1,
-              }}
-            >
+            const groupOpen =
+              openGroups[
+              group.id
+              ]
 
-              {/* GROUP HEADER */}
+            const accent =
+              groupAccent[
+              group.id
+              ]
 
-              <ListItemButton
-                aria-hidden={collapsed}
-                tabIndex={collapsed ? -1 : 0}
-                onClick={() =>
-                  toggleGroup(group.id)
+
+            return (
+              <Box
+                key={
+                  group.id
                 }
+
                 sx={{
-                  minHeight: collapsed ? 0 : 30,
-                  height: collapsed ? 0 : 30,
-
-                  mx: 0.75,
-                  px: 1,
-                  py: collapsed ? 0 : 0.25,
-
-                  borderRadius: uiTokens.control.borderRadius,
-                  opacity: collapsed ? 0 : 1,
-                  overflow: 'hidden',
-                  pointerEvents: collapsed ? 'none' : 'auto',
-                  transform: collapsed ? 'translateX(-6px)' : 'translateX(0)',
-                  transition: `${labelTransition}, height 180ms ease, min-height 180ms ease, padding 180ms ease`,
-
-                  '&:hover': {
-                    bgcolor:
-                      'action.hover',
-                  },
+                  mb:
+                    collapsed
+                      ? 0.75
+                      : 1,
                 }}
               >
-                <ListItemText
-                  primary={group.label}
-                  slotProps={{
-                    primary: {
-                      sx: {
-                        fontSize: uiTokens.sidebar.sectionFontSize,
-                        fontWeight: 700,
 
-                        letterSpacing:
-                          '0.08em',
+                {/* =========================================
+                    GROUP HEADER
+                ========================================= */}
 
-                        color:
-                          'text.secondary',
-                      },
-                    },
-                  }}
-                />
+                <ListItemButton
+                  aria-hidden={
+                    collapsed
+                  }
 
-                <ExpandMoreRounded
-                  sx={{
-                    fontSize: 16,
-                    color: 'text.secondary',
-                    transform: groupOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                    transition: iconTransition,
-                  }}
-                />
-              </ListItemButton>
+                  tabIndex={
+                    collapsed
+                      ? -1
+                      : 0
+                  }
 
+                  onClick={() =>
+                    toggleGroup(
+                      group.id,
+                    )
+                  }
 
-              {/* GROUP ITEMS */}
-
-              <Collapse
-                in={
-                  collapsed ||
-                  groupOpen
-                }
-                timeout="auto"
-              >
-                <List
-                  disablePadding
-                  sx={{
-                    px: collapsed
-                      ? 0.5
-                      : 0.75,
-                  }}
+                  sx={(theme) =>
+                    getGroupHeaderSx(
+                      theme,
+                      collapsed,
+                      accent,
+                    )
+                  }
                 >
-                  {group.items.map(
-                    (item) => {
+                  <ListItemText
+                    primary={
+                      group.label
+                    }
 
-                      const active =
-                        location.pathname ===
-                        item.path
+                    slotProps={{
+                      primary: {
+                        sx: {
+                          fontSize:
+                            uiTokens
+                              .sidebar
+                              .sectionFontSize,
 
-                      const menuButton = (
-                        <ListItemButton
-                          component={NavLink}
-                          to={item.path}
-                          selected={active}
+                          fontWeight:
+                            700,
 
-                          sx={(theme) => ({
-                            position:
-                              'relative',
+                          letterSpacing:
+                            '0.08em',
 
-                            minHeight: 38,
+                          color:
+                            'text.secondary',
+                        },
+                      },
+                    }}
+                  />
 
-                            mb: 0.25,
+                  <ExpandMoreRounded
+                    sx={{
+                      fontSize:
+                        16,
 
-                            px: collapsed
-                              ? 0
-                              : 1,
+                      color:
+                        'text.secondary',
 
-                            justifyContent:
-                              collapsed
-                                ? 'center'
-                                : 'flex-start',
+                      transform:
+                        groupOpen
+                          ? 'rotate(180deg)'
+                          : 'rotate(0deg)',
 
-                            borderRadius: uiTokens.control.borderRadius,
+                      transition:
+                        iconTransition,
+                    }}
+                  />
 
-                            color: active
-                              ? 'primary.main'
-                              : 'text.secondary',
-
-                            transition:
-                              'background-color 140ms ease, color 140ms ease',
-
-                            // ACTIVE LEFT INDICATOR
-                            '&::before': {
-                              content: '""',
-
-                              position:
-                                'absolute',
-
-                              left: 0,
-
-                              top: 8,
-                              bottom: 8,
-
-                              width: 3,
-
-                              borderRadius:
-                                '0 4px 4px 0',
-
-                              bgcolor:
-                                'primary.main',
-
-                              opacity: active ? 1 : 0,
-                              transform: active ? 'scaleY(1)' : 'scaleY(0)',
-                              transformOrigin: 'center',
-                              transition: 'transform 180ms ease, opacity 180ms ease',
-                              boxShadow: active
-                                ? `0 0 6px ${theme.palette.primary.main}`
-                                : 'none',
-                            },
-
-                            '&:hover': {
-                              bgcolor:
-                                'action.hover',
-
-                              color:
-                                'text.primary',
-
-                              '& .MuiListItemIcon-root svg': {
-                                transform: 'translateX(2px) scale(1.05)',
-                              },
-                            },
-
-                            '&.Mui-selected': {
-                              bgcolor:
-                                theme.palette.mode ===
-                                  'dark'
-                                  ? 'rgba(59,130,246,0.14)'
-                                  : 'rgba(37,99,235,0.08)',
-
-                              color:
-                                'primary.main',
-                            },
-
-                            '&.Mui-selected:hover': {
-                              bgcolor:
-                                theme.palette.mode ===
-                                  'dark'
-                                  ? 'rgba(59,130,246,0.18)'
-                                  : 'rgba(37,99,235,0.12)',
-                            },
-                          })}
-                        >
-
-                          {/* ICON */}
-
-                          <ListItemIcon
-                            sx={{
-                              minWidth:
-                                collapsed
-                                  ? 0
-                                  : 32,
-
-                              justifyContent:
-                                'center',
-
-                              color: 'inherit',
-
-                              '& svg': {
-                                fontSize: 18,
-                                transform: 'translateX(0) scale(1)',
-                                transition: iconTransition,
-                              },
-                            }}
-                          >
-                            {item.icon}
-                          </ListItemIcon>
+                </ListItemButton>
 
 
-                          {/* LABEL */}
+                {/* =========================================
+                    ITEMS
+                ========================================= */}
 
-                          <ListItemText
-                            aria-hidden={collapsed}
-                            primary={
-                              item.label
+                <Collapse
+                  in={
+                    collapsed
+                    || groupOpen
+                  }
+
+                  timeout="auto"
+                >
+                  <List
+                    disablePadding
+
+                    sx={{
+                      px:
+                        collapsed
+                          ? 0.5
+                          : 0.75,
+                    }}
+                  >
+
+                    {group.items.map(
+                      (item) => {
+
+                        const active =
+                          location.pathname
+                          === item.path
+
+
+                        const menuButton = (
+                          <ListItemButton
+                            component={
+                              NavLink
                             }
-                            sx={{
-                              ml: collapsed ? 0 : 0.5,
-                              maxWidth: collapsed ? 0 : 150,
-                              opacity: collapsed ? 0 : 1,
-                              overflow: 'hidden',
-                              transform: collapsed ? 'translateX(-6px)' : 'translateX(0)',
-                              transition: `${labelTransition}, max-width 180ms ease, margin 180ms ease`,
-                            }}
-                            slotProps={{
-                              primary: {
-                                noWrap: true,
 
-                                sx: {
-                                  fontSize: uiTokens.sidebar.menuFontSize,
+                            to={
+                              item.path
+                            }
 
-                                  fontWeight:
-                                    active
-                                      ? 700
-                                      : 500,
+                            selected={
+                              active
+                            }
+
+                            sx={(theme) =>
+                              getMenuItemSx(
+                                theme,
+                                collapsed,
+                                active,
+                              )
+                            }
+                          >
+
+                            {/* ICON */}
+
+                            <ListItemIcon
+                              sx={{
+                                minWidth:
+                                  collapsed
+                                    ? 0
+                                    : 32,
+
+                                justifyContent:
+                                  'center',
+
+                                color:
+                                  'inherit',
+
+                                '& svg': {
+                                  fontSize:
+                                    18,
+
+                                  transform:
+                                    'translateX(0) scale(1)',
+
+                                  transition:
+                                    iconTransition,
                                 },
-                              },
-                            }}
-                          />
-
-                        </ListItemButton>
-                      )
+                              }}
+                            >
+                              {item.icon}
+                            </ListItemIcon>
 
 
-                      if (!collapsed) {
+                            {/* LABEL */}
+
+                            <ListItemText
+                              aria-hidden={
+                                collapsed
+                              }
+
+                              primary={
+                                item.label
+                              }
+
+                              sx={{
+                                ml:
+                                  collapsed
+                                    ? 0
+                                    : 0.5,
+
+                                maxWidth:
+                                  collapsed
+                                    ? 0
+                                    : 150,
+
+                                opacity:
+                                  collapsed
+                                    ? 0
+                                    : 1,
+
+                                overflow:
+                                  'hidden',
+
+                                transform:
+                                  collapsed
+                                    ? 'translateX(-6px)'
+                                    : 'translateX(0)',
+
+                                transition:
+                                  `${labelTransition}, max-width 180ms ease, margin 180ms ease`,
+                              }}
+
+                              slotProps={{
+                                primary: {
+                                  noWrap:
+                                    true,
+
+                                  sx: {
+                                    fontSize:
+                                      uiTokens
+                                        .sidebar
+                                        .menuFontSize,
+
+                                    fontWeight:
+                                      active
+                                        ? 700
+                                        : 500,
+                                  },
+                                },
+                              }}
+                            />
+
+                          </ListItemButton>
+                        )
+
+
+                        // NORMAL SIDEBAR
+
+                        if (
+                          !collapsed
+                        ) {
+                          return (
+                            <Box
+                              key={
+                                item.path
+                              }
+                            >
+                              {menuButton}
+                            </Box>
+                          )
+                        }
+
+
+                        // COLLAPSED SIDEBAR
+
                         return (
-                          <Box
+                          <Tooltip
                             key={
                               item.path
                             }
+
+                            title={
+                              item.label
+                            }
+
+                            placement="right"
+
+                            arrow
                           >
                             {menuButton}
-                          </Box>
+                          </Tooltip>
                         )
-                      }
+                      },
+                    )}
+
+                  </List>
+                </Collapse>
 
 
-                      return (
-                        <Tooltip
-                          key={item.path}
-                          title={item.label}
-                          placement="right"
-                          arrow
-                        >
-                          {menuButton}
-                        </Tooltip>
-                      )
-                    },
-                  )}
-                </List>
-              </Collapse>
+                {/* COLLAPSED SEPARATOR */}
 
+                {collapsed && (
+                  <Divider
+                    sx={{
+                      mx:
+                        1,
 
-              {/* separator collapsed */}
+                      mt:
+                        0.75,
+                    }}
+                  />
+                )}
 
-              {collapsed && (
-                <Divider
-                  sx={{
-                    mx: 1,
-                    mt: 0.75,
-                  }}
-                />
-              )}
-
-            </Box>
-          )
-        })}
+              </Box>
+            )
+          },
+        )}
 
       </Box>
 
 
-      {/* =====================================================
+      {/* ===================================================
           FOOTER
-      ===================================================== */}
+      =================================================== */}
 
-      <Box
-        aria-hidden={collapsed}
-        sx={{
-          maxHeight: collapsed ? 0 : 48,
-          opacity: collapsed ? 0 : 1,
-          overflow: 'hidden',
-          transform: collapsed ? 'translateX(-6px)' : 'translateX(0)',
-          transition: `${labelTransition}, max-height 180ms ease`,
-        }}
-      >
-        <Divider />
-
+      {!collapsed && (
         <Box
-          sx={{
-            px: 1.5,
-            py: 1,
-          }}
+          sx={(theme) =>
+            getFooterSx(
+              theme,
+            )
+          }
         >
           <Typography
             color="text.disabled"
+
             sx={{
-              fontSize: uiTokens.sidebar.sectionFontSize,
+              fontSize:
+                uiTokens
+                  .sidebar
+                  .sectionFontSize,
+
+              letterSpacing:
+                '0.03em',
             }}
           >
             Production System
           </Typography>
         </Box>
-      </Box>
+      )}
 
     </Box>
   )

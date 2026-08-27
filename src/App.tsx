@@ -18,10 +18,20 @@ import {
 import { MainLayout } from './components/layout/MainLayout'
 
 import { BacklogPage } from './pages/BacklogPage'
+import { AsakaiPage } from './pages/AsakaiPage'
+import { BosbPage } from './pages/BosbPage'
+import { CostMonitoringPage } from './pages/CostMonitoringPage'
+import { DeadstockPage } from './pages/DeadstockPage'
 import { ExportListPage } from './pages/ExportListPage'
+import { FacConfirmPage } from './pages/FacConfirmPage'
+import { KpiPage } from './pages/KpiPage'
 import { OdbfPage } from './pages/OdbfPage'
+import { OtPage } from './pages/OtPage'
+import { PackingListPage } from './pages/PackingListPage'
+import { PlPage } from './pages/PlPage'
 import { SalesStatusPage } from './pages/SalesStatusPage'
 import { ShipmentPage } from './pages/ShipmentPage'
+import { SphPage } from './pages/SphPage'
 
 import {
   createDashboardTheme,
@@ -133,6 +143,14 @@ function App() {
               }
             />
 
+            {/* =========================
+                PRODUCTION
+            ========================= */}
+
+            <Route path="sph" element={<SphPage />} />
+            <Route path="asakai" element={<AsakaiPage />} />
+            <Route path="cost-monitoring" element={<CostMonitoringPage />} />
+
 
             {/* =========================
                 PLANNING
@@ -155,10 +173,14 @@ function App() {
               element={<OdbfPage />}
             />
 
+            <Route path="fac-confirm" element={<FacConfirmPage />} />
+
             <Route
               path="export-list"
               element={<ExportListPage />}
             />
+
+            <Route path="packing-list" element={<PackingListPage />} />
 
             <Route
               path="sales-status"
@@ -174,6 +196,16 @@ function App() {
               path="shipping-schedule"
               element={<ShipmentPage />}
             />
+
+            {/* =========================
+                MANAGEMENT
+            ========================= */}
+
+            <Route path="bosb" element={<BosbPage />} />
+            <Route path="deadstock" element={<DeadstockPage />} />
+            <Route path="pl" element={<PlPage />} />
+            <Route path="kpi" element={<KpiPage />} />
+            <Route path="ot" element={<OtPage />} />
 
 
             {/* =========================

@@ -1,24 +1,14 @@
-import {
-  Alert,
-  Box,
-  Button,
-  Checkbox,
-  CircularProgress,
-  Divider,
-  FormControlLabel,
-  Popover,
-  Stack,
-  TextField,
-  Typography,
-} from '@mui/material'
+import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import {
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react'
-import type { ExcelFilterField } from '../../config/backlogFilterFields'
+  Alert, Box, Button, CircularProgress, Divider, ListItemButton,
+  ListItemText, Popover, Stack, TextField, Typography,
+} from '@mui/material'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import {
+  getBacklogFilterKind,
+  type ExcelFilterField,
+} from '../../config/backlogFilterFields'
 import {
   getBacklogFilterOptions,
   type BacklogFilterItem,
@@ -27,11 +17,30 @@ import {
   ExcelFilterContext,
   type ExcelFilterContextValue,
 } from './excelFilterContext'
+import {
+  ExcelFilterConditionMenu,
+  type FilterCondition,
+} from './ExcelFilterConditionMenu'
+import { ExcelFilterValueList } from './ExcelFilterValueList'
 
 interface ExcelColumnFilterProviderProps {
   children: ReactNode
   excelFilters: BacklogFilterItem[]
   onExcelFiltersChange: (filters: BacklogFilterItem[]) => void
+}
+
+type FilterView = 'values' | 'condition'
+
+const conditionLabels: Record<string, string> = {
+  equals: 'Equals', doesNotEqual: 'Does Not Equal', startsWith: 'Begins With',
+  endsWith: 'Ends With', contains: 'Contains', doesNotContain: 'Does Not Contain',
+  isEmpty: 'Is Empty', isNotEmpty: 'Is Not Empty', '=': 'Equals',
+  '!=': 'Does Not Equal', '>': 'Greater Than', '>=': 'Greater Than Or Equal',
+  '<': 'Less Than', '<=': 'Less Than Or Equal', before: 'Before', after: 'After',
+}
+
+function requiresFilterValue(operator: string) {
+  return operator !== 'isEmpty' && operator !== 'isNotEmpty'
 }
 
 export function ExcelColumnFilterProvider({
@@ -40,40 +49,39 @@ export function ExcelColumnFilterProvider({
   onExcelFiltersChange,
 }: ExcelColumnFilterProviderProps) {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
+  const [conditionAnchor, setConditionAnchor] = useState<HTMLElement | null>(null)
   const [field, setField] = useState<ExcelFilterField | null>(null)
   const [label, setLabel] = useState('')
   const [search, setSearch] = useState('')
   const [options, setOptions] = useState<string[]>([])
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [view, setView] = useState<FilterView>('values')
+  const [conditionOperator, setConditionOperator] = useState('contains')
+  const [conditionValue, setConditionValue] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const kind = field ? getBacklogFilterKind(field) : 'text'
 
   useEffect(() => {
     if (!anchorEl || !field) return
 
     const controller = new AbortController()
-    const otherColumnFilters = excelFilters.filter(
-      (filter) => filter.field !== field,
-    )
+    const otherColumnFilters = excelFilters.filter((filter) => filter.field !== field)
 
-    void getBacklogFilterOptions(
-      {
-        field,
-        filters: otherColumnFilters,
-        logicOperator: 'and',
-        limit: 100,
-      },
-      controller.signal,
-    )
+    void getBacklogFilterOptions({
+      field,
+      filters: otherColumnFilters,
+      logicOperator: 'and',
+      search: '',
+      limit: 100,
+    }, controller.signal)
       .then((values) => {
-        const currentFilter = excelFilters.find(
-          (filter) => filter.field === field,
-        )
+        const currentFilter = excelFilters.find((filter) => filter.field === field)
         const activeValues = currentFilter?.operator === 'isAnyOf'
           && Array.isArray(currentFilter.values)
           ? currentFilter.values
           : values
-
         setOptions(values)
         setSelected(new Set(activeValues))
       })
@@ -81,11 +89,9 @@ export function ExcelColumnFilterProvider({
         if (!controller.signal.aborted) {
           setOptions([])
           setSelected(new Set())
-          setError(
-            requestError instanceof Error
-              ? requestError.message
-              : 'Unable to load filter values',
-          )
+          setError(requestError instanceof Error
+            ? requestError.message
+            : 'Unable to load filter values')
         }
       })
       .finally(() => {
@@ -102,50 +108,58 @@ export function ExcelColumnFilterProvider({
       : options
   }, [options, search])
 
-  const allVisibleSelected =
-    visibleOptions.length > 0
+  const allVisibleSelected = visibleOptions.length > 0
     && visibleOptions.every((value) => selected.has(value))
-  const someVisibleSelected =
-    visibleOptions.some((value) => selected.has(value)) && !allVisibleSelected
+  const someVisibleSelected = visibleOptions.some((value) => selected.has(value))
+    && !allVisibleSelected
   const hasActiveFilter = field
     ? excelFilters.some((filter) => filter.field === field)
     : false
+  const conditionNeedsValue = requiresFilterValue(conditionOperator)
+  const conditionCanApply = !conditionNeedsValue || conditionValue.trim() !== ''
 
   function closeFilter() {
     setAnchorEl(null)
+    setConditionAnchor(null)
     setSearch('')
   }
 
-  function clearFilter() {
+  function replaceCurrentFieldFilter(nextFilter?: BacklogFilterItem) {
     if (!field) return
-    onExcelFiltersChange(
-      excelFilters.filter((filter) => filter.field !== field),
-    )
+    const otherColumnFilters = excelFilters.filter((filter) => filter.field !== field)
+    onExcelFiltersChange(nextFilter
+      ? [...otherColumnFilters, nextFilter]
+      : otherColumnFilters)
+  }
+
+  function clearFilter() {
+    replaceCurrentFieldFilter()
     closeFilter()
   }
 
-  function applyFilter() {
+  function applyValueFilter() {
     if (!field) return
-
-    const otherColumnFilters = excelFilters.filter(
-      (filter) => filter.field !== field,
-    )
     const selectedValues = options.filter((value) => selected.has(value))
-
-    if (selectedValues.length === options.length) {
-      onExcelFiltersChange(otherColumnFilters)
-    } else {
-      onExcelFiltersChange([
-        ...otherColumnFilters,
-        {
-          field,
-          operator: 'isAnyOf',
-          values: selectedValues,
-        },
-      ])
-    }
-
+    replaceCurrentFieldFilter(selectedValues.length === options.length
+      ? undefined
+      : { field, operator: 'isAnyOf', values: selectedValues })
     closeFilter()
+  }
+
+  function applyConditionFilter() {
+    if (!field || !conditionCanApply) return
+    replaceCurrentFieldFilter({
+      field,
+      operator: conditionOperator,
+      ...(conditionNeedsValue ? { value: conditionValue.trim() } : {}),
+    })
+    closeFilter()
+  }
+
+  function selectCondition(condition: FilterCondition) {
+    setConditionOperator(condition.operator)
+    if (!condition.requiresValue) setConditionValue('')
+    setView('condition')
   }
 
   function toggleSelectAll() {
@@ -168,23 +182,25 @@ export function ExcelColumnFilterProvider({
     })
   }
 
-  const contextValue = useMemo<ExcelFilterContextValue>(
-    () => ({
-      excelFilters,
-      onExcelFiltersChange,
-      openFilter: (nextField, nextLabel, nextAnchor) => {
-        setField(nextField)
-        setLabel(nextLabel)
-        setOptions([])
-        setSelected(new Set())
-        setSearch('')
-        setLoading(true)
-        setError(null)
-        setAnchorEl(nextAnchor)
-      },
-    }),
-    [excelFilters, onExcelFiltersChange],
-  )
+  const contextValue = useMemo<ExcelFilterContextValue>(() => ({
+    excelFilters,
+    onExcelFiltersChange,
+    openFilter: (nextField, nextLabel, nextAnchor) => {
+      const activeFilter = excelFilters.find((filter) => filter.field === nextField)
+      const hasCondition = Boolean(activeFilter && activeFilter.operator !== 'isAnyOf')
+      setField(nextField)
+      setLabel(nextLabel)
+      setOptions([])
+      setSelected(new Set())
+      setSearch('')
+      setView(hasCondition ? 'condition' : 'values')
+      setConditionOperator(hasCondition && activeFilter ? activeFilter.operator : 'contains')
+      setConditionValue(hasCondition ? activeFilter?.value ?? '' : '')
+      setLoading(true)
+      setError(null)
+      setAnchorEl(nextAnchor)
+    },
+  }), [excelFilters, onExcelFiltersChange])
 
   return (
     <ExcelFilterContext.Provider value={contextValue}>
@@ -194,61 +210,75 @@ export function ExcelColumnFilterProvider({
         anchorEl={anchorEl}
         onClose={closeFilter}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-        slotProps={{ paper: { sx: { width: 310, maxHeight: 520, overflow: 'hidden' } } }}
+        slotProps={{ paper: { sx: { width: 310, maxHeight: 540, overflow: 'hidden' } } }}
       >
-        <Box sx={{ px: 1, pt: 1 }}>
-          <Typography sx={{ mb: 0.5, fontWeight: 700 }}>{label}</Typography>
-          <TextField
-            autoFocus
-            fullWidth
-            size="small"
-            placeholder="Search values..."
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <SearchRoundedIcon sx={{ mr: 0.75, fontSize: 18, color: 'text.secondary' }} />
-                ),
-              },
-            }}
-          />
-        </Box>
+        <Typography sx={{ px: 1, pt: 1, pb: 0.5, fontWeight: 700 }}>{label}</Typography>
 
-        {loading ? (
-          <Box sx={{ height: 250, display: 'grid', placeItems: 'center' }}>
-            <CircularProgress size={24} />
-          </Box>
-        ) : error ? (
-          <Box sx={{ p: 1 }}><Alert severity="error">{error}</Alert></Box>
-        ) : (
-          <Box sx={{ height: 250, overflowY: 'auto', px: 1, py: 0.5 }}>
-            <FormControlLabel
-              control={(
-                <Checkbox
-                  size="small"
-                  checked={allVisibleSelected}
-                  indeterminate={someVisibleSelected}
-                  onChange={toggleSelectAll}
-                />
-              )}
-              label="(Select All)"
-              sx={{ m: 0, width: '100%', '& .MuiFormControlLabel-label': { fontWeight: 700 } }}
-            />
-            {visibleOptions.map((value) => (
-              <FormControlLabel
-                key={value || '__blank__'}
-                control={(
-                  <Checkbox
-                    size="small"
-                    checked={selected.has(value)}
-                    onChange={() => toggleValue(value)}
-                  />
-                )}
-                label={value || '(Blank)'}
-                sx={{ m: 0, width: '100%' }}
+        {view === 'values' ? (
+          <>
+            <Box sx={{ px: 1, pb: 0.75 }}>
+              <TextField
+                autoFocus fullWidth size="small" placeholder="Search values..."
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                slotProps={{ input: { startAdornment: (
+                  <SearchRoundedIcon sx={{ mr: 0.75, fontSize: 18, color: 'text.secondary' }} />
+                ) } }}
               />
-            ))}
+            </Box>
+            <Divider />
+            <ListItemButton
+              onClick={(event) => setConditionAnchor(event.currentTarget)}
+              sx={{ minHeight: 36, px: 1.25 }}
+            >
+              <ListItemText
+                primary={`${kind === 'text' ? 'Text' : kind === 'number' ? 'Number' : 'Date'} Filters`}
+                slotProps={{ primary: { sx: { fontSize: 12.5, fontWeight: 600 } } }}
+              />
+              <ChevronRightRoundedIcon fontSize="small" />
+            </ListItemButton>
+            <Divider />
+
+            {loading ? (
+              <Box sx={{ height: 245, display: 'grid', placeItems: 'center' }}>
+                <CircularProgress size={24} />
+              </Box>
+            ) : error ? (
+              <Box sx={{ p: 1 }}><Alert severity="error">{error}</Alert></Box>
+            ) : (
+              <ExcelFilterValueList
+                values={visibleOptions}
+                selected={selected}
+                allSelected={allVisibleSelected}
+                someSelected={someVisibleSelected}
+                onToggleAll={toggleSelectAll}
+                onToggleValue={toggleValue}
+              />
+            )}
+          </>
+        ) : (
+          <Box sx={{ px: 1, py: 1 }}>
+            <Stack
+              direction="row"
+              sx={{ mb: 1, alignItems: 'center', justifyContent: 'space-between' }}
+            >
+              <Typography sx={{ fontWeight: 700 }}>
+                {conditionLabels[conditionOperator] ?? conditionOperator}
+              </Typography>
+              <Button size="small" onClick={() => setView('values')}>Value list</Button>
+            </Stack>
+            {conditionNeedsValue && (
+              <TextField
+                autoFocus fullWidth size="small"
+                type={kind === 'number' ? 'number' : kind === 'date' ? 'date' : 'text'}
+                placeholder="Enter value..."
+                value={conditionValue}
+                onChange={(event) => setConditionValue(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && conditionCanApply) applyConditionFilter()
+                }}
+              />
+            )}
           </Box>
         )}
 
@@ -258,13 +288,20 @@ export function ExcelColumnFilterProvider({
           <Button variant="outlined" onClick={closeFilter}>Cancel</Button>
           <Button
             variant="contained"
-            disabled={loading || Boolean(error)}
-            onClick={applyFilter}
+            disabled={view === 'values' ? loading || Boolean(error) : !conditionCanApply}
+            onClick={view === 'values' ? applyValueFilter : applyConditionFilter}
           >
             OK
           </Button>
         </Stack>
       </Popover>
+
+      <ExcelFilterConditionMenu
+        anchorEl={conditionAnchor}
+        kind={kind}
+        onClose={() => setConditionAnchor(null)}
+        onSelect={selectCondition}
+      />
     </ExcelFilterContext.Provider>
   )
 }

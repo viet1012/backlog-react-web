@@ -4,35 +4,32 @@ import type { BacklogFilterKind } from '../../config/backlogFilterFields'
 export interface FilterCondition {
   label: string
   operator: string
-  between?: boolean
+  requiresValue: boolean
 }
 
 const conditions: Record<BacklogFilterKind, FilterCondition[]> = {
   text: [
-    { label: 'Equals...', operator: 'equals' },
-    { label: 'Does Not Equal...', operator: 'doesNotEqual' },
-    { label: 'Begins With...', operator: 'startsWith' },
-    { label: 'Ends With...', operator: 'endsWith' },
-    { label: 'Contains...', operator: 'contains' },
-    { label: 'Does Not Contain...', operator: 'doesNotContain' },
-    { label: 'Custom Filter...', operator: 'contains' },
+    { label: 'Equals...', operator: 'equals', requiresValue: true },
+    { label: 'Does Not Equal...', operator: 'doesNotEqual', requiresValue: true },
+    { label: 'Begins With...', operator: 'startsWith', requiresValue: true },
+    { label: 'Ends With...', operator: 'endsWith', requiresValue: true },
+    { label: 'Contains...', operator: 'contains', requiresValue: true },
+    { label: 'Does Not Contain...', operator: 'doesNotContain', requiresValue: true },
+    { label: 'Is Empty', operator: 'isEmpty', requiresValue: false },
+    { label: 'Is Not Empty', operator: 'isNotEmpty', requiresValue: false },
   ],
   number: [
-    { label: 'Equals...', operator: '=' },
-    { label: 'Does Not Equal...', operator: '!=' },
-    { label: 'Greater Than...', operator: '>' },
-    { label: 'Greater Than Or Equal...', operator: '>=' },
-    { label: 'Less Than...', operator: '<' },
-    { label: 'Less Than Or Equal...', operator: '<=' },
-    { label: 'Between...', operator: 'between', between: true },
-    { label: 'Custom Filter...', operator: '=' },
+    { label: 'Equals...', operator: '=', requiresValue: true },
+    { label: 'Does Not Equal...', operator: '!=', requiresValue: true },
+    { label: 'Greater Than...', operator: '>', requiresValue: true },
+    { label: 'Greater Than Or Equal...', operator: '>=', requiresValue: true },
+    { label: 'Less Than...', operator: '<', requiresValue: true },
+    { label: 'Less Than Or Equal...', operator: '<=', requiresValue: true },
   ],
   date: [
-    { label: 'Equals...', operator: 'equals' },
-    { label: 'Before...', operator: 'before' },
-    { label: 'After...', operator: 'after' },
-    { label: 'Between...', operator: 'between', between: true },
-    { label: 'Custom Filter...', operator: 'equals' },
+    { label: 'Equals...', operator: 'equals', requiresValue: true },
+    { label: 'Before...', operator: 'before', requiresValue: true },
+    { label: 'After...', operator: 'after', requiresValue: true },
   ],
 }
 
