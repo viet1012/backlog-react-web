@@ -1,5 +1,5 @@
 import { Menu, MenuItem } from '@mui/material'
-import type { BacklogFilterKind } from '../../config/backlogFilterFields'
+import type { ExcelFilterKind } from './excelFilterContext'
 
 export interface FilterCondition {
   label: string
@@ -7,7 +7,7 @@ export interface FilterCondition {
   requiresValue: boolean
 }
 
-const conditions: Record<BacklogFilterKind, FilterCondition[]> = {
+const conditions: Record<ExcelFilterKind, FilterCondition[]> = {
   text: [
     { label: 'Equals...', operator: 'equals', requiresValue: true },
     { label: 'Does Not Equal...', operator: 'doesNotEqual', requiresValue: true },
@@ -35,7 +35,7 @@ const conditions: Record<BacklogFilterKind, FilterCondition[]> = {
 
 interface ExcelFilterConditionMenuProps {
   anchorEl: HTMLElement | null
-  kind: BacklogFilterKind
+  kind: ExcelFilterKind
   onClose: () => void
   onSelect: (condition: FilterCondition) => void
 }

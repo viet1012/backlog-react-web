@@ -1,12 +1,28 @@
 import { createContext, useContext } from 'react'
-import type { ExcelFilterField } from '../../config/backlogFilterFields'
-import type { BacklogFilterItem } from '../../services/reportService'
+
+export type ExcelFilterKind = 'text' | 'number' | 'date'
+
+export interface ExcelFilterItem {
+  field: string
+  operator: string
+  value?: string
+  values?: string[]
+}
+
+export interface ExcelFilterOptionsRequest {
+  field: string
+  filters: ExcelFilterItem[]
+  logicOperator: 'and' | 'or'
+  search?: string
+  limit?: number
+}
 
 export interface ExcelFilterContextValue {
-  excelFilters: BacklogFilterItem[]
-  onExcelFiltersChange: (filters: BacklogFilterItem[]) => void
+  excelFilters: ExcelFilterItem[]
+  onExcelFiltersChange: (filters: ExcelFilterItem[]) => void
+  isFilterableField: (field: string) => boolean
   openFilter: (
-    field: ExcelFilterField,
+    field: string,
     label: string,
     anchorEl: HTMLElement,
   ) => void

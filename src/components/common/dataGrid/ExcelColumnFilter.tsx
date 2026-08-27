@@ -6,15 +6,10 @@ import {
 } from '@mui/material'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
-  getBacklogFilterKind,
-  type ExcelFilterField,
-} from '../../config/backlogFilterFields'
-import {
-  getBacklogFilterOptions,
-  type BacklogFilterItem,
-} from '../../services/reportService'
-import {
   ExcelFilterContext,
+  type ExcelFilterItem,
+  type ExcelFilterKind,
+  type ExcelFilterOptionsRequest,
   type ExcelFilterContextValue,
 } from './excelFilterContext'
 import {
@@ -25,8 +20,14 @@ import { ExcelFilterValueList } from './ExcelFilterValueList'
 
 interface ExcelColumnFilterProviderProps {
   children: ReactNode
-  excelFilters: BacklogFilterItem[]
-  onExcelFiltersChange: (filters: BacklogFilterItem[]) => void
+  excelFilters: ExcelFilterItem[]
+  onExcelFiltersChange: (filters: ExcelFilterItem[]) => void
+  isFilterableField: (field: string) => boolean
+  getFilterKind: (field: string) => ExcelFilterKind
+  loadOptions: (
+    request: ExcelFilterOptionsRequest,
+    signal?: AbortSignal,
+  ) => Promise<string[]>
 }
 
 type FilterView = 'values' | 'condition'
@@ -47,10 +48,13 @@ export function ExcelColumnFilterProvider({
   children,
   excelFilters,
   onExcelFiltersChange,
+  isFilterableField,
+  getFilterKind,
+  loadOptions,
 }: ExcelColumnFilterProviderProps) {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
   const [conditionAnchor, setConditionAnchor] = useState<HTMLElement | null>(null)
-  const [field, setField] = useState<ExcelFilterField | null>(null)
+  const [field, setField] = useState<string | null>(null)
   const [label, setLabel] = useState('')
   const [search, setSearch] = useState('')
   const [options, setOptions] = useState<string[]>([])
@@ -61,7 +65,7 @@ export function ExcelColumnFilterProvider({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const kind = field ? getBacklogFilterKind(field) : 'text'
+  const kind = field ? getFilterKind(field) : 'text'
 
   useEffect(() => {
     if (!anchorEl || !field) return
@@ -69,7 +73,7 @@ export function ExcelColumnFilterProvider({
     const controller = new AbortController()
     const otherColumnFilters = excelFilters.filter((filter) => filter.field !== field)
 
-    void getBacklogFilterOptions({
+    void loadOptions({
       field,
       filters: otherColumnFilters,
       logicOperator: 'and',
@@ -99,7 +103,7 @@ export function ExcelColumnFilterProvider({
       })
 
     return () => controller.abort()
-  }, [anchorEl, excelFilters, field])
+  }, [anchorEl, excelFilters, field, loadOptions])
 
   const visibleOptions = useMemo(() => {
     const query = search.trim().toLocaleLowerCase()
@@ -124,7 +128,7 @@ export function ExcelColumnFilterProvider({
     setSearch('')
   }
 
-  function replaceCurrentFieldFilter(nextFilter?: BacklogFilterItem) {
+  function replaceCurrentFieldFilter(nextFilter?: ExcelFilterItem) {
     if (!field) return
     const otherColumnFilters = excelFilters.filter((filter) => filter.field !== field)
     onExcelFiltersChange(nextFilter
@@ -185,6 +189,7 @@ export function ExcelColumnFilterProvider({
   const contextValue = useMemo<ExcelFilterContextValue>(() => ({
     excelFilters,
     onExcelFiltersChange,
+    isFilterableField,
     openFilter: (nextField, nextLabel, nextAnchor) => {
       const activeFilter = excelFilters.find((filter) => filter.field === nextField)
       const hasCondition = Boolean(activeFilter && activeFilter.operator !== 'isAnyOf')
@@ -200,7 +205,7 @@ export function ExcelColumnFilterProvider({
       setError(null)
       setAnchorEl(nextAnchor)
     },
-  }), [excelFilters, onExcelFiltersChange])
+  }), [excelFilters, isFilterableField, onExcelFiltersChange])
 
   return (
     <ExcelFilterContext.Provider value={contextValue}>

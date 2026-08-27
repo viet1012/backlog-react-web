@@ -29,11 +29,6 @@ import {
     useExcelColumnFilter,
 } from './excelFilterContext'
 
-import {
-    isExcelFilterField,
-} from '../../config/backlogFilterFields'
-
-
 // =========================================================
 // EXCEL COLUMN MENU
 // =========================================================
@@ -103,7 +98,7 @@ export function ExcelColumnMenu(
         event.stopPropagation()
 
         if (
-            !isExcelFilterField(
+            !excelFilter.isFilterableField(
                 colDef.field,
             )
         ) {
@@ -241,7 +236,7 @@ export function ExcelColumnMenu(
                     onClick={openFilter}
 
                     disabled={
-                        !isExcelFilterField(
+                        !excelFilter.isFilterableField(
                             colDef.field,
                         )
                     }

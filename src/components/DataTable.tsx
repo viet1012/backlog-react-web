@@ -1,188 +1,118 @@
 import {
-  DataGrid,
   GridToolbarColumnsButton,
   GridToolbarContainer,
+  type GridColumnVisibilityModel,
   type GridPaginationModel,
   type GridSortModel,
-  type GridColumnOrderChangeParams,
-  type GridColumnResizeParams,
 } from '@mui/x-data-grid'
-import { useMemo } from 'react'
-
 import { backlogColumns } from './backlog/backlogColumns'
-import { ExcelColumnFilterProvider } from './backlog/ExcelColumnFilter'
-
-import type { ProductionOrder } from '../types/report'
-import { ExcelColumnMenu } from './backlog/ExcelColumnMenu'
+import { ExcelColumnFilterProvider } from './common/dataGrid/ExcelColumnFilter'
+import { ExcelColumnMenu } from './common/dataGrid/ExcelColumnMenu'
+import { ReusableDataGrid } from './common/dataGrid/ReusableDataGrid'
+import type { ExcelFilterOptionsRequest } from './common/dataGrid/excelFilterContext'
 import {
-  dataGridHeaderSx,
-  preventColumnHeaderSort,
-} from '../theme/dataGridHeaderStyles'
-import type { BacklogFilterItem } from '../services/reportService'
-import type { GridColumnVisibilityModel } from '@mui/x-data-grid'
-import { applyGridColumnPreferences } from '../utils/uiPreferences'
+  getBacklogFilterKind,
+  isExcelFilterField,
+} from '../config/backlogFilterFields'
+import {
+  getBacklogFilterOptions,
+  type BacklogFilterItem,
+} from '../services/reportService'
+import { preventColumnHeaderSort } from '../theme/dataGridHeaderStyles'
+import type { ProductionOrder } from '../types/report'
 
 interface DataTableProps {
   data: ProductionOrder[]
   loading: boolean
-
   page: number
   pageSize: number
   totalElements: number
-
   excelFilters: BacklogFilterItem[]
   sortModel: GridSortModel
-
-  columnVisibilityModel:
-  GridColumnVisibilityModel
-
-  onColumnVisibilityModelChange: (
-    model: GridColumnVisibilityModel,
-  ) => void
+  columnVisibilityModel: GridColumnVisibilityModel
   columnOrder: string[]
   columnWidths: Record<string, number>
+  onColumnVisibilityModelChange: (model: GridColumnVisibilityModel) => void
   onColumnOrderChange: (order: string[]) => void
   onColumnWidthChange: (field: string, width: number) => void
-
-  onExcelFiltersChange: (
-    filters: BacklogFilterItem[],
-  ) => void
-
-  onSortChange: (
-    model: GridSortModel,
-  ) => void
-
-  onPaginationChange: (
-    model: GridPaginationModel,
-  ) => void
+  onExcelFiltersChange: (filters: BacklogFilterItem[]) => void
+  onSortChange: (model: GridSortModel) => void
+  onPaginationChange: (model: GridPaginationModel) => void
 }
 
 function BacklogToolbar() {
   return (
-    <GridToolbarContainer
-      sx={{
-        justifyContent: 'flex-end',
-        minHeight: 40,
-        px: 1,
-        py: 0.5,
-      }}
-    >
+    <GridToolbarContainer sx={{ justifyContent: 'flex-end', minHeight: 40, px: 1, py: 0.5 }}>
       <GridToolbarColumnsButton />
     </GridToolbarContainer>
   )
 }
 
+function getFilterKind(field: string) {
+  return isExcelFilterField(field) ? getBacklogFilterKind(field) : 'text'
+}
+
+async function loadFilterOptions(
+  request: ExcelFilterOptionsRequest,
+  signal?: AbortSignal,
+) {
+  if (!isExcelFilterField(request.field)) {
+    throw new Error(`Unsupported backlog filter field: ${request.field}`)
+  }
+  return getBacklogFilterOptions({
+    ...request,
+    field: request.field,
+  }, signal)
+}
+
 export function DataTable({
   data,
   loading,
-
   page,
   pageSize,
   totalElements,
-
   excelFilters,
   sortModel,
-
   columnVisibilityModel,
-  onColumnVisibilityModelChange,
   columnOrder,
   columnWidths,
+  onColumnVisibilityModelChange,
   onColumnOrderChange,
   onColumnWidthChange,
-
   onExcelFiltersChange,
   onSortChange,
   onPaginationChange,
 }: DataTableProps) {
-  const preferredColumns = useMemo(() => {
-    return applyGridColumnPreferences(backlogColumns, columnOrder, columnWidths)
-  }, [columnOrder, columnWidths])
-
-  function handleColumnOrderChange(params: GridColumnOrderChangeParams) {
-    const nextOrder = preferredColumns.map((column) => column.field)
-    const [movedField] = nextOrder.splice(params.oldIndex, 1)
-    if (!movedField) return
-    nextOrder.splice(params.targetIndex, 0, movedField)
-    onColumnOrderChange(nextOrder)
-  }
-
-  function handleColumnWidthChange(params: GridColumnResizeParams) {
-    onColumnWidthChange(params.colDef.field, params.width)
-  }
-
   return (
     <ExcelColumnFilterProvider
       excelFilters={excelFilters}
       onExcelFiltersChange={onExcelFiltersChange}
+      isFilterableField={isExcelFilterField}
+      getFilterKind={getFilterKind}
+      loadOptions={loadFilterOptions}
     >
-      <DataGrid
+      <ReusableDataGrid<ProductionOrder>
         rows={data}
-        columns={preferredColumns}
-
-        columnVisibilityModel={
-          columnVisibilityModel
-        }
-
-        onColumnVisibilityModelChange={
-          onColumnVisibilityModelChange
-        }
-
-        onColumnOrderChange={handleColumnOrderChange}
-        onColumnWidthChange={handleColumnWidthChange}
-        
-        getRowId={(row) =>
-          [
-            row.VBELN ?? '',
-            row.ZGLOBAL_CODE ?? '',
-            row.PIER_AUFNR ?? '',
-            row.AUFNR ?? '',
-          ].join('|')
-        }
-
+        columns={backlogColumns}
+        getRowId={(row) => [
+          row.VBELN ?? '', row.ZGLOBAL_CODE ?? '', row.PIER_AUFNR ?? '', row.AUFNR ?? '',
+        ].join('|')}
         loading={loading}
-
-        paginationMode="server"
-        filterMode="server"
-        sortingMode="server"
-
-        sortModel={sortModel}
-
-        onSortModelChange={onSortChange}
-
+        page={page}
+        pageSize={pageSize}
         rowCount={totalElements}
-
-        paginationModel={{
-          page,
-          pageSize,
-        }}
-
-        onPaginationModelChange={
-          onPaginationChange
-        }
-
-        pageSizeOptions={[
-          20,
-          50,
-          100,
-        ]}
-
-        slots={{
-          toolbar: BacklogToolbar,
-
-          // QUAN TRỌNG:
-          // thay menu mặc định của MUI
-          columnMenu: ExcelColumnMenu,
-        }}
-
-        showToolbar
-
-        density="compact"
-
-        disableRowSelectionOnClick
-
+        sortModel={sortModel}
+        columnVisibilityModel={columnVisibilityModel}
+        columnOrder={columnOrder}
+        columnWidths={columnWidths}
+        onPaginationChange={onPaginationChange}
+        onSortChange={onSortChange}
+        onColumnVisibilityModelChange={onColumnVisibilityModelChange}
+        onColumnOrderChange={onColumnOrderChange}
+        onColumnWidthChange={onColumnWidthChange}
+        toolbar={BacklogToolbar}
+        columnMenu={ExcelColumnMenu}
         onColumnHeaderClick={preventColumnHeaderSort}
-
-        sx={dataGridHeaderSx}
       />
     </ExcelColumnFilterProvider>
   )

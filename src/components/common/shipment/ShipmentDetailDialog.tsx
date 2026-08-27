@@ -12,14 +12,12 @@ import CloseRoundedIcon
     from '@mui/icons-material/CloseRounded'
 
 import {
-    DataGrid,
     GridToolbarColumnsButton,
     GridToolbarContainer,
-    type GridColumnOrderChangeParams,
-    type GridColumnResizeParams,
     type GridPaginationModel,
+    type GridSortModel,
 } from '@mui/x-data-grid'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 
 import { backlogColumns }
     from '../../backlog/backlogColumns'
@@ -33,11 +31,10 @@ import type {
 } from '../../../types/report'
 import { uiTokens } from '../../../theme/uiTokens'
 import {
-    dataGridHeaderSx,
     preventColumnHeaderSort,
 } from '../../../theme/dataGridHeaderStyles'
 import { useGridPreferences } from '../../../hooks/useGridPreferences'
-import { applyGridColumnPreferences } from '../../../utils/uiPreferences'
+import { ReusableDataGrid } from '../dataGrid/ReusableDataGrid'
 
 
 interface ShipmentDetailDialogProps {
@@ -83,6 +80,7 @@ export function ShipmentDetailDialog({
     onClose,
 }: ShipmentDetailDialogProps) {
     const [page, setPage] = useState(0)
+    const [sortModel, setSortModel] = useState<GridSortModel>([])
     const {
         columnVisibilityModel,
         columnOrder,
@@ -93,23 +91,6 @@ export function ShipmentDetailDialog({
         setColumnWidth,
         setPageSize,
     } = useGridPreferences('shipping-schedule', 20)
-
-    const preferredColumns = useMemo(
-        () => applyGridColumnPreferences(backlogColumns, columnOrder, columnWidths),
-        [columnOrder, columnWidths],
-    )
-
-    function handleColumnOrderChange(params: GridColumnOrderChangeParams) {
-        const nextOrder = preferredColumns.map((column) => column.field)
-        const [movedField] = nextOrder.splice(params.oldIndex, 1)
-        if (!movedField) return
-        nextOrder.splice(params.targetIndex, 0, movedField)
-        setColumnOrder(nextOrder)
-    }
-
-    function handleColumnWidthChange(params: GridColumnResizeParams) {
-        setColumnWidth(params.colDef.field, params.width)
-    }
 
     function handlePaginationChange(model: GridPaginationModel) {
         if (model.pageSize !== pageSize) {
@@ -261,16 +242,18 @@ export function ShipmentDetailDialog({
                         }}
                     >
 
-                        <DataGrid
+                        <ReusableDataGrid<ProductionOrder>
                             rows={data}
 
                             // FULL COLUMNS GIỐNG BACKLOG
-                            columns={preferredColumns}
+                            columns={backlogColumns}
 
                             columnVisibilityModel={columnVisibilityModel}
                             onColumnVisibilityModelChange={setColumnVisibilityModel}
-                            onColumnOrderChange={handleColumnOrderChange}
-                            onColumnWidthChange={handleColumnWidthChange}
+                            columnOrder={columnOrder}
+                            columnWidths={columnWidths}
+                            onColumnOrderChange={setColumnOrder}
+                            onColumnWidthChange={setColumnWidth}
 
                             getRowId={(row) =>
                                 `${row.VBELN}-${row.AUFNR}-${row.ZGLOBAL_CODE}`
@@ -278,9 +261,14 @@ export function ShipmentDetailDialog({
 
                             loading={loading}
 
-                            density="compact"
-
-                            disableRowSelectionOnClick
+                            page={page}
+                            pageSize={pageSize}
+                            rowCount={data.length}
+                            sortModel={sortModel}
+                            onSortChange={setSortModel}
+                            onPaginationChange={handlePaginationChange}
+                            paginationMode="client"
+                            sortingMode="client"
 
                             onColumnHeaderClick={preventColumnHeaderSort}
 
@@ -290,16 +278,8 @@ export function ShipmentDetailDialog({
                                 100,
                             ]}
 
-                            paginationModel={{ page, pageSize }}
-                            onPaginationModelChange={handlePaginationChange}
+                            toolbar={ShipmentDetailToolbar}
 
-                            slots={{
-                                toolbar: ShipmentDetailToolbar,
-                            }}
-
-                            showToolbar
-
-                            sx={dataGridHeaderSx}
                         />
 
                     </Box>
