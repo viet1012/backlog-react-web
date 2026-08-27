@@ -15,7 +15,11 @@ import {
     DataGrid,
     GridToolbarColumnsButton,
     GridToolbarContainer,
+    type GridColumnOrderChangeParams,
+    type GridColumnResizeParams,
+    type GridPaginationModel,
 } from '@mui/x-data-grid'
+import { useMemo, useState } from 'react'
 
 import { backlogColumns }
     from '../../backlog/backlogColumns'
@@ -32,6 +36,8 @@ import {
     dataGridHeaderSx,
     preventColumnHeaderSort,
 } from '../../../theme/dataGridHeaderStyles'
+import { useGridPreferences } from '../../../hooks/useGridPreferences'
+import { applyGridColumnPreferences } from '../../../utils/uiPreferences'
 
 
 interface ShipmentDetailDialogProps {
@@ -76,6 +82,43 @@ export function ShipmentDetailDialog({
     error,
     onClose,
 }: ShipmentDetailDialogProps) {
+    const [page, setPage] = useState(0)
+    const {
+        columnVisibilityModel,
+        columnOrder,
+        columnWidths,
+        pageSize,
+        setColumnVisibilityModel,
+        setColumnOrder,
+        setColumnWidth,
+        setPageSize,
+    } = useGridPreferences('shipping-schedule', 20)
+
+    const preferredColumns = useMemo(
+        () => applyGridColumnPreferences(backlogColumns, columnOrder, columnWidths),
+        [columnOrder, columnWidths],
+    )
+
+    function handleColumnOrderChange(params: GridColumnOrderChangeParams) {
+        const nextOrder = preferredColumns.map((column) => column.field)
+        const [movedField] = nextOrder.splice(params.oldIndex, 1)
+        if (!movedField) return
+        nextOrder.splice(params.targetIndex, 0, movedField)
+        setColumnOrder(nextOrder)
+    }
+
+    function handleColumnWidthChange(params: GridColumnResizeParams) {
+        setColumnWidth(params.colDef.field, params.width)
+    }
+
+    function handlePaginationChange(model: GridPaginationModel) {
+        if (model.pageSize !== pageSize) {
+            setPageSize(model.pageSize)
+            setPage(0)
+            return
+        }
+        setPage(model.page)
+    }
 
     return (
         <Dialog
@@ -222,7 +265,12 @@ export function ShipmentDetailDialog({
                             rows={data}
 
                             // FULL COLUMNS GIỐNG BACKLOG
-                            columns={backlogColumns}
+                            columns={preferredColumns}
+
+                            columnVisibilityModel={columnVisibilityModel}
+                            onColumnVisibilityModelChange={setColumnVisibilityModel}
+                            onColumnOrderChange={handleColumnOrderChange}
+                            onColumnWidthChange={handleColumnWidthChange}
 
                             getRowId={(row) =>
                                 `${row.VBELN}-${row.AUFNR}-${row.ZGLOBAL_CODE}`
@@ -242,14 +290,8 @@ export function ShipmentDetailDialog({
                                 100,
                             ]}
 
-                            initialState={{
-                                pagination: {
-                                    paginationModel: {
-                                        page: 0,
-                                        pageSize: 20,
-                                    },
-                                },
-                            }}
+                            paginationModel={{ page, pageSize }}
+                            onPaginationModelChange={handlePaginationChange}
 
                             slots={{
                                 toolbar: ShipmentDetailToolbar,

@@ -44,6 +44,7 @@ import {
 import { uiTokens } from '../theme/uiTokens'
 import type { ProductionOrder } from '../types/report'
 import { isExcelFilterField } from '../config/backlogFilterFields'
+import { useGridPreferences } from '../hooks/useGridPreferences'
 
 
 // =========================================================
@@ -100,8 +101,16 @@ export function BacklogPage({
   const [page, setPage] =
     useState(0)
 
-  const [pageSize, setPageSize] =
-    useState(20)
+  const {
+    columnVisibilityModel,
+    columnOrder,
+    columnWidths,
+    pageSize,
+    setColumnVisibilityModel,
+    setColumnOrder,
+    setColumnWidth,
+    setPageSize,
+  } = useGridPreferences('backlog', 20)
 
 
   // =======================================================
@@ -936,6 +945,19 @@ export function BacklogPage({
           sortModel={
             sortModel
           }
+
+          columnVisibilityModel={
+            columnVisibilityModel
+          }
+
+          onColumnVisibilityModelChange={
+            setColumnVisibilityModel
+          }
+
+          columnOrder={columnOrder}
+          columnWidths={columnWidths}
+          onColumnOrderChange={setColumnOrder}
+          onColumnWidthChange={setColumnWidth}
 
           onExcelFiltersChange={
             handleExcelFiltersChange

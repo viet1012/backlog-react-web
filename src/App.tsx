@@ -36,51 +36,22 @@ import { SphPage } from './pages/SphPage'
 import {
   createDashboardTheme,
 } from './theme/dashboardTheme'
-
-
-type ThemeMode =
-  | 'light'
-  | 'dark'
-
-
-const THEME_STORAGE_KEY =
-  'themeMode'
+import {
+  loadThemeMode,
+  saveThemeMode,
+  type ThemeMode,
+} from './utils/uiPreferences'
 
 const DEFAULT_THEME_MODE:
   ThemeMode =
   'light'
 
 
-function getInitialThemeMode():
-  ThemeMode {
-
-  try {
-
-    const storedMode =
-      localStorage.getItem(
-        THEME_STORAGE_KEY,
-      )
-
-    if (
-      storedMode === 'light'
-      || storedMode === 'dark'
-    ) {
-      return storedMode
-    }
-
-  } catch {
-    // ignore
-  }
-
-  return DEFAULT_THEME_MODE
-}
-
-
 function App() {
 
   const [mode, setMode] =
     useState<ThemeMode>(
-      getInitialThemeMode,
+      () => loadThemeMode(DEFAULT_THEME_MODE),
     )
 
   const theme =
@@ -101,17 +72,7 @@ function App() {
         ? 'dark'
         : 'light'
 
-    try {
-
-      localStorage.setItem(
-        THEME_STORAGE_KEY,
-        nextMode,
-      )
-
-    } catch {
-      // ignore
-    }
-
+    saveThemeMode(nextMode)
     setMode(nextMode)
   }
 
