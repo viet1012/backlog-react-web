@@ -1,144 +1,117 @@
 import {
   Alert,
   Box,
-  Button,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
-  TextField,
-  Typography,
 } from '@mui/material'
-
-import PrecisionManufacturingRoundedIcon
-  from '@mui/icons-material/PrecisionManufacturingRounded'
-
-import LocalFireDepartmentRoundedIcon
-  from '@mui/icons-material/LocalFireDepartmentRounded'
-
-import ConstructionRoundedIcon
-  from '@mui/icons-material/ConstructionRounded'
-
-import { alpha } from '@mui/material/styles'
-import {
-  useCallback,
-  useEffect,
-  useState,
-} from 'react'
 
 import type {
   GridPaginationModel,
   GridSortModel,
 } from '@mui/x-data-grid'
 
-import { FacConfirmDataTable } from '../components/facConfirm/FacConfirmDataTable'
+import {
+  useCallback,
+  useState,
+} from 'react'
 
 import {
-  getFacConfirm,
-  getFacConfirmProcessGroups,
-  searchFacConfirm,
-} from '../services/facConfirmService'
+  FacConfirmDataTable,
+} from '../components/facConfirm/FacConfirmDataTable'
+
+import {
+  FacConfirmFilterBar,
+} from '../components/facConfirm/FacConfirmFilterBar'
+
+import {
+  PageHeader,
+} from '../components/common/PageHeader'
+
+import {
+  PageShell,
+} from '../components/common/PageShell'
+
+import {
+  RefreshButton,
+} from '../components/common/RefreshButton'
+
+import {
+  UpdatedStatus,
+} from '../components/common/UpdatedStatus'
+
+import {
+  useFacConfirmData,
+} from '../hooks/useFacConfirmData'
+
+import {
+  useGridPreferences,
+} from '../hooks/useGridPreferences'
 
 import type {
-  FacConfirmProcessGroup,
-  FacConfirmProcessGroupSummary,
-  FacConfirmRow,
   FacConfirmFilterItem,
+  FacConfirmProcessGroup,
 } from '../types/facConfirm'
 
-import { PageHeader } from '../components/common/PageHeader'
-import { UpdatedStatus } from '../components/common/UpdatedStatus'
-import { RefreshButton } from '../components/common/RefreshButton'
-import { PageShell } from '../components/common/PageShell'
-import { GlassPanel } from '../components/common/GlassPanel'
-import { uiTokens } from '../theme/uiTokens'
-import { useGridPreferences } from '../hooks/useGridPreferences'
 import {
   loadFacConfirmPreferences,
   saveFacConfirmPreferences,
 } from '../utils/uiPreferences'
+
+
 // =========================================================
-// DEFAULT DATE
+// TODAY
 // =========================================================
 
-function getToday(): string {
-  const now = new Date()
+function getToday() {
+  const now =
+    new Date()
 
-  const year = now.getFullYear()
-
-  const month =
-    String(
-      now.getMonth() + 1,
-    ).padStart(2, '0')
-
-  const day =
-    String(
-      now.getDate(),
-    ).padStart(2, '0')
-
-  return `${year}-${month}-${day}`
+  return `${now.getFullYear()}-${String(
+    now.getMonth() + 1,
+  ).padStart(
+    2,
+    '0',
+  )}-${String(
+    now.getDate(),
+  ).padStart(
+    2,
+    '0',
+  )}`
 }
 
 
 // =========================================================
 // PAGE
 // =========================================================
-function getProcessGroupIcon(
-  processGroup: FacConfirmProcessGroup,
-) {
-  switch (processGroup) {
-    case 'Fine':
-      return PrecisionManufacturingRoundedIcon
-
-    case 'Heat':
-      return LocalFireDepartmentRoundedIcon
-
-    case 'Rough':
-      return ConstructionRoundedIcon
-  }
-}
 
 export function FacConfirmPage() {
 
   // =======================================================
-  // GRID PREFERENCES - LOCAL STORAGE
+  // PAGE FILTER STATE
   // =======================================================
 
-  const {
-    columnVisibilityModel,
-    columnOrder,
-    columnWidths,
-    pageSize,
-    setColumnVisibilityModel,
-    setColumnOrder,
-    setColumnWidth,
-    setPageSize,
-  } = useGridPreferences(
-    'fac-confirm',
-    20,
-  )
+  const [
+    pagePreferences,
+  ] =
+    useState(
+      loadFacConfirmPreferences,
+    )
 
-  // =======================================================
-  // FILTER
-  // =======================================================
-
-  const initialFacConfirmPreferences =
-    loadFacConfirmPreferences()
 
   const [
     div,
     setDiv,
-  ] = useState(
-    initialFacConfirmPreferences.div,
-  )
+  ] =
+    useState(
+      pagePreferences.div,
+    )
 
 
   const [
     expD,
     setExpD,
-  ] = useState(
-    getToday,
-  )
+  ] =
+    useState(
+      getToday,
+    )
 
 
   const [
@@ -146,75 +119,47 @@ export function FacConfirmPage() {
     setProcGrp,
   ] =
     useState<FacConfirmProcessGroup>(
-      initialFacConfirmPreferences.procGrp,
+      pagePreferences.procGrp,
     )
 
-  const [
-    processGroups,
-    setProcessGroups,
-  ] = useState<FacConfirmProcessGroupSummary[]>([])
-
-
-  const [
-    processGroupsLoading,
-    setProcessGroupsLoading,
-  ] = useState(false)
-
-  const [excelFilters, setExcelFilters] =
-    useState<FacConfirmFilterItem[]>([])
-
-  const savePagePreference = useCallback(
-    (
-      nextDiv: string,
-      nextProcGrp: FacConfirmProcessGroup,
-    ) => {
-      saveFacConfirmPreferences({
-        div: nextDiv,
-        procGrp: nextProcGrp,
-      })
-    },
-    [],
-  )
 
   // =======================================================
-  // DATA
+  // HIGHLIGHT STATE
+  //
+  // null:
+  // chưa click Rough / Heat / Fine
+  //
+  // Rough:
+  // highlight To Drill + To Heat
+  //
+  // Heat:
+  // highlight Heat Start + Heat Finish
+  //
+  // Fine:
+  // highlight To PK
   // =======================================================
 
   const [
-    rows,
-    setRows,
+    highlightProcGrp,
+    setHighlightProcGrp,
   ] =
-    useState<FacConfirmRow[]>([])
-
-
-  const [
-    totalElements,
-    setTotalElements,
-  ] =
-    useState(0)
-
-
-  const [
-    loading,
-    setLoading,
-  ] =
-    useState(false)
-
-
-  const [
-    error,
-    setError,
-  ] =
-    useState<string | null>(
+    useState<
+      FacConfirmProcessGroup | null
+    >(
       null,
     )
 
-  const [
-    lastUpdated,
-    setLastUpdated,
-  ] = useState<Date | null>(
-    null,
-  )
+
+  // =======================================================
+  // GRID PREFERENCES
+  // =======================================================
+
+  const preferences =
+    useGridPreferences(
+      'fac-confirm',
+      20,
+    )
+
 
   // =======================================================
   // PAGINATION
@@ -224,21 +169,17 @@ export function FacConfirmPage() {
     paginationModel,
     setPaginationModel,
   ] =
-    useState<GridPaginationModel>(() => ({
-      page: 0,
-      pageSize,
-    }))
+    useState<GridPaginationModel>(
+      () => ({
+        page:
+          0,
 
-  const handlePaginationChange = useCallback(
-    (model: GridPaginationModel) => {
-      setPaginationModel(model)
+        pageSize:
+          preferences.pageSize,
+      }),
+    )
 
-      if (model.pageSize !== pageSize) {
-        setPageSize(model.pageSize)
-      }
-    },
-    [pageSize, setPageSize],
-  )
+
   // =======================================================
   // SORT
   // =======================================================
@@ -247,194 +188,283 @@ export function FacConfirmPage() {
     sortModel,
     setSortModel,
   ] =
-    useState<GridSortModel>([])
-
+    useState<GridSortModel>(
+      [],
+    )
 
 
   // =======================================================
-  // LOAD DATA
+  // EXCEL FILTER
   // =======================================================
-  const loadProcessGroups = useCallback(
-    async (
-      signal?: AbortSignal,
-    ) => {
 
-      setProcessGroupsLoading(true)
+  const [
+    excelFilters,
+    setExcelFilters,
+  ] =
+    useState<
+      FacConfirmFilterItem[]
+    >(
+      [],
+    )
 
-      try {
 
-        const result =
-          await getFacConfirmProcessGroups(
-            div,
-            expD,
-            signal,
-          )
+  // =======================================================
+  // DATA HOOK
+  // =======================================================
 
-        setProcessGroups(
-          result,
-        )
+  const {
+    rows,
 
-      } catch (error) {
+    processGroups,
 
-        if (
-          error instanceof DOMException
-          && error.name === 'AbortError'
-        ) {
-          return
-        }
+    totalElements,
 
-        console.error(
-          'Load process groups failed:',
-          error,
-        )
+    loading,
 
-      } finally {
+    processGroupsLoading,
 
-        if (!signal?.aborted) {
-          setProcessGroupsLoading(false)
-        }
-      }
-    },
-    [
+    error,
+
+    lastUpdated,
+
+    handleRefresh,
+  } =
+    useFacConfirmData({
+
       div,
+
       expD,
-    ],
-  )
 
-
-  const loadData = useCallback(
-    async (
-      signal?: AbortSignal,
-    ) => {
-
-      setLoading(true)
-      setError(null)
-
-      try {
-
-        const request = {
-          div,
-          expD,
-          procGrp,
-          page: paginationModel.page,
-          size: paginationModel.pageSize,
-        }
-
-        const result = excelFilters.length > 0
-          ? await searchFacConfirm({
-            ...request,
-            filters: excelFilters,
-            logicOperator: 'and',
-          }, signal)
-          : await getFacConfirm(request, signal)
-
-        setRows(
-          result.content,
-        )
-
-        setTotalElements(
-          result.totalElements,
-        )
-
-        setLastUpdated(
-          new Date(),
-        )
-
-      } catch (error) {
-
-        if (
-          error instanceof DOMException
-          && error.name === 'AbortError'
-        ) {
-          return
-        }
-
-        console.error(
-          'Load Fac Confirm failed:',
-          error,
-        )
-
-        setError(
-          error instanceof Error
-            ? error.message
-            : 'Failed to load Fac Confirm',
-        )
-
-      } finally {
-
-        if (!signal?.aborted) {
-          setLoading(false)
-        }
-      }
-    },
-    [
-      div,
-      expD,
       procGrp,
-      paginationModel.page,
-      paginationModel.pageSize,
+
+      page:
+        paginationModel.page,
+
+      pageSize:
+        paginationModel.pageSize,
+
       excelFilters,
-    ],
-  )
+    })
 
-  useEffect(() => {
-
-    const controller =
-      new AbortController()
-
-    void loadData(
-      controller.signal,
-    )
-
-    return () => {
-      controller.abort()
-    }
-
-  }, [loadData])
-
-  useEffect(() => {
-
-    const controller =
-      new AbortController()
-
-    void loadProcessGroups(
-      controller.signal,
-    )
-
-    return () => {
-      controller.abort()
-    }
-
-  }, [loadProcessGroups])
 
   // =======================================================
   // RESET PAGE
   // =======================================================
-  function handleRefresh() {
 
-    void loadData()
+  const resetPage =
+    useCallback(
+      () => {
 
-    void loadProcessGroups()
-  }
+        setPaginationModel(
+          (current) => ({
+            ...current,
 
-  function resetPage() {
-
-    setPaginationModel(
-      (current) => ({
-        ...current,
-        page: 0,
-      }),
+            page:
+              0,
+          }),
+        )
+      },
+      [],
     )
-  }
-
-  function handleExcelFiltersChange(
-    nextFilters: FacConfirmFilterItem[],
-  ) {
-    setExcelFilters(nextFilters)
-    resetPage()
-  }
 
 
+  // =======================================================
+  // DIVISION CHANGE
+  // =======================================================
+
+  const handleDivChange =
+    useCallback(
+      (
+        nextDiv: string,
+      ) => {
+
+        setDiv(
+          nextDiv,
+        )
+
+
+        // Khi đổi Division:
+        // bỏ highlight cũ
+        setHighlightProcGrp(
+          null,
+        )
+
+
+        saveFacConfirmPreferences({
+          div:
+            nextDiv,
+
+          procGrp,
+        })
+
+
+        resetPage()
+      },
+      [
+        procGrp,
+        resetPage,
+      ],
+    )
+
+
+  // =======================================================
+  // DATE CHANGE
+  // =======================================================
+
+  const handleDateChange =
+    useCallback(
+      (
+        value: string,
+      ) => {
+
+        setExpD(
+          value,
+        )
+
+
+        // đổi ngày => reset highlight
+        setHighlightProcGrp(
+          null,
+        )
+
+
+        resetPage()
+      },
+      [
+        resetPage,
+      ],
+    )
+
+
+  // =======================================================
+  // PROCESS GROUP CHANGE
+  // =======================================================
+
+  const handleProcessGroupChange =
+    useCallback(
+      (
+        value:
+          FacConfirmProcessGroup,
+      ) => {
+
+        // ===============================================
+        // API PROCESS GROUP
+        // ===============================================
+
+        setProcGrp(
+          value,
+        )
+
+
+        // ===============================================
+        // COLUMN HIGHLIGHT
+        //
+        // Chỉ tại đây mới set highlight
+        // => mở page lần đầu sẽ không có màu
+        // ===============================================
+
+        setHighlightProcGrp(
+          value,
+        )
+
+
+        // ===============================================
+        // SAVE PAGE PREFERENCE
+        // ===============================================
+
+        saveFacConfirmPreferences({
+          div,
+
+          procGrp:
+            value,
+        })
+
+
+        // ===============================================
+        // RESET PAGE
+        // ===============================================
+
+        resetPage()
+      },
+      [
+        div,
+        resetPage,
+      ],
+    )
+
+
+  // =======================================================
+  // PAGINATION CHANGE
+  // =======================================================
+
+  const handlePaginationChange =
+    useCallback(
+      (
+        model:
+          GridPaginationModel,
+      ) => {
+
+        setPaginationModel(
+          model,
+        )
+
+
+        if (
+          model.pageSize
+          !== preferences.pageSize
+        ) {
+
+          preferences.setPageSize(
+            model.pageSize,
+          )
+        }
+      },
+      [
+        preferences,
+      ],
+    )
+
+
+  // =======================================================
+  // EXCEL FILTER CHANGE
+  // =======================================================
+
+  const handleExcelFiltersChange =
+    useCallback(
+      (
+        filters:
+          FacConfirmFilterItem[],
+      ) => {
+
+        setExcelFilters(
+          filters,
+        )
+
+        resetPage()
+      },
+      [
+        resetPage,
+      ],
+    )
+
+
+  // =======================================================
+  // SORT CHANGE
+  // =======================================================
+
+  const handleSortChange =
+    useCallback(
+      (
+        model:
+          GridSortModel,
+      ) => {
+
+        setSortModel(
+          model,
+        )
+      },
+      [],
+    )
 
 
   // =======================================================
@@ -442,566 +472,244 @@ export function FacConfirmPage() {
   // =======================================================
 
   return (
+
     <PageShell>
 
       {/* =================================================
           HEADER
       ================================================= */}
+
       <PageHeader
+
         title="FAC CONFIRM"
+
         subtitle="Production process confirmation."
 
         status={
+
           <UpdatedStatus
+
             updatedAt={
               lastUpdated
             }
+
             error={
-              Boolean(error)
+              Boolean(
+                error,
+              )
             }
+
           />
         }
 
         actions={
+
           <RefreshButton
-            loading={loading}
+
+            loading={
+              loading
+            }
+
             onClick={
               handleRefresh
             }
+
           />
         }
-      />
 
+      />
 
 
       {/* =================================================
           FILTER BAR
       ================================================= */}
 
-      <GlassPanel
-        sx={{
-          p: 1,
-          flexShrink: 0,
-        }}
-      >
-        <Box
-          sx={{
-            display: 'flex',
+      <FacConfirmFilterBar
 
-            flexDirection: {
-              xs: 'column',
-              sm: 'row',
-            },
+        div={
+          div
+        }
 
-            alignItems: {
-              xs: 'stretch',
-              sm: 'center',
-            },
+        expD={
+          expD
+        }
 
-            gap: 0.75,
-          }}
-        >
+        procGrp={
+          procGrp
+        }
 
-          {/* =====================================================
-        DIVISION
-    ===================================================== */}
+        processGroups={
+          processGroups
+        }
 
-          <FormControl
-            size="small"
-            sx={{
-              width: {
-                xs: '100%',
-                sm: 125,
-              },
+        loading={
+          processGroupsLoading
+        }
 
-              flexShrink: 0,
+        onDivChange={
+          handleDivChange
+        }
 
-              '& .MuiOutlinedInput-root': {
-                height: 44,
-                borderRadius: uiTokens.control.borderRadius,
-              },
+        onDateChange={
+          handleDateChange
+        }
 
-              '& .MuiSelect-select': {
-                display: 'flex',
-                alignItems: 'center',
+        onProcessGroupChange={
+          handleProcessGroupChange
+        }
 
-                fontSize: 12.5,
-                fontWeight: 600,
-              },
+      />
 
-              '& .MuiInputLabel-root': {
-                fontSize: 12,
-              },
-            }}
-          >
-            <InputLabel>
-              Division
-            </InputLabel>
 
-            <Select
-              label="Division"
-              value={div}
-              onChange={(event) => {
-                const nextDiv =
-                  event.target.value
-
-                setDiv(
-                  nextDiv,
-                )
-
-                savePagePreference(
-                  nextDiv,
-                  procGrp,
-                )
-
-                resetPage()
-              }}
-            >
-              <MenuItem value="PR">
-                PRESS
-              </MenuItem>
-
-              <MenuItem value="PR-RET">
-                PRESS Retainer
-              </MenuItem>
-
-              <MenuItem value="MO">
-                MOLD
-              </MenuItem>
-
-              <MenuItem value="GU">
-                GUIDE
-              </MenuItem>
-            </Select>
-          </FormControl>
-
-
-          {/* =====================================================
-        EXPORT DATE
-    ===================================================== */}
-
-          <TextField
-            label="Export Date"
-            type="date"
-            size="small"
-
-            value={expD}
-
-            onChange={(event) => {
-              setExpD(
-                event.target.value,
-              )
-
-              resetPage()
-            }}
-
-            slotProps={{
-              inputLabel: {
-                shrink: true,
-              },
-            }}
-
-            sx={{
-              width: {
-                xs: '100%',
-                sm: 160,
-              },
-
-              flexShrink: 0,
-
-              '& .MuiOutlinedInput-root': {
-                height: 44,
-                borderRadius: uiTokens.control.borderRadius,
-              },
-
-              '& .MuiInputBase-input': {
-                fontSize: 12.5,
-                fontWeight: 600,
-              },
-
-              '& .MuiInputLabel-root': {
-                fontSize: 12,
-              },
-            }}
-          />
-
-
-          {/* =====================================================
-        SEPARATOR
-    ===================================================== */}
-
-          <Box
-            sx={(theme) => ({
-              display: {
-                xs: 'none',
-                sm: 'block',
-              },
-
-              width: '1px',
-              height: 26,
-
-              mx: 0.2,
-
-              flexShrink: 0,
-
-              bgcolor:
-                alpha(
-                  theme.palette.text.primary,
-                  0.10,
-                ),
-            })}
-          />
-
-
-          {/* =====================================================
-        PROCESS GROUPS
-    ===================================================== */}
-
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-
-              gap: 0.65,
-
-              flex: 1,
-              minWidth: 0,
-
-              overflowX: 'auto',
-
-              '&::-webkit-scrollbar': {
-                display: 'none',
-              },
-
-              scrollbarWidth: 'none',
-            }}
-          >
-            {processGroups.map((item) => {
-
-              const selected =
-                item.processGroup === procGrp
-
-              const ProcessIcon =
-                getProcessGroupIcon(
-                  item.processGroup,
-                )
-
-              return (
-                <Button
-                  key={item.processGroup}
-
-                  disabled={
-                    processGroupsLoading
-                  }
-
-                  onClick={() => {
-                    const nextProcGrp =
-                      item.processGroup
-
-                    setProcGrp(
-                      nextProcGrp,
-                    )
-
-                    savePagePreference(
-                      div,
-                      nextProcGrp,
-                    )
-
-                    setPaginationModel(
-                      (current) => ({
-                        ...current,
-                        page: 0,
-                      }),
-                    )
-                  }}
-
-                  sx={(theme) => ({
-                    minWidth: 148,
-                    height: 44,
-
-                    px: 1.25,
-
-                    flexShrink: 0,
-
-                    borderRadius:
-                      uiTokens.control.borderRadius,
-
-                    textTransform: 'none',
-
-                    justifyContent: 'flex-start',
-
-                    border:
-                      `1px solid ${selected
-                        ? alpha(
-                          theme.palette.primary.main,
-                          0.55,
-                        )
-                        : alpha(
-                          theme.palette.text.primary,
-                          0.08,
-                        )
-                      }`,
-
-                    backgroundColor:
-                      selected
-                        ? alpha(
-                          theme.palette.primary.main,
-                          theme.palette.mode === 'dark'
-                            ? 0.16
-                            : 0.07,
-                        )
-                        : alpha(
-                          theme.palette.background.paper,
-                          theme.palette.mode === 'dark'
-                            ? 0.28
-                            : 0.52,
-                        ),
-
-                    color:
-                      selected
-                        ? 'primary.main'
-                        : 'text.primary',
-
-                    boxShadow:
-                      selected
-                        ? `0 2px 10px ${alpha(
-                          theme.palette.primary.main,
-                          0.10,
-                        )
-                        }`
-                        : 'none',
-
-                    backdropFilter:
-                      'blur(10px)',
-
-                    WebkitBackdropFilter:
-                      'blur(10px)',
-
-                    transition:
-                      'background-color 160ms ease, border-color 160ms ease, transform 160ms ease',
-
-                    '&:hover': {
-                      backgroundColor:
-                        selected
-                          ? alpha(
-                            theme.palette.primary.main,
-                            theme.palette.mode === 'dark'
-                              ? 0.22
-                              : 0.11,
-                          )
-                          : theme.palette.action.hover,
-
-                      transform:
-                        'translateY(-1px)',
-                    },
-                  })}
-                >
-                  <Box
-                    sx={{
-                      width: '100%',
-
-                      display: 'flex',
-                      alignItems: 'center',
-
-                      gap: 0.8,
-
-                      minWidth: 0,
-                    }}
-                  >
-                    {/* ICON */}
-
-                    <Box
-                      sx={(theme) => ({
-                        width: 28,
-                        height: 28,
-
-                        flexShrink: 0,
-
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-
-                        borderRadius: 1.5,
-
-                        color: selected
-                          ? 'primary.main'
-                          : 'text.secondary',
-
-                        backgroundColor: selected
-                          ? alpha(
-                            theme.palette.primary.main,
-                            0.12,
-                          )
-                          : alpha(
-                            theme.palette.text.primary,
-                            0.045,
-                          ),
-                      })}
-                    >
-                      <ProcessIcon
-                        sx={{
-                          fontSize: 17,
-                        }}
-                      />
-                    </Box>
-
-
-                    {/* CONTENT */}
-
-                    <Box
-                      sx={{
-                        minWidth: 0,
-
-                        display: 'flex',
-                        flexDirection: 'column',
-
-                        alignItems: 'flex-start',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      {/* NAME */}
-
-                      <Typography
-                        sx={{
-                          fontSize: 12.5,
-                          fontWeight: 800,
-
-                          lineHeight: 1,
-
-                          color: selected
-                            ? 'primary.main'
-                            : 'text.primary',
-                        }}
-                      >
-                        {item.processGroup}
-                      </Typography>
-
-
-                      {/* PO + QTY */}
-
-                      <Box
-                        sx={{
-                          mt: 0.5,
-
-                          display: 'flex',
-                          alignItems: 'center',
-
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        <Typography
-                          component="span"
-                          sx={{
-                            fontSize: 10.5,
-                            fontWeight: 600,
-
-                            lineHeight: 1,
-
-                            color: selected
-                              ? 'primary.main'
-                              : 'text.secondary',
-                          }}
-                        >
-                          PO {item.orderCount.toLocaleString()}
-                        </Typography>
-
-                        <Box
-                          sx={{
-                            width: 3,
-                            height: 3,
-
-                            mx: 0.65,
-
-                            borderRadius: '50%',
-
-                            bgcolor: selected
-                              ? 'primary.main'
-                              : 'text.disabled',
-                          }}
-                        />
-
-                        <Typography
-                          component="span"
-                          sx={{
-                            fontSize: 10.5,
-                            fontWeight: 600,
-
-                            lineHeight: 1,
-
-                            color: selected
-                              ? 'primary.main'
-                              : 'text.secondary',
-                          }}
-                        >
-                          Qty {item.totalFinalQty.toLocaleString()}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Box>
-                </Button>
-              )
-            })}
-          </Box>
-
-        </Box>
-      </GlassPanel>
       {/* =================================================
           ERROR
       ================================================= */}
 
       {error && (
-        <Alert severity="error">
+
+        <Alert
+          severity="error"
+        >
           {error}
         </Alert>
+
       )}
 
 
       {/* =================================================
-          DATA GRID
+          TABLE
       ================================================= */}
 
       <Box
         sx={{
-          flex: 1,
-          minHeight: 0,
-          width: '100%',
+          flex:
+            1,
+
+          minHeight:
+            0,
+
+          width:
+            '100%',
         }}
       >
+
         <FacConfirmDataTable
-          rows={rows}
-          loading={loading}
-          div={div}
-          expD={expD}
-          procGrp={procGrp}
 
-          excelFilters={excelFilters}
+          // =============================================
+          // DATA
+          // =============================================
 
-          paginationModel={paginationModel}
-          rowCount={totalElements}
+          rows={
+            rows
+          }
 
-          sortModel={sortModel}
+          loading={
+            loading
+          }
 
-          columnVisibilityModel={columnVisibilityModel}
-          columnOrder={columnOrder}
-          columnWidths={columnWidths}
 
-          onExcelFiltersChange={handleExcelFiltersChange}
+          // =============================================
+          // BASE FILTER
+          // =============================================
 
-          onPaginationChange={handlePaginationChange}
+          div={
+            div
+          }
 
-          onSortChange={setSortModel}
+          expD={
+            expD
+          }
+
+          procGrp={
+            procGrp
+          }
+
+
+          // =============================================
+          // ACTIVE HIGHLIGHT
+          // =============================================
+
+          highlightProcGrp={
+            highlightProcGrp
+          }
+
+
+          // =============================================
+          // EXCEL FILTER
+          // =============================================
+
+          excelFilters={
+            excelFilters
+          }
+
+
+          // =============================================
+          // PAGINATION
+          // =============================================
+
+          paginationModel={
+            paginationModel
+          }
+
+          rowCount={
+            totalElements
+          }
+
+
+          // =============================================
+          // SORT
+          // =============================================
+
+          sortModel={
+            sortModel
+          }
+
+
+          // =============================================
+          // GRID PREFERENCES
+          // =============================================
+
+          columnVisibilityModel={
+            preferences.columnVisibilityModel
+          }
+
+          columnOrder={
+            preferences.columnOrder
+          }
+
+          columnWidths={
+            preferences.columnWidths
+          }
+
+
+          // =============================================
+          // CALLBACKS
+          // =============================================
+
+          onExcelFiltersChange={
+            handleExcelFiltersChange
+          }
+
+          onPaginationChange={
+            handlePaginationChange
+          }
+
+          onSortChange={
+            handleSortChange
+          }
 
           onColumnVisibilityModelChange={
-            setColumnVisibilityModel
+            preferences.setColumnVisibilityModel
           }
 
           onColumnOrderChange={
-            setColumnOrder
+            preferences.setColumnOrder
           }
 
           onColumnWidthChange={
-            setColumnWidth
+            preferences.setColumnWidth
           }
+
         />
 
       </Box>

@@ -36,12 +36,6 @@ const facConfirmColumnDefinitions:
         },
 
         {
-            field: 'pname',
-            headerName: 'Product Name',
-            width: 200,
-        },
-
-        {
             field: 'issueD',
             headerName: 'Issue Date',
             width: 125,
@@ -88,6 +82,13 @@ const facConfirmColumnDefinitions:
             headerName: 'Final Qty',
             width: 100,
             type: 'number',
+        },
+
+        // Product Name chuyển xuống đây
+        {
+            field: 'pname',
+            headerName: 'Product Name',
+            width: 200,
         },
 
         {

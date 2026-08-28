@@ -11,30 +11,13 @@ import {
 import CloseRoundedIcon
     from '@mui/icons-material/CloseRounded'
 
-import {
-    GridToolbarColumnsButton,
-    GridToolbarContainer,
-    type GridPaginationModel,
-    type GridSortModel,
-} from '@mui/x-data-grid'
-import { useState } from 'react'
-
-import { backlogColumns }
-    from '../../backlog/backlogColumns'
-
 import type {
     ShipmentDetailFilter,
 } from '../../../types/shipment'
 
-import type {
-    ProductionOrder,
-} from '../../../types/report'
+import type { ProductionOrder } from '../../../types/report'
 import { uiTokens } from '../../../theme/uiTokens'
-import {
-    preventColumnHeaderSort,
-} from '../../../theme/dataGridHeaderStyles'
-import { useGridPreferences } from '../../../hooks/useGridPreferences'
-import { ReusableDataGrid } from '../dataGrid/ReusableDataGrid'
+import { ShipmentDataTable } from '../../shipment/ShipmentDataTable'
 
 
 interface ShipmentDetailDialogProps {
@@ -47,30 +30,6 @@ interface ShipmentDetailDialogProps {
 }
 
 
-function ShipmentDetailToolbar() {
-    return (
-        <GridToolbarContainer
-            sx={(theme) => ({
-                justifyContent: 'flex-end',
-                minHeight: 40,
-                px: 1,
-                py: 0.5,
-
-                bgcolor:
-                    theme.palette.mode === 'dark'
-                        ? '#131f33'
-                        : '#f6f8fb',
-
-                borderBottom:
-                    `1px solid ${theme.palette.divider}`,
-            })}
-        >
-            <GridToolbarColumnsButton />
-        </GridToolbarContainer>
-    )
-}
-
-
 export function ShipmentDetailDialog({
     open,
     filter,
@@ -79,28 +38,6 @@ export function ShipmentDetailDialog({
     error,
     onClose,
 }: ShipmentDetailDialogProps) {
-    const [page, setPage] = useState(0)
-    const [sortModel, setSortModel] = useState<GridSortModel>([])
-    const {
-        columnVisibilityModel,
-        columnOrder,
-        columnWidths,
-        pageSize,
-        setColumnVisibilityModel,
-        setColumnOrder,
-        setColumnWidth,
-        setPageSize,
-    } = useGridPreferences('shipping-schedule', 20)
-
-    function handlePaginationChange(model: GridPaginationModel) {
-        if (model.pageSize !== pageSize) {
-            setPageSize(model.pageSize)
-            setPage(0)
-            return
-        }
-        setPage(model.page)
-    }
-
     return (
         <Dialog
             open={open}
@@ -242,45 +179,7 @@ export function ShipmentDetailDialog({
                         }}
                     >
 
-                        <ReusableDataGrid<ProductionOrder>
-                            rows={data}
-
-                            // FULL COLUMNS GIỐNG BACKLOG
-                            columns={backlogColumns}
-
-                            columnVisibilityModel={columnVisibilityModel}
-                            onColumnVisibilityModelChange={setColumnVisibilityModel}
-                            columnOrder={columnOrder}
-                            columnWidths={columnWidths}
-                            onColumnOrderChange={setColumnOrder}
-                            onColumnWidthChange={setColumnWidth}
-
-                            getRowId={(row) =>
-                                `${row.VBELN}-${row.AUFNR}-${row.ZGLOBAL_CODE}`
-                            }
-
-                            loading={loading}
-
-                            page={page}
-                            pageSize={pageSize}
-                            rowCount={data.length}
-                            sortModel={sortModel}
-                            onSortChange={setSortModel}
-                            onPaginationChange={handlePaginationChange}
-                            paginationMode="client"
-                            sortingMode="client"
-
-                            onColumnHeaderClick={preventColumnHeaderSort}
-
-                            pageSizeOptions={[
-                                20,
-                                50,
-                                100,
-                            ]}
-
-                            toolbar={ShipmentDetailToolbar}
-
-                        />
+                        <ShipmentDataTable rows={data} loading={loading} />
 
                     </Box>
 
