@@ -56,3 +56,32 @@ export interface FacConfirmProcessGroupSummary {
     orderCount: number
     totalFinalQty: number
 }
+
+export interface FacConfirmFilterItem {
+    field: string
+    operator: string
+    value?: string
+    values?: string[]
+}
+
+export interface FacConfirmSearchRequest {
+    div: string
+    expD: string
+    procGrp: FacConfirmProcessGroup
+    page: number
+    size: number
+    filters: FacConfirmFilterItem[]
+    logicOperator: 'and' | 'or'
+}
+
+export interface FacConfirmFilterOptionsRequest {
+    field: string
+    search?: string
+    div: string
+    expD: string
+    procGrp: FacConfirmProcessGroup
+    filters: FacConfirmFilterItem[]
+    logicOperator: 'and' | 'or'
+    page?: number
+    size?: number
+}

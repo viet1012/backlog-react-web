@@ -27,28 +27,26 @@ import {
 } from 'react'
 
 import type {
-  GridColumnVisibilityModel,
   GridPaginationModel,
   GridSortModel,
 } from '@mui/x-data-grid'
 
 import {
-  ReusableDataGrid,
-} from '../components/common/dataGrid/ReusableDataGrid'
-
-import {
   facConfirmColumns,
 } from '../components/facConfirm/facConfirmColumns'
+import { FacConfirmDataTable } from '../components/facConfirm/FacConfirmDataTable'
 
 import {
   getFacConfirm,
   getFacConfirmProcessGroups,
+  searchFacConfirm,
 } from '../services/facConfirmService'
 
 import type {
   FacConfirmProcessGroup,
   FacConfirmProcessGroupSummary,
   FacConfirmRow,
+  FacConfirmFilterItem,
 } from '../types/facConfirm'
 
 import { PageHeader } from '../components/common/PageHeader'
@@ -57,7 +55,11 @@ import { RefreshButton } from '../components/common/RefreshButton'
 import { PageShell } from '../components/common/PageShell'
 import { GlassPanel } from '../components/common/GlassPanel'
 import { uiTokens } from '../theme/uiTokens'
-
+import { useGridPreferences } from '../hooks/useGridPreferences'
+import {
+  loadFacConfirmPreferences,
+  saveFacConfirmPreferences,
+} from '../utils/uiPreferences'
 // =========================================================
 // DEFAULT DATE
 // =========================================================
@@ -102,13 +104,36 @@ function getProcessGroupIcon(
 export function FacConfirmPage() {
 
   // =======================================================
+  // GRID PREFERENCES - LOCAL STORAGE
+  // =======================================================
+
+  const {
+    columnVisibilityModel,
+    columnOrder,
+    columnWidths,
+    pageSize,
+    setColumnVisibilityModel,
+    setColumnOrder,
+    setColumnWidth,
+    setPageSize,
+  } = useGridPreferences(
+    'fac-confirm',
+    20,
+  )
+
+  // =======================================================
   // FILTER
   // =======================================================
+
+  const initialFacConfirmPreferences =
+    loadFacConfirmPreferences()
 
   const [
     div,
     setDiv,
-  ] = useState('PR')
+  ] = useState(
+    initialFacConfirmPreferences.div,
+  )
 
 
   const [
@@ -124,7 +149,7 @@ export function FacConfirmPage() {
     setProcGrp,
   ] =
     useState<FacConfirmProcessGroup>(
-      'Fine',
+      initialFacConfirmPreferences.procGrp,
     )
 
   const [
@@ -137,6 +162,23 @@ export function FacConfirmPage() {
     processGroupsLoading,
     setProcessGroupsLoading,
   ] = useState(false)
+
+  const [excelFilters, setExcelFilters] =
+    useState<FacConfirmFilterItem[]>([])
+
+  const savePagePreference = useCallback(
+    (
+      nextDiv: string,
+      nextProcGrp: FacConfirmProcessGroup,
+    ) => {
+      saveFacConfirmPreferences({
+        div: nextDiv,
+        procGrp: nextProcGrp,
+      })
+    },
+    [],
+  )
+
   // =======================================================
   // DATA
   // =======================================================
@@ -185,12 +227,21 @@ export function FacConfirmPage() {
     paginationModel,
     setPaginationModel,
   ] =
-    useState<GridPaginationModel>({
+    useState<GridPaginationModel>(() => ({
       page: 0,
-      pageSize: 20,
-    })
+      pageSize,
+    }))
 
+  const handlePaginationChange = useCallback(
+    (model: GridPaginationModel) => {
+      setPaginationModel(model)
 
+      if (model.pageSize !== pageSize) {
+        setPageSize(model.pageSize)
+      }
+    },
+    [pageSize, setPageSize],
+  )
   // =======================================================
   // SORT
   // =======================================================
@@ -201,48 +252,6 @@ export function FacConfirmPage() {
   ] =
     useState<GridSortModel>([])
 
-
-  // =======================================================
-  // COLUMN VISIBILITY
-  // =======================================================
-
-  const [
-    columnVisibilityModel,
-    setColumnVisibilityModel,
-  ] =
-    useState<GridColumnVisibilityModel>(
-      {},
-    )
-
-
-  // =======================================================
-  // COLUMN ORDER
-  // =======================================================
-
-  const [
-    columnOrder,
-    setColumnOrder,
-  ] =
-    useState<string[]>(
-      () =>
-        facConfirmColumns.map(
-          (column) =>
-            column.field,
-        ),
-    )
-
-
-  // =======================================================
-  // COLUMN WIDTH
-  // =======================================================
-
-  const [
-    columnWidths,
-    setColumnWidths,
-  ] =
-    useState<Record<string, number>>(
-      {},
-    )
 
 
   // =======================================================
@@ -306,22 +315,21 @@ export function FacConfirmPage() {
 
       try {
 
-        const result =
-          await getFacConfirm(
-            {
-              div,
-              expD,
-              procGrp,
+        const request = {
+          div,
+          expD,
+          procGrp,
+          page: paginationModel.page,
+          size: paginationModel.pageSize,
+        }
 
-              page:
-                paginationModel.page,
-
-              size:
-                paginationModel.pageSize,
-            },
-
-            signal,
-          )
+        const result = excelFilters.length > 0
+          ? await searchFacConfirm({
+            ...request,
+            filters: excelFilters,
+            logicOperator: 'and',
+          }, signal)
+          : await getFacConfirm(request, signal)
 
         setRows(
           result.content,
@@ -368,6 +376,7 @@ export function FacConfirmPage() {
       procGrp,
       paginationModel.page,
       paginationModel.pageSize,
+      excelFilters,
     ],
   )
 
@@ -421,23 +430,14 @@ export function FacConfirmPage() {
     )
   }
 
-
-  // =======================================================
-  // COLUMN WIDTH CHANGE
-  // =======================================================
-
-  function handleColumnWidthChange(
-    field: string,
-    width: number,
+  function handleExcelFiltersChange(
+    nextFilters: FacConfirmFilterItem[],
   ) {
-
-    setColumnWidths(
-      (current) => ({
-        ...current,
-        [field]: width,
-      }),
-    )
+    setExcelFilters(nextFilters)
+    resetPage()
   }
+
+
 
 
   // =======================================================
@@ -544,10 +544,17 @@ export function FacConfirmPage() {
             <Select
               label="Division"
               value={div}
-
               onChange={(event) => {
+                const nextDiv =
+                  event.target.value
+
                 setDiv(
-                  event.target.value,
+                  nextDiv,
+                )
+
+                savePagePreference(
+                  nextDiv,
+                  procGrp,
                 )
 
                 resetPage()
@@ -691,9 +698,16 @@ export function FacConfirmPage() {
                   }
 
                   onClick={() => {
+                    const nextProcGrp =
+                      item.processGroup
 
                     setProcGrp(
-                      item.processGroup,
+                      nextProcGrp,
+                    )
+
+                    savePagePreference(
+                      div,
+                      nextProcGrp,
                     )
 
                     setPaginationModel(
@@ -956,105 +970,41 @@ export function FacConfirmPage() {
           width: '100%',
         }}
       >
-
-        <ReusableDataGrid<FacConfirmRow>
-
-          // =============================================
-          // DATA
-          // =============================================
-
+        <FacConfirmDataTable
           rows={rows}
-
-          columns={
-            facConfirmColumns
-          }
-
-          getRowId={(row) =>
-            [
-              row.aufnr,
-              row.zglobalCode ?? '',
-            ].join('|')
-          }
-
           loading={loading}
+          div={div}
+          expD={expD}
+          procGrp={procGrp}
 
+          excelFilters={excelFilters}
 
-          // =============================================
-          // PAGINATION
-          // =============================================
+          paginationModel={paginationModel}
+          rowCount={totalElements}
 
-          paginationMode="server"
+          sortModel={sortModel}
 
-          page={
-            paginationModel.page
-          }
+          columnVisibilityModel={columnVisibilityModel}
+          columnOrder={columnOrder}
+          columnWidths={columnWidths}
 
-          pageSize={
-            paginationModel.pageSize
-          }
+          onExcelFiltersChange={handleExcelFiltersChange}
 
-          rowCount={
-            totalElements
-          }
+          onPaginationChange={handlePaginationChange}
 
-          onPaginationChange={
-            setPaginationModel
-          }
-
-
-          // =============================================
-          // SORT
-          // =============================================
-
-          sortingMode="client"
-
-          sortModel={
-            sortModel
-          }
-
-          onSortChange={
-            setSortModel
-          }
-
-
-          // =============================================
-          // COLUMN VISIBILITY
-          // =============================================
-
-          columnVisibilityModel={
-            columnVisibilityModel
-          }
+          onSortChange={setSortModel}
 
           onColumnVisibilityModelChange={
             setColumnVisibilityModel
-          }
-
-
-          // =============================================
-          // COLUMN ORDER
-          // =============================================
-
-          columnOrder={
-            columnOrder
           }
 
           onColumnOrderChange={
             setColumnOrder
           }
 
-
-          // =============================================
-          // COLUMN WIDTH
-          // =============================================
-
-          columnWidths={
-            columnWidths
-          }
-
           onColumnWidthChange={
-            handleColumnWidthChange
+            setColumnWidth
           }
-
         />
 
       </Box>

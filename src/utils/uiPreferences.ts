@@ -123,3 +123,46 @@ export function applyGridColumnPreferences<T extends GridColDef>(
       return leftIndex - rightIndex
     }) as T[]
 }
+
+
+export interface FacConfirmPreferences {
+    div: string
+    procGrp: 'Fine' | 'Heat' | 'Rough'
+}
+
+export function loadFacConfirmPreferences(): FacConfirmPreferences {
+    const stored = loadPreference('fac-confirm')
+
+    if (!isRecord(stored)) {
+        return {
+            div: 'PR',
+            procGrp: 'Rough',
+        }
+    }
+
+    const div =
+        typeof stored.div === 'string'
+            ? stored.div
+            : 'PR'
+
+    const procGrp =
+        stored.procGrp === 'Fine'
+            || stored.procGrp === 'Heat'
+            || stored.procGrp === 'Rough'
+            ? stored.procGrp
+            : 'Rough'
+
+    return {
+        div,
+        procGrp,
+    }
+}
+
+export function saveFacConfirmPreferences(
+    value: FacConfirmPreferences,
+): void {
+    savePreference(
+        'fac-confirm',
+        value,
+    )
+}

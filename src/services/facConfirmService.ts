@@ -6,6 +6,8 @@ import type {
     FacConfirmPageResponse,
     FacConfirmProcessGroup,
     FacConfirmProcessGroupSummary,
+    FacConfirmFilterOptionsRequest,
+    FacConfirmSearchRequest,
 } from '../types/facConfirm'
 
 
@@ -118,4 +120,63 @@ export async function getFacConfirmProcessGroups(
     }
 
     return result
+}
+
+// =========================================================
+// SERVER-SIDE EXCEL FILTERING
+// Expected backend endpoints; no client-page filtering fallback.
+// =========================================================
+
+export async function searchFacConfirm(
+    request: FacConfirmSearchRequest,
+    signal?: AbortSignal,
+): Promise<FacConfirmPageResponse> {
+    const response = await fetch(`${API_BASE_URL}/api/fac-confirm/search`, {
+        method: 'POST',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+        signal,
+    })
+
+    if (!response.ok) {
+        throw new Error(`Fac Confirm search API failed: ${response.status}`)
+    }
+
+    const result = await response.json() as FacConfirmPageResponse
+    if (!Array.isArray(result.content)) {
+        throw new Error('Invalid Fac Confirm search response')
+    }
+    return result
+}
+
+export async function getFacConfirmFilterOptions(
+    request: FacConfirmFilterOptionsRequest,
+    signal?: AbortSignal,
+): Promise<string[]> {
+    const response = await fetch(`${API_BASE_URL}/api/fac-confirm/filter-options`, {
+        method: 'POST',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+        signal,
+    })
+
+    if (!response.ok) {
+        throw new Error(`Fac Confirm filter options API failed: ${response.status}`)
+    }
+
+    const result: unknown = await response.json()
+    const values = Array.isArray(result)
+        ? result
+        : typeof result === 'object' && result !== null && 'values' in result
+            ? (result as { values: unknown }).values
+            : null
+
+    if (!Array.isArray(values) || !values.every(
+        (value) => value === null || typeof value === 'string',
+    )) {
+        throw new Error('Invalid Fac Confirm filter options response')
+    }
+
+    return [...new Set(values.map((value) => value ?? ''))]
+        .sort((left, right) => left.localeCompare(right))
 }

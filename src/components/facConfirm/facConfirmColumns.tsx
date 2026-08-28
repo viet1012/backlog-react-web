@@ -5,9 +5,10 @@ import type {
 import type {
     FacConfirmRow,
 } from '../../types/facConfirm'
+import { ExcelFilterHeader } from '../common/dataGrid/ExcelFilterHeader'
 
 
-export const facConfirmColumns:
+const facConfirmColumnDefinitions:
     GridColDef<FacConfirmRow>[] = [
 
         {
@@ -119,3 +120,15 @@ export const facConfirmColumns:
             width: 165,
         },
     ]
+
+export const facConfirmColumns: GridColDef<FacConfirmRow>[] =
+    facConfirmColumnDefinitions.map((column) => ({
+        ...column,
+        sortable: true,
+        renderHeader: () => (
+            <ExcelFilterHeader
+                field={column.field}
+                label={column.headerName ?? column.field}
+            />
+        ),
+    }))
