@@ -112,10 +112,10 @@ export function ExcelColumnFilterProvider({
       : options
   }, [options, search])
 
-  const allVisibleSelected = visibleOptions.length > 0
-    && visibleOptions.every((value) => selected.has(value))
-  const someVisibleSelected = visibleOptions.some((value) => selected.has(value))
-    && !allVisibleSelected
+  const allSelected = options.length > 0
+    && options.every((value) => selected.has(value))
+  const someSelected = selected.size > 0
+    && !allSelected
   const hasActiveFilter = field
     ? excelFilters.some((filter) => filter.field === field)
     : false
@@ -167,13 +167,9 @@ export function ExcelColumnFilterProvider({
   }
 
   function toggleSelectAll() {
-    setSelected((current) => {
-      const next = new Set(current)
-      visibleOptions.forEach((value) => {
-        if (allVisibleSelected) next.delete(value)
-        else next.add(value)
-      })
-      return next
+    setSelected(() => {
+      if (allSelected) return new Set()
+      return new Set(options)
     })
   }
 
@@ -254,8 +250,8 @@ export function ExcelColumnFilterProvider({
               <ExcelFilterValueList
                 values={visibleOptions}
                 selected={selected}
-                allSelected={allVisibleSelected}
-                someSelected={someVisibleSelected}
+                allSelected={allSelected}
+                someSelected={someSelected}
                 onToggleAll={toggleSelectAll}
                 onToggleValue={toggleValue}
               />

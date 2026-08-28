@@ -31,9 +31,6 @@ import type {
   GridSortModel,
 } from '@mui/x-data-grid'
 
-import {
-  facConfirmColumns,
-} from '../components/facConfirm/facConfirmColumns'
 import { FacConfirmDataTable } from '../components/facConfirm/FacConfirmDataTable'
 
 import {
