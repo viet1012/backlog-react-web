@@ -1,4 +1,4 @@
-import type { PaletteColor, Theme } from '@mui/material/styles'
+import type { Theme } from '@mui/material/styles'
 import type { FacConfirmProcessGroup } from '../types/facConfirm'
 
 interface ProcessGroupConfig {

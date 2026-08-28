@@ -1,5 +1,7 @@
 import {
   useCallback,
+  useMemo,
+  useState,
 } from 'react'
 
 import {
@@ -10,6 +12,7 @@ import {
 import {
   GridToolbarColumnsButton,
   GridToolbarContainer,
+  type GridCellParams,
   type GridColumnVisibilityModel,
   type GridPaginationModel,
   type GridSortModel,
@@ -55,7 +58,7 @@ import type {
 } from '../../types/facConfirm'
 
 import {
-  facConfirmColumns,
+  getFacConfirmColumns,
 } from './facConfirmColumns'
 
 
@@ -65,9 +68,11 @@ interface FacConfirmDataTableProps {
   loading: boolean
 
   div: string
+
   expD: string
 
-  procGrp: FacConfirmProcessGroup
+  procGrp:
+  FacConfirmProcessGroup
 
   highlightProcGrp:
   FacConfirmProcessGroup | null
@@ -93,19 +98,33 @@ interface FacConfirmDataTableProps {
   Record<string, number>
 
   onExcelFiltersChange:
-  (filters: FacConfirmFilterItem[]) => void
+  (
+    filters:
+      FacConfirmFilterItem[],
+  ) => void
 
   onPaginationChange:
-  (model: GridPaginationModel) => void
+  (
+    model:
+      GridPaginationModel,
+  ) => void
 
   onSortChange:
-  (model: GridSortModel) => void
+  (
+    model:
+      GridSortModel,
+  ) => void
 
   onColumnVisibilityModelChange:
-  (model: GridColumnVisibilityModel) => void
+  (
+    model:
+      GridColumnVisibilityModel,
+  ) => void
 
   onColumnOrderChange:
-  (order: string[]) => void
+  (
+    order: string[],
+  ) => void
 
   onColumnWidthChange:
   (
@@ -115,63 +134,134 @@ interface FacConfirmDataTableProps {
 }
 
 
+// =========================================================
+// TOOLBAR
+// =========================================================
+
 function FacConfirmToolbar() {
+
   return (
     <GridToolbarContainer
       sx={{
-        justifyContent: 'flex-end',
-        minHeight: 40,
-        px: 1,
-        py: 0.5,
+        justifyContent:
+          'flex-end',
+
+        minHeight:
+          40,
+
+        px:
+          1,
+
+        py:
+          0.5,
       }}
     >
+
       <GridToolbarColumnsButton />
+
     </GridToolbarContainer>
   )
 }
 
 
+// =========================================================
+// CELL KEY
+// =========================================================
+
+function getCellKey(
+  row: FacConfirmRow,
+  field: string,
+) {
+
+  return [
+    row.aufnr,
+    row.zglobalCode ?? '',
+    field,
+  ].join('|')
+}
+
+
+// =========================================================
+// VALUE COMPARE
+// =========================================================
+
+function valuesEqual(
+  left: unknown,
+  right: unknown,
+) {
+
+  if (
+    left == null
+    && right == null
+  ) {
+    return true
+  }
+
+  return String(left ?? '')
+    === String(right ?? '')
+}
+
+
+// =========================================================
+// COMPONENT
+// =========================================================
+
 export function FacConfirmDataTable({
 
   rows,
-
   loading,
 
   div,
-
   expD,
 
   procGrp,
-
   highlightProcGrp,
 
   excelFilters,
 
   paginationModel,
-
   rowCount,
 
   sortModel,
 
   columnVisibilityModel,
-
   columnOrder,
-
   columnWidths,
 
   onExcelFiltersChange,
 
   onPaginationChange,
-
   onSortChange,
 
   onColumnVisibilityModelChange,
-
   onColumnOrderChange,
-
   onColumnWidthChange,
 
 }: FacConfirmDataTableProps) {
+
+  // =======================================================
+  // USER EDITED CELLS
+  //
+  // key:
+  // AUFNR | GlobalCode | field
+  //
+  // value:
+  // Rough / Heat / Fine
+  // =======================================================
+
+  const [
+    editedCells,
+    setEditedCells,
+  ] =
+    useState<
+      Map<
+        string,
+        FacConfirmProcessGroup
+      >
+    >(
+      () => new Map(),
+    )
+
 
   // =======================================================
   // FILTER OPTIONS
@@ -189,10 +279,14 @@ export function FacConfirmDataTable({
         getFacConfirmFilterOptions(
           {
             ...request,
+
             div,
+
             expD,
+
             procGrp,
           },
+
           signal,
         ),
       [
@@ -204,7 +298,7 @@ export function FacConfirmDataTable({
 
 
   // =======================================================
-  // HIGHLIGHT CONFIG
+  // ACTIVE PROCESS CONFIG
   // =======================================================
 
   const highlightConfig =
@@ -213,6 +307,181 @@ export function FacConfirmDataTable({
       highlightProcGrp
       ]
       : null
+
+
+  // =======================================================
+  // COLUMNS
+  // =======================================================
+
+  const columns =
+    useMemo(
+      () =>
+        getFacConfirmColumns(
+          highlightProcGrp,
+        ),
+      [
+        highlightProcGrp,
+      ],
+    )
+
+
+  // =======================================================
+  // CELL CLASS
+  //
+  // Chỉ cell đã được USER sửa mới có màu.
+  // Data có sẵn từ BE không có màu.
+  // =======================================================
+
+  const getCellClassName =
+    useCallback(
+      (
+        params:
+          GridCellParams<FacConfirmRow>,
+      ): string => {
+
+        const key =
+          getCellKey(
+            params.row,
+            params.field,
+          )
+
+        const editedProcess =
+          editedCells.get(
+            key,
+          )
+
+        if (!editedProcess) {
+          return ''
+        }
+
+
+        switch (
+        editedProcess
+        ) {
+
+          case 'Rough':
+            return 'fac-confirm-edited-rough'
+
+          case 'Heat':
+            return 'fac-confirm-edited-heat'
+
+          case 'Fine':
+            return 'fac-confirm-edited-fine'
+
+          default:
+            return ''
+        }
+      },
+      [
+        editedCells,
+      ],
+    )
+
+
+  // =======================================================
+  // PROCESS ROW UPDATE
+  //
+  // Chỉ mark màu nếu value thực sự thay đổi.
+  // Double click rồi ESC => không đổi màu.
+  // =======================================================
+
+  const processRowUpdate =
+    useCallback(
+      (
+        newRow:
+          FacConfirmRow,
+
+        oldRow:
+          FacConfirmRow,
+      ) => {
+
+        if (!highlightProcGrp) {
+          return newRow
+        }
+
+
+        const activeFields =
+          FAC_CONFIRM_PROCESS_CONFIG[
+            highlightProcGrp
+          ].columns
+
+
+        const changedFields =
+          activeFields.filter(
+            (field) => {
+
+              const key =
+                field as keyof FacConfirmRow
+
+
+              return !valuesEqual(
+                oldRow[key],
+                newRow[key],
+              )
+            },
+          )
+
+
+        if (
+          changedFields.length > 0
+        ) {
+
+          setEditedCells(
+            (current) => {
+
+              const next =
+                new Map(
+                  current,
+                )
+
+
+              for (
+                const field
+                of changedFields
+              ) {
+
+                next.set(
+                  getCellKey(
+                    newRow,
+                    field,
+                  ),
+
+                  highlightProcGrp,
+                )
+              }
+
+
+              return next
+            },
+          )
+        }
+
+
+        return newRow
+      },
+      [
+        highlightProcGrp,
+      ],
+    )
+
+
+  // =======================================================
+  // PROCESS UPDATE ERROR
+  // =======================================================
+
+  const handleProcessRowUpdateError =
+    useCallback(
+      (
+        error: unknown,
+      ) => {
+
+        console.error(
+          'Fac Confirm row update failed:',
+          error,
+        )
+      },
+      [],
+    )
 
 
   // =======================================================
@@ -247,94 +516,182 @@ export function FacConfirmDataTable({
       <Box
         sx={(theme) => {
 
-          // Chưa click process
-          // => không highlight
+          // =================================================
+          // COLOR
+          // =================================================
 
-          if (!highlightConfig) {
-            return {
-              width: '100%',
-              height: '100%',
-              minHeight: 0,
-            }
-          }
+          const roughColor =
+            FAC_CONFIRM_PROCESS_CONFIG.Rough
+              .getColor(theme)
+
+          const heatColor =
+            FAC_CONFIRM_PROCESS_CONFIG.Heat
+              .getColor(theme)
+
+          const fineColor =
+            FAC_CONFIRM_PROCESS_CONFIG.Fine
+              .getColor(theme)
 
 
-          const color =
-            highlightConfig.getColor(
-              theme,
-            )
+          // =================================================
+          // ACTIVE HEADER
+          // =================================================
 
-
-          const columnStyles:
+          const headerStyles:
             Record<string, object> = {}
 
 
-          for (
-            const field
-            of highlightConfig.columns
+          if (
+            highlightConfig
           ) {
 
-            // CELL
-
-            columnStyles[
-              `& .MuiDataGrid-cell[data-field="${field}"]`
-            ] = {
-
-              backgroundColor:
-                alpha(
-                  color,
-                  theme.palette.mode === 'dark'
-                    ? 0.10
-                    : 0.055,
-                ),
-
-              transition:
-                'background-color 180ms ease',
-            }
+            const activeColor =
+              highlightConfig.getColor(
+                theme,
+              )
 
 
-            // HEADER
+            for (
+              const field
+              of highlightConfig.columns
+            ) {
 
-            columnStyles[
-              `& .MuiDataGrid-columnHeader[data-field="${field}"]`
-            ] = {
+              headerStyles[
+                `& .MuiDataGrid-columnHeader[data-field="${field}"]`
+              ] = {
 
-              backgroundColor:
-                alpha(
-                  color,
-                  theme.palette.mode === 'dark'
-                    ? 0.16
-                    : 0.09,
-                ),
+                backgroundColor:
+                  alpha(
+                    activeColor,
 
-              transition:
-                'background-color 180ms ease',
-            }
+                    theme.palette.mode ===
+                      'dark'
+                      ? 0.18
+                      : 0.10,
+                  ),
 
+                color:
+                  activeColor,
 
-            // ROW HOVER
+                fontWeight:
+                  800,
 
-            columnStyles[
-              `& .MuiDataGrid-row:hover .MuiDataGrid-cell[data-field="${field}"]`
-            ] = {
-
-              backgroundColor:
-                alpha(
-                  color,
-                  theme.palette.mode === 'dark'
-                    ? 0.15
-                    : 0.09,
-                ),
+                transition:
+                  'background-color 180ms ease',
+              }
             }
           }
 
 
           return {
-            width: '100%',
-            height: '100%',
-            minHeight: 0,
 
-            ...columnStyles,
+            width:
+              '100%',
+
+            height:
+              '100%',
+
+            minHeight:
+              0,
+
+
+            // =================================================
+            // ROUGH EDITED CELL
+            // =================================================
+
+            '& .fac-confirm-edited-rough': {
+
+              backgroundColor:
+                alpha(
+                  roughColor,
+
+                  theme.palette.mode ===
+                    'dark'
+                    ? 0.18
+                    : 0.10,
+                ),
+
+              transition:
+                'background-color 180ms ease',
+            },
+
+
+            // =================================================
+            // HEAT EDITED CELL
+            // =================================================
+
+            '& .fac-confirm-edited-heat': {
+
+              backgroundColor:
+                alpha(
+                  heatColor,
+
+                  theme.palette.mode ===
+                    'dark'
+                    ? 0.18
+                    : 0.10,
+                ),
+
+              transition:
+                'background-color 180ms ease',
+            },
+
+
+            // =================================================
+            // FINE EDITED CELL
+            // =================================================
+
+            '& .fac-confirm-edited-fine': {
+
+              backgroundColor:
+                alpha(
+                  fineColor,
+
+                  theme.palette.mode ===
+                    'dark'
+                    ? 0.18
+                    : 0.10,
+                ),
+
+              transition:
+                'background-color 180ms ease',
+            },
+
+
+            // =================================================
+            // HOVER
+            // =================================================
+
+            '& .MuiDataGrid-row:hover .fac-confirm-edited-rough': {
+              backgroundColor:
+                alpha(
+                  roughColor,
+                  0.15,
+                ),
+            },
+
+            '& .MuiDataGrid-row:hover .fac-confirm-edited-heat': {
+              backgroundColor:
+                alpha(
+                  heatColor,
+                  0.15,
+                ),
+            },
+
+            '& .MuiDataGrid-row:hover .fac-confirm-edited-fine': {
+              backgroundColor:
+                alpha(
+                  fineColor,
+                  0.15,
+                ),
+            },
+
+
+            // =================================================
+            // ACTIVE HEADER
+            // =================================================
+
+            ...headerStyles,
           }
         }}
       >
@@ -346,19 +703,26 @@ export function FacConfirmDataTable({
           }
 
           columns={
-            facConfirmColumns
+            columns
           }
 
           getRowId={(row) =>
             [
               row.aufnr,
-              row.zglobalCode ?? '',
+
+              row.zglobalCode
+              ?? '',
             ].join('|')
           }
 
           loading={
             loading
           }
+
+
+          // ===============================================
+          // PAGINATION
+          // ===============================================
 
           paginationMode="server"
 
@@ -378,6 +742,11 @@ export function FacConfirmDataTable({
             onPaginationChange
           }
 
+
+          // ===============================================
+          // SORT
+          // ===============================================
+
           sortingMode="client"
 
           sortModel={
@@ -387,6 +756,11 @@ export function FacConfirmDataTable({
           onSortChange={
             onSortChange
           }
+
+
+          // ===============================================
+          // COLUMN PREFERENCES
+          // ===============================================
 
           columnVisibilityModel={
             columnVisibilityModel
@@ -411,6 +785,28 @@ export function FacConfirmDataTable({
           onColumnWidthChange={
             onColumnWidthChange
           }
+
+
+          // ===============================================
+          // EDIT
+          // ===============================================
+
+          getCellClassName={
+            getCellClassName
+          }
+
+          processRowUpdate={
+            processRowUpdate
+          }
+
+          onProcessRowUpdateError={
+            handleProcessRowUpdateError
+          }
+
+
+          // ===============================================
+          // TOOLBAR
+          // ===============================================
 
           toolbar={
             FacConfirmToolbar

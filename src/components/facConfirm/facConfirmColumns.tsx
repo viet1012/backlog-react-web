@@ -3,9 +3,13 @@ import type {
 } from '@mui/x-data-grid'
 
 import type {
+    FacConfirmProcessGroup,
     FacConfirmRow,
 } from '../../types/facConfirm'
-import { ExcelFilterHeader } from '../common/dataGrid/ExcelFilterHeader'
+
+import {
+    ExcelFilterHeader,
+} from '../common/dataGrid/ExcelFilterHeader'
 
 
 const facConfirmColumnDefinitions:
@@ -84,7 +88,6 @@ const facConfirmColumnDefinitions:
             type: 'number',
         },
 
-        // Product Name chuyển xuống đây
         {
             field: 'pname',
             headerName: 'Product Name',
@@ -122,14 +125,67 @@ const facConfirmColumnDefinitions:
         },
     ]
 
-export const facConfirmColumns: GridColDef<FacConfirmRow>[] =
-    facConfirmColumnDefinitions.map((column) => ({
-        ...column,
-        sortable: true,
-        renderHeader: () => (
-            <ExcelFilterHeader
-                field={column.field}
-                label={column.headerName ?? column.field}
-            />
-        ),
-    }))
+
+// =========================================================
+// EDITABLE FIELDS BY PROCESS
+// =========================================================
+
+const editableFields: Record<
+    FacConfirmProcessGroup,
+    Set<string>
+> = {
+
+    Rough: new Set([
+        'toDrill',
+        'toHeat',
+    ]),
+
+    Heat: new Set([
+        'heatStart',
+        'heatFinish',
+    ]),
+
+    Fine: new Set([
+        'toPk',
+    ]),
+}
+
+
+// =========================================================
+// BUILD COLUMNS
+// =========================================================
+
+export function getFacConfirmColumns(
+    activeProcess:
+        FacConfirmProcessGroup | null,
+): GridColDef<FacConfirmRow>[] {
+
+    const allowedFields =
+        activeProcess
+            ? editableFields[activeProcess]
+            : null
+
+    return facConfirmColumnDefinitions.map(
+        (column) => ({
+
+            ...column,
+
+            sortable: true,
+
+            editable:
+                allowedFields?.has(
+                    column.field,
+                ) ?? false,
+
+            renderHeader: () => (
+                <ExcelFilterHeader
+                    field={column.field}
+                    label={
+                        column.headerName
+                        ?? column.field
+                    }
+                />
+            ),
+        }),
+    )
+}
