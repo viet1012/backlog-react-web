@@ -29,7 +29,7 @@ export function BacklogPage({ mode, onToggleMode }: BacklogPageProps) {
   // =======================================================
   // GRID PREFERENCES
   // =======================================================
-  const preferences = useGridPreferences('backlog', 20)
+  const preferences = useGridPreferences('backlog', 100)
 
   // =======================================================
   // PAGINATION / SORT / EXCEL FILTERS

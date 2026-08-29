@@ -146,7 +146,7 @@ export function FacConfirmPage() {
     useState<
       FacConfirmProcessGroup | null
     >(
-      null,
+      pagePreferences.procGrp,
     )
 
 
@@ -157,7 +157,7 @@ export function FacConfirmPage() {
   const preferences =
     useGridPreferences(
       'fac-confirm',
-      20,
+      100,
     )
 
 
@@ -215,6 +215,8 @@ export function FacConfirmPage() {
   const {
     rows,
 
+    confirmedProcesses,
+
     processGroups,
 
     totalElements,
@@ -230,11 +232,8 @@ export function FacConfirmPage() {
     handleRefresh,
   } =
     useFacConfirmData({
-
       div,
-
       expD,
-
       procGrp,
 
       page:
@@ -603,6 +602,10 @@ export function FacConfirmPage() {
             rows
           }
 
+          confirmedProcesses={
+            confirmedProcesses
+          }
+
           loading={
             loading
           }
@@ -709,7 +712,10 @@ export function FacConfirmPage() {
           onColumnWidthChange={
             preferences.setColumnWidth
           }
-
+          
+          onSaved={
+            handleRefresh
+          }
         />
 
       </Box>

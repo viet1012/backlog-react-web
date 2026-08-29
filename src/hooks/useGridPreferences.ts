@@ -6,7 +6,7 @@ import {
   type GridPreferences,
 } from '../utils/uiPreferences'
 
-export function useGridPreferences(gridKey: string, defaultPageSize = 20) {
+export function useGridPreferences(gridKey: string, defaultPageSize = 100) {
   const [preferences, setPreferences] = useState<GridPreferences>(() =>
     loadGridPreferences(gridKey, defaultPageSize),
   )

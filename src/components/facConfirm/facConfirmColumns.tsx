@@ -10,6 +10,7 @@ import type {
 import {
     ExcelFilterHeader,
 } from '../common/dataGrid/ExcelFilterHeader'
+import { FAC_CONFIRM_PROCESS_CONFIG } from '../../config/facConfirmProcessConfig'
 
 
 const facConfirmColumnDefinitions:
@@ -98,57 +99,33 @@ const facConfirmColumnDefinitions:
             field: 'toDrill',
             headerName: 'To Drill',
             width: 165,
+            valueFormatter: (value) => formatDateTime(value),
         },
-
         {
             field: 'toHeat',
             headerName: 'To Heat',
             width: 165,
+            valueFormatter: (value) => formatDateTime(value),
         },
-
         {
             field: 'heatStart',
             headerName: 'Heat Start',
-            width: 175,
+            width: 165,
+            valueFormatter: (value) => formatDateTime(value),
         },
-
         {
             field: 'heatFinish',
             headerName: 'Heat Finish',
-            width: 175,
+            width: 165,
+            valueFormatter: (value) => formatDateTime(value),
         },
-
         {
             field: 'toPk',
             headerName: 'To PK',
             width: 165,
+            valueFormatter: (value) => formatDateTime(value),
         },
     ]
-
-
-// =========================================================
-// EDITABLE FIELDS BY PROCESS
-// =========================================================
-
-const editableFields: Record<
-    FacConfirmProcessGroup,
-    Set<string>
-> = {
-
-    Rough: new Set([
-        'toDrill',
-        'toHeat',
-    ]),
-
-    Heat: new Set([
-        'heatStart',
-        'heatFinish',
-    ]),
-
-    Fine: new Set([
-        'toPk',
-    ]),
-}
 
 
 // =========================================================
@@ -160,9 +137,11 @@ export function getFacConfirmColumns(
         FacConfirmProcessGroup | null,
 ): GridColDef<FacConfirmRow>[] {
 
-    const allowedFields =
+    const allowedFields: Set<string> | null =
         activeProcess
-            ? editableFields[activeProcess]
+            ? new Set<string>(
+                FAC_CONFIRM_PROCESS_CONFIG[activeProcess].columns,
+            )
             : null
 
     return facConfirmColumnDefinitions.map(
@@ -188,4 +167,42 @@ export function getFacConfirmColumns(
             ),
         }),
     )
+}
+
+function formatDateTime(value: unknown): string {
+    if (!value) return ''
+
+    const text = String(value).trim()
+
+    // API ISO:
+    // 2026-08-19T22:11:56.000+00:00
+    if (/^\d{4}-\d{2}-\d{2}T/.test(text)) {
+        const date = new Date(text)
+
+        if (Number.isNaN(date.getTime())) {
+            return text
+        }
+
+        return new Intl.DateTimeFormat('en-GB', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+        }).format(date)
+    }
+
+    // Data hiện tại:
+    // 20/08/2026 05:11:56
+    // -> 20/08/2026 05:11
+    const match = text.match(
+        /^(\d{2}\/\d{2}\/\d{4})\s+(\d{2}:\d{2})(?::\d{2})?/,
+    )
+
+    if (match) {
+        return `${match[1]} ${match[2]}`
+    }
+
+    return text
 }

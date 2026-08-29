@@ -85,3 +85,48 @@ export interface FacConfirmFilterOptionsRequest {
     page?: number
     size?: number
 }
+
+
+export type FacConfirmEditableField =
+    | 'toDrill'
+    | 'toHeat'
+    | 'heatStart'
+    | 'heatFinish'
+    | 'toPk'
+
+
+export interface FacConfirmProcessTimeChange {
+    aufnr: string
+    field: FacConfirmEditableField
+    value: string
+}
+
+
+export interface FacConfirmProcessTimeRequest {
+    employeeId: string
+    changes: FacConfirmProcessTimeChange[]
+}
+
+export interface FacConfirmProcessTimeResponse {
+    success: boolean
+    updatedCount: number
+    message: string
+}
+
+export interface FacConfirmConfirmedProcess {
+    aufnr: string
+
+    processGrp:
+    | 'To Drill'
+    | 'To Heat'
+    | 'Heat Start'
+    | 'Heat Finish'
+    | 'To Packing'
+
+    confirmFnTime:
+    string | null
+
+    updater?: string | null
+
+    updatedAt?: string | null
+}

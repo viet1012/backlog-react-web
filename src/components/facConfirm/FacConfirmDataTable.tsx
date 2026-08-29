@@ -5,14 +5,24 @@ import {
 } from 'react'
 
 import {
+  Alert,
   Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Snackbar,
+  TextField,
   alpha,
 } from '@mui/material'
+
+import SaveRoundedIcon
+  from '@mui/icons-material/SaveRounded'
 
 import {
   GridToolbarColumnsButton,
   GridToolbarContainer,
-  type GridCellParams,
   type GridColumnVisibilityModel,
   type GridPaginationModel,
   type GridSortModel,
@@ -45,6 +55,7 @@ import {
 
 import {
   getFacConfirmFilterOptions,
+  saveFacConfirmProcessTimes,
 } from '../../services/facConfirmService'
 
 import {
@@ -52,6 +63,7 @@ import {
 } from '../../theme/dataGridHeaderStyles'
 
 import type {
+  FacConfirmConfirmedProcess,
   FacConfirmFilterItem,
   FacConfirmProcessGroup,
   FacConfirmRow,
@@ -61,21 +73,25 @@ import {
   getFacConfirmColumns,
 } from './facConfirmColumns'
 
+import {
+  useFacConfirmCellEditState,
+} from './hooks/useFacConfirmCellEditState'
 
 interface FacConfirmDataTableProps {
   rows: FacConfirmRow[]
-
+  confirmedProcesses: FacConfirmConfirmedProcess[]
   loading: boolean
 
   div: string
-
   expD: string
 
-  procGrp:
-  FacConfirmProcessGroup
+  procGrp: FacConfirmProcessGroup
 
   highlightProcGrp:
   FacConfirmProcessGroup | null
+
+  // XÓA DÒNG NÀY
+  // updater: string
 
   excelFilters:
   FacConfirmFilterItem[]
@@ -98,53 +114,51 @@ interface FacConfirmDataTableProps {
   Record<string, number>
 
   onExcelFiltersChange:
-  (
-    filters:
-      FacConfirmFilterItem[],
-  ) => void
+  (filters: FacConfirmFilterItem[]) => void
 
   onPaginationChange:
-  (
-    model:
-      GridPaginationModel,
-  ) => void
+  (model: GridPaginationModel) => void
 
   onSortChange:
-  (
-    model:
-      GridSortModel,
-  ) => void
+  (model: GridSortModel) => void
 
   onColumnVisibilityModelChange:
-  (
-    model:
-      GridColumnVisibilityModel,
-  ) => void
+  (model: GridColumnVisibilityModel) => void
 
   onColumnOrderChange:
-  (
-    order: string[],
-  ) => void
+  (order: string[]) => void
 
   onColumnWidthChange:
-  (
-    field: string,
-    width: number,
-  ) => void
-}
+  (field: string, width: number) => void
 
+  onSaved?:
+  () => void
+}
 
 // =========================================================
 // TOOLBAR
 // =========================================================
 
-function FacConfirmToolbar() {
+interface FacConfirmToolbarProps {
+  hasChanges: boolean
+  saving: boolean
+  changeCount: number
+  onConfirm: () => void
+}
+
+
+function FacConfirmToolbar({
+  hasChanges,
+  saving,
+  changeCount,
+  onConfirm,
+}: FacConfirmToolbarProps) {
 
   return (
     <GridToolbarContainer
       sx={{
         justifyContent:
-          'flex-end',
+          'space-between',
 
         minHeight:
           40,
@@ -156,49 +170,35 @@ function FacConfirmToolbar() {
           0.5,
       }}
     >
+      <Box>
+        {hasChanges && (
+          <Button
+            size="small"
+
+            variant="contained"
+
+            startIcon={
+              <SaveRoundedIcon />
+            }
+
+            disabled={
+              saving
+            }
+
+            onClick={
+              onConfirm
+            }
+          >
+            {saving
+              ? 'Saving...'
+              : `Confirm Changes (${changeCount})`}
+          </Button>
+        )}
+      </Box>
 
       <GridToolbarColumnsButton />
-
     </GridToolbarContainer>
   )
-}
-
-
-// =========================================================
-// CELL KEY
-// =========================================================
-
-function getCellKey(
-  row: FacConfirmRow,
-  field: string,
-) {
-
-  return [
-    row.aufnr,
-    row.zglobalCode ?? '',
-    field,
-  ].join('|')
-}
-
-
-// =========================================================
-// VALUE COMPARE
-// =========================================================
-
-function valuesEqual(
-  left: unknown,
-  right: unknown,
-) {
-
-  if (
-    left == null
-    && right == null
-  ) {
-    return true
-  }
-
-  return String(left ?? '')
-    === String(right ?? '')
 }
 
 
@@ -209,60 +209,74 @@ function valuesEqual(
 export function FacConfirmDataTable({
 
   rows,
+  confirmedProcesses,
   loading,
 
   div,
   expD,
 
   procGrp,
+
   highlightProcGrp,
 
   excelFilters,
 
   paginationModel,
+
   rowCount,
 
   sortModel,
 
   columnVisibilityModel,
+
   columnOrder,
+
   columnWidths,
 
   onExcelFiltersChange,
 
   onPaginationChange,
+
   onSortChange,
 
   onColumnVisibilityModelChange,
+
   onColumnOrderChange,
+
   onColumnWidthChange,
+
+  onSaved,
 
 }: FacConfirmDataTableProps) {
 
   // =======================================================
-  // USER EDITED CELLS
-  //
-  // key:
-  // AUFNR | GlobalCode | field
-  //
-  // value:
-  // Rough / Heat / Fine
+  // SAVE STATE
   // =======================================================
 
   const [
-    editedCells,
-    setEditedCells,
-  ] =
-    useState<
-      Map<
-        string,
-        FacConfirmProcessGroup
-      >
-    >(
-      () => new Map(),
-    )
+    confirmDialogOpen,
+    setConfirmDialogOpen,
+  ] = useState(false)
 
+  const [
+    employeeId,
+    setEmployeeId,
+  ] = useState('')
 
+  const [
+    employeeError,
+    setEmployeeError,
+  ] = useState('')
+
+  const [
+    saving,
+    setSaving,
+  ] = useState(false)
+
+  const [
+    editError,
+    setEditError,
+  ] = useState('')
   // =======================================================
   // FILTER OPTIONS
   // =======================================================
@@ -286,7 +300,6 @@ export function FacConfirmDataTable({
 
             procGrp,
           },
-
           signal,
         ),
       [
@@ -298,7 +311,7 @@ export function FacConfirmDataTable({
 
 
   // =======================================================
-  // ACTIVE PROCESS CONFIG
+  // ACTIVE PROCESS
   // =======================================================
 
   const highlightConfig =
@@ -326,147 +339,167 @@ export function FacConfirmDataTable({
 
 
   // =======================================================
-  // CELL CLASS
-  //
-  // Chỉ cell đã được USER sửa mới có màu.
-  // Data có sẵn từ BE không có màu.
+  // CELL EDIT STATE
   // =======================================================
 
-  const getCellClassName =
+  const {
+    getCellClassName,
+    processRowUpdate,
+    pendingChanges,
+    hasChanges,
+    changeCount,
+    clearChanges,
+  } = useFacConfirmCellEditState({
+    activeProcess:
+      highlightProcGrp,
+
+    confirmedProcesses,
+  })
+
+  // =======================================================
+  // CONFIRM ALL CHANGES
+  // =======================================================
+  const handleOpenConfirm =
     useCallback(
-      (
-        params:
-          GridCellParams<FacConfirmRow>,
-      ): string => {
+      () => {
 
-        const key =
-          getCellKey(
-            params.row,
-            params.field,
-          )
-
-        const editedProcess =
-          editedCells.get(
-            key,
-          )
-
-        if (!editedProcess) {
-          return ''
+        if (!hasChanges) {
+          return
         }
 
-
-        switch (
-        editedProcess
-        ) {
-
-          case 'Rough':
-            return 'fac-confirm-edited-rough'
-
-          case 'Heat':
-            return 'fac-confirm-edited-heat'
-
-          case 'Fine':
-            return 'fac-confirm-edited-fine'
-
-          default:
-            return ''
-        }
+        setEmployeeError('')
+        setEmployeeId('')
+        setConfirmDialogOpen(true)
       },
       [
-        editedCells,
+        hasChanges,
       ],
     )
-
-
-  // =======================================================
-  // PROCESS ROW UPDATE
-  //
-  // Chỉ mark màu nếu value thực sự thay đổi.
-  // Double click rồi ESC => không đổi màu.
-  // =======================================================
-
-  const processRowUpdate =
+  const handleSaveChanges =
     useCallback(
-      (
-        newRow:
-          FacConfirmRow,
+      async () => {
 
-        oldRow:
-          FacConfirmRow,
-      ) => {
+        const msnv =
+          employeeId.trim()
 
-        if (!highlightProcGrp) {
-          return newRow
-        }
-
-
-        const activeFields =
-          FAC_CONFIRM_PROCESS_CONFIG[
-            highlightProcGrp
-          ].columns
-
-
-        const changedFields =
-          activeFields.filter(
-            (field) => {
-
-              const key =
-                field as keyof FacConfirmRow
-
-
-              return !valuesEqual(
-                oldRow[key],
-                newRow[key],
-              )
-            },
+        if (!msnv) {
+          setEmployeeError(
+            'Please enter employee ID.',
           )
 
+          return
+        }
+
+        // Nếu MSNV công ty chỉ là số
+        if (!/^\d+$/.test(msnv)) {
+          setEmployeeError(
+            'Employee ID must contain numbers only.',
+          )
+
+          return
+        }
 
         if (
-          changedFields.length > 0
+          !hasChanges
+          || saving
         ) {
-
-          setEditedCells(
-            (current) => {
-
-              const next =
-                new Map(
-                  current,
-                )
-
-
-              for (
-                const field
-                of changedFields
-              ) {
-
-                next.set(
-                  getCellKey(
-                    newRow,
-                    field,
-                  ),
-
-                  highlightProcGrp,
-                )
-              }
-
-
-              return next
-            },
-          )
+          return
         }
 
+        try {
 
-        return newRow
+          setSaving(true)
+          setEmployeeError('')
+
+          const result =
+            await saveFacConfirmProcessTimes({
+              employeeId:
+                msnv,
+
+              changes:
+                pendingChanges,
+            })
+
+          console.log(
+            'Fac Confirm saved:',
+            result,
+          )
+
+          clearChanges()
+
+          setConfirmDialogOpen(
+            false,
+          )
+
+          setEmployeeId('')
+
+          onSaved?.()
+
+        } catch (error) {
+
+          console.error(
+            'Save Fac Confirm failed:',
+            error,
+          )
+
+          setEmployeeError(
+            error instanceof Error
+              ? error.message
+              : 'Unable to save Fac Confirm.',
+          )
+
+        } finally {
+
+          setSaving(false)
+        }
       },
       [
-        highlightProcGrp,
+        employeeId,
+        hasChanges,
+        saving,
+        pendingChanges,
+        clearChanges,
+        onSaved,
       ],
     )
 
 
   // =======================================================
-  // PROCESS UPDATE ERROR
+  // TOOLBAR WRAPPER
+  // =======================================================
+
+  const toolbarComponent =
+    useCallback(
+      () => (
+        <FacConfirmToolbar
+          hasChanges={
+            hasChanges
+          }
+
+          saving={
+            saving
+          }
+
+          changeCount={
+            changeCount
+          }
+
+          onConfirm={
+            handleOpenConfirm
+          }
+        />
+      ),
+      [
+        hasChanges,
+        saving,
+        changeCount,
+        handleOpenConfirm,
+      ],
+    )
+
+
+  // =======================================================
+  // ROW UPDATE ERROR
   // =======================================================
 
   const handleProcessRowUpdateError =
@@ -479,10 +512,15 @@ export function FacConfirmDataTable({
           'Fac Confirm row update failed:',
           error,
         )
+
+        setEditError(
+          error instanceof Error
+            ? error.message
+            : 'Invalid value.',
+        )
       },
       [],
     )
-
 
   // =======================================================
   // RENDER
@@ -516,26 +554,23 @@ export function FacConfirmDataTable({
       <Box
         sx={(theme) => {
 
-          // =================================================
-          // COLOR
-          // =================================================
+          const processColors = {
+            Rough:
+              FAC_CONFIRM_PROCESS_CONFIG
+                .Rough
+                .getColor(theme),
 
-          const roughColor =
-            FAC_CONFIRM_PROCESS_CONFIG.Rough
-              .getColor(theme)
+            Heat:
+              FAC_CONFIRM_PROCESS_CONFIG
+                .Heat
+                .getColor(theme),
 
-          const heatColor =
-            FAC_CONFIRM_PROCESS_CONFIG.Heat
-              .getColor(theme)
+            Fine:
+              FAC_CONFIRM_PROCESS_CONFIG
+                .Fine
+                .getColor(theme),
+          }
 
-          const fineColor =
-            FAC_CONFIRM_PROCESS_CONFIG.Fine
-              .getColor(theme)
-
-
-          // =================================================
-          // ACTIVE HEADER
-          // =================================================
 
           const headerStyles:
             Record<string, object> = {}
@@ -551,36 +586,78 @@ export function FacConfirmDataTable({
               )
 
 
-            for (
-              const field
-              of highlightConfig.columns
-            ) {
+            highlightConfig.columns.forEach(
+              (
+                field,
+              ) => {
 
-              headerStyles[
-                `& .MuiDataGrid-columnHeader[data-field="${field}"]`
-              ] = {
+                headerStyles[
+                  `& .MuiDataGrid-columnHeader[data-field="${field}"]`
+                ] = {
 
-                backgroundColor:
-                  alpha(
+                  backgroundColor:
+                    alpha(
+                      activeColor,
+
+                      theme.palette.mode ===
+                        'dark'
+                        ? 0.18
+                        : 0.10,
+                    ),
+
+                  color:
                     activeColor,
 
-                    theme.palette.mode ===
-                      'dark'
-                      ? 0.18
-                      : 0.10,
-                  ),
+                  fontWeight:
+                    800,
 
-                color:
-                  activeColor,
-
-                fontWeight:
-                  800,
-
-                transition:
-                  'background-color 180ms ease',
-              }
-            }
+                  transition:
+                    'background-color 180ms ease',
+                }
+              },
+            )
           }
+
+
+          const editedCellStyles =
+            Object.fromEntries(
+
+              (
+                Object.keys(
+                  processColors,
+                ) as FacConfirmProcessGroup[]
+              ).map(
+                (
+                  process,
+                ) => {
+
+                  const className =
+                    `.fac-confirm-edited-${process.toLowerCase()}`
+
+
+                  return [
+                    `& ${className}`,
+                    {
+
+                      backgroundColor:
+                        alpha(
+                          processColors[
+                          process
+                          ],
+
+                          theme.palette.mode ===
+                            'dark'
+                            ? 0.18
+                            : 0.10,
+                        ),
+
+                      transition:
+                        'background-color 180ms ease',
+                    },
+                  ]
+                },
+              ),
+            )
 
 
           return {
@@ -595,101 +672,35 @@ export function FacConfirmDataTable({
               0,
 
 
-            // =================================================
-            // ROUGH EDITED CELL
-            // =================================================
+            ...editedCellStyles,
 
-            '& .fac-confirm-edited-rough': {
-
-              backgroundColor:
-                alpha(
-                  roughColor,
-
-                  theme.palette.mode ===
-                    'dark'
-                    ? 0.18
-                    : 0.10,
-                ),
-
-              transition:
-                'background-color 180ms ease',
-            },
-
-
-            // =================================================
-            // HEAT EDITED CELL
-            // =================================================
-
-            '& .fac-confirm-edited-heat': {
-
-              backgroundColor:
-                alpha(
-                  heatColor,
-
-                  theme.palette.mode ===
-                    'dark'
-                    ? 0.18
-                    : 0.10,
-                ),
-
-              transition:
-                'background-color 180ms ease',
-            },
-
-
-            // =================================================
-            // FINE EDITED CELL
-            // =================================================
-
-            '& .fac-confirm-edited-fine': {
-
-              backgroundColor:
-                alpha(
-                  fineColor,
-
-                  theme.palette.mode ===
-                    'dark'
-                    ? 0.18
-                    : 0.10,
-                ),
-
-              transition:
-                'background-color 180ms ease',
-            },
-
-
-            // =================================================
-            // HOVER
-            // =================================================
 
             '& .MuiDataGrid-row:hover .fac-confirm-edited-rough': {
               backgroundColor:
                 alpha(
-                  roughColor,
+                  processColors.Rough,
                   0.15,
                 ),
             },
+
 
             '& .MuiDataGrid-row:hover .fac-confirm-edited-heat': {
               backgroundColor:
                 alpha(
-                  heatColor,
+                  processColors.Heat,
                   0.15,
                 ),
             },
+
 
             '& .MuiDataGrid-row:hover .fac-confirm-edited-fine': {
               backgroundColor:
                 alpha(
-                  fineColor,
+                  processColors.Fine,
                   0.15,
                 ),
             },
 
-
-            // =================================================
-            // ACTIVE HEADER
-            // =================================================
 
             ...headerStyles,
           }
@@ -709,20 +720,13 @@ export function FacConfirmDataTable({
           getRowId={(row) =>
             [
               row.aufnr,
-
-              row.zglobalCode
-              ?? '',
+              row.zglobalCode ?? '',
             ].join('|')
           }
 
           loading={
             loading
           }
-
-
-          // ===============================================
-          // PAGINATION
-          // ===============================================
 
           paginationMode="server"
 
@@ -742,11 +746,6 @@ export function FacConfirmDataTable({
             onPaginationChange
           }
 
-
-          // ===============================================
-          // SORT
-          // ===============================================
-
           sortingMode="client"
 
           sortModel={
@@ -756,11 +755,6 @@ export function FacConfirmDataTable({
           onSortChange={
             onSortChange
           }
-
-
-          // ===============================================
-          // COLUMN PREFERENCES
-          // ===============================================
 
           columnVisibilityModel={
             columnVisibilityModel
@@ -786,11 +780,6 @@ export function FacConfirmDataTable({
             onColumnWidthChange
           }
 
-
-          // ===============================================
-          // EDIT
-          // ===============================================
-
           getCellClassName={
             getCellClassName
           }
@@ -803,13 +792,8 @@ export function FacConfirmDataTable({
             handleProcessRowUpdateError
           }
 
-
-          // ===============================================
-          // TOOLBAR
-          // ===============================================
-
           toolbar={
-            FacConfirmToolbar
+            toolbarComponent
           }
 
           columnMenu={
@@ -823,6 +807,165 @@ export function FacConfirmDataTable({
         />
 
       </Box>
+      <Dialog
+        open={
+          confirmDialogOpen
+        }
+
+        onClose={() => {
+          if (!saving) {
+            setConfirmDialogOpen(
+              false,
+            )
+          }
+        }}
+
+        maxWidth="xs"
+
+        fullWidth
+      >
+        <DialogTitle>
+          Confirm Changes
+        </DialogTitle>
+
+        <DialogContent>
+
+          <TextField
+            autoFocus
+
+            fullWidth
+
+            size="small"
+
+            label="Employee ID"
+
+            placeholder="Enter MSNV"
+
+            value={
+              employeeId
+            }
+
+            disabled={
+              saving
+            }
+
+            error={
+              Boolean(
+                employeeError,
+              )
+            }
+
+            helperText={
+              employeeError
+              || `${changeCount} change(s) will be confirmed.`
+            }
+
+            onChange={(event) => {
+              setEmployeeId(
+                event.target.value,
+              )
+
+              if (employeeError) {
+                setEmployeeError('')
+              }
+            }}
+
+            onKeyDown={(event) => {
+
+              if (
+                event.key === 'Enter'
+              ) {
+                event.preventDefault()
+
+                void handleSaveChanges()
+              }
+            }}
+
+            slotProps={{
+              htmlInput: {
+                inputMode:
+                  'numeric',
+              },
+            }}
+
+            sx={{
+              mt: 1,
+            }}
+          />
+
+        </DialogContent>
+
+        <DialogActions>
+
+          <Button
+            disabled={
+              saving
+            }
+
+            onClick={() =>
+              setConfirmDialogOpen(
+                false,
+              )
+            }
+          >
+            Cancel
+          </Button>
+
+          <Button
+            variant="contained"
+
+            startIcon={
+              <SaveRoundedIcon />
+            }
+
+            disabled={
+              saving
+              || !employeeId.trim()
+            }
+
+            onClick={() =>
+              void handleSaveChanges()
+            }
+          >
+            {saving
+              ? 'Saving...'
+              : 'Confirm'}
+          </Button>
+
+        </DialogActions>
+      </Dialog>
+      <Snackbar
+        open={
+          Boolean(editError)
+        }
+
+        autoHideDuration={
+          4000
+        }
+
+        onClose={() =>
+          setEditError('')
+        }
+
+        anchorOrigin={{
+          vertical:
+            'top',
+
+          horizontal:
+            'center',
+        }}
+      >
+        <Alert
+          severity="warning"
+          variant="filled"
+
+          onClose={() =>
+            setEditError('')
+          }
+        >
+          {editError}
+        </Alert>
+      </Snackbar>
 
     </ExcelColumnFilterProvider>
   )

@@ -8,8 +8,10 @@ import type {
     FacConfirmProcessGroupSummary,
     FacConfirmFilterOptionsRequest,
     FacConfirmSearchRequest,
+    FacConfirmProcessTimeRequest,
+    FacConfirmProcessTimeResponse,
+    FacConfirmConfirmedProcess,
 } from '../types/facConfirm'
-
 
 export interface FacConfirmParams {
     div: string
@@ -179,4 +181,112 @@ export async function getFacConfirmFilterOptions(
 
     return [...new Set(values.map((value) => value ?? ''))]
         .sort((left, right) => left.localeCompare(right))
+}
+
+// =========================================================
+// CONFIRMED PROCESSES
+// =========================================================
+
+export async function getFacConfirmConfirmedProcesses(
+    aufnrs: string[],
+    signal?: AbortSignal,
+): Promise<FacConfirmConfirmedProcess[]> {
+
+    const cleanAufnrs = [
+        ...new Set(
+            aufnrs
+                .map((value) => value.trim())
+                .filter(Boolean),
+        ),
+    ]
+
+    if (cleanAufnrs.length === 0) {
+        return []
+    }
+
+    const response = await fetch(
+        `${API_BASE_URL}/api/fac-confirm/confirmed-processes`,
+        {
+            method: 'POST',
+
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+            },
+
+            body: JSON.stringify(
+                cleanAufnrs,
+            ),
+
+            signal,
+        },
+    )
+
+    if (!response.ok) {
+        throw new Error(
+            `Fac Confirm confirmed-processes API failed: ${response.status}`,
+        )
+    }
+
+    const result: unknown =
+        await response.json()
+
+    if (!Array.isArray(result)) {
+        throw new Error(
+            'Invalid confirmed processes response',
+        )
+    }
+
+    return result as FacConfirmConfirmedProcess[]
+}
+// =========================================================
+// SAVE PROCESS TIMES
+// =========================================================
+
+
+export async function saveFacConfirmProcessTimes(
+    request: FacConfirmProcessTimeRequest,
+    signal?: AbortSignal,
+): Promise<FacConfirmProcessTimeResponse> {
+
+    if (!request.employeeId?.trim()) {
+        throw new Error('Employee ID is required')
+    }
+
+    if (
+        !Array.isArray(request.changes)
+        || request.changes.length === 0
+    ) {
+        throw new Error('No process changes to save')
+    }
+
+    const response = await fetch(
+        `${API_BASE_URL}/api/fac-confirm/process-times`,
+        {
+            method: 'PATCH',
+
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+            },
+
+            body: JSON.stringify(request),
+
+            signal,
+        },
+    )
+
+    if (!response.ok) {
+        const message = await response.text()
+
+        throw new Error(
+            message
+            || `Save Fac Confirm failed: ${response.status}`,
+        )
+    }
+
+    const result =
+        await response.json() as FacConfirmProcessTimeResponse
+
+    return result
 }

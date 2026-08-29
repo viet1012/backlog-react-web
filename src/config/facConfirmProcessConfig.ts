@@ -1,8 +1,8 @@
 import type { Theme } from '@mui/material/styles'
-import type { FacConfirmProcessGroup } from '../types/facConfirm'
+import type { FacConfirmProcessGroup, FacConfirmRow } from '../types/facConfirm'
 
 interface ProcessGroupConfig {
-    columns: string[]
+    columns: (keyof FacConfirmRow)[]
     getColor: (theme: Theme) => string
 }
 
