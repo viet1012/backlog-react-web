@@ -113,9 +113,11 @@ export function ExcelColumnFilterProvider({
       : options
   }, [options, search])
 
-  const allSelected = options.length > 0
-    && options.every((value) => selected.has(value))
-  const someSelected = selected.size > 0
+  const hasSearch = search.trim() !== ''
+  const selectionScope = hasSearch ? visibleOptions : options
+  const allSelected = selectionScope.length > 0
+    && selectionScope.every((value) => selected.has(value))
+  const someSelected = selectionScope.some((value) => selected.has(value))
     && !allSelected
   const hasActiveFilter = field
     ? excelFilters.some((filter) => filter.field === field)
@@ -144,8 +146,8 @@ export function ExcelColumnFilterProvider({
 
   function applyValueFilter() {
     if (!field) return
-    const selectedValues = options.filter((value) => selected.has(value))
-    replaceCurrentFieldFilter(selectedValues.length === options.length
+    const selectedValues = selectionScope.filter((value) => selected.has(value))
+    replaceCurrentFieldFilter(!hasSearch && selectedValues.length === options.length
       ? undefined
       : { field, operator: 'isAnyOf', values: selectedValues })
     closeFilter()
@@ -168,9 +170,17 @@ export function ExcelColumnFilterProvider({
   }
 
   function toggleSelectAll() {
-    setSelected(() => {
-      if (allSelected) return new Set()
-      return new Set(options)
+    setSelected((current) => {
+      if (!hasSearch) {
+        return allSelected ? new Set() : new Set(options)
+      }
+
+      const next = new Set(current)
+      selectionScope.forEach((value) => {
+        if (allSelected) next.delete(value)
+        else next.add(value)
+      })
+      return next
     })
   }
 
