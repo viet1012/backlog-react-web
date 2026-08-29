@@ -1,6 +1,5 @@
 import {
   Box,
-  Collapse,
   Divider,
   IconButton,
   List,
@@ -138,15 +137,13 @@ export function LeftSidebar() {
             'center',
 
           px:
-            collapsed
-              ? 0
-              : 1.25,
+            0,
 
           flexShrink:
             0,
 
           transition:
-            'height 200ms ease, padding 200ms ease',
+            'none',
         }}
       >
 
@@ -154,8 +151,22 @@ export function LeftSidebar() {
             EXPANDED
         =============================================== */}
 
-        {!collapsed && (
-          <>
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            px: 1.25,
+            opacity: collapsed ? 0 : 1,
+            transform: collapsed
+              ? 'translateX(-6px)'
+              : 'translateX(0)',
+            visibility: collapsed ? 'hidden' : 'visible',
+            pointerEvents: collapsed ? 'none' : 'auto',
+            transition: labelTransition,
+          }}
+        >
 
             <Box
               sx={(theme) =>
@@ -293,15 +304,28 @@ export function LeftSidebar() {
               </IconButton>
             </Tooltip>
 
-          </>
-        )}
+        </Box>
 
 
         {/* ===============================================
             COLLAPSED
         =============================================== */}
 
-        {collapsed && (
+        <Box
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            display: 'grid',
+            placeItems: 'center',
+            opacity: collapsed ? 1 : 0,
+            transform: collapsed
+              ? 'scale(1)'
+              : 'scale(0.94)',
+            visibility: collapsed ? 'visible' : 'hidden',
+            pointerEvents: collapsed ? 'auto' : 'none',
+            transition: labelTransition,
+          }}
+        >
           <Tooltip
             title="Expand sidebar"
             placement="right"
@@ -310,12 +334,6 @@ export function LeftSidebar() {
             <IconButton
               onClick={() => {
                 setCollapsed(false)
-
-                setOpenGroups({
-                  production: true,
-                  planning: true,
-                  management: true,
-                })
               }}
 
               sx={(theme) => ({
@@ -366,7 +384,7 @@ export function LeftSidebar() {
               />
             </IconButton>
           </Tooltip>
-        )}
+        </Box>
 
       </Box>
 
@@ -515,13 +533,13 @@ export function LeftSidebar() {
                     ITEMS
                 ========================================= */}
 
-                <Collapse
-                  in={
-                    collapsed
-                    || groupOpen
-                  }
-
-                  timeout="auto"
+                <Box
+                  sx={{
+                    display:
+                      collapsed || groupOpen
+                        ? 'block'
+                        : 'none',
+                  }}
                 >
                   <List
                     disablePadding
@@ -570,9 +588,7 @@ export function LeftSidebar() {
                             <ListItemIcon
                               sx={{
                                 minWidth:
-                                  collapsed
-                                    ? 0
-                                    : 32,
+                                  32,
 
                                 justifyContent:
                                   'center',
@@ -608,15 +624,14 @@ export function LeftSidebar() {
                               }
 
                               sx={{
-                                ml:
-                                  collapsed
-                                    ? 0
-                                    : 0.5,
+                                position:
+                                  'absolute',
 
-                                maxWidth:
-                                  collapsed
-                                    ? 0
-                                    : 150,
+                                left:
+                                  42,
+
+                                right:
+                                  8,
 
                                 opacity:
                                   collapsed
@@ -626,13 +641,18 @@ export function LeftSidebar() {
                                 overflow:
                                   'hidden',
 
+                                pointerEvents:
+                                  collapsed
+                                    ? 'none'
+                                    : 'auto',
+
                                 transform:
                                   collapsed
                                     ? 'translateX(-6px)'
                                     : 'translateX(0)',
 
                                 transition:
-                                  `${labelTransition}, max-width 180ms ease, margin 180ms ease`,
+                                  labelTransition,
                               }}
 
                               slotProps={{
@@ -659,25 +679,6 @@ export function LeftSidebar() {
                         )
 
 
-                        // NORMAL SIDEBAR
-
-                        if (
-                          !collapsed
-                        ) {
-                          return (
-                            <Box
-                              key={
-                                item.path
-                              }
-                            >
-                              {menuButton}
-                            </Box>
-                          )
-                        }
-
-
-                        // COLLAPSED SIDEBAR
-
                         return (
                           <Tooltip
                             key={
@@ -691,6 +692,18 @@ export function LeftSidebar() {
                             placement="right"
 
                             arrow
+
+                            disableHoverListener={
+                              !collapsed
+                            }
+
+                            disableFocusListener={
+                              !collapsed
+                            }
+
+                            disableTouchListener={
+                              !collapsed
+                            }
                           >
                             {menuButton}
                           </Tooltip>
@@ -699,7 +712,7 @@ export function LeftSidebar() {
                     )}
 
                   </List>
-                </Collapse>
+                </Box>
 
 
                 {/* COLLAPSED SEPARATOR */}

@@ -16,10 +16,10 @@ import type {
 // =========================================================
 
 export const sidebarTransition =
-    'width 220ms ease'
+    'width 180ms cubic-bezier(0.2, 0, 0, 1)'
 
 export const labelTransition =
-    'opacity 160ms ease, transform 180ms ease'
+    'opacity 140ms ease, transform 140ms ease'
 
 export const iconTransition =
     'transform 160ms ease'
@@ -57,6 +57,12 @@ export function getSidebarSx(
 
         overflow:
             'hidden',
+
+        contain:
+            'layout paint',
+
+        willChange:
+            'width',
 
         // =====================================================
         // GLASS BACKGROUND
@@ -112,10 +118,10 @@ export function getSidebarSx(
         `,
 
         backdropFilter:
-            'blur(28px) saturate(145%)',
+            'blur(16px) saturate(135%)',
 
         WebkitBackdropFilter:
-            'blur(28px) saturate(145%)',
+            'blur(16px) saturate(135%)',
 
         borderRight:
             theme.palette.mode === 'dark'
@@ -295,10 +301,10 @@ export function getBrandCardSx(
                 : '1px solid rgba(255,255,255,0.90)',
 
         backdropFilter:
-            'blur(20px) saturate(145%)',
+            'blur(12px) saturate(135%)',
 
         WebkitBackdropFilter:
-            'blur(20px) saturate(145%)',
+            'blur(12px) saturate(135%)',
 
         boxShadow:
             theme.palette.mode === 'dark'
@@ -388,10 +394,10 @@ export function getGroupHeaderSx(
                 : '1px solid rgba(255,255,255,0.82)',
 
         backdropFilter:
-            'blur(18px) saturate(140%)',
+            'blur(10px) saturate(130%)',
 
         WebkitBackdropFilter:
-            'blur(18px) saturate(140%)',
+            'blur(10px) saturate(130%)',
 
         boxShadow:
             theme.palette.mode === 'dark'
@@ -482,12 +488,6 @@ export function getMenuItemSx(
 
         border:
             '1px solid transparent',
-
-        backdropFilter:
-            'blur(14px) saturate(130%)',
-
-        WebkitBackdropFilter:
-            'blur(14px) saturate(130%)',
 
         transition:
             `
@@ -621,12 +621,6 @@ export function getMenuItemSx(
                     ? '1px solid rgba(96,165,250,0.20)'
                     : '1px solid rgba(255,255,255,0.94)',
 
-            backdropFilter:
-                'blur(20px) saturate(150%)',
-
-            WebkitBackdropFilter:
-                'blur(20px) saturate(150%)',
-
             boxShadow:
                 theme.palette.mode === 'dark'
                     ? `
@@ -723,10 +717,10 @@ export function getFooterSx(
                 : '1px solid rgba(255,255,255,0.78)',
 
         backdropFilter:
-            'blur(16px) saturate(135%)',
+            'blur(10px) saturate(130%)',
 
         WebkitBackdropFilter:
-            'blur(16px) saturate(135%)',
+            'blur(10px) saturate(130%)',
 
         boxShadow:
             theme.palette.mode === 'dark'
