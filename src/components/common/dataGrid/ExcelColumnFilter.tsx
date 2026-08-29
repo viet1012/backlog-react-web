@@ -1,9 +1,10 @@
 import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import {
-  Alert, Box, Button, CircularProgress, Divider, ListItemButton,
+  Alert, Box, CircularProgress, Divider, ListItemButton,
   ListItemText, Popover, Stack, TextField, Typography,
 } from '@mui/material'
+import { AppButton } from '../AppButton'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   ExcelFilterContext,
@@ -266,7 +267,7 @@ export function ExcelColumnFilterProvider({
               <Typography sx={{ fontWeight: 700 }}>
                 {conditionLabels[conditionOperator] ?? conditionOperator}
               </Typography>
-              <Button size="small" onClick={() => setView('values')}>Value list</Button>
+              <AppButton compact onClick={() => setView('values')}>Value list</AppButton>
             </Stack>
             {conditionNeedsValue && (
               <TextField
@@ -285,15 +286,15 @@ export function ExcelColumnFilterProvider({
 
         <Divider />
         <Stack direction="row" spacing={1} sx={{ px: 1, py: 1, justifyContent: 'flex-end' }}>
-          <Button disabled={!hasActiveFilter} onClick={clearFilter}>Clear</Button>
-          <Button variant="outlined" onClick={closeFilter}>Cancel</Button>
-          <Button
-            variant="contained"
+          <AppButton disabled={!hasActiveFilter} onClick={clearFilter}>Clear</AppButton>
+          <AppButton onClick={closeFilter}>Cancel</AppButton>
+          <AppButton
+            appearance="action"
             disabled={view === 'values' ? loading || Boolean(error) : !conditionCanApply}
             onClick={view === 'values' ? applyValueFilter : applyConditionFilter}
           >
             OK
-          </Button>
+          </AppButton>
         </Stack>
       </Popover>
 

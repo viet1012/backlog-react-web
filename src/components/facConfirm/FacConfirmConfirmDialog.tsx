@@ -7,7 +7,6 @@ import {
   Dialog,
   DialogActions,
   DialogContent,
-  IconButton,
   InputAdornment,
   TextField,
   Typography,
@@ -340,7 +339,9 @@ export function FacConfirmConfirmDialog({
 
           {/* CLOSE */}
 
-          <IconButton
+          <AppButton
+            compact
+            aria-label="Close"
             disabled={
               saving
             }
@@ -349,7 +350,7 @@ export function FacConfirmConfirmDialog({
               handleClose
             }
 
-            sx={(theme) => ({
+            sx={{
               width:
                 42,
 
@@ -358,30 +359,10 @@ export function FacConfirmConfirmDialog({
 
               mt:
                 0.2,
-
-              bgcolor:
-                alpha(
-                  theme.palette.text.primary,
-                  0.05,
-                ),
-
-              color:
-                'text.secondary',
-
-              '&:hover': {
-                bgcolor:
-                  alpha(
-                    theme.palette.text.primary,
-                    0.10,
-                  ),
-
-                color:
-                  'text.primary',
-              },
-            })}
+            }}
+            icon={<CloseRoundedIcon />}
           >
-            <CloseRoundedIcon />
-          </IconButton>
+          </AppButton>
 
         </Box>
       </Box>
@@ -632,56 +613,15 @@ export function FacConfirmConfirmDialog({
       >
         {/* CANCEL */}
         <AppButton
-          variant="outlined"
           disabled={saving}
           onClick={handleClose}
-          sx={(theme) => ({
-            height: 42,
-            minWidth: 104,
-            px: 2.5,
-
-            borderRadius: '13px',
-
-            fontSize: 13,
-            fontWeight: 700,
-
-            color: 'text.secondary',
-
-            borderColor: alpha(
-              theme.palette.text.primary,
-              0.12,
-            ),
-
-            backgroundColor:
-              theme.palette.mode === 'dark'
-                ? alpha(theme.palette.common.white, 0.04)
-                : alpha(theme.palette.common.white, 0.55),
-
-            boxShadow: 'none',
-
-            '&:hover': {
-              color: 'text.primary',
-
-              borderColor: alpha(
-                theme.palette.text.primary,
-                0.20,
-              ),
-
-              backgroundColor:
-                theme.palette.mode === 'dark'
-                  ? alpha(theme.palette.common.white, 0.08)
-                  : alpha(theme.palette.common.white, 0.90),
-
-              boxShadow: 'none',
-            },
-          })}
         >
           Cancel
         </AppButton>
 
         {/* CONFIRM */}
         <AppButton
-          variant="outlined"
+          appearance="action"
           loading={saving}
           disabled={!employeeId.trim()}
           icon={
@@ -696,82 +636,6 @@ export function FacConfirmConfirmDialog({
               : undefined
           }
           onClick={onConfirm}
-          sx={(theme) => ({
-            height: 42,
-            minWidth: 132,
-            px: 2.75,
-
-            borderRadius: '13px',
-
-            fontSize: 13,
-            fontWeight: 800,
-
-            // giống nút Rough
-            color: theme.palette.primary.main,
-
-            borderColor: alpha(
-              theme.palette.primary.main,
-              0.75,
-            ),
-
-            backgroundColor: alpha(
-              theme.palette.primary.main,
-              theme.palette.mode === 'dark'
-                ? 0.14
-                : 0.07,
-            ),
-
-            boxShadow: 'none',
-
-            '& .MuiButton-startIcon': {
-              color: theme.palette.primary.main,
-            },
-
-            '&:hover': {
-              color: theme.palette.primary.main,
-
-              borderColor:
-                theme.palette.primary.main,
-
-              backgroundColor: alpha(
-                theme.palette.primary.main,
-                theme.palette.mode === 'dark'
-                  ? 0.20
-                  : 0.12,
-              ),
-
-              boxShadow: `0 4px 12px ${alpha(
-                theme.palette.primary.main,
-                0.10,
-              )}`,
-            },
-
-            '&:active': {
-              backgroundColor: alpha(
-                theme.palette.primary.main,
-                0.17,
-              ),
-            },
-
-            '&.Mui-disabled': {
-              color: alpha(
-                theme.palette.text.primary,
-                0.28,
-              ),
-
-              borderColor: alpha(
-                theme.palette.text.primary,
-                0.08,
-              ),
-
-              backgroundColor: alpha(
-                theme.palette.text.primary,
-                0.035,
-              ),
-
-              boxShadow: 'none',
-            },
-          })}
         >
           {saving
             ? 'Saving...'

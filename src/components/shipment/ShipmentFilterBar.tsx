@@ -1,8 +1,9 @@
-import { Box, Button, Stack, TextField, Typography } from '@mui/material'
+import { Box, Stack, TextField, Typography } from '@mui/material'
 import type { SxProps, Theme } from '@mui/material'
 import { GlassPanel } from '../common/GlassPanel'
 import { uiTokens } from '../../theme/uiTokens'
 import { ShipmentLegend } from './ShipmentLegend'
+import { AppButton } from '../common/AppButton'
 
 interface ShipmentFilterBarProps {
   fromD: string
@@ -39,8 +40,8 @@ export function ShipmentFilterBar({
         <TextField label="To" type="date" size="small" value={toD}
           onChange={(event) => onToDateChange(event.target.value)}
           slotProps={{ inputLabel: { shrink: true } }} sx={dateFieldSx} />
-        <Button size="small" variant="contained" disabled={loading} onClick={onApply} sx={{ minWidth: 60, ...controlSx }}>Apply</Button>
-        <Button size="small" variant="outlined" disabled={loading} onClick={onReset} sx={controlSx}>14 Days</Button>
+        <AppButton appearance="action" disabled={loading} onClick={onApply}>Apply</AppButton>
+        <AppButton disabled={loading} onClick={onReset}>14 Days</AppButton>
         <Box sx={{ flex: 1 }} />
         <ShipmentLegend />
       </Stack>

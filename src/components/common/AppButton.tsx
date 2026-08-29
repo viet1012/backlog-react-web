@@ -1,82 +1,168 @@
-import {
-    Button,
-    CircularProgress,
-    type ButtonProps,
-} from '@mui/material'
-
 import type { ReactNode } from 'react'
 
-interface AppButtonProps
-    extends Omit<ButtonProps, 'startIcon' | 'endIcon'> {
+import {
+  Button,
+  CircularProgress,
+  type ButtonProps,
+} from '@mui/material'
+import { alpha } from '@mui/material/styles'
 
-    icon?: ReactNode
+import { uiTokens } from '../../theme/uiTokens'
 
-    endIcon?: ReactNode
+export type AppButtonAppearance =
+  | 'default'
+  | 'action'
+  | 'destructive'
 
-    loading?: boolean
-
-    compact?: boolean
+export interface AppButtonProps extends Omit<
+  ButtonProps,
+  'startIcon' | 'endIcon'
+> {
+  appearance?: AppButtonAppearance
+  loading?: boolean
+  compact?: boolean
+  icon?: ReactNode
+  endIcon?: ReactNode
 }
 
 export function AppButton({
-    children,
-    icon,
-    endIcon,
-    loading = false,
-    compact = false,
-    disabled,
-    variant = 'outlined', // <-- mặc định tất cả có border
-    sx,
-    ...props
+  appearance = 'default',
+  loading = false,
+  compact = false,
+  icon,
+  endIcon,
+  children,
+  disabled,
+  variant = 'outlined',
+  sx,
+  ...props
 }: AppButtonProps) {
-    return (
-        <Button
-            {...props}
-            variant={variant}
-            disabled={disabled || loading}
-            startIcon={
-                loading
-                    ? <CircularProgress size={14} color="inherit" />
-                    : icon
+  const iconOnly = compact && !children
+
+  return (
+    <Button
+      {...props}
+      variant={variant}
+      disabled={disabled || loading}
+      startIcon={loading
+        ? <CircularProgress size={14} color="inherit" />
+        : icon}
+      endIcon={endIcon}
+      sx={[
+        (theme) => {
+          const isDark = theme.palette.mode === 'dark'
+          const semanticColor = appearance === 'action'
+            ? uiTokens.action.blue
+            : appearance === 'destructive'
+              ? uiTokens.action.danger
+              : null
+
+          const baseStyle = {
+            height: uiTokens.control.height,
+            minWidth: compact ? uiTokens.control.height : 76,
+            px: compact ? 1 : 1.5,
+            borderRadius: uiTokens.control.borderRadius,
+            fontSize: uiTokens.typography.button,
+            fontWeight: 700,
+            lineHeight: 1,
+            whiteSpace: 'nowrap',
+            textTransform: 'none',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            boxShadow: 'none',
+            transition:
+              'background-color 160ms ease, border-color 160ms ease, '
+              + 'color 160ms ease, box-shadow 160ms ease, transform 160ms ease',
+            ...(iconOnly && {
+              '& .MuiButton-startIcon, & .MuiButton-endIcon': {
+                m: 0,
+              },
+            }),
+            '&:active': {
+              transform: 'scale(0.97)',
+            },
+          }
+
+          if (!semanticColor) {
+            return {
+              ...baseStyle,
+              color: 'text.primary',
+              borderColor: alpha(
+                isDark
+                  ? theme.palette.common.white
+                  : theme.palette.text.primary,
+                isDark ? 0.16 : 0.15,
+              ),
+              bgcolor: isDark
+                ? alpha(theme.palette.common.white, 0.045)
+                : alpha(theme.palette.background.paper, 0.64),
+              '&:hover': {
+                borderColor: alpha(
+                  isDark
+                    ? theme.palette.common.white
+                    : theme.palette.text.primary,
+                  isDark ? 0.28 : 0.24,
+                ),
+                bgcolor: isDark
+                  ? alpha(theme.palette.common.white, 0.085)
+                  : alpha(theme.palette.background.paper, 0.94),
+                boxShadow: `0 4px 12px ${alpha(
+                  theme.palette.common.black,
+                  isDark ? 0.16 : 0.07,
+                )}`,
+                transform: 'translateY(-1px)',
+              },
+              '&.Mui-disabled': {
+                color: theme.palette.action.disabled,
+                borderColor: alpha(theme.palette.text.primary, 0.08),
+                bgcolor: alpha(theme.palette.text.primary, 0.03),
+                boxShadow: 'none',
+              },
             }
-            endIcon={endIcon}
-            sx={[
-                {
-                    height: 36,
-                    minWidth: compact ? 36 : 76,
-                    px: compact ? 1 : 1.5,
+          }
 
-                    borderRadius: '10px',
-
-                    fontSize: 12,
-                    fontWeight: 600,
-                    lineHeight: 1,
-
-                    whiteSpace: 'nowrap',
-                    textTransform: 'none',
-
-                    boxShadow: 'none',
-
-                    transition:
-                        'background-color 150ms ease, border-color 150ms ease, transform 100ms ease',
-
-                    '&:active': {
-                        transform: 'scale(0.97)',
-                    },
-
-                    '&:hover': {
-                        boxShadow: 'none',
-                    },
-                },
-
-                ...(Array.isArray(sx)
-                    ? sx
-                    : sx
-                        ? [sx]
-                        : []),
-            ]}
-        >
-            {children}
-        </Button>
-    )
+          return {
+            ...baseStyle,
+            color: semanticColor,
+            borderColor: alpha(semanticColor, isDark ? 0.78 : 0.66),
+            bgcolor: alpha(semanticColor, isDark ? 0.14 : 0.07),
+            boxShadow: `0 3px 10px ${alpha(
+              semanticColor,
+              isDark ? 0.17 : 0.10,
+            )}`,
+            '& .MuiButton-startIcon, & .MuiButton-endIcon': {
+              color: semanticColor,
+              ...(iconOnly && { margin: 0 }),
+            },
+            '&:hover': {
+              color: semanticColor,
+              borderColor: semanticColor,
+              bgcolor: alpha(semanticColor, isDark ? 0.21 : 0.12),
+              boxShadow: `0 5px 14px ${alpha(
+                semanticColor,
+                isDark ? 0.22 : 0.14,
+              )}`,
+              transform: 'translateY(-1px)',
+            },
+            '&:active': {
+              bgcolor: alpha(semanticColor, isDark ? 0.25 : 0.16),
+              transform: 'scale(0.97)',
+            },
+            '&.Mui-disabled': {
+              color: theme.palette.action.disabled,
+              borderColor: alpha(theme.palette.text.primary, 0.08),
+              bgcolor: alpha(theme.palette.text.primary, 0.03),
+              boxShadow: 'none',
+              '& .MuiButton-startIcon, & .MuiButton-endIcon': {
+                color: theme.palette.action.disabled,
+              },
+            },
+          }
+        },
+        ...(Array.isArray(sx) ? sx : sx ? [sx] : []),
+      ]}
+    >
+      {children}
+    </Button>
+  )
 }

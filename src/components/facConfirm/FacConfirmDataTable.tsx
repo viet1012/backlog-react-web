@@ -6,7 +6,6 @@ import {
 
 import {
   Box,
-  Button,
   alpha,
 } from '@mui/material'
 
@@ -77,6 +76,8 @@ import {
 import {
   useFacConfirmCellEditState,
 } from './hooks/useFacConfirmCellEditState'
+
+import { AppButton } from '../common/AppButton'
 
 interface FacConfirmDataTableProps {
   rows: FacConfirmRow[]
@@ -170,27 +171,16 @@ function FacConfirmToolbar({
     >
       <Box>
         {hasChanges && (
-          <Button
-            size="small"
-
-            variant="contained"
-
-            startIcon={
-              <SaveRoundedIcon />
-            }
-
-            disabled={
-              saving
-            }
-
-            onClick={
-              onConfirm
-            }
+          <AppButton
+            appearance="action"
+            loading={saving}
+            icon={!saving ? <SaveRoundedIcon /> : undefined}
+            onClick={onConfirm}
           >
             {saving
               ? 'Saving...'
               : `Confirm Changes (${changeCount})`}
-          </Button>
+          </AppButton>
         )}
       </Box>
 

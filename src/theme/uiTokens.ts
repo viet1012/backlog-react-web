@@ -9,10 +9,12 @@ export const uiTokens = {
     chip: 11.5,
     updatedStatus: 11.5,
   },
+
   page: {
     padding: 1,
     gap: 0.75,
   },
+
   header: {
     borderRadius: '12px',
     px: 1.5,
@@ -21,17 +23,21 @@ export const uiTokens = {
     subtitleFontSize: 12.5,
     metaFontSize: 11.5,
   },
+
   card: {
     borderRadius: '12px',
   },
+
   control: {
     borderRadius: '10px',
     height: 36,
     fontSize: 13,
   },
+
   dialog: {
     borderRadius: '14px',
   },
+
   table: {
     headerFontSize: 12.5,
     cellFontSize: 12.5,
@@ -39,19 +45,31 @@ export const uiTokens = {
     rowHeight: 30,
     headerHeight: 34,
   },
+
   sidebar: {
     appTitleFontSize: 14,
     subtitleFontSize: 11,
     sectionFontSize: 10.5,
     menuFontSize: 12.5,
   },
+
   kpi: {
     labelFontSize: 12,
     valueFontSize: 20,
     secondaryFontSize: 11.5,
   },
+
   dialogTypography: {
     titleFontSize: 16,
+  },
+
+  // =====================================================
+  // APP ACTION COLORS
+  // =====================================================
+
+  action: {
+    blue: '#1687D9',
+    danger: '#D64545',
   },
 } as const
 

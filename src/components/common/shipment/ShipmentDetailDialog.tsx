@@ -4,7 +4,6 @@ import {
     Dialog,
     DialogContent,
     DialogTitle,
-    IconButton,
     Typography,
 } from '@mui/material'
 
@@ -18,6 +17,7 @@ import type {
 import type { ProductionOrder } from '../../../types/report'
 import { uiTokens } from '../../../theme/uiTokens'
 import { ShipmentDataTable } from '../../shipment/ShipmentDataTable'
+import { AppButton } from '../AppButton'
 
 
 interface ShipmentDetailDialogProps {
@@ -113,12 +113,12 @@ export function ShipmentDetailDialog({
                 </Box>
 
 
-                <IconButton
-                    size="small"
+                <AppButton
+                    compact
+                    aria-label="Close"
                     onClick={onClose}
-                >
-                    <CloseRoundedIcon />
-                </IconButton>
+                    icon={<CloseRoundedIcon />}
+                />
 
             </DialogTitle>
 

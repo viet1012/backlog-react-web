@@ -1,8 +1,9 @@
-import { Box, Chip, FormControl, IconButton, InputAdornment, InputLabel, MenuItem, Select, Stack, TextField, Typography } from '@mui/material'
+import { alpha, Box, Chip, FormControl, IconButton, InputAdornment, InputLabel, MenuItem, Select, Stack, TextField, Typography } from '@mui/material'
 import { AppButton } from '../common/AppButton'
 import { GlassPanel } from '../common/GlassPanel'
 import type { ReportFilters } from '../../services/reportService'
-
+import FilterAltOffRoundedIcon from '@mui/icons-material/FilterAltOffRounded'
+import { ClearButton } from '../common/ClearButton'
 const labels: Record<keyof ReportFilters, string> = {
   search: 'Search', status: 'Status', div: 'Division', currentProcess: 'Process',
   shipBy: 'Ship By', productionDate: 'Production Date',
@@ -24,7 +25,7 @@ const selectOptions = {
   shipBy: ['AIR', 'EXP', 'SEA'],
 } as const
 
-export function BacklogFilterBar({ filters, excelFilterCount, loading, onFilterChange, onClear, onRefresh }: BacklogFilterBarProps) {
+export function BacklogFilterBar({ filters, excelFilterCount, onFilterChange, onClear, }: BacklogFilterBarProps) {
   const activeFilters = (Object.entries(filters) as Array<[keyof ReportFilters, string]>).filter(([, value]) => value !== '')
   return (
     <GlassPanel sx={{ mb: 0.5, p: 1.25 }}>
@@ -43,14 +44,22 @@ export function BacklogFilterBar({ filters, excelFilterCount, loading, onFilterC
         ))}
         <TextField label="Production Date" type="date" size="small" value={filters.productionDate}
           onChange={(event) => onFilterChange('productionDate', event.target.value)} slotProps={{ inputLabel: { shrink: true } }} />
-        <AppButton variant="outlined" onClick={onClear} disabled={activeFilters.length === 0 && excelFilterCount === 0}>Clear Filters</AppButton>
-        <AppButton variant="outlined" loading={loading} onClick={onRefresh}>Refresh</AppButton>
+        <ClearButton
+          disabled={
+            activeFilters.length === 0
+            && excelFilterCount === 0
+          }
+          onClick={onClear}
+        />
       </Box>
       {activeFilters.length > 0 && (
         <Stack direction="row" spacing={1} useFlexGap sx={{ mt: 1.25, alignItems: 'center', flexWrap: 'wrap' }}>
           <Typography variant="caption" color="text.secondary">Active filters:</Typography>
           {activeFilters.map(([name, value]) => <Chip key={name} size="small" label={`${labels[name]}: ${value}`} onDelete={() => onFilterChange(name, '')} />)}
-          <AppButton variant="outlined" onClick={onClear}>Clear All</AppButton>
+          <ClearButton
+            mode="clearAll"
+            onClick={onClear}
+          />
         </Stack>
       )}
     </GlassPanel>
