@@ -1,8 +1,6 @@
-import { alpha, Box, Chip, FormControl, IconButton, InputAdornment, InputLabel, MenuItem, Select, Stack, TextField, Typography } from '@mui/material'
-import { AppButton } from '../common/AppButton'
+import { Box, Chip, FormControl, IconButton, InputAdornment, InputLabel, MenuItem, Select, Stack, TextField, Typography } from '@mui/material'
 import { GlassPanel } from '../common/GlassPanel'
 import type { ReportFilters } from '../../services/reportService'
-import FilterAltOffRoundedIcon from '@mui/icons-material/FilterAltOffRounded'
 import { ClearButton } from '../common/ClearButton'
 const labels: Record<keyof ReportFilters, string> = {
   search: 'Search', status: 'Status', div: 'Division', currentProcess: 'Process',

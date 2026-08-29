@@ -1,18 +1,28 @@
-import ConstructionRoundedIcon from '@mui/icons-material/ConstructionRounded'
-import LocalFireDepartmentRoundedIcon from '@mui/icons-material/LocalFireDepartmentRounded'
-import PrecisionManufacturingRoundedIcon from '@mui/icons-material/PrecisionManufacturingRounded'
-import { Box, Button, Typography } from '@mui/material'
-import { alpha } from '@mui/material/styles'
+import {
+  Box,
+  Button,
+  Typography,
+} from '@mui/material'
+
+import {
+  alpha,
+} from '@mui/material/styles'
 
 import type {
   FacConfirmProcessGroupSummary,
 } from '../../types/facConfirm'
 
-import { uiTokens } from '../../theme/uiTokens'
+import {
+  uiTokens,
+} from '../../theme/uiTokens'
 
 import {
   FAC_CONFIRM_PROCESS_CONFIG,
 } from '../../config/facConfirmProcessConfig'
+
+import {
+  FacConfirmAnimatedProcessIcon,
+} from './facConfirmProcessAnimations'
 
 
 interface Props {
@@ -30,13 +40,6 @@ export function FacConfirmProcessGroupButton({
   onClick,
 }: Props) {
 
-  const Icon =
-    item.processGroup === 'Fine'
-      ? PrecisionManufacturingRoundedIcon
-      : item.processGroup === 'Heat'
-        ? LocalFireDepartmentRoundedIcon
-        : ConstructionRoundedIcon
-
   return (
     <Button
       disabled={disabled}
@@ -51,49 +54,72 @@ export function FacConfirmProcessGroupButton({
         return {
           minWidth: 158,
           height: 46,
+
           px: 1,
           py: 0.5,
+
           flexShrink: 0,
 
-          justifyContent: 'flex-start',
-          textTransform: 'none',
+          justifyContent:
+            'flex-start',
+
+          textTransform:
+            'none',
 
           borderRadius:
             uiTokens.control.borderRadius,
 
-          border: `1px solid ${selected
-            ? alpha(color, 0.7)
-            : theme.palette.divider
+          border:
+            `1px solid ${selected
+              ? alpha(color, 0.7)
+              : theme.palette.divider
             }`,
 
-          bgcolor: selected
-            ? alpha(
-              color,
-              theme.palette.mode === 'dark'
-                ? 0.18
-                : 0.08,
-            )
-            : alpha(
-              theme.palette.background.paper,
-              0.38,
-            ),
+          bgcolor:
+            selected
+              ? alpha(
+                color,
+                theme.palette.mode === 'dark'
+                  ? 0.28   // trước 0.18
+                  : 0.14,  // trước 0.08
+              )
+              : alpha(
+                theme.palette.background.paper,
+                0.50,
+              ),
 
-          color: selected
-            ? color
-            : 'text.primary',
+          color:
+            selected
+              ? color
+              : 'text.primary',
 
-          boxShadow: selected
-            ? `0 3px 10px ${alpha(color, 0.14)}`
-            : 'none',
+          boxShadow:
+            selected
+              ? `0 3px 10px ${alpha(
+                color,
+                0.14,
+              )}`
+              : 'none',
 
-          transition: 'all 160ms ease',
+          transition:
+            'all 160ms ease',
 
           '&:hover': {
-            bgcolor: selected
-              ? alpha(color, 0.14)
-              : theme.palette.action.hover,
+            bgcolor:
+              selected
+                ? alpha(color, 0.14)
+                : theme.palette.action.hover,
 
-            transform: 'translateY(-1px)',
+            transform:
+              'translateY(-1px)',
+          },
+
+          '@media (prefers-reduced-motion: reduce)': {
+            transform: 'none',
+
+            '&:hover': {
+              transform: 'none',
+            },
           },
         }
       }}
@@ -102,7 +128,9 @@ export function FacConfirmProcessGroupButton({
         sx={{
           display: 'flex',
           alignItems: 'center',
+
           gap: 0.8,
+
           minWidth: 0,
         }}
       >
@@ -123,17 +151,42 @@ export function FacConfirmProcessGroupButton({
 
               borderRadius: 1.5,
 
-              bgcolor: selected
-                ? alpha(color, 0.14)
-                : alpha(
-                  theme.palette.text.primary,
-                  0.04,
-                ),
+              bgcolor:
+                selected
+                  ? alpha(color, 0.14)
+                  : alpha(
+                    theme.palette.text.primary,
+                    0.04,
+                  ),
             }
           }}
         >
-          <Icon sx={{ fontSize: 17 }} />
+          <Box
+            sx={(theme) => {
+
+              const color =
+                FAC_CONFIRM_PROCESS_CONFIG[
+                  item.processGroup
+                ].getColor(theme)
+
+              return {
+                display: 'grid',
+                placeItems: 'center',
+                color,
+              }
+            }}
+          >
+            <FacConfirmAnimatedProcessIcon
+              processGroup={
+                item.processGroup
+              }
+              selected={
+                selected
+              }
+            />
+          </Box>
         </Box>
+
 
         <Box
           sx={{
@@ -154,14 +207,17 @@ export function FacConfirmProcessGroupButton({
           <Typography
             sx={{
               mt: 0.5,
+
               fontSize: 10.5,
               fontWeight: 600,
 
-              color: selected
-                ? 'inherit'
-                : 'text.secondary',
+              color:
+                selected
+                  ? 'inherit'
+                  : 'text.secondary',
 
-              whiteSpace: 'nowrap',
+              whiteSpace:
+                'nowrap',
             }}
           >
             PO {item.orderCount.toLocaleString()}
