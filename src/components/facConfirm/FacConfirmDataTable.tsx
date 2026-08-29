@@ -5,15 +5,8 @@ import {
 } from 'react'
 
 import {
-  Alert,
   Box,
   Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Snackbar,
-  TextField,
   alpha,
 } from '@mui/material'
 
@@ -74,6 +67,14 @@ import {
 } from './facConfirmColumns'
 
 import {
+  FacConfirmConfirmDialog,
+} from './FacConfirmConfirmDialog'
+
+import {
+  FacConfirmEditErrorSnackbar,
+} from './FacConfirmEditErrorSnackbar'
+
+import {
   useFacConfirmCellEditState,
 } from './hooks/useFacConfirmCellEditState'
 
@@ -89,9 +90,6 @@ interface FacConfirmDataTableProps {
 
   highlightProcGrp:
   FacConfirmProcessGroup | null
-
-  // XÓA DÒNG NÀY
-  // updater: string
 
   excelFilters:
   FacConfirmFilterItem[]
@@ -411,19 +409,13 @@ export function FacConfirmDataTable({
           setSaving(true)
           setEmployeeError('')
 
-          const result =
-            await saveFacConfirmProcessTimes({
-              employeeId:
-                msnv,
+          await saveFacConfirmProcessTimes({
+            employeeId:
+              msnv,
 
-              changes:
-                pendingChanges,
-            })
-
-          console.log(
-            'Fac Confirm saved:',
-            result,
-          )
+            changes:
+              pendingChanges,
+          })
 
           clearChanges()
 
@@ -461,6 +453,34 @@ export function FacConfirmDataTable({
         clearChanges,
         onSaved,
       ],
+    )
+
+  const handleEmployeeIdChange =
+    useCallback(
+      (value: string) => {
+        setEmployeeId(value)
+
+        if (employeeError) {
+          setEmployeeError('')
+        }
+      },
+      [employeeError],
+    )
+
+  const handleCloseConfirm =
+    useCallback(
+      () => {
+        if (!saving) {
+          setConfirmDialogOpen(false)
+        }
+      },
+      [saving],
+    )
+
+  const handleCloseEditError =
+    useCallback(
+      () => setEditError(''),
+      [],
     )
 
 
@@ -636,7 +656,7 @@ export function FacConfirmDataTable({
 
 
                   return [
-                    `& ${className}`,
+                    `& .MuiDataGrid-cell${className}`,
                     {
 
                       backgroundColor:
@@ -675,7 +695,7 @@ export function FacConfirmDataTable({
             ...editedCellStyles,
 
 
-            '& .MuiDataGrid-row:hover .fac-confirm-edited-rough': {
+            '& .MuiDataGrid-row:hover .MuiDataGrid-cell.fac-confirm-edited-rough': {
               backgroundColor:
                 alpha(
                   processColors.Rough,
@@ -683,8 +703,7 @@ export function FacConfirmDataTable({
                 ),
             },
 
-
-            '& .MuiDataGrid-row:hover .fac-confirm-edited-heat': {
+            '& .MuiDataGrid-row:hover .MuiDataGrid-cell.fac-confirm-edited-heat': {
               backgroundColor:
                 alpha(
                   processColors.Heat,
@@ -692,8 +711,7 @@ export function FacConfirmDataTable({
                 ),
             },
 
-
-            '& .MuiDataGrid-row:hover .fac-confirm-edited-fine': {
+            '& .MuiDataGrid-row:hover .MuiDataGrid-cell.fac-confirm-edited-fine': {
               backgroundColor:
                 alpha(
                   processColors.Fine,
@@ -807,165 +825,21 @@ export function FacConfirmDataTable({
         />
 
       </Box>
-      <Dialog
-        open={
-          confirmDialogOpen
-        }
+      <FacConfirmConfirmDialog
+        open={confirmDialogOpen}
+        employeeId={employeeId}
+        employeeError={employeeError}
+        saving={saving}
+        changeCount={changeCount}
+        onEmployeeIdChange={handleEmployeeIdChange}
+        onConfirm={() => void handleSaveChanges()}
+        onCancel={handleCloseConfirm}
+      />
 
-        onClose={() => {
-          if (!saving) {
-            setConfirmDialogOpen(
-              false,
-            )
-          }
-        }}
-
-        maxWidth="xs"
-
-        fullWidth
-      >
-        <DialogTitle>
-          Confirm Changes
-        </DialogTitle>
-
-        <DialogContent>
-
-          <TextField
-            autoFocus
-
-            fullWidth
-
-            size="small"
-
-            label="Employee ID"
-
-            placeholder="Enter MSNV"
-
-            value={
-              employeeId
-            }
-
-            disabled={
-              saving
-            }
-
-            error={
-              Boolean(
-                employeeError,
-              )
-            }
-
-            helperText={
-              employeeError
-              || `${changeCount} change(s) will be confirmed.`
-            }
-
-            onChange={(event) => {
-              setEmployeeId(
-                event.target.value,
-              )
-
-              if (employeeError) {
-                setEmployeeError('')
-              }
-            }}
-
-            onKeyDown={(event) => {
-
-              if (
-                event.key === 'Enter'
-              ) {
-                event.preventDefault()
-
-                void handleSaveChanges()
-              }
-            }}
-
-            slotProps={{
-              htmlInput: {
-                inputMode:
-                  'numeric',
-              },
-            }}
-
-            sx={{
-              mt: 1,
-            }}
-          />
-
-        </DialogContent>
-
-        <DialogActions>
-
-          <Button
-            disabled={
-              saving
-            }
-
-            onClick={() =>
-              setConfirmDialogOpen(
-                false,
-              )
-            }
-          >
-            Cancel
-          </Button>
-
-          <Button
-            variant="contained"
-
-            startIcon={
-              <SaveRoundedIcon />
-            }
-
-            disabled={
-              saving
-              || !employeeId.trim()
-            }
-
-            onClick={() =>
-              void handleSaveChanges()
-            }
-          >
-            {saving
-              ? 'Saving...'
-              : 'Confirm'}
-          </Button>
-
-        </DialogActions>
-      </Dialog>
-      <Snackbar
-        open={
-          Boolean(editError)
-        }
-
-        autoHideDuration={
-          4000
-        }
-
-        onClose={() =>
-          setEditError('')
-        }
-
-        anchorOrigin={{
-          vertical:
-            'top',
-
-          horizontal:
-            'center',
-        }}
-      >
-        <Alert
-          severity="warning"
-          variant="filled"
-
-          onClose={() =>
-            setEditError('')
-          }
-        >
-          {editError}
-        </Alert>
-      </Snackbar>
+      <FacConfirmEditErrorSnackbar
+        message={editError}
+        onClose={handleCloseEditError}
+      />
 
     </ExcelColumnFilterProvider>
   )

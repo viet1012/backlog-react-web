@@ -95,6 +95,14 @@ export type FacConfirmEditableField =
     | 'toPk'
 
 
+export type FacConfirmBackendProcessName =
+    | 'To Drill'
+    | 'To Heat'
+    | 'Heat Start'
+    | 'Heat Finish'
+    | 'To Packing'
+
+
 export interface FacConfirmProcessTimeChange {
     aufnr: string
     field: FacConfirmEditableField
@@ -116,12 +124,7 @@ export interface FacConfirmProcessTimeResponse {
 export interface FacConfirmConfirmedProcess {
     aufnr: string
 
-    processGrp:
-    | 'To Drill'
-    | 'To Heat'
-    | 'Heat Start'
-    | 'Heat Finish'
-    | 'To Packing'
+    processGrp: FacConfirmBackendProcessName
 
     confirmFnTime:
     string | null

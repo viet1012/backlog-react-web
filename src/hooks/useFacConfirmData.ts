@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 
@@ -12,6 +13,10 @@ import {
   searchFacConfirm,
 } from '../services/facConfirmService'
 
+import {
+  getFacConfirmProcessIdentityByBackendName,
+} from '../config/facConfirmProcessConfig'
+
 import type {
   FacConfirmConfirmedProcess,
   FacConfirmFilterItem,
@@ -19,7 +24,6 @@ import type {
   FacConfirmProcessGroupSummary,
   FacConfirmRow,
 } from '../types/facConfirm'
-
 
 interface UseFacConfirmDataParams {
   div: string
@@ -30,678 +34,258 @@ interface UseFacConfirmDataParams {
   excelFilters: FacConfirmFilterItem[]
 }
 
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException
+    && error.name === 'AbortError'
+}
 
-// =========================================================
-// MERGE CONFIRMED PROCESS TIMES INTO ROWS
-// =========================================================
+function getCurrentPageAufnrs(rows: FacConfirmRow[]): string[] {
+  return [...new Set(
+    rows
+      .map((row) => row.aufnr?.trim())
+      .filter((aufnr): aufnr is string => Boolean(aufnr)),
+  )]
+}
 
 function mergeConfirmedProcesses(
   rows: FacConfirmRow[],
   confirmedProcesses: FacConfirmConfirmedProcess[],
 ): FacConfirmRow[] {
-
-  if (
-    rows.length === 0
-    || confirmedProcesses.length === 0
-  ) {
+  if (rows.length === 0 || confirmedProcesses.length === 0) {
     return rows
   }
 
+  const confirmedByAufnr = new Map<
+    string,
+    FacConfirmConfirmedProcess[]
+  >()
 
-  const confirmedMap =
-    new Map<
-      string,
-      FacConfirmConfirmedProcess[]
-    >()
+  confirmedProcesses.forEach((item) => {
+    const aufnr = item.aufnr?.trim()
 
+    if (!aufnr) {
+      return
+    }
 
-  confirmedProcesses.forEach(
-    (item) => {
+    const records = confirmedByAufnr.get(aufnr) ?? []
+    records.push(item)
+    confirmedByAufnr.set(aufnr, records)
+  })
 
-      const aufnr =
-        item.aufnr?.trim()
+  return rows.map((row) => {
+    const confirmed = confirmedByAufnr.get(row.aufnr?.trim())
 
-      if (!aufnr) {
+    if (!confirmed?.length) {
+      return row
+    }
+
+    const displayRow = { ...row }
+
+    confirmed.forEach((item) => {
+      if (!item.confirmFnTime) {
         return
       }
 
-
-      const current =
-        confirmedMap.get(
-          aufnr,
-        ) ?? []
-
-
-      current.push(
-        item,
+      const identity = getFacConfirmProcessIdentityByBackendName(
+        item.processGrp,
       )
 
+      displayRow[identity.field] = item.confirmFnTime
+    })
 
-      confirmedMap.set(
-        aufnr,
-        current,
-      )
-    },
-  )
-
-
-  return rows.map(
-    (row) => {
-
-      const aufnr =
-        row.aufnr?.trim()
-
-      if (!aufnr) {
-        return row
-      }
-
-
-      const confirmed =
-        confirmedMap.get(
-          aufnr,
-        )
-
-
-      if (
-        !confirmed
-        || confirmed.length === 0
-      ) {
-        return row
-      }
-
-
-      const nextRow: FacConfirmRow = {
-        ...row,
-      }
-
-
-      confirmed.forEach(
-        (item) => {
-
-          if (!item.confirmFnTime) {
-            return
-          }
-
-
-          switch (
-          item.processGrp
-          ) {
-
-            // =============================================
-            // ROUGH
-            // =============================================
-
-            case 'To Drill':
-              nextRow.toDrill =
-                item.confirmFnTime
-              break
-
-
-            case 'To Heat':
-              nextRow.toHeat =
-                item.confirmFnTime
-              break
-
-
-            // =============================================
-            // HEAT
-            // =============================================
-
-            case 'Heat Start':
-              nextRow.heatStart =
-                item.confirmFnTime
-              break
-
-
-            case 'Heat Finish':
-              nextRow.heatFinish =
-                item.confirmFnTime
-              break
-
-
-            // =============================================
-            // FINE
-            // =============================================
-
-            case 'To Packing':
-              nextRow.toPk =
-                item.confirmFnTime
-              break
-
-
-            default:
-              break
-          }
-        },
-      )
-
-
-      return nextRow
-    },
-  )
+    return displayRow
+  })
 }
 
-
-// =========================================================
-// HOOK
-// =========================================================
-
-export function useFacConfirmData(
-  params: UseFacConfirmDataParams,
-) {
-
-  const {
-    div,
-    expD,
-    procGrp,
-    page,
-    pageSize,
-    excelFilters,
-  } = params
-
-
-  // =========================================================
-  // STATE
-  // =========================================================
-
-  const [
-    rows,
-    setRows,
-  ] =
-    useState<
-      FacConfirmRow[]
-    >(
-      [],
-    )
-
-
-  const [
-    confirmedProcesses,
-    setConfirmedProcesses,
-  ] =
-    useState<
-      FacConfirmConfirmedProcess[]
-    >(
-      [],
-    )
-
-
-  const [
-    processGroups,
-    setProcessGroups,
-  ] =
-    useState<
-      FacConfirmProcessGroupSummary[]
-    >(
-      [],
-    )
-
-
-  const [
-    totalElements,
-    setTotalElements,
-  ] =
-    useState(
-      0,
-    )
-
-
-  const [
-    loading,
-    setLoading,
-  ] =
-    useState(
-      false,
-    )
-
-
-  const [
-    processGroupsLoading,
-    setProcessGroupsLoading,
-  ] =
-    useState(
-      false,
-    )
-
-
-  const [
-    error,
-    setError,
-  ] =
-    useState<
-      string | null
-    >(
-      null,
-    )
-
-
-  const [
-    lastUpdated,
-    setLastUpdated,
-  ] =
-    useState<
-      Date | null
-    >(
-      null,
-    )
-
-
-  // =========================================================
-  // DISPLAY ROWS
-  //
-  // rows từ Backlog API
-  // +
-  // confirmedProcesses từ F2_Backlog_Fac_Confirm
-  // =========================================================
-
-  const displayRows =
-    useMemo(
-      () =>
-        mergeConfirmedProcesses(
-          rows,
-          confirmedProcesses,
-        ),
-      [
-        rows,
-        confirmedProcesses,
-      ],
-    )
-
-
-  // =========================================================
-  // LOAD MAIN TABLE
-  // =========================================================
-
-  const loadData =
-    useCallback(
-      async (
-        signal?: AbortSignal,
-      ) => {
-
-        setLoading(
-          true,
-        )
-
-        setError(
-          null,
-        )
-
-
-        try {
-
-          const request = {
-            div,
-            expD,
-            procGrp,
-            page,
-            size:
-              pageSize,
-          }
-
-
-          // =================================================
-          // GET MAIN DATA
-          // =================================================
-
-          const result =
-            excelFilters.length > 0
-              ? await searchFacConfirm(
-                {
-                  ...request,
-
-                  filters:
-                    excelFilters,
-
-                  logicOperator:
-                    'and',
-                },
-                signal,
-              )
-              : await getFacConfirm(
-                request,
-                signal,
-              )
-
-
-          if (
-            signal?.aborted
-          ) {
-            return
-          }
-
-
-          // =================================================
-          // MAIN ROWS
-          // =================================================
-
-          setRows(
-            result.content,
-          )
-
-
-          setTotalElements(
-            result.totalElements,
-          )
-
-
-          // =================================================
-          // GET AUFNR OF CURRENT PAGE
-          // =================================================
-
-          const aufnrs = [
-            ...new Set(
-              result.content
-                .map(
-                  (row) =>
-                    row.aufnr
-                      ?.trim(),
-                )
-                .filter(
-                  (
-                    aufnr,
-                  ): aufnr is string =>
-                    Boolean(
-                      aufnr,
-                    ),
-                ),
-            ),
-          ]
-
-
-          // =================================================
-          // NO ROWS
-          // =================================================
-
-          if (
-            aufnrs.length === 0
-          ) {
-
-            setConfirmedProcesses(
-              [],
-            )
-
-            setLastUpdated(
-              new Date(),
-            )
-
-            return
-          }
-
-
-          // =================================================
-          // LOAD CONFIRMED PROCESSES
-          // =================================================
-
-          const confirmed =
-            await getFacConfirmConfirmedProcesses(
-              aufnrs,
-              signal,
-            )
-
-
-          if (
-            signal?.aborted
-          ) {
-            return
-          }
-
-
-          setConfirmedProcesses(
-            confirmed,
-          )
-
-
-          setLastUpdated(
-            new Date(),
-          )
-
-
-        } catch (
-        requestError
-        ) {
-
-          // =================================================
-          // ABORT
-          // =================================================
-
-          if (
-            requestError instanceof DOMException
-            && requestError.name === 'AbortError'
-          ) {
-            return
-          }
-
-
-          console.error(
-            'Load Fac Confirm failed:',
-            requestError,
-          )
-
-
-          setError(
-            requestError instanceof Error
-              ? requestError.message
-              : 'Failed to load Fac Confirm',
-          )
-
-
-        } finally {
-
-          if (
-            !signal?.aborted
-          ) {
-            setLoading(
-              false,
-            )
-          }
-        }
-      },
-      [
+export function useFacConfirmData({
+  div,
+  expD,
+  procGrp,
+  page,
+  pageSize,
+  excelFilters,
+}: UseFacConfirmDataParams) {
+  const [rows, setRows] = useState<FacConfirmRow[]>([])
+  const [confirmedProcesses, setConfirmedProcesses] = useState<
+    FacConfirmConfirmedProcess[]
+  >([])
+  const [processGroups, setProcessGroups] = useState<
+    FacConfirmProcessGroupSummary[]
+  >([])
+  const [totalElements, setTotalElements] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const [processGroupsLoading, setProcessGroupsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+
+  const tableRequestRef = useRef<AbortController | null>(null)
+  const summaryRequestRef = useRef<AbortController | null>(null)
+
+  const displayRows = useMemo(
+    () => mergeConfirmedProcesses(rows, confirmedProcesses),
+    [confirmedProcesses, rows],
+  )
+
+  const loadData = useCallback(async () => {
+    tableRequestRef.current?.abort()
+
+    const controller = new AbortController()
+    tableRequestRef.current = controller
+    let mainResultLoaded = false
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      const request = {
         div,
         expD,
         procGrp,
         page,
-        pageSize,
-        excelFilters,
-      ],
-    )
+        size: pageSize,
+      }
 
+      const result = excelFilters.length > 0
+        ? await searchFacConfirm({
+          ...request,
+          filters: excelFilters,
+          logicOperator: 'and',
+        }, controller.signal)
+        : await getFacConfirm(request, controller.signal)
 
-  // =========================================================
-  // LOAD PROCESS GROUP SUMMARY
-  // =========================================================
+      mainResultLoaded = true
 
-  const loadProcessGroups =
-    useCallback(
-      async (
-        signal?: AbortSignal,
-      ) => {
-
-        setProcessGroupsLoading(
-          true,
+      const aufnrs = getCurrentPageAufnrs(result.content)
+      const confirmed = aufnrs.length > 0
+        ? await getFacConfirmConfirmedProcesses(
+          aufnrs,
+          controller.signal,
         )
+        : []
 
+      if (
+        controller.signal.aborted
+        || tableRequestRef.current !== controller
+      ) {
+        return
+      }
 
-        try {
+      setRows(result.content)
+      setConfirmedProcesses(confirmed)
+      setTotalElements(result.totalElements)
+      setLastUpdated(new Date())
+    } catch (requestError) {
+      if (
+        isAbortError(requestError)
+        || tableRequestRef.current !== controller
+      ) {
+        return
+      }
 
-          const result =
-            await getFacConfirmProcessGroups(
-              div,
-              expD,
-              signal,
-            )
+      console.error('Load Fac Confirm failed:', requestError)
 
+      if (mainResultLoaded) {
+        setRows([])
+        setConfirmedProcesses([])
+        setTotalElements(0)
+      }
 
-          if (
-            signal?.aborted
-          ) {
-            return
-          }
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'Failed to load Fac Confirm',
+      )
+    } finally {
+      if (tableRequestRef.current === controller) {
+        tableRequestRef.current = null
+        setLoading(false)
+      }
+    }
+  }, [div, excelFilters, expD, page, pageSize, procGrp])
 
+  const loadProcessGroups = useCallback(async () => {
+    summaryRequestRef.current?.abort()
 
-          setProcessGroups(
-            result,
-          )
+    const controller = new AbortController()
+    summaryRequestRef.current = controller
+    setProcessGroupsLoading(true)
 
-
-        } catch (
-        requestError
-        ) {
-
-          if (
-            requestError instanceof DOMException
-            && requestError.name === 'AbortError'
-          ) {
-            return
-          }
-
-
-          console.error(
-            'Load process groups failed:',
-            requestError,
-          )
-
-
-        } finally {
-
-          if (
-            !signal?.aborted
-          ) {
-
-            setProcessGroupsLoading(
-              false,
-            )
-          }
-        }
-      },
-      [
+    try {
+      const result = await getFacConfirmProcessGroups(
         div,
         expD,
-      ],
-    )
-
-
-  // =========================================================
-  // AUTO LOAD TABLE
-  // =========================================================
-
-  useEffect(
-    () => {
-
-      const controller =
-        new AbortController()
-
-
-      queueMicrotask(
-        () => {
-
-          if (
-            !controller
-              .signal
-              .aborted
-          ) {
-
-            void loadData(
-              controller.signal,
-            )
-          }
-        },
+        controller.signal,
       )
 
+      if (
+        controller.signal.aborted
+        || summaryRequestRef.current !== controller
+      ) {
+        return
+      }
 
-      return () =>
-        controller.abort()
+      setProcessGroups(result)
+    } catch (requestError) {
+      if (
+        isAbortError(requestError)
+        || summaryRequestRef.current !== controller
+      ) {
+        return
+      }
 
-    },
-    [
-      loadData,
-    ],
-  )
+      console.error('Load process groups failed:', requestError)
+    } finally {
+      if (summaryRequestRef.current === controller) {
+        summaryRequestRef.current = null
+        setProcessGroupsLoading(false)
+      }
+    }
+  }, [div, expD])
 
+  useEffect(() => {
+    let active = true
 
-  // =========================================================
-  // AUTO LOAD PROCESS GROUPS
-  // =========================================================
-
-  useEffect(
-    () => {
-
-      const controller =
-        new AbortController()
-
-
-      queueMicrotask(
-        () => {
-
-          if (
-            !controller
-              .signal
-              .aborted
-          ) {
-
-            void loadProcessGroups(
-              controller.signal,
-            )
-          }
-        },
-      )
-
-
-      return () =>
-        controller.abort()
-
-    },
-    [
-      loadProcessGroups,
-    ],
-  )
-
-
-  // =========================================================
-  // REFRESH
-  // =========================================================
-
-  const handleRefresh =
-    useCallback(
-      () => {
-
+    queueMicrotask(() => {
+      if (active) {
         void loadData()
+      }
+    })
 
+    return () => {
+      active = false
+      tableRequestRef.current?.abort()
+    }
+  }, [loadData])
+
+  useEffect(() => {
+    let active = true
+
+    queueMicrotask(() => {
+      if (active) {
         void loadProcessGroups()
+      }
+    })
 
-      },
-      [
-        loadData,
-        loadProcessGroups,
-      ],
-    )
+    return () => {
+      active = false
+      summaryRequestRef.current?.abort()
+    }
+  }, [loadProcessGroups])
 
-
-  // =========================================================
-  // RETURN
-  // =========================================================
+  const handleRefresh = useCallback(() => {
+    void loadData()
+    void loadProcessGroups()
+  }, [loadData, loadProcessGroups])
 
   return {
-
-    // rows đã merge ConfirmFnTime
-    rows:
-      displayRows,
-
-    // giữ riêng để DataTable tô màu
+    rows: displayRows,
     confirmedProcesses,
-
     processGroups,
-
     totalElements,
-
     loading,
-
     processGroupsLoading,
-
     error,
-
     lastUpdated,
-
     handleRefresh,
   }
 }

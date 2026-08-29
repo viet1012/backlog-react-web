@@ -1,4 +1,9 @@
 import {
+  useCallback,
+  useState,
+} from 'react'
+
+import {
   Alert,
   Box,
 } from '@mui/material'
@@ -9,717 +14,209 @@ import type {
 } from '@mui/x-data-grid'
 
 import {
-  useCallback,
-  useState,
-} from 'react'
-
-import {
   FacConfirmDataTable,
 } from '../components/facConfirm/FacConfirmDataTable'
-
 import {
   FacConfirmFilterBar,
 } from '../components/facConfirm/FacConfirmFilterBar'
-
 import {
   PageHeader,
 } from '../components/common/PageHeader'
-
 import {
   PageShell,
 } from '../components/common/PageShell'
-
 import {
   RefreshButton,
 } from '../components/common/RefreshButton'
-
 import {
   UpdatedStatus,
 } from '../components/common/UpdatedStatus'
-
 import {
   useFacConfirmData,
 } from '../hooks/useFacConfirmData'
-
 import {
   useGridPreferences,
 } from '../hooks/useGridPreferences'
-
 import type {
   FacConfirmFilterItem,
   FacConfirmProcessGroup,
 } from '../types/facConfirm'
-
 import {
   loadFacConfirmPreferences,
   saveFacConfirmPreferences,
 } from '../utils/uiPreferences'
 
+function getToday(): string {
+  const now = new Date()
 
-// =========================================================
-// TODAY
-// =========================================================
-
-function getToday() {
-  const now =
-    new Date()
-
-  return `${now.getFullYear()}-${String(
-    now.getMonth() + 1,
-  ).padStart(
-    2,
-    '0',
-  )}-${String(
-    now.getDate(),
-  ).padStart(
-    2,
-    '0',
-  )}`
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    + `-${String(now.getDate()).padStart(2, '0')}`
 }
 
-
-// =========================================================
-// PAGE
-// =========================================================
-
 export function FacConfirmPage() {
+  const [pagePreferences] = useState(loadFacConfirmPreferences)
+  const [div, setDiv] = useState(pagePreferences.div)
+  const [expD, setExpD] = useState(getToday)
+  const [procGrp, setProcGrp] = useState<FacConfirmProcessGroup>(
+    pagePreferences.procGrp,
+  )
+  const [highlightProcGrp, setHighlightProcGrp] = useState<
+    FacConfirmProcessGroup | null
+  >(pagePreferences.procGrp)
+  const [sortModel, setSortModel] = useState<GridSortModel>([])
+  const [excelFilters, setExcelFilters] = useState<
+    FacConfirmFilterItem[]
+  >([])
 
-  // =======================================================
-  // PAGE FILTER STATE
-  // =======================================================
-
-  const [
-    pagePreferences,
-  ] =
-    useState(
-      loadFacConfirmPreferences,
-    )
-
-
-  const [
-    div,
-    setDiv,
-  ] =
-    useState(
-      pagePreferences.div,
-    )
-
-
-  const [
-    expD,
-    setExpD,
-  ] =
-    useState(
-      getToday,
-    )
-
-
-  const [
-    procGrp,
-    setProcGrp,
-  ] =
-    useState<FacConfirmProcessGroup>(
-      pagePreferences.procGrp,
-    )
-
-
-  // =======================================================
-  // HIGHLIGHT STATE
-  //
-  // null:
-  // chưa click Rough / Heat / Fine
-  //
-  // Rough:
-  // highlight To Drill + To Heat
-  //
-  // Heat:
-  // highlight Heat Start + Heat Finish
-  //
-  // Fine:
-  // highlight To PK
-  // =======================================================
-
-  const [
-    highlightProcGrp,
-    setHighlightProcGrp,
-  ] =
-    useState<
-      FacConfirmProcessGroup | null
-    >(
-      pagePreferences.procGrp,
-    )
-
-
-  // =======================================================
-  // GRID PREFERENCES
-  // =======================================================
-
-  const preferences =
-    useGridPreferences(
-      'fac-confirm',
-      100,
-    )
-
-
-  // =======================================================
-  // PAGINATION
-  // =======================================================
-
-  const [
-    paginationModel,
-    setPaginationModel,
-  ] =
-    useState<GridPaginationModel>(
-      () => ({
-        page:
-          0,
-
-        pageSize:
-          preferences.pageSize,
-      }),
-    )
-
-
-  // =======================================================
-  // SORT
-  // =======================================================
-
-  const [
-    sortModel,
-    setSortModel,
-  ] =
-    useState<GridSortModel>(
-      [],
-    )
-
-
-  // =======================================================
-  // EXCEL FILTER
-  // =======================================================
-
-  const [
-    excelFilters,
-    setExcelFilters,
-  ] =
-    useState<
-      FacConfirmFilterItem[]
-    >(
-      [],
-    )
-
-
-  // =======================================================
-  // DATA HOOK
-  // =======================================================
+  const preferences = useGridPreferences('fac-confirm', 100)
+  const [paginationModel, setPaginationModel] =
+    useState<GridPaginationModel>(() => ({
+      page: 0,
+      pageSize: preferences.pageSize,
+    }))
 
   const {
     rows,
-
     confirmedProcesses,
-
     processGroups,
-
     totalElements,
-
     loading,
-
     processGroupsLoading,
-
     error,
-
     lastUpdated,
-
     handleRefresh,
-  } =
-    useFacConfirmData({
-      div,
-      expD,
+  } = useFacConfirmData({
+    div,
+    expD,
+    procGrp,
+    page: paginationModel.page,
+    pageSize: paginationModel.pageSize,
+    excelFilters,
+  })
+
+  const resetPage = useCallback(() => {
+    setPaginationModel((current) => ({
+      ...current,
+      page: 0,
+    }))
+  }, [])
+
+  const handleDivChange = useCallback((nextDiv: string) => {
+    setDiv(nextDiv)
+    saveFacConfirmPreferences({
+      div: nextDiv,
       procGrp,
-
-      page:
-        paginationModel.page,
-
-      pageSize:
-        paginationModel.pageSize,
-
-      excelFilters,
     })
+    resetPage()
+  }, [procGrp, resetPage])
 
+  const handleDateChange = useCallback((value: string) => {
+    setExpD(value)
+    resetPage()
+  }, [resetPage])
 
-  // =======================================================
-  // RESET PAGE
-  // =======================================================
+  const handleProcessGroupChange = useCallback((
+    value: FacConfirmProcessGroup,
+  ) => {
+    setProcGrp(value)
+    setHighlightProcGrp(value)
+    saveFacConfirmPreferences({
+      div,
+      procGrp: value,
+    })
+    resetPage()
+  }, [div, resetPage])
 
-  const resetPage =
-    useCallback(
-      () => {
+  const handlePaginationChange = useCallback((
+    model: GridPaginationModel,
+  ) => {
+    setPaginationModel(model)
 
-        setPaginationModel(
-          (current) => ({
-            ...current,
+    if (model.pageSize !== preferences.pageSize) {
+      preferences.setPageSize(model.pageSize)
+    }
+  }, [preferences])
 
-            page:
-              0,
-          }),
-        )
-      },
-      [],
-    )
+  const handleExcelFiltersChange = useCallback((
+    filters: FacConfirmFilterItem[],
+  ) => {
+    setExcelFilters(filters)
+    resetPage()
+  }, [resetPage])
 
-
-  // =======================================================
-  // DIVISION CHANGE
-  // =======================================================
-
-  const handleDivChange =
-    useCallback(
-      (
-        nextDiv: string,
-      ) => {
-
-        setDiv(
-          nextDiv,
-        )
-
-
-        // Khi đổi Division:
-        // bỏ highlight cũ
-        setHighlightProcGrp(
-          null,
-        )
-
-
-        saveFacConfirmPreferences({
-          div:
-            nextDiv,
-
-          procGrp,
-        })
-
-
-        resetPage()
-      },
-      [
-        procGrp,
-        resetPage,
-      ],
-    )
-
-
-  // =======================================================
-  // DATE CHANGE
-  // =======================================================
-
-  const handleDateChange =
-    useCallback(
-      (
-        value: string,
-      ) => {
-
-        setExpD(
-          value,
-        )
-
-
-        // đổi ngày => reset highlight
-        setHighlightProcGrp(
-          null,
-        )
-
-
-        resetPage()
-      },
-      [
-        resetPage,
-      ],
-    )
-
-
-  // =======================================================
-  // PROCESS GROUP CHANGE
-  // =======================================================
-
-  const handleProcessGroupChange =
-    useCallback(
-      (
-        value:
-          FacConfirmProcessGroup,
-      ) => {
-
-        // ===============================================
-        // API PROCESS GROUP
-        // ===============================================
-
-        setProcGrp(
-          value,
-        )
-
-
-        // ===============================================
-        // COLUMN HIGHLIGHT
-        //
-        // Chỉ tại đây mới set highlight
-        // => mở page lần đầu sẽ không có màu
-        // ===============================================
-
-        setHighlightProcGrp(
-          value,
-        )
-
-
-        // ===============================================
-        // SAVE PAGE PREFERENCE
-        // ===============================================
-
-        saveFacConfirmPreferences({
-          div,
-
-          procGrp:
-            value,
-        })
-
-
-        // ===============================================
-        // RESET PAGE
-        // ===============================================
-
-        resetPage()
-      },
-      [
-        div,
-        resetPage,
-      ],
-    )
-
-
-  // =======================================================
-  // PAGINATION CHANGE
-  // =======================================================
-
-  const handlePaginationChange =
-    useCallback(
-      (
-        model:
-          GridPaginationModel,
-      ) => {
-
-        setPaginationModel(
-          model,
-        )
-
-
-        if (
-          model.pageSize
-          !== preferences.pageSize
-        ) {
-
-          preferences.setPageSize(
-            model.pageSize,
-          )
-        }
-      },
-      [
-        preferences,
-      ],
-    )
-
-
-  // =======================================================
-  // EXCEL FILTER CHANGE
-  // =======================================================
-
-  const handleExcelFiltersChange =
-    useCallback(
-      (
-        filters:
-          FacConfirmFilterItem[],
-      ) => {
-
-        setExcelFilters(
-          filters,
-        )
-
-        resetPage()
-      },
-      [
-        resetPage,
-      ],
-    )
-
-
-  // =======================================================
-  // SORT CHANGE
-  // =======================================================
-
-  const handleSortChange =
-    useCallback(
-      (
-        model:
-          GridSortModel,
-      ) => {
-
-        setSortModel(
-          model,
-        )
-      },
-      [],
-    )
-
-
-  // =======================================================
-  // RENDER
-  // =======================================================
+  const handleSortChange = useCallback((model: GridSortModel) => {
+    setSortModel(model)
+  }, [])
 
   return (
-
     <PageShell>
-
-      {/* =================================================
-          HEADER
-      ================================================= */}
-
       <PageHeader
-
         title="FAC CONFIRM"
-
         subtitle="Production process confirmation."
-
-        status={
-
+        status={(
           <UpdatedStatus
-
-            updatedAt={
-              lastUpdated
-            }
-
-            error={
-              Boolean(
-                error,
-              )
-            }
-
+            updatedAt={lastUpdated}
+            error={Boolean(error)}
           />
-        }
-
-        actions={
-
+        )}
+        actions={(
           <RefreshButton
-
-            loading={
-              loading
-            }
-
-            onClick={
-              handleRefresh
-            }
-
+            loading={loading}
+            onClick={handleRefresh}
           />
-        }
-
+        )}
       />
-
-
-      {/* =================================================
-          FILTER BAR
-      ================================================= */}
 
       <FacConfirmFilterBar
-
-        div={
-          div
-        }
-
-        expD={
-          expD
-        }
-
-        procGrp={
-          procGrp
-        }
-
-        processGroups={
-          processGroups
-        }
-
-        loading={
-          processGroupsLoading
-        }
-
-        onDivChange={
-          handleDivChange
-        }
-
-        onDateChange={
-          handleDateChange
-        }
-
-        onProcessGroupChange={
-          handleProcessGroupChange
-        }
-
+        div={div}
+        expD={expD}
+        procGrp={procGrp}
+        processGroups={processGroups}
+        loading={processGroupsLoading}
+        onDivChange={handleDivChange}
+        onDateChange={handleDateChange}
+        onProcessGroupChange={handleProcessGroupChange}
       />
 
-
-      {/* =================================================
-          ERROR
-      ================================================= */}
-
       {error && (
-
-        <Alert
-          severity="error"
-        >
+        <Alert severity="error">
           {error}
         </Alert>
-
       )}
-
-
-      {/* =================================================
-          TABLE
-      ================================================= */}
 
       <Box
         sx={{
-          flex:
-            1,
-
-          minHeight:
-            0,
-
-          width:
-            '100%',
+          flex: 1,
+          minHeight: 0,
+          width: '100%',
         }}
       >
-
         <FacConfirmDataTable
-
-          // =============================================
-          // DATA
-          // =============================================
-
-          rows={
-            rows
-          }
-
-          confirmedProcesses={
-            confirmedProcesses
-          }
-
-          loading={
-            loading
-          }
-
-
-          // =============================================
-          // BASE FILTER
-          // =============================================
-
-          div={
-            div
-          }
-
-          expD={
-            expD
-          }
-
-          procGrp={
-            procGrp
-          }
-
-
-          // =============================================
-          // ACTIVE HIGHLIGHT
-          // =============================================
-
-          highlightProcGrp={
-            highlightProcGrp
-          }
-
-
-          // =============================================
-          // EXCEL FILTER
-          // =============================================
-
-          excelFilters={
-            excelFilters
-          }
-
-
-          // =============================================
-          // PAGINATION
-          // =============================================
-
-          paginationModel={
-            paginationModel
-          }
-
-          rowCount={
-            totalElements
-          }
-
-
-          // =============================================
-          // SORT
-          // =============================================
-
-          sortModel={
-            sortModel
-          }
-
-
-          // =============================================
-          // GRID PREFERENCES
-          // =============================================
-
-          columnVisibilityModel={
-            preferences.columnVisibilityModel
-          }
-
-          columnOrder={
-            preferences.columnOrder
-          }
-
-          columnWidths={
-            preferences.columnWidths
-          }
-
-
-          // =============================================
-          // CALLBACKS
-          // =============================================
-
-          onExcelFiltersChange={
-            handleExcelFiltersChange
-          }
-
-          onPaginationChange={
-            handlePaginationChange
-          }
-
-          onSortChange={
-            handleSortChange
-          }
-
+          rows={rows}
+          confirmedProcesses={confirmedProcesses}
+          loading={loading}
+          div={div}
+          expD={expD}
+          procGrp={procGrp}
+          highlightProcGrp={highlightProcGrp}
+          excelFilters={excelFilters}
+          paginationModel={paginationModel}
+          rowCount={totalElements}
+          sortModel={sortModel}
+          columnVisibilityModel={preferences.columnVisibilityModel}
+          columnOrder={preferences.columnOrder}
+          columnWidths={preferences.columnWidths}
+          onExcelFiltersChange={handleExcelFiltersChange}
+          onPaginationChange={handlePaginationChange}
+          onSortChange={handleSortChange}
           onColumnVisibilityModelChange={
             preferences.setColumnVisibilityModel
           }
-
-          onColumnOrderChange={
-            preferences.setColumnOrder
-          }
-
-          onColumnWidthChange={
-            preferences.setColumnWidth
-          }
-          
-          onSaved={
-            handleRefresh
-          }
+          onColumnOrderChange={preferences.setColumnOrder}
+          onColumnWidthChange={preferences.setColumnWidth}
+          onSaved={handleRefresh}
         />
-
       </Box>
-
     </PageShell>
   )
 }
