@@ -1,15 +1,15 @@
-import { Alert, Card, Stack, Tooltip } from '@mui/material'
+import { Alert, Card, Stack } from '@mui/material'
 import type { PaletteMode } from '@mui/material/styles'
 import type { GridPaginationModel, GridSortModel } from '@mui/x-data-grid'
 import { useCallback, useState } from 'react'
 import { DataTable } from '../components/DataTable'
 import { BacklogFilterBar } from '../components/backlog/BacklogFilterBar'
 import { BacklogSummary } from '../components/backlog/BacklogSummary'
-import { AppButton } from '../components/common/AppButton'
 import { PageHeader } from '../components/common/PageHeader'
 import { PageShell } from '../components/common/PageShell'
 import { RefreshButton } from '../components/common/RefreshButton'
 import { UpdatedStatus } from '../components/common/UpdatedStatus'
+import { ThemeToggleButton } from '../components/common/ThemeToggleButton'
 import { useBacklogData } from '../hooks/useBacklogData'
 import { useGridPreferences } from '../hooks/useGridPreferences'
 import type { BacklogFilterItem, ReportFilters } from '../services/reportService'
@@ -90,13 +90,10 @@ export function BacklogPage({ mode, onToggleMode }: BacklogPageProps) {
         actions={(
           <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
             <RefreshButton loading={loading} onClick={handleRefresh} />
-            <Tooltip title={mode === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}>
-              <span>
-                <AppButton variant="outlined" onClick={onToggleMode} icon={<span aria-hidden>{mode === 'light' ? '☼' : '☾'}</span>}>
-                  {mode === 'light' ? 'Light' : 'Dark'}
-                </AppButton>
-              </span>
-            </Tooltip>
+            <ThemeToggleButton
+              mode={mode}
+              onToggle={onToggleMode}
+            />
           </Stack>
         )}
       />

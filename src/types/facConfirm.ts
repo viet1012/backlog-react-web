@@ -55,6 +55,7 @@ export interface FacConfirmProcessGroupSummary {
     processGroup: FacConfirmProcessGroup
     orderCount: number
     totalFinalQty: number
+    confirmCount : number
 }
 
 export interface FacConfirmFilterItem {

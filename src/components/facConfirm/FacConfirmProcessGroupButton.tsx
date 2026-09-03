@@ -208,7 +208,7 @@ export function FacConfirmProcessGroupButton({
             sx={{
               mt: 0.5,
 
-              fontSize: 10.5,
+              fontSize: 12.5,
               fontWeight: 600,
 
               color:
@@ -223,6 +223,8 @@ export function FacConfirmProcessGroupButton({
             PO {item.orderCount.toLocaleString()}
             {' · '}
             Qty {item.totalFinalQty.toLocaleString()}
+            {' · '}
+            Fac Cofirm {item.confirmCount.toLocaleString()}
           </Typography>
         </Box>
       </Box>

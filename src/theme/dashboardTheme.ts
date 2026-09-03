@@ -38,6 +38,9 @@ export function createDashboardTheme(mode: PaletteMode) {
     components: {
       MuiCssBaseline: {
         styleOverrides: {
+          'html, body, #root': {
+            backgroundColor: dark ? '#0b1220' : '#eef3f8',
+          },
           body: {
             fontSize: uiTokens.typography.body,
             backgroundColor: dark ? '#0b1220' : '#eef3f8',
