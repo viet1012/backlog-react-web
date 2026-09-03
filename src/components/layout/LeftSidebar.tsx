@@ -13,8 +13,10 @@ import {
 import {
   ChevronLeftRounded,
   ChevronRightRounded,
+  ConstructionRounded,
   ExpandMoreRounded,
   FactoryOutlined,
+  ScheduleRounded,
 } from '@mui/icons-material'
 
 import {
@@ -555,33 +557,51 @@ export function LeftSidebar() {
                     {group.items.map(
                       (item) => {
 
+                        const status =
+                          item.status
+                          ?? 'ready'
+
+                        const isReady =
+                          status === 'ready'
+
+                        const isDeveloping =
+                          status === 'developing'
+
+                        const isTodo =
+                          status === 'todo'
+
+                        const unavailable =
+                          !isReady
+
                         const active =
-                          location.pathname
-                          === item.path
+                          isReady
+                          && location.pathname
+                            === item.path
 
+                        const tooltipTitle =
+                          isDeveloping
+                            ? `${item.label} — Đang phát triển`
+                            : isTodo
+                              ? `${item.label} — Chưa làm`
+                              : item.label
 
-                        const menuButton = (
-                          <ListItemButton
-                            component={
-                              NavLink
-                            }
+                        const statusIndicator =
+                          isDeveloping
+                            ? {
+                                label: 'Developing',
+                                icon: <ConstructionRounded />,
+                                color: 'warning.main',
+                              }
+                            : isTodo
+                              ? {
+                                  label: 'Chưa làm',
+                                  icon: <ScheduleRounded />,
+                                  color: 'text.disabled',
+                                }
+                              : null
 
-                            to={
-                              item.path
-                            }
-
-                            selected={
-                              active
-                            }
-
-                            sx={(theme) =>
-                              getMenuItemSx(
-                                theme,
-                                collapsed,
-                                active,
-                              )
-                            }
-                          >
+                        const menuContent = (
+                          <>
 
                             {/* ICON */}
 
@@ -631,7 +651,9 @@ export function LeftSidebar() {
                                   42,
 
                                 right:
-                                  8,
+                                  statusIndicator
+                                    ? 82
+                                    : 8,
 
                                 opacity:
                                   collapsed
@@ -675,6 +697,107 @@ export function LeftSidebar() {
                               }}
                             />
 
+                            {statusIndicator && (
+                              <Box
+                                aria-hidden="true"
+                                sx={{
+                                  position: 'absolute',
+                                  right: collapsed ? 5 : 8,
+                                  top: collapsed ? 5 : '50%',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 0.35,
+                                  color: statusIndicator.color,
+                                  transform: collapsed
+                                    ? 'none'
+                                    : 'translateY(-50%)',
+                                  '& svg': {
+                                    fontSize: collapsed ? 9 : 12,
+                                  },
+                                }}
+                              >
+                                {statusIndicator.icon}
+
+                                {!collapsed && (
+                                  <Typography
+                                    component="span"
+                                    sx={{
+                                      fontSize: 8.5,
+                                      fontWeight: 700,
+                                      lineHeight: 1,
+                                      whiteSpace: 'nowrap',
+                                    }}
+                                  >
+                                    {statusIndicator.label}
+                                  </Typography>
+                                )}
+                              </Box>
+                            )}
+
+                          </>
+                        )
+
+                        const menuItemSx = (theme: Parameters<typeof getMenuItemSx>[0]) => ({
+                          ...getMenuItemSx(
+                            theme,
+                            collapsed,
+                            active,
+                          ),
+
+                          ...(isDeveloping && {
+                            opacity: 0.72,
+                            cursor: 'not-allowed',
+                          }),
+
+                          ...(isTodo && {
+                            opacity: 0.52,
+                            color: 'text.disabled',
+                            cursor: 'not-allowed',
+                          }),
+
+                          ...(unavailable && {
+                            '&:hover': {
+                              transform: 'none',
+                              color: isDeveloping
+                                ? 'text.secondary'
+                                : 'text.disabled',
+                              background: theme.palette.mode === 'dark'
+                                ? 'rgba(255,255,255,0.025)'
+                                : 'rgba(255,255,255,0.28)',
+                              boxShadow: 'none',
+                              borderColor: 'transparent',
+                            },
+                          }),
+                        })
+
+
+                        const menuButton = isReady ? (
+                          <ListItemButton
+                            component={
+                              NavLink
+                            }
+
+                            to={
+                              item.path
+                            }
+
+                            selected={
+                              active
+                            }
+
+                            sx={menuItemSx}
+                          >
+                            {menuContent}
+                          </ListItemButton>
+                        ) : (
+                          <ListItemButton
+                            component="div"
+                            aria-disabled="true"
+                            tabIndex={-1}
+                            selected={false}
+                            sx={menuItemSx}
+                          >
+                            {menuContent}
                           </ListItemButton>
                         )
 
@@ -686,7 +809,7 @@ export function LeftSidebar() {
                             }
 
                             title={
-                              item.label
+                              tooltipTitle
                             }
 
                             placement="right"
@@ -695,14 +818,17 @@ export function LeftSidebar() {
 
                             disableHoverListener={
                               !collapsed
+                              && isReady
                             }
 
                             disableFocusListener={
                               !collapsed
+                              && isReady
                             }
 
                             disableTouchListener={
                               !collapsed
+                              && isReady
                             }
                           >
                             {menuButton}

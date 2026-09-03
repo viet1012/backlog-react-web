@@ -24,10 +24,16 @@ import {
 // TYPES
 // =========================================================
 
+export type MenuItemStatus =
+    | 'ready'
+    | 'developing'
+    | 'todo'
+
 export interface MenuItemConfig {
     label: string
     path: string
     icon: ReactNode
+    status?: MenuItemStatus
 }
 
 export interface MenuGroupConfig {
@@ -62,6 +68,7 @@ export const menuGroups:
                 {
                     label: 'SPH',
                     path: '/sph',
+                    status: 'todo',
                     icon: (
                         <PrecisionManufacturingOutlined />
                     ),
@@ -70,6 +77,7 @@ export const menuGroups:
                 {
                     label: 'Asakai',
                     path: '/asakai',
+                    status: 'todo',
                     icon: (
                         <SettingsSuggestOutlined />
                     ),
@@ -78,6 +86,7 @@ export const menuGroups:
                 {
                     label: 'Cost Monitoring',
                     path: '/cost-monitoring',
+                    status: 'todo',
                     icon: (
                         <TrendingUpOutlined />
                     ),
@@ -98,6 +107,7 @@ export const menuGroups:
                 {
                     label: 'Backlog',
                     path: '/backlog',
+                    status: 'ready',
                     icon: (
                         <SpaceDashboardOutlined />
                     ),
@@ -106,6 +116,7 @@ export const menuGroups:
                 {
                     label: 'Fac Confirm',
                     path: '/fac-confirm',
+                    status: 'ready',
                     icon: (
                         <FactCheckOutlined />
                     ),
@@ -114,6 +125,7 @@ export const menuGroups:
                 {
                     label: 'ODBF',
                     path: '/odbf',
+                    status: 'todo',
                     icon: (
                         <Inventory2Outlined />
                     ),
@@ -122,6 +134,7 @@ export const menuGroups:
                 {
                     label: 'Export List',
                     path: '/export-list',
+                    status: 'todo',
                     icon: (
                         <ReceiptLongOutlined />
                     ),
@@ -130,6 +143,7 @@ export const menuGroups:
                 {
                     label: 'Packing List',
                     path: '/packing-list',
+                    status: 'todo',
                     icon: (
                         <InventoryOutlined />
                     ),
@@ -138,6 +152,7 @@ export const menuGroups:
                 {
                     label: 'Shipping Schedule',
                     path: '/shipping-schedule',
+                    status: 'ready',
                     icon: (
                         <EventNoteOutlined />
                     ),
@@ -158,6 +173,7 @@ export const menuGroups:
                 {
                     label: 'BOSB',
                     path: '/bosb',
+                    status: 'todo',
                     icon: (
                         <AccountBalanceOutlined />
                     ),
@@ -166,6 +182,7 @@ export const menuGroups:
                 {
                     label: 'Deadstock',
                     path: '/deadstock',
+                    status: 'todo',
                     icon: (
                         <DeleteSweepOutlined />
                     ),
@@ -174,6 +191,7 @@ export const menuGroups:
                 {
                     label: 'PL',
                     path: '/pl',
+                    status: 'todo',
                     icon: (
                         <AssessmentOutlined />
                     ),
@@ -182,6 +200,7 @@ export const menuGroups:
                 {
                     label: 'KPI',
                     path: '/kpi',
+                    status: 'todo',
                     icon: (
                         <SpeedOutlined />
                     ),
@@ -190,6 +209,7 @@ export const menuGroups:
                 {
                     label: 'OT',
                     path: '/ot',
+                    status: 'todo',
                     icon: (
                         <AccessTimeOutlined />
                     ),
