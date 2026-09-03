@@ -32,6 +32,7 @@ import { PlPage } from './pages/PlPage'
 import { SalesStatusPage } from './pages/SalesStatusPage'
 import { ShipmentPage } from './pages/ShipmentPage'
 import { SphPage } from './pages/SphPage'
+import { PcTrainingPage } from './pages/training/PcTrainingPage'
 
 import {
   createDashboardTheme,
@@ -111,6 +112,7 @@ function App() {
             <Route path="sph" element={<SphPage />} />
             <Route path="asakai" element={<AsakaiPage />} />
             <Route path="cost-monitoring" element={<CostMonitoringPage />} />
+            <Route path="pc-training" element={<PcTrainingPage />} />
 
 
             {/* =========================

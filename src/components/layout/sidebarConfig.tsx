@@ -16,6 +16,7 @@ import {
     AccessTimeOutlined,
     Inventory2Outlined,
     ReceiptLongOutlined,
+    SchoolOutlined,
     SpaceDashboardOutlined,
 } from '@mui/icons-material'
 
@@ -65,6 +66,15 @@ export const menuGroups:
             label: 'PRODUCTION',
 
             items: [
+                {
+                    label: 'PC Training',
+                    path: '/pc-training',
+                    status: 'ready',
+                    icon: (
+                        <SchoolOutlined />
+                    ),
+                },
+
                 {
                     label: 'SPH',
                     path: '/sph',
