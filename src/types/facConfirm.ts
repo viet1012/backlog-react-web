@@ -53,9 +53,12 @@ export type FacConfirmProcessGroup =
 
 export interface FacConfirmProcessGroupSummary {
     processGroup: FacConfirmProcessGroup
-    orderCount: number
-    totalFinalQty: number
-    confirmCount : number
+
+    requiredOrderCount: number
+    requiredTotalQty: number
+
+    confirmedOrderCount: number
+    confirmedTotalQty: number
 }
 
 export interface FacConfirmFilterItem {

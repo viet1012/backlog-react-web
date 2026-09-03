@@ -52,11 +52,11 @@ export function FacConfirmProcessGroupButton({
           ].getColor(theme)
 
         return {
-          minWidth: 158,
-          height: 46,
+          minWidth: 220,
+          minHeight: 58,
 
-          px: 1,
-          py: 0.5,
+          px: 1.25,
+          py: 0.65,
 
           flexShrink: 0,
 
@@ -71,7 +71,10 @@ export function FacConfirmProcessGroupButton({
 
           border:
             `1px solid ${selected
-              ? alpha(color, 0.7)
+              ? alpha(
+                color,
+                0.7,
+              )
               : theme.palette.divider
             }`,
 
@@ -80,8 +83,8 @@ export function FacConfirmProcessGroupButton({
               ? alpha(
                 color,
                 theme.palette.mode === 'dark'
-                  ? 0.28   // trước 0.18
-                  : 0.14,  // trước 0.08
+                  ? 0.28
+                  : 0.14,
               )
               : alpha(
                 theme.palette.background.paper,
@@ -107,7 +110,12 @@ export function FacConfirmProcessGroupButton({
           '&:hover': {
             bgcolor:
               selected
-                ? alpha(color, 0.14)
+                ? alpha(
+                  color,
+                  theme.palette.mode === 'dark'
+                    ? 0.34
+                    : 0.18,
+                )
                 : theme.palette.action.hover,
 
             transform:
@@ -129,11 +137,12 @@ export function FacConfirmProcessGroupButton({
           display: 'flex',
           alignItems: 'center',
 
-          gap: 0.8,
+          gap: 1,
 
           minWidth: 0,
         }}
       >
+        {/* ICON */}
         <Box
           sx={(theme) => {
 
@@ -143,8 +152,10 @@ export function FacConfirmProcessGroupButton({
               ].getColor(theme)
 
             return {
-              width: 28,
-              height: 28,
+              width: 32,
+              height: 32,
+
+              flexShrink: 0,
 
               display: 'grid',
               placeItems: 'center',
@@ -153,7 +164,12 @@ export function FacConfirmProcessGroupButton({
 
               bgcolor:
                 selected
-                  ? alpha(color, 0.14)
+                  ? alpha(
+                    color,
+                    theme.palette.mode === 'dark'
+                      ? 0.30
+                      : 0.20,
+                  )
                   : alpha(
                     theme.palette.text.primary,
                     0.04,
@@ -188,6 +204,7 @@ export function FacConfirmProcessGroupButton({
         </Box>
 
 
+        {/* TEXT */}
         <Box
           sx={{
             minWidth: 0,
@@ -198,17 +215,19 @@ export function FacConfirmProcessGroupButton({
             sx={{
               fontSize: 12.5,
               fontWeight: 800,
-              lineHeight: 1,
+              lineHeight: 1.1,
             }}
           >
             {item.processGroup}
           </Typography>
 
+
+          {/* CẦN XÁC NHẬN */}
           <Typography
             sx={{
-              mt: 0.5,
+              mt: 0.45,
 
-              fontSize: 12.5,
+              fontSize: 12,
               fontWeight: 600,
 
               color:
@@ -216,15 +235,36 @@ export function FacConfirmProcessGroupButton({
                   ? 'inherit'
                   : 'text.secondary',
 
-              whiteSpace:
-                'nowrap',
+              whiteSpace: 'nowrap',
             }}
           >
-            PO {item.orderCount.toLocaleString()}
-            {' · '}
-            Qty {item.totalFinalQty.toLocaleString()}
-            {' · '}
-            Fac Cofirm {item.confirmCount.toLocaleString()}
+            Cần xác nhận:{' '}
+            {item.requiredOrderCount.toLocaleString()} PO
+            {', '}
+            {item.requiredTotalQty.toLocaleString()} Pcs
+          </Typography>
+
+
+          {/* ĐÃ XÁC NHẬN */}
+          <Typography
+            sx={{
+              mt: 0.15,
+
+              fontSize: 12,
+              fontWeight: 600,
+
+              color:
+                selected
+                  ? 'inherit'
+                  : 'text.secondary',
+
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Đã xác nhận:{' '}
+            {item.confirmedOrderCount.toLocaleString()} PO
+            {', '}
+            {item.confirmedTotalQty.toLocaleString()} Pcs
           </Typography>
         </Box>
       </Box>
