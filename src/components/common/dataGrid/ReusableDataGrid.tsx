@@ -4,6 +4,7 @@ import {
   DataGrid,
   type DataGridProps,
   type GridCellParams,
+  type GridApi,
   type GridColDef,
   type GridColumnOrderChangeParams,
   type GridColumnResizeParams,
@@ -15,6 +16,8 @@ import {
   type GridSortModel,
   type GridValidRowModel,
 } from '@mui/x-data-grid'
+
+import type { RefObject } from 'react'
 
 import {
   applyGridColumnPreferences,
@@ -99,6 +102,11 @@ export interface ReusableDataGridProps<
 
   onProcessRowUpdateError?:
   DataGridProps<T>['onProcessRowUpdateError']
+
+  apiRef?: RefObject<GridApi | null>
+
+  onCellClick?:
+  GridEventListener<'cellClick'>
 }
 
 
@@ -147,6 +155,9 @@ export function ReusableDataGrid<
   processRowUpdate,
 
   onProcessRowUpdateError,
+
+  apiRef,
+  onCellClick,
 
 }: ReusableDataGridProps<T>) {
 
@@ -232,6 +243,8 @@ export function ReusableDataGrid<
   return (
     <DataGrid<T>
 
+      apiRef={apiRef}
+
       rows={
         rows
       }
@@ -309,6 +322,10 @@ export function ReusableDataGrid<
 
       onProcessRowUpdateError={
         onProcessRowUpdateError
+      }
+
+      onCellClick={
+        onCellClick
       }
 
       slots={{

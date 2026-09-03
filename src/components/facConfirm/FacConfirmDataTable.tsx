@@ -18,6 +18,7 @@ import {
   type GridColumnVisibilityModel,
   type GridPaginationModel,
   type GridSortModel,
+  useGridApiRef,
 } from '@mui/x-data-grid'
 
 import {
@@ -76,6 +77,10 @@ import {
 import {
   useFacConfirmCellEditState,
 } from './hooks/useFacConfirmCellEditState'
+
+import {
+  useFacConfirmFillHandle,
+} from './hooks/useFacConfirmFillHandle'
 
 import { AppButton } from '../common/AppButton'
 
@@ -344,6 +349,8 @@ export function FacConfirmDataTable({
     confirmedProcesses,
   })
 
+  const apiRef = useGridApiRef()
+
   // =======================================================
   // CONFIRM ALL CHANGES
   // =======================================================
@@ -532,6 +539,30 @@ export function FacConfirmDataTable({
       [],
     )
 
+  const {
+    getFillClassName,
+    handleCellClick,
+    handlePointerDown,
+    handlePointerMove,
+    handlePointerUp,
+    handlePointerCancel,
+    dragDirection,
+    isDragging,
+  } = useFacConfirmFillHandle({
+    activeProcess: highlightProcGrp,
+    apiRef,
+    processRowUpdate,
+    onError: handleProcessRowUpdateError,
+  })
+
+  const getFacConfirmCellClassName = useCallback(
+    (params: Parameters<typeof getCellClassName>[0]) => [
+      getCellClassName(params),
+      getFillClassName(params),
+    ].filter(Boolean).join(' '),
+    [getCellClassName, getFillClassName],
+  )
+
   // =======================================================
   // RENDER
   // =======================================================
@@ -562,6 +593,10 @@ export function FacConfirmDataTable({
     >
 
       <Box
+        onPointerDownCapture={handlePointerDown}
+        onPointerMoveCapture={handlePointerMove}
+        onPointerUpCapture={handlePointerUp}
+        onPointerCancelCapture={handlePointerCancel}
         sx={(theme) => {
 
           const processColors = {
@@ -681,9 +716,48 @@ export function FacConfirmDataTable({
             minHeight:
               0,
 
+            cursor:
+              dragDirection === 'horizontal'
+                ? 'ew-resize'
+                : dragDirection === 'vertical'
+                  ? 'ns-resize'
+                  : isDragging
+                    ? 'crosshair'
+                    : undefined,
+
+            userSelect:
+              isDragging
+                ? 'none'
+                : undefined,
+
 
             ...editedCellStyles,
 
+            '& .MuiDataGrid-cell.fac-confirm-fill-source': {
+              overflow: 'visible',
+            },
+
+            '& .MuiDataGrid-cell.fac-confirm-fill-source::after': {
+              content: '""',
+              position: 'absolute',
+              right: -1,
+              bottom: -1,
+              width: 7,
+              height: 7,
+              boxSizing: 'border-box',
+              border: `1px solid ${theme.palette.background.paper}`,
+              backgroundColor: theme.palette.primary.main,
+              cursor: 'crosshair',
+              zIndex: 2,
+            },
+
+            '& .MuiDataGrid-cell--editing.fac-confirm-fill-source::after': {
+              display: 'none',
+            },
+
+            '& .MuiDataGrid-cell.fac-confirm-fill-range': {
+              boxShadow: `inset 0 0 0 9999px ${alpha(theme.palette.primary.main, 0.08)}`,
+            },
 
             '& .MuiDataGrid-row:hover .MuiDataGrid-cell.fac-confirm-edited-rough': {
               backgroundColor:
@@ -716,6 +790,8 @@ export function FacConfirmDataTable({
       >
 
         <ReusableDataGrid<FacConfirmRow>
+
+          apiRef={apiRef}
 
           rows={
             rows
@@ -789,8 +865,10 @@ export function FacConfirmDataTable({
           }
 
           getCellClassName={
-            getCellClassName
+            getFacConfirmCellClassName
           }
+
+          onCellClick={handleCellClick}
 
           processRowUpdate={
             processRowUpdate
