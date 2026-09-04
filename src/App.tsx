@@ -112,8 +112,15 @@ function App() {
             <Route path="sph" element={<SphPage />} />
             <Route path="asakai" element={<AsakaiPage />} />
             <Route path="cost-monitoring" element={<CostMonitoringPage />} />
-            <Route path="pc-training" element={<PcTrainingPage />} />
-
+            <Route
+              path="pc-training"
+              element={
+                <PcTrainingPage
+                  mode={mode}
+                  onToggleMode={toggleThemeMode}
+                />
+              }
+            />
 
             {/* =========================
                 PLANNING
@@ -136,7 +143,15 @@ function App() {
               element={<OdbfPage />}
             />
 
-            <Route path="fac-confirm" element={<FacConfirmPage />} />
+            <Route
+              path="fac-confirm"
+              element={
+                <FacConfirmPage
+                  mode={mode}
+                  onToggleMode={toggleThemeMode}
+                />
+              }
+            />
 
             <Route
               path="export-list"
@@ -157,7 +172,12 @@ function App() {
 
             <Route
               path="shipping-schedule"
-              element={<ShipmentPage />}
+              element={
+                <ShipmentPage
+                  mode={mode}
+                  onToggleMode={toggleThemeMode}
+                />
+              }
             />
 
             {/* =========================

@@ -46,6 +46,11 @@ import {
   saveFacConfirmPreferences,
 } from '../utils/uiPreferences'
 
+interface FacConfirmPageProps {
+  mode: 'light' | 'dark'
+  onToggleMode: () => void
+}
+
 function getToday(): string {
   const now = new Date()
 
@@ -53,22 +58,37 @@ function getToday(): string {
     + `-${String(now.getDate()).padStart(2, '0')}`
 }
 
-export function FacConfirmPage() {
+export function FacConfirmPage({
+  mode,
+  onToggleMode,
+}: FacConfirmPageProps) {
   const [pagePreferences] = useState(loadFacConfirmPreferences)
-  const [div, setDiv] = useState(pagePreferences.div)
-  const [expD, setExpD] = useState(getToday)
-  const [procGrp, setProcGrp] = useState<FacConfirmProcessGroup>(
-    pagePreferences.procGrp,
-  )
-  const [highlightProcGrp, setHighlightProcGrp] = useState<
-    FacConfirmProcessGroup | null
-  >(pagePreferences.procGrp)
-  const [sortModel, setSortModel] = useState<GridSortModel>([])
-  const [excelFilters, setExcelFilters] = useState<
-    FacConfirmFilterItem[]
-  >([])
 
-  const preferences = useGridPreferences('fac-confirm', 100)
+  const [div, setDiv] =
+    useState(pagePreferences.div)
+
+  const [expD, setExpD] =
+    useState(getToday)
+
+  const [procGrp, setProcGrp] =
+    useState<FacConfirmProcessGroup>(
+      pagePreferences.procGrp,
+    )
+
+  const [highlightProcGrp, setHighlightProcGrp] =
+    useState<FacConfirmProcessGroup | null>(
+      pagePreferences.procGrp,
+    )
+
+  const [sortModel, setSortModel] =
+    useState<GridSortModel>([])
+
+  const [excelFilters, setExcelFilters] =
+    useState<FacConfirmFilterItem[]>([])
+
+  const preferences =
+    useGridPreferences('fac-confirm', 100)
+
   const [paginationModel, setPaginationModel] =
     useState<GridPaginationModel>(() => ({
       page: 0,
@@ -101,70 +121,91 @@ export function FacConfirmPage() {
     }))
   }, [])
 
-  const handleDivChange = useCallback((nextDiv: string) => {
-    setDiv(nextDiv)
-    saveFacConfirmPreferences({
-      div: nextDiv,
-      procGrp,
-    })
-    resetPage()
-  }, [procGrp, resetPage])
+  const handleDivChange =
+    useCallback((nextDiv: string) => {
+      setDiv(nextDiv)
 
-  const handleDateChange = useCallback((value: string) => {
-    setExpD(value)
-    resetPage()
-  }, [resetPage])
+      saveFacConfirmPreferences({
+        div: nextDiv,
+        procGrp,
+      })
 
-  const handleProcessGroupChange = useCallback((
-    value: FacConfirmProcessGroup,
-  ) => {
-    setProcGrp(value)
-    setHighlightProcGrp(value)
-    saveFacConfirmPreferences({
-      div,
-      procGrp: value,
-    })
-    resetPage()
-  }, [div, resetPage])
+      resetPage()
+    }, [procGrp, resetPage])
 
-  const handlePaginationChange = useCallback((
-    model: GridPaginationModel,
-  ) => {
-    setPaginationModel(model)
+  const handleDateChange =
+    useCallback((value: string) => {
+      setExpD(value)
+      resetPage()
+    }, [resetPage])
 
-    if (model.pageSize !== preferences.pageSize) {
-      preferences.setPageSize(model.pageSize)
-    }
-  }, [preferences])
+  const handleProcessGroupChange =
+    useCallback((
+      value: FacConfirmProcessGroup,
+    ) => {
+      setProcGrp(value)
+      setHighlightProcGrp(value)
 
-  const handleExcelFiltersChange = useCallback((
-    filters: FacConfirmFilterItem[],
-  ) => {
-    setExcelFilters(filters)
-    resetPage()
-  }, [resetPage])
+      saveFacConfirmPreferences({
+        div,
+        procGrp: value,
+      })
 
-  const handleSortChange = useCallback((model: GridSortModel) => {
-    setSortModel(model)
-  }, [])
+      resetPage()
+    }, [div, resetPage])
+
+  const handlePaginationChange =
+    useCallback((
+      model: GridPaginationModel,
+    ) => {
+      setPaginationModel(model)
+
+      if (
+        model.pageSize !==
+        preferences.pageSize
+      ) {
+        preferences.setPageSize(
+          model.pageSize,
+        )
+      }
+    }, [preferences])
+
+  const handleExcelFiltersChange =
+    useCallback((
+      filters: FacConfirmFilterItem[],
+    ) => {
+      setExcelFilters(filters)
+      resetPage()
+    }, [resetPage])
+
+  const handleSortChange =
+    useCallback((model: GridSortModel) => {
+      setSortModel(model)
+    }, [])
 
   return (
     <PageShell>
       <PageHeader
         title="FAC CONFIRM"
+
         subtitle="Production process confirmation."
-        status={(
+
+        status={
           <UpdatedStatus
             updatedAt={lastUpdated}
             error={Boolean(error)}
           />
-        )}
-        actions={(
+        }
+
+        actions={
           <RefreshButton
             loading={loading}
             onClick={handleRefresh}
           />
-        )}
+        }
+
+        mode={mode}
+        onToggleMode={onToggleMode}
       />
 
       <FacConfirmFilterBar
@@ -175,7 +216,9 @@ export function FacConfirmPage() {
         loading={processGroupsLoading}
         onDivChange={handleDivChange}
         onDateChange={handleDateChange}
-        onProcessGroupChange={handleProcessGroupChange}
+        onProcessGroupChange={
+          handleProcessGroupChange
+        }
       />
 
       {error && (
@@ -193,27 +236,55 @@ export function FacConfirmPage() {
       >
         <FacConfirmDataTable
           rows={rows}
-          confirmedProcesses={confirmedProcesses}
+          confirmedProcesses={
+            confirmedProcesses
+          }
           loading={loading}
           div={div}
           expD={expD}
           procGrp={procGrp}
-          highlightProcGrp={highlightProcGrp}
-          excelFilters={excelFilters}
-          paginationModel={paginationModel}
+          highlightProcGrp={
+            highlightProcGrp
+          }
+          excelFilters={
+            excelFilters
+          }
+          paginationModel={
+            paginationModel
+          }
           rowCount={totalElements}
           sortModel={sortModel}
-          columnVisibilityModel={preferences.columnVisibilityModel}
-          columnOrder={preferences.columnOrder}
-          columnWidths={preferences.columnWidths}
-          onExcelFiltersChange={handleExcelFiltersChange}
-          onPaginationChange={handlePaginationChange}
-          onSortChange={handleSortChange}
-          onColumnVisibilityModelChange={
-            preferences.setColumnVisibilityModel
+          columnVisibilityModel={
+            preferences
+              .columnVisibilityModel
           }
-          onColumnOrderChange={preferences.setColumnOrder}
-          onColumnWidthChange={preferences.setColumnWidth}
+          columnOrder={
+            preferences.columnOrder
+          }
+          columnWidths={
+            preferences.columnWidths
+          }
+          onExcelFiltersChange={
+            handleExcelFiltersChange
+          }
+          onPaginationChange={
+            handlePaginationChange
+          }
+          onSortChange={
+            handleSortChange
+          }
+          onColumnVisibilityModelChange={
+            preferences
+              .setColumnVisibilityModel
+          }
+          onColumnOrderChange={
+            preferences
+              .setColumnOrder
+          }
+          onColumnWidthChange={
+            preferences
+              .setColumnWidth
+          }
           onSaved={handleRefresh}
         />
       </Box>

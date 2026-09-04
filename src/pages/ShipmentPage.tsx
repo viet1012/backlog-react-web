@@ -10,10 +10,17 @@ import { ShipmentHeatmap } from '../components/shipment/ShipmentHeatmap'
 import { buildDateRange, buildShipmentRows, getDefaultShipmentDateRange } from '../components/shipment/shipmentHeatmapUtils'
 import { useShipmentData } from '../hooks/useShipmentData'
 import type { ShipmentHeatmapRow } from '../types/shipment'
+interface ShipmentPageProps {
+  mode: 'light' | 'dark'
+  onToggleMode: () => void
+}
 
 const defaultRange = getDefaultShipmentDateRange()
 
-export function ShipmentPage() {
+export function ShipmentPage({
+  mode,
+  onToggleMode,
+}: ShipmentPageProps) {
   // =========================================================
   // PAGE FILTER STATE
   // =========================================================
@@ -84,10 +91,21 @@ export function ShipmentPage() {
       <PageHeader
         title="SHIPMENT FULFILLMENT"
         subtitle="Monitor shipment fulfillment and delivery readiness."
-        status={<UpdatedStatus updatedAt={lastUpdated} error={Boolean(error)} />}
-        actions={<RefreshButton loading={loading} onClick={handleRefresh} />}
+        status={
+          <UpdatedStatus
+            updatedAt={lastUpdated}
+            error={Boolean(error)}
+          />
+        }
+        actions={
+          <RefreshButton
+            loading={loading}
+            onClick={handleRefresh}
+          />
+        }
+        mode={mode}
+        onToggleMode={onToggleMode}
       />
-
       <ShipmentFilterBar
         fromD={fromD} toD={toD} loading={loading}
         onFromDateChange={setFromD} onToDateChange={setToD}

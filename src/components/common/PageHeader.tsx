@@ -7,6 +7,7 @@ import { alpha } from '@mui/material/styles'
 
 import type { ReactNode } from 'react'
 import { glassPanelSx, uiTokens } from '../../theme/uiTokens'
+import { ThemeToggleButton } from './ThemeToggleButton'
 
 interface PageHeaderProps {
   title: string
@@ -15,6 +16,9 @@ interface PageHeaderProps {
   actions?: ReactNode
   bottom?: ReactNode
   mono?: boolean
+
+  mode: 'light' | 'dark'
+  onToggleMode: () => void
 }
 
 export function PageHeader({
@@ -24,6 +28,8 @@ export function PageHeader({
   actions,
   bottom,
   mono = false,
+  mode,
+  onToggleMode,
 }: PageHeaderProps) {
   const fontFamily =
     mono ? 'monospace' : 'inherit'
@@ -53,7 +59,11 @@ export function PageHeader({
             `linear-gradient(100deg, ${alpha(
               brandBlue,
               isDark ? 0.10 : 0.065,
-            )} 0%, ${alpha(brandCyan, isDark ? 0.035 : 0.025)} 24%, transparent 48%)`,
+            )} 0%, ${alpha(
+              brandCyan,
+              isDark ? 0.035 : 0.025,
+            )} 24%, transparent 48%)`,
+
             `radial-gradient(circle at 88% 0%, ${alpha(
               brandCyan,
               isDark ? 0.08 : 0.055,
@@ -64,29 +74,54 @@ export function PageHeader({
             content: '""',
             position: 'absolute',
             zIndex: 1,
+
             left: 7,
             top: 8,
             bottom: 8,
+
             width: 3,
+
             borderRadius: 999,
-            background: `linear-gradient(180deg, ${brandCyan} 0%, ${brandBlue} 72%)`,
-            boxShadow: `0 0 10px ${alpha(brandBlue, isDark ? 0.38 : 0.20)}`,
+
+            background: `linear-gradient(
+              180deg,
+              ${brandCyan} 0%,
+              ${brandBlue} 72%
+            )`,
+
+            boxShadow: `0 0 10px ${alpha(
+              brandBlue,
+              isDark ? 0.38 : 0.20,
+            )}`,
           },
 
           '&::after': {
             content: '""',
             position: 'absolute',
             zIndex: 0,
+
             top: -62,
             right: -32,
+
             width: 150,
             height: 150,
+
             borderRadius: '50%',
+
             pointerEvents: 'none',
-            background: `radial-gradient(circle, ${alpha(
+
+            background: `radial-gradient(
+              circle,
+              ${alpha(
               brandBlue,
               isDark ? 0.10 : 0.065,
-            )} 0%, ${alpha(brandCyan, isDark ? 0.035 : 0.025)} 42%, transparent 70%)`,
+            )} 0%,
+              ${alpha(
+              brandCyan,
+              isDark ? 0.035 : 0.025,
+            )} 42%,
+              transparent 70%
+            )`,
           },
         }
       }}
@@ -99,7 +134,9 @@ export function PageHeader({
 
           alignItems: 'center',
           justifyContent: 'space-between',
+
           gap: { xs: 1, sm: 2 },
+
           minWidth: 0,
         }}
       >
@@ -117,7 +154,8 @@ export function PageHeader({
             sx={{
               fontFamily,
 
-              fontSize: uiTokens.header.titleFontSize,
+              fontSize:
+                uiTokens.header.titleFontSize,
 
               fontWeight:
                 mono ? 900 : 800,
@@ -127,12 +165,16 @@ export function PageHeader({
 
               lineHeight: 1.1,
 
-              textShadow: (theme) => theme.palette.mode === 'dark'
-                ? `0 1px 12px ${alpha(theme.palette.common.black, 0.22)}`
-                : 'none',
+              textShadow:
+                (theme) =>
+                  theme.palette.mode === 'dark'
+                    ? `0 1px 12px ${alpha(
+                      theme.palette.common.black,
+                      0.22,
+                    )}`
+                    : 'none',
 
-              color:
-                'text.primary',
+              color: 'text.primary',
             }}
           >
             {title}
@@ -146,14 +188,15 @@ export function PageHeader({
 
                 fontFamily,
 
-                fontSize: uiTokens.header.subtitleFontSize,
+                fontSize:
+                  uiTokens.header
+                    .subtitleFontSize,
 
                 fontWeight: 400,
 
                 lineHeight: 1.25,
 
-                color:
-                  'text.secondary',
+                color: 'text.secondary',
               }}
             >
               {subtitle}
@@ -161,26 +204,42 @@ export function PageHeader({
           )}
         </Box>
 
-        {(status || actions) && (
-          <Stack
-            direction="row"
-            sx={{
-              alignItems: 'center',
-              flexShrink: 0,
-              minWidth: 0,
-              gap: { xs: 0.5, sm: 1 },
-              maxWidth: { xs: '52%', sm: 'none' },
-              overflowX: 'auto',
-              scrollbarWidth: 'none',
-              '&::-webkit-scrollbar': {
-                display: 'none',
-              },
-            }}
-          >
-            {status}
-            {actions}
-          </Stack>
-        )}
+        <Stack
+          direction="row"
+          sx={{
+            alignItems: 'center',
+
+            flexShrink: 0,
+            minWidth: 0,
+
+            gap: {
+              xs: 0.5,
+              sm: 1,
+            },
+
+            maxWidth: {
+              xs: '52%',
+              sm: 'none',
+            },
+
+            overflowX: 'auto',
+
+            scrollbarWidth: 'none',
+
+            '&::-webkit-scrollbar': {
+              display: 'none',
+            },
+          }}
+        >
+          {status}
+
+          {actions}
+
+          <ThemeToggleButton
+            mode={mode}
+            onToggle={onToggleMode}
+          />
+        </Stack>
       </Stack>
 
       {bottom && (
@@ -188,20 +247,35 @@ export function PageHeader({
           sx={(theme) => ({
             position: 'relative',
             zIndex: 1,
+
             mt: 1,
             pt: 1,
 
             '&::before': {
               content: '""',
+
               position: 'absolute',
+
               top: 0,
               left: 0,
               right: 0,
+
               height: '1px',
-              background: `linear-gradient(90deg, ${alpha(
+
+              background: `linear-gradient(
+                90deg,
+                ${alpha(
                 theme.palette.primary.main,
-                theme.palette.mode === 'dark' ? 0.28 : 0.18,
-              )}, ${alpha(theme.palette.divider, 0.72)} 36%, transparent 100%)`,
+                theme.palette.mode === 'dark'
+                  ? 0.28
+                  : 0.18,
+              )},
+                ${alpha(
+                theme.palette.divider,
+                0.72,
+              )} 36%,
+                transparent 100%
+              )`,
             },
           })}
         >

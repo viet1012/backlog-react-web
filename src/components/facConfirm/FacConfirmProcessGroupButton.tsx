@@ -70,6 +70,7 @@ export function FacConfirmProcessGroupButton({
     requiredOrderCount > 0
     && confirmedOrderCount >= requiredOrderCount
 
+  const successColor = '#22c55e'
 
   return (
     <Button
@@ -283,7 +284,7 @@ export function FacConfirmProcessGroupButton({
             >
               <CheckCircleRounded
                 sx={{
-                  fontSize: 14,
+                  fontSize: 14, color: successColor,
                 }}
               />
 
@@ -292,6 +293,7 @@ export function FacConfirmProcessGroupButton({
                   fontSize: 11,
                   fontWeight: 800,
                   lineHeight: 1,
+                  color: successColor,
                 }}
               >
                 DONE

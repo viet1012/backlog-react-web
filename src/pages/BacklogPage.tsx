@@ -1,4 +1,4 @@
-import { Alert, Card, Stack } from '@mui/material'
+import { Alert, Card} from '@mui/material'
 import type { PaletteMode } from '@mui/material/styles'
 import type { GridPaginationModel, GridSortModel } from '@mui/x-data-grid'
 import { useCallback, useState } from 'react'
@@ -9,7 +9,6 @@ import { PageHeader } from '../components/common/PageHeader'
 import { PageShell } from '../components/common/PageShell'
 import { RefreshButton } from '../components/common/RefreshButton'
 import { UpdatedStatus } from '../components/common/UpdatedStatus'
-import { ThemeToggleButton } from '../components/common/ThemeToggleButton'
 import { useBacklogData } from '../hooks/useBacklogData'
 import { useBacklogSummary } from '../hooks/useBacklogSummary'
 import { useGridPreferences } from '../hooks/useGridPreferences'
@@ -253,57 +252,27 @@ export function BacklogPage({
       <PageHeader
         title="PRODUCTION BACKLOG"
 
-        subtitle={
-          'Monitor production status, process flow and delivery progress.'
-        }
+        subtitle="Monitor production status, process flow and delivery progress."
 
         status={
           <UpdatedStatus
-            updatedAt={
-              lastUpdated
-            }
-
-            error={
-              Boolean(
-                error,
-              )
-            }
+            updatedAt={lastUpdated}
+            error={Boolean(error)}
           />
         }
 
-        actions={(
-          <Stack
-            direction="row"
+        actions={
+          <RefreshButton
+            loading={
+              loading ||
+              summaryLoading
+            }
+            onClick={handleRefresh}
+          />
+        }
 
-            spacing={1.5}
-
-            sx={{
-              alignItems:
-                'center',
-            }}
-          >
-            <RefreshButton
-              loading={
-                loading
-                || summaryLoading
-              }
-
-              onClick={
-                handleRefresh
-              }
-            />
-
-            <ThemeToggleButton
-              mode={
-                mode
-              }
-
-              onToggle={
-                onToggleMode
-              }
-            />
-          </Stack>
-        )}
+        mode={mode}
+        onToggleMode={onToggleMode}
       />
 
 

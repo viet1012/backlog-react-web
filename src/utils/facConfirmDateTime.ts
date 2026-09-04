@@ -109,7 +109,6 @@ function getDaysInMonth(
 // =========================================================
 // VALIDATE + NORMALIZE PARTS
 // =========================================================
-
 function validateDateTimeParts(
   parts: FacConfirmDateTimeParts,
 ): FacConfirmDateTimeParts {
@@ -286,12 +285,49 @@ export function normalizeFacConfirmDateTimeForApi(
     )
 
 
+  // =========================================================
+  // KHÔNG CHO USER NHẬP NGÀY QUÁ KHỨ
+  // =========================================================
+
+  const inputDate = new Date(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+  )
+
+  inputDate.setHours(
+    0,
+    0,
+    0,
+    0,
+  )
+
+
+  const today = new Date()
+
+  today.setHours(
+    0,
+    0,
+    0,
+    0,
+  )
+
+
+  if (
+    inputDate.getTime()
+    < today.getTime()
+  ) {
+    throw new Error(
+      'Date cannot be in the past.',
+    )
+  }
+
+
   return (
     `${parts.year}-${parts.month}-${parts.day}`
     + `T${parts.hour}:${parts.minute}:${parts.second}`
   )
 }
-
 
 // =========================================================
 // DISPLAY FORMATTER
