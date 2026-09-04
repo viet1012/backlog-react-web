@@ -1,844 +1,292 @@
 import {
-  Box,
-  Card,
-  Typography,
-} from '@mui/material'
-
-import {
-  alpha,
-} from '@mui/material/styles'
-
-import {
-  AssignmentOutlined,
   AccessTimeOutlined,
-  SettingsOutlined,
+  AssignmentOutlined,
   LayersOutlined,
+  SettingsOutlined,
 } from '@mui/icons-material'
-
-
-// =========================================================
-// TYPES
-// =========================================================
-
-export interface BacklogStatusSummaryItem {
-  status: string
-  poCount: number
-  totalQty: number
-}
-
-export interface BacklogStatusSummaryData {
-  totalPoCount: number
-  totalQty: number
-  statuses: BacklogStatusSummaryItem[]
-}
+import { Alert, Box, Card, CircularProgress, Typography } from '@mui/material'
+import { alpha, type Theme } from '@mui/material/styles'
+import type { SystemStyleObject } from '@mui/system'
+import type { ReactNode } from 'react'
+import type { BacklogStatusSummary } from '../../services/reportService'
 
 interface BacklogSummaryProps {
-  summary: BacklogStatusSummaryData | null
+  summary: BacklogStatusSummary | null
   selectedStatus: string
   loading?: boolean
+  error?: string | null
   onStatusClick: (status: string) => void
 }
 
+interface StatusConfig {
+  key: string
+  label: string
+  hint: string
+  icon: ReactNode
+  color: string
+}
 
-// =========================================================
-// CONFIG
-// =========================================================
-
-const STATUS_ORDER = [
-  'NY PROCESS',
-  'NYI',
-  'WIP',
-  'WIP_FG',
+// Each status gets its own identity instead of one accent stretched across
+// everything — the color itself communicates where an order sits in the flow.
+const STATUS_CONFIG: StatusConfig[] = [
+  { key: 'NY PROCESS', label: 'NY Process', hint: 'Awaiting release', icon: <AccessTimeOutlined />, color: '#d97706' },
+  { key: 'NYI', label: 'NYI', hint: 'Not yet issued', icon: <AccessTimeOutlined />, color: '#64748b' },
+  { key: 'WIP', label: 'WIP', hint: 'In production', icon: <SettingsOutlined />, color: '#2563eb' },
+  { key: 'WIP_FG', label: 'WIP_FG', hint: 'Finished goods', icon: <LayersOutlined />, color: '#0d9488' },
 ]
 
-const STATUS_ICONS = {
-  'NY PROCESS': <AccessTimeOutlined />,
-  NYI: <AccessTimeOutlined />,
-  WIP: <SettingsOutlined />,
-  WIP_FG: <LayersOutlined />,
-} as const
+const TOTAL_COLOR = '#1e293b'
 
-const ACCENT =
-  '#3b82f6'
-
-
-// =========================================================
-// HELPERS
-// =========================================================
-
-function normalizeStatus(
-  value?: string | null,
-) {
-  return (value ?? '')
-    .trim()
-    .toUpperCase()
+function normalizeStatus(value?: string | null) {
+  return (value ?? '').trim().toUpperCase()
 }
 
-function formatNumber(
-  value?: number | null,
-) {
-  return (value ?? 0)
-    .toLocaleString()
+function formatMetric(value: number | undefined, unavailable: boolean) {
+  return unavailable ? '—' : (value ?? 0).toLocaleString()
 }
 
-
-// =========================================================
-// GLASS CARD STYLE
-// =========================================================
-
-function getGlassCardSx(
-  theme: any,
-  active = false,
-) {
-  const dark =
-    theme.palette.mode === 'dark'
-
+function getCardSx(theme: Theme, color: string, active: boolean): SystemStyleObject<Theme> {
+  const dark = theme.palette.mode === 'dark'
   return {
-    border:
-      `1px solid ${active
-        ? alpha(ACCENT, 0.55)
-        : dark
-          ? alpha('#ffffff', 0.10)
-          : alpha('#0f172a', 0.10)
-      }`,
-
-    bgcolor:
-      active
-        ? alpha(
-          ACCENT,
-          dark
-            ? 0.12
-            : 0.06,
-        )
-        : dark
-          ? alpha(
-            '#172033',
-            0.62,
-          )
-          : alpha(
-            '#ffffff',
-            0.62,
-          ),
-
-    backdropFilter:
-      'blur(14px)',
-
-    WebkitBackdropFilter:
-      'blur(14px)',
-
-    boxShadow:
-      active
-        ? `0 3px 14px ${alpha(
-          ACCENT,
-          dark
-            ? 0.14
-            : 0.10,
-        )}`
-        : dark
-          ? '0 2px 10px rgba(0,0,0,0.16)'
-          : '0 2px 10px rgba(15,23,42,0.06)',
-
-    transition:
-      'all 150ms ease',
+    position: 'relative',
+    border: `1px solid ${active ? alpha(color, dark ? 0.55 : 0.4) : dark ? alpha('#ffffff', 0.08) : alpha('#0f172a', 0.08)}`,
+    bgcolor: active
+      ? alpha(color, dark ? 0.14 : 0.055)
+      : dark ? '#161c2c' : '#ffffff',
+    borderRadius: 2,
+    boxShadow: active
+      ? `0 1px 0 ${alpha(color, 0.9)} inset, 0 4px 16px ${alpha(color, dark ? 0.18 : 0.12)}`
+      : dark ? '0 1px 2px rgba(0,0,0,0.24)' : '0 1px 2px rgba(15,23,42,0.05)',
+    transition: 'border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease, transform 150ms ease',
   }
 }
 
+function SummaryIcon({ children, color }: { children: ReactNode; color: string }) {
+  return (
+    <Box
+      sx={(theme) => ({
+        width: 30,
+        height: 30,
+        display: 'grid',
+        placeItems: 'center',
+        borderRadius: 1.5,
+        color,
+        bgcolor: alpha(color, theme.palette.mode === 'dark' ? 0.18 : 0.1),
+        flexShrink: 0,
+        '& svg': { fontSize: 17 },
+      })}
+    >
+      {children}
+    </Box>
+  )
+}
 
-// =========================================================
-// COMPONENT
-// =========================================================
+function SummaryMetric({ value, unit, unavailable, color, compact = false }: {
+  value: number | undefined
+  unit: 'PO' | 'PCS'
+  unavailable: boolean
+  color: string
+  compact?: boolean
+}) {
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.4, minWidth: 0 }}>
+      <Typography
+        sx={{
+          fontSize: compact ? 15 : unit === 'PO' ? 21 : 16,
+          fontWeight: unit === 'PO' ? 700 : 600,
+          lineHeight: 1,
+          fontVariantNumeric: 'tabular-nums',
+          color: unit === 'PO' ? color : 'text.primary',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {formatMetric(value, unavailable)}
+      </Typography>
+      <Typography sx={{ fontSize: compact ? 9.5 : 10.5, fontWeight: 600, color: 'text.secondary' }}>
+        {unit}
+      </Typography>
+    </Box>
+  )
+}
+
+function SummaryMetricRow({ poCount, totalQty, unavailable, color, compact = false }: {
+  poCount: number | undefined
+  totalQty: number | undefined
+  unavailable: boolean
+  color: string
+  compact?: boolean
+}) {
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: compact ? 1 : 1.25 }}>
+      <SummaryMetric value={poCount} unit="PO" unavailable={unavailable} color={color} compact={compact} />
+      <Box sx={{ width: '1px', height: compact ? 20 : 26, bgcolor: 'divider' }} />
+      <SummaryMetric value={totalQty} unit="PCS" unavailable={unavailable} color={color} compact={compact} />
+    </Box>
+  )
+}
+
+function TotalSummaryCard({ summary, loading }: {
+  summary: BacklogStatusSummary | null
+  loading: boolean
+}) {
+  return (
+    <Card
+      sx={(theme) => ({
+        ...getCardSx(theme, TOTAL_COLOR, false),
+        minHeight: 106,
+        px: 1.75,
+        py: 1.25,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1.25,
+      })}
+    >
+      <SummaryIcon color={TOTAL_COLOR}>
+        {loading ? <CircularProgress size={16} sx={{ color: TOTAL_COLOR }} /> : <AssignmentOutlined />}
+      </SummaryIcon>
+      <Box sx={{ minWidth: 0 }}>
+        <Typography sx={{ mb: 0.4, fontSize: 14, fontWeight: 600, color: 'text.secondary' }}>
+          Total orders
+        </Typography>
+        <SummaryMetricRow
+          poCount={summary?.totalPoCount}
+          totalQty={summary?.totalQty}
+          unavailable={loading || !summary}
+          color={TOTAL_COLOR}
+        />
+      </Box>
+    </Card>
+  )
+}
+
+function StatusSummaryCard({
+  config,
+  poCount,
+  totalQty,
+  filterValue,
+  active,
+  loading,
+  unavailable,
+  onClick,
+}: {
+  config: StatusConfig
+  poCount: number | undefined
+  totalQty: number | undefined
+  filterValue: string
+  active: boolean
+  loading: boolean
+  unavailable: boolean
+  onClick: (status: string) => void
+}) {
+  return (
+    <Card
+      onClick={() => {
+        if (!loading) onClick(filterValue)
+      }}
+      role="button"
+      aria-pressed={active}
+      tabIndex={loading ? -1 : 0}
+      onKeyDown={(e) => {
+        if (!loading && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault()
+          onClick(filterValue)
+        }
+      }}
+      sx={(theme) => ({
+        ...getCardSx(theme, config.color, active),
+        minHeight: 56,
+        px: 1.25,
+        py: 0.75,
+        cursor: loading ? 'default' : 'pointer',
+        userSelect: 'none',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1,
+        outline: 'none',
+        '&:hover': loading ? undefined : {
+          transform: 'translateY(-1px)',
+          borderColor: alpha(config.color, theme.palette.mode === 'dark' ? 0.5 : 0.35),
+        },
+        '&:focus-visible': {
+          boxShadow: `0 0 0 2px ${alpha(config.color, 0.5)}`,
+        },
+        '@media (prefers-reduced-motion: reduce)': {
+          transform: 'none',
+          '&:hover': { transform: 'none' },
+        },
+      })}
+    >
+      <SummaryIcon color={config.color}>{config.icon}</SummaryIcon>
+      <Box sx={{ minWidth: 0, flex: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.6, mb: 0.15 }}>
+          <Typography sx={{ fontSize: 12.5, fontWeight: 700, lineHeight: 1.2, color: active ? config.color : 'text.primary' }}>
+            {config.label}
+          </Typography>
+          <Typography sx={{ fontSize: 10, fontWeight: 500, color: 'text.secondary', display: { xs: 'none', sm: 'inline' } }}>
+            · {config.hint}
+          </Typography>
+        </Box>
+        <SummaryMetricRow poCount={poCount} totalQty={totalQty} unavailable={unavailable} color={config.color} compact />
+      </Box>
+    </Card>
+  )
+}
 
 export function BacklogSummary({
   summary,
   selectedStatus,
   loading = false,
+  error,
   onStatusClick,
 }: BacklogSummaryProps) {
-
-  const statuses =
-    summary?.statuses ?? []
-
-  const sortedStatuses =
-    [...statuses].sort(
-      (a, b) => {
-
-        const aIndex =
-          STATUS_ORDER.indexOf(
-            normalizeStatus(
-              a.status,
-            ),
-          )
-
-        const bIndex =
-          STATUS_ORDER.indexOf(
-            normalizeStatus(
-              b.status,
-            ),
-          )
-
-        return (
-          (aIndex === -1 ? 999 : aIndex)
-          -
-          (bIndex === -1 ? 999 : bIndex)
-        )
-      },
-    )
-
+  const statusesByKey = new Map(
+    (summary?.statuses ?? []).map((item) => [normalizeStatus(item.status), item]),
+  )
+  const selectedKey = normalizeStatus(selectedStatus)
+  const unavailable = loading || !summary
 
   return (
-    <Box
-      sx={{
-        display:
-          'grid',
-
-        gridTemplateColumns:
-          '210px minmax(0, 1fr)',
-
-        gap:
-          0.75,
-        mb:
-          0.5,
-
-        '@media (max-width: 1000px)': {
-          gridTemplateColumns:
-            '1fr',
-        },
-      }}
-    >
-
-      {/* =====================================================
-          TOTAL
-      ===================================================== */}
-
-      <Card
-        sx={(theme) => ({
-          ...getGlassCardSx(
-            theme,
-            false,
-          ),
-
-          minHeight:
-            106,
-
-          px:
-            1.4,
-
-          py:
-            1,
-
-          display:
-            'flex',
-
-          alignItems:
-            'center',
-
-          borderTop:
-            `2px solid ${alpha(
-              ACCENT,
-              0.8,
-            )}`,
-        })}
-      >
-        <Box
-          sx={{
-            width:
-              '100%',
-
-            display:
-              'grid',
-
-            gridTemplateColumns:
-              '34px minmax(0, 1fr)',
-
-            columnGap:
-              0.9,
-
-            rowGap:
-              1,
-
-            alignItems:
-              'center',
-          }}
-        >
-
-          {/* ICON */}
-
-          <Box
-            sx={(theme) => ({
-              width:
-                32,
-
-              height:
-                32,
-
-              display:
-                'grid',
-
-              placeItems:
-                'center',
-
-              borderRadius:
-                1.5,
-
-              color:
-                ACCENT,
-
-              bgcolor:
-                alpha(
-                  ACCENT,
-                  theme.palette.mode === 'dark'
-                    ? 0.18
-                    : 0.10,
-                ),
-
-              '& svg': {
-                fontSize:
-                  18,
-              },
-            })}
-          >
-            <AssignmentOutlined />
-          </Box>
-
-
-          {/* TITLE */}
-
-          <Typography
-            sx={{
-              fontSize:
-                10.5,
-
-              fontWeight:
-                800,
-
-              letterSpacing:
-                0.35,
-
-              color:
-                'text.secondary',
-
-              textTransform:
-                'uppercase',
-            }}
-          >
-            Total Orders
-          </Typography>
-
-
-          {/* METRICS */}
-
-          <Box
-            sx={{
-              gridColumn:
-                '1 / span 2',
-
-              display:
-                'grid',
-
-              gridTemplateColumns:
-                '1fr 1px 1.35fr',
-
-              alignItems:
-                'center',
-
-              columnGap:
-                1,
-            }}
-          >
-
-            {/* PO */}
-
-            <Box
-              sx={{
-                display:
-                  'flex',
-
-                alignItems:
-                  'baseline',
-
-                gap:
-                  0.4,
-              }}
-            >
-              <Typography
-                sx={{
-                  fontSize:
-                    20,
-
-                  fontWeight:
-                    900,
-
-                  lineHeight:
-                    1,
-
-                  color:
-                    ACCENT,
-                }}
-              >
-                {formatNumber(
-                  summary?.totalPoCount,
-                )}
-              </Typography>
-
-              <Typography
-                sx={{
-                  fontSize:
-                    9.5,
-
-                  fontWeight:
-                    700,
-
-                  color:
-                    'text.secondary',
-                }}
-              >
-                PO
-              </Typography>
-            </Box>
-
-
-            {/* DIVIDER */}
-
-            <Box
-              sx={{
-                width:
-                  1,
-
-                height:
-                  28,
-
-                bgcolor:
-                  'divider',
-              }}
-            />
-
-
-            {/* PCS */}
-
-            <Box
-              sx={{
-                display:
-                  'flex',
-
-                alignItems:
-                  'baseline',
-
-                gap:
-                  0.4,
-
-                minWidth:
-                  0,
-              }}
-            >
-              <Typography
-                sx={{
-                  fontSize:
-                    16,
-
-                  fontWeight:
-                    850,
-
-                  lineHeight:
-                    1,
-
-                  color:
-                    'text.primary',
-
-                  whiteSpace:
-                    'nowrap',
-                }}
-              >
-                {formatNumber(
-                  summary?.totalQty,
-                )}
-              </Typography>
-
-              <Typography
-                sx={{
-                  fontSize:
-                    9.5,
-
-                  fontWeight:
-                    700,
-
-                  color:
-                    'text.secondary',
-                }}
-              >
-                PCS
-              </Typography>
-            </Box>
-
-          </Box>
-
-        </Box>
-      </Card>
-
-
-      {/* =====================================================
-          STATUS GRID
-      ===================================================== */}
-
+    <Box sx={{ mb: 0.75 }}>
+      {error && (
+        <Alert severity="warning" sx={{ mb: 1, py: 0.25 }}>
+          Status summary unavailable: {error}
+        </Alert>
+      )}
       <Box
         sx={{
-          display:
-            'grid',
-
-          gridTemplateColumns:
-            'repeat(2, minmax(0, 1fr))',
-
-          gap:
-            0.75,
-
-          '@media (max-width: 700px)': {
-            gridTemplateColumns:
-              '1fr',
-          },
+          display: 'grid',
+          gridTemplateColumns: '280px minmax(0, 1fr)',
+          gap: 1,
+          '@media (max-width: 1000px)': { gridTemplateColumns: '1fr' },
         }}
       >
-
-        {sortedStatuses.map(
-          (item) => {
-
-            const normalized =
-              normalizeStatus(
-                item.status,
-              )
-
-            const active =
-              normalizeStatus(
-                selectedStatus,
-              ) === normalized
-
-            const icon =
-              STATUS_ICONS[
-              normalized as keyof typeof STATUS_ICONS
-              ]
-
-
+        <TotalSummaryCard summary={summary} loading={loading} />
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, minmax(240px, 1fr))',
+            gap: 1,
+            '@media (max-width: 700px)': { gridTemplateColumns: '1fr' },
+          }}
+        >
+          {STATUS_CONFIG.map((config) => {
+            const item = statusesByKey.get(config.key)
             return (
-              <Card
-                key={
-                  item.status
-                }
-
-                onClick={() => {
-                  if (!loading) {
-                    onStatusClick(
-                      item.status,
-                    )
-                  }
-                }}
-
-                sx={(theme) => ({
-                  ...getGlassCardSx(
-                    theme,
-                    active,
-                  ),
-
-                  minHeight:
-                    49,
-
-                  px:
-                    1,
-
-                  py:
-                    0.55,
-
-                  cursor:
-                    loading
-                      ? 'default'
-                      : 'pointer',
-
-                  userSelect:
-                    'none',
-
-                  display:
-                    'grid',
-
-                  gridTemplateColumns:
-                    '28px minmax(0, 1fr)',
-
-                  columnGap:
-                    0.75,
-
-                  alignItems:
-                    'center',
-
-                  borderLeft:
-                    `2px solid ${active
-                      ? ACCENT
-                      : alpha(
-                        ACCENT,
-                        0.45,
-                      )
-                    }`,
-
-                  '&:hover': {
-                    transform:
-                      loading
-                        ? 'none'
-                        : 'translateY(-1px)',
-
-                    bgcolor:
-                      theme.palette.mode === 'dark'
-                        ? alpha(
-                          ACCENT,
-                          active
-                            ? 0.14
-                            : 0.07,
-                        )
-                        : alpha(
-                          ACCENT,
-                          active
-                            ? 0.08
-                            : 0.035,
-                        ),
-                  },
-
-                  '@media (prefers-reduced-motion: reduce)': {
-                    transform:
-                      'none',
-
-                    '&:hover': {
-                      transform:
-                        'none',
-                    },
-                  },
-                })}
-              >
-
-                {/* ICON */}
-
-                <Box
-                  sx={(theme) => ({
-                    width:
-                      26,
-
-                    height:
-                      26,
-
-                    display:
-                      'grid',
-
-                    placeItems:
-                      'center',
-
-                    borderRadius:
-                      1.3,
-
-                    color:
-                      ACCENT,
-
-                    bgcolor:
-                      alpha(
-                        ACCENT,
-                        theme.palette.mode === 'dark'
-                          ? 0.16
-                          : 0.09,
-                      ),
-
-                    '& svg': {
-                      fontSize:
-                        15,
-                    },
-                  })}
-                >
-                  {icon}
-                </Box>
-
-
-                {/* CONTENT */}
-
-                <Box
-                  sx={{
-                    minWidth:
-                      0,
-                  }}
-                >
-
-                  {/* TITLE */}
-
-                  <Typography
-                    sx={{
-                      mb:
-                        0.25,
-
-                      fontSize:
-                        10.5,
-
-                      fontWeight:
-                        800,
-
-                      lineHeight:
-                        1,
-
-                      color:
-                        active
-                          ? ACCENT
-                          : 'text.primary',
-                    }}
-                  >
-                    {item.status}
-                  </Typography>
-
-
-                  {/* PO | PCS */}
-
-                  <Box
-                    sx={{
-                      display:
-                        'grid',
-
-                      gridTemplateColumns:
-                        '0.8fr 1px 1.35fr',
-
-                      alignItems:
-                        'center',
-
-                      columnGap:
-                        0.8,
-                    }}
-                  >
-
-                    {/* PO */}
-
-                    <Box
-                      sx={{
-                        display:
-                          'flex',
-
-                        alignItems:
-                          'baseline',
-
-                        gap:
-                          0.35,
-                      }}
-                    >
-                      <Typography
-                        sx={{
-                          fontSize:
-                            13.5,
-
-                          fontWeight:
-                            900,
-
-                          lineHeight:
-                            1,
-
-                          color:
-                            active
-                              ? ACCENT
-                              : 'text.primary',
-                        }}
-                      >
-                        {formatNumber(
-                          item.poCount,
-                        )}
-                      </Typography>
-
-                      <Typography
-                        sx={{
-                          fontSize:
-                            8.5,
-
-                          fontWeight:
-                            700,
-
-                          color:
-                            'text.secondary',
-                        }}
-                      >
-                        PO
-                      </Typography>
-                    </Box>
-
-
-                    {/* DIVIDER */}
-
-                    <Box
-                      sx={{
-                        width:
-                          1,
-
-                        height:
-                          22,
-
-                        bgcolor:
-                          'divider',
-                      }}
-                    />
-
-
-                    {/* PCS */}
-
-                    <Box
-                      sx={{
-                        display:
-                          'flex',
-
-                        alignItems:
-                          'baseline',
-
-                        gap:
-                          0.35,
-
-                        minWidth:
-                          0,
-                      }}
-                    >
-                      <Typography
-                        sx={{
-                          fontSize:
-                            13.5,
-
-                          fontWeight:
-                            900,
-
-                          lineHeight:
-                            1,
-
-                          color:
-                            active
-                              ? ACCENT
-                              : 'text.primary',
-
-                          whiteSpace:
-                            'nowrap',
-                        }}
-                      >
-                        {formatNumber(
-                          item.totalQty,
-                        )}
-                      </Typography>
-
-                      <Typography
-                        sx={{
-                          fontSize:
-                            8.5,
-
-                          fontWeight:
-                            700,
-
-                          color:
-                            'text.secondary',
-                        }}
-                      >
-                        PCS
-                      </Typography>
-                    </Box>
-
-                  </Box>
-
-                </Box>
-
-              </Card>
+              <StatusSummaryCard
+                key={config.key}
+                config={config}
+                poCount={item?.poCount}
+                totalQty={item?.totalQty}
+                filterValue={item?.status ?? config.label}
+                active={selectedKey === config.key}
+                loading={loading}
+                unavailable={unavailable}
+                onClick={onStatusClick}
+              />
             )
-          },
-        )}
-
+          })}
+        </Box>
       </Box>
-
     </Box>
   )
 }
