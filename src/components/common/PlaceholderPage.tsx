@@ -1,5 +1,7 @@
 import type { SvgIconComponent } from '@mui/icons-material'
 import { Box, Typography } from '@mui/material'
+import { useColorScheme } from '@mui/material/styles'
+
 import { PageHeader } from './PageHeader'
 import { PageShell } from './PageShell'
 import { GlassPanel } from './GlassPanel'
@@ -15,9 +17,18 @@ export function PlaceholderPage({
   subtitle,
   icon: Icon,
 }: PlaceholderPageProps) {
+  const { mode, setMode } = useColorScheme()
+
   return (
     <PageShell>
-      <PageHeader title={title} subtitle={subtitle} />
+      <PageHeader
+        title={title}
+        subtitle={subtitle}
+        mode={mode === 'light' ? 'light' : 'dark'}
+        onToggleMode={() =>
+          setMode(mode === 'dark' ? 'light' : 'dark')
+        }
+      />
 
       <GlassPanel
         sx={{
@@ -49,12 +60,23 @@ export function PlaceholderPage({
             <Icon sx={{ fontSize: 30 }} />
           </Box>
 
-          <Typography component="h2" sx={{ fontSize: 18, fontWeight: 800 }}>
+          <Typography
+            component="h2"
+            sx={{
+              fontSize: 18,
+              fontWeight: 800,
+            }}
+          >
             {title}
           </Typography>
+
           <Typography
             color="text.secondary"
-            sx={{ mt: 0.75, fontSize: 13, lineHeight: 1.6 }}
+            sx={{
+              mt: 0.75,
+              fontSize: 13,
+              lineHeight: 1.6,
+            }}
           >
             This workspace is ready for the upcoming {title} functionality.
           </Typography>
