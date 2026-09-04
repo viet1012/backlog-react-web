@@ -137,7 +137,7 @@ export const menuGroups:
                 {
                     label: 'ODBF',
                     path: '/odbf',
-                    status: 'todo',
+                    status: 'ready',
                     icon: (
                         <Inventory2Outlined />
                     ),

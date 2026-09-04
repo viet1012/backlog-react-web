@@ -140,7 +140,12 @@ function App() {
 
             <Route
               path="odbf"
-              element={<OdbfPage />}
+              element={
+                <OdbfPage
+                  mode={mode}
+                  onToggleMode={toggleThemeMode}
+                />
+              }
             />
 
             <Route
