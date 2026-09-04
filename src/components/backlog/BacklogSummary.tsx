@@ -32,7 +32,6 @@ export interface BacklogStatusSummaryData {
   statuses: BacklogStatusSummaryItem[]
 }
 
-
 interface BacklogSummaryProps {
   summary: BacklogStatusSummaryData | null
   selectedStatus: string
@@ -42,31 +41,8 @@ interface BacklogSummaryProps {
 
 
 // =========================================================
-// STATUS CONFIG
+// CONFIG
 // =========================================================
-
-const STATUS_CONFIG = {
-  'NY PROCESS': {
-    accent: '#22d3ee',
-    icon: <AccessTimeOutlined />,
-  },
-
-  NYI: {
-    accent: '#22d3ee',
-    icon: <AccessTimeOutlined />,
-  },
-
-  WIP: {
-    accent: '#f59e0b',
-    icon: <SettingsOutlined />,
-  },
-
-  WIP_FG: {
-    accent: '#a855f7',
-    icon: <LayersOutlined />,
-  },
-} as const
-
 
 const STATUS_ORDER = [
   'NY PROCESS',
@@ -74,6 +50,16 @@ const STATUS_ORDER = [
   'WIP',
   'WIP_FG',
 ]
+
+const STATUS_ICONS = {
+  'NY PROCESS': <AccessTimeOutlined />,
+  NYI: <AccessTimeOutlined />,
+  WIP: <SettingsOutlined />,
+  WIP_FG: <LayersOutlined />,
+} as const
+
+const ACCENT =
+  '#3b82f6'
 
 
 // =========================================================
@@ -88,12 +74,73 @@ function normalizeStatus(
     .toUpperCase()
 }
 
-
 function formatNumber(
   value?: number | null,
 ) {
   return (value ?? 0)
     .toLocaleString()
+}
+
+
+// =========================================================
+// GLASS CARD STYLE
+// =========================================================
+
+function getGlassCardSx(
+  theme: any,
+  active = false,
+) {
+  const dark =
+    theme.palette.mode === 'dark'
+
+  return {
+    border:
+      `1px solid ${active
+        ? alpha(ACCENT, 0.55)
+        : dark
+          ? alpha('#ffffff', 0.10)
+          : alpha('#0f172a', 0.10)
+      }`,
+
+    bgcolor:
+      active
+        ? alpha(
+          ACCENT,
+          dark
+            ? 0.12
+            : 0.06,
+        )
+        : dark
+          ? alpha(
+            '#172033',
+            0.62,
+          )
+          : alpha(
+            '#ffffff',
+            0.62,
+          ),
+
+    backdropFilter:
+      'blur(14px)',
+
+    WebkitBackdropFilter:
+      'blur(14px)',
+
+    boxShadow:
+      active
+        ? `0 3px 14px ${alpha(
+          ACCENT,
+          dark
+            ? 0.14
+            : 0.10,
+        )}`
+        : dark
+          ? '0 2px 10px rgba(0,0,0,0.16)'
+          : '0 2px 10px rgba(15,23,42,0.06)',
+
+    transition:
+      'all 150ms ease',
+  }
 }
 
 
@@ -141,16 +188,16 @@ export function BacklogSummary({
   return (
     <Box
       sx={{
-        display: 'grid',
+        display:
+          'grid',
 
-        // TOTAL bên trái
-        // 4 STATUS bên phải 2x2
         gridTemplateColumns:
-          '220px minmax(0, 1fr)',
+          '210px minmax(0, 1fr)',
 
-        gap: 1,
-
-        mb: 0.5,
+        gap:
+          0.75,
+        mb:
+          0.5,
 
         '@media (max-width: 1000px)': {
           gridTemplateColumns:
@@ -160,124 +207,172 @@ export function BacklogSummary({
     >
 
       {/* =====================================================
-          TOTAL ORDERS
+          TOTAL
       ===================================================== */}
 
       <Card
         sx={(theme) => ({
-          minHeight: 116,
+          ...getGlassCardSx(
+            theme,
+            false,
+          ),
 
-          px: 1.5,
-          py: 1,
+          minHeight:
+            106,
 
-          display: 'flex',
-          alignItems: 'center',
+          px:
+            1.4,
 
-          border:
-            `1px solid ${alpha(
-              '#3b82f6',
-              0.65,
-            )}`,
+          py:
+            1,
+
+          display:
+            'flex',
+
+          alignItems:
+            'center',
 
           borderTop:
-            '2px solid #3b82f6',
-
-          bgcolor:
-            alpha(
-              theme.palette.background.paper,
-              0.55,
-            ),
+            `2px solid ${alpha(
+              ACCENT,
+              0.8,
+            )}`,
         })}
       >
         <Box
           sx={{
-            width: '100%',
+            width:
+              '100%',
 
-            display: 'grid',
+            display:
+              'grid',
 
             gridTemplateColumns:
-              '38px 1fr',
+              '34px minmax(0, 1fr)',
 
-            columnGap: 1,
+            columnGap:
+              0.9,
 
-            alignItems: 'center',
+            rowGap:
+              1,
+
+            alignItems:
+              'center',
           }}
         >
 
           {/* ICON */}
 
           <Box
-            sx={{
-              width: 36,
-              height: 36,
+            sx={(theme) => ({
+              width:
+                32,
 
-              display: 'grid',
-              placeItems: 'center',
+              height:
+                32,
 
-              borderRadius: 2,
+              display:
+                'grid',
+
+              placeItems:
+                'center',
+
+              borderRadius:
+                1.5,
+
+              color:
+                ACCENT,
 
               bgcolor:
                 alpha(
-                  '#3b82f6',
-                  0.16,
+                  ACCENT,
+                  theme.palette.mode === 'dark'
+                    ? 0.18
+                    : 0.10,
                 ),
 
-              color:
-                '#60a5fa',
-
               '& svg': {
-                fontSize: 20,
+                fontSize:
+                  18,
               },
-            }}
+            })}
           >
             <AssignmentOutlined />
           </Box>
 
 
-          {/* CONTENT */}
+          {/* TITLE */}
 
-          <Box>
+          <Typography
+            sx={{
+              fontSize:
+                10.5,
 
-            <Typography
-              sx={{
-                fontSize: 11,
+              fontWeight:
+                800,
 
-                fontWeight: 800,
+              letterSpacing:
+                0.35,
 
-                color:
-                  'text.secondary',
+              color:
+                'text.secondary',
 
-                textTransform:
-                  'uppercase',
+              textTransform:
+                'uppercase',
+            }}
+          >
+            Total Orders
+          </Typography>
 
-                letterSpacing:
-                  0.4,
-              }}
-            >
-              Total Orders
-            </Typography>
 
+          {/* METRICS */}
+
+          <Box
+            sx={{
+              gridColumn:
+                '1 / span 2',
+
+              display:
+                'grid',
+
+              gridTemplateColumns:
+                '1fr 1px 1.35fr',
+
+              alignItems:
+                'center',
+
+              columnGap:
+                1,
+            }}
+          >
+
+            {/* PO */}
 
             <Box
               sx={{
-                mt: 0.35,
+                display:
+                  'flex',
 
-                display: 'flex',
-                alignItems: 'baseline',
+                alignItems:
+                  'baseline',
 
-                gap: 0.5,
+                gap:
+                  0.4,
               }}
             >
               <Typography
                 sx={{
-                  fontSize: 25,
+                  fontSize:
+                    20,
 
-                  fontWeight: 900,
+                  fontWeight:
+                    900,
 
-                  lineHeight: 1,
+                  lineHeight:
+                    1,
 
                   color:
-                    '#60a5fa',
+                    ACCENT,
                 }}
               >
                 {formatNumber(
@@ -287,9 +382,11 @@ export function BacklogSummary({
 
               <Typography
                 sx={{
-                  fontSize: 10,
+                  fontSize:
+                    9.5,
 
-                  fontWeight: 700,
+                  fontWeight:
+                    700,
 
                   color:
                     'text.secondary',
@@ -300,21 +397,55 @@ export function BacklogSummary({
             </Box>
 
 
+            {/* DIVIDER */}
+
             <Box
               sx={{
-                mt: 0.65,
+                width:
+                  1,
 
-                display: 'flex',
-                alignItems: 'baseline',
+                height:
+                  28,
 
-                gap: 0.5,
+                bgcolor:
+                  'divider',
+              }}
+            />
+
+
+            {/* PCS */}
+
+            <Box
+              sx={{
+                display:
+                  'flex',
+
+                alignItems:
+                  'baseline',
+
+                gap:
+                  0.4,
+
+                minWidth:
+                  0,
               }}
             >
               <Typography
                 sx={{
-                  fontSize: 15,
+                  fontSize:
+                    16,
 
-                  fontWeight: 800,
+                  fontWeight:
+                    850,
+
+                  lineHeight:
+                    1,
+
+                  color:
+                    'text.primary',
+
+                  whiteSpace:
+                    'nowrap',
                 }}
               >
                 {formatNumber(
@@ -324,15 +455,17 @@ export function BacklogSummary({
 
               <Typography
                 sx={{
-                  fontSize: 10,
+                  fontSize:
+                    9.5,
 
-                  fontWeight: 700,
+                  fontWeight:
+                    700,
 
                   color:
                     'text.secondary',
                 }}
               >
-                Pcs
+                PCS
               </Typography>
             </Box>
 
@@ -343,17 +476,19 @@ export function BacklogSummary({
 
 
       {/* =====================================================
-          STATUS GRID 2 x 2
+          STATUS GRID
       ===================================================== */}
 
       <Box
         sx={{
-          display: 'grid',
+          display:
+            'grid',
 
           gridTemplateColumns:
             'repeat(2, minmax(0, 1fr))',
 
-          gap: 1,
+          gap:
+            0.75,
 
           '@media (max-width: 700px)': {
             gridTemplateColumns:
@@ -370,25 +505,22 @@ export function BacklogSummary({
                 item.status,
               )
 
-            const config =
-              STATUS_CONFIG[
-              normalized as keyof typeof STATUS_CONFIG
-              ]
-
-            const accent =
-              config?.accent
-              ?? '#64748b'
-
             const active =
               normalizeStatus(
                 selectedStatus,
-              )
-              === normalized
+              ) === normalized
+
+            const icon =
+              STATUS_ICONS[
+              normalized as keyof typeof STATUS_ICONS
+              ]
 
 
             return (
               <Card
-                key={item.status}
+                key={
+                  item.status
+                }
 
                 onClick={() => {
                   if (!loading) {
@@ -399,10 +531,19 @@ export function BacklogSummary({
                 }}
 
                 sx={(theme) => ({
-                  minHeight: 54,
+                  ...getGlassCardSx(
+                    theme,
+                    active,
+                  ),
 
-                  px: 1.25,
-                  py: 0.7,
+                  minHeight:
+                    49,
+
+                  px:
+                    1,
+
+                  py:
+                    0.55,
 
                   cursor:
                     loading
@@ -416,49 +557,22 @@ export function BacklogSummary({
                     'grid',
 
                   gridTemplateColumns:
-                    '32px 1fr',
+                    '28px minmax(0, 1fr)',
 
-                  gap:
-                    0.9,
+                  columnGap:
+                    0.75,
 
                   alignItems:
                     'center',
 
-                  border:
-                    `1px solid ${active
-                      ? alpha(
-                        accent,
-                        0.75,
-                      )
-                      : theme.palette.divider
-                    }`,
-
                   borderLeft:
-                    `3px solid ${accent}`,
-
-                  bgcolor:
-                    active
-                      ? alpha(
-                        accent,
-                        theme.palette.mode === 'dark'
-                          ? 0.14
-                          : 0.07,
-                      )
+                    `2px solid ${active
+                      ? ACCENT
                       : alpha(
-                        theme.palette.background.paper,
-                        0.5,
-                      ),
-
-                  boxShadow:
-                    active
-                      ? `0 2px 8px ${alpha(
-                        accent,
-                        0.12,
-                      )}`
-                      : 'none',
-
-                  transition:
-                    'all 150ms ease',
+                        ACCENT,
+                        0.45,
+                      )
+                    }`,
 
                   '&:hover': {
                     transform:
@@ -467,14 +581,29 @@ export function BacklogSummary({
                         : 'translateY(-1px)',
 
                     bgcolor:
-                      active
+                      theme.palette.mode === 'dark'
                         ? alpha(
-                          accent,
-                          theme.palette.mode === 'dark'
-                            ? 0.18
-                            : 0.1,
+                          ACCENT,
+                          active
+                            ? 0.14
+                            : 0.07,
                         )
-                        : theme.palette.action.hover,
+                        : alpha(
+                          ACCENT,
+                          active
+                            ? 0.08
+                            : 0.035,
+                        ),
+                  },
+
+                  '@media (prefers-reduced-motion: reduce)': {
+                    transform:
+                      'none',
+
+                    '&:hover': {
+                      transform:
+                        'none',
+                    },
                   },
                 })}
               >
@@ -482,30 +611,40 @@ export function BacklogSummary({
                 {/* ICON */}
 
                 <Box
-                  sx={{
-                    width: 30,
-                    height: 30,
+                  sx={(theme) => ({
+                    width:
+                      26,
 
-                    display: 'grid',
-                    placeItems: 'center',
+                    height:
+                      26,
 
-                    borderRadius: 1.5,
+                    display:
+                      'grid',
+
+                    placeItems:
+                      'center',
+
+                    borderRadius:
+                      1.3,
 
                     color:
-                      accent,
+                      ACCENT,
 
                     bgcolor:
                       alpha(
-                        accent,
-                        0.14,
+                        ACCENT,
+                        theme.palette.mode === 'dark'
+                          ? 0.16
+                          : 0.09,
                       ),
 
                     '& svg': {
-                      fontSize: 17,
+                      fontSize:
+                        15,
                     },
-                  }}
+                  })}
                 >
-                  {config?.icon}
+                  {icon}
                 </Box>
 
 
@@ -513,25 +652,30 @@ export function BacklogSummary({
 
                 <Box
                   sx={{
-                    minWidth: 0,
+                    minWidth:
+                      0,
                   }}
                 >
 
-                  {/* STATUS */}
+                  {/* TITLE */}
 
                   <Typography
                     sx={{
-                      mb: 0.35,
+                      mb:
+                        0.25,
 
-                      fontSize: 11.5,
+                      fontSize:
+                        10.5,
 
-                      fontWeight: 800,
+                      fontWeight:
+                        800,
 
-                      lineHeight: 1,
+                      lineHeight:
+                        1,
 
                       color:
                         active
-                          ? accent
+                          ? ACCENT
                           : 'text.primary',
                     }}
                   >
@@ -539,54 +683,73 @@ export function BacklogSummary({
                   </Typography>
 
 
-                  {/* PO / PCS */}
+                  {/* PO | PCS */}
 
                   <Box
                     sx={{
-                      display: 'grid',
+                      display:
+                        'grid',
 
                       gridTemplateColumns:
-                        '1fr 1px 1fr',
+                        '0.8fr 1px 1.35fr',
 
-                      alignItems: 'center',
+                      alignItems:
+                        'center',
 
-                      columnGap: 1,
+                      columnGap:
+                        0.8,
                     }}
                   >
 
                     {/* PO */}
 
-                    <Box>
+                    <Box
+                      sx={{
+                        display:
+                          'flex',
+
+                        alignItems:
+                          'baseline',
+
+                        gap:
+                          0.35,
+                      }}
+                    >
                       <Typography
                         sx={{
-                          fontSize: 9,
+                          fontSize:
+                            13.5,
+
+                          fontWeight:
+                            900,
+
+                          lineHeight:
+                            1,
 
                           color:
-                            'text.secondary',
-
-                          lineHeight: 1,
-                        }}
-                      >
-                        PO
-                      </Typography>
-
-                      <Typography
-                        sx={{
-                          mt: 0.2,
-
-                          fontSize: 15,
-
-                          fontWeight: 900,
-
-                          lineHeight: 1,
-
-                          color:
-                            accent,
+                            active
+                              ? ACCENT
+                              : 'text.primary',
                         }}
                       >
                         {formatNumber(
                           item.poCount,
                         )}
+                      </Typography>
+
+                      <Typography
+                        sx={{
+                          fontSize:
+                            8.5,
+
+                          fontWeight:
+                            700,
+
+                          color:
+                            'text.secondary',
+                        }}
+                      >
+                        PO
                       </Typography>
                     </Box>
 
@@ -595,8 +758,11 @@ export function BacklogSummary({
 
                     <Box
                       sx={{
-                        width: 1,
-                        height: 25,
+                        width:
+                          1,
+
+                        height:
+                          22,
 
                         bgcolor:
                           'divider',
@@ -606,37 +772,59 @@ export function BacklogSummary({
 
                     {/* PCS */}
 
-                    <Box>
+                    <Box
+                      sx={{
+                        display:
+                          'flex',
+
+                        alignItems:
+                          'baseline',
+
+                        gap:
+                          0.35,
+
+                        minWidth:
+                          0,
+                      }}
+                    >
                       <Typography
                         sx={{
-                          fontSize: 9,
+                          fontSize:
+                            13.5,
+
+                          fontWeight:
+                            900,
+
+                          lineHeight:
+                            1,
 
                           color:
-                            'text.secondary',
+                            active
+                              ? ACCENT
+                              : 'text.primary',
 
-                          lineHeight: 1,
-                        }}
-                      >
-                        PCS
-                      </Typography>
-
-                      <Typography
-                        sx={{
-                          mt: 0.2,
-
-                          fontSize: 15,
-
-                          fontWeight: 900,
-
-                          lineHeight: 1,
-
-                          color:
-                            accent,
+                          whiteSpace:
+                            'nowrap',
                         }}
                       >
                         {formatNumber(
                           item.totalQty,
                         )}
+                      </Typography>
+
+                      <Typography
+                        sx={{
+                          fontSize:
+                            8.5,
+
+                          fontWeight:
+                            700,
+
+                          color:
+                            'text.secondary',
+                        }}
+                      >
+                        PCS
                       </Typography>
                     </Box>
 

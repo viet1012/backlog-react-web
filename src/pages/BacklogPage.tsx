@@ -11,6 +11,7 @@ import { RefreshButton } from '../components/common/RefreshButton'
 import { UpdatedStatus } from '../components/common/UpdatedStatus'
 import { ThemeToggleButton } from '../components/common/ThemeToggleButton'
 import { useBacklogData } from '../hooks/useBacklogData'
+import { useBacklogSummary } from '../hooks/useBacklogSummary'
 import { useGridPreferences } from '../hooks/useGridPreferences'
 import type { BacklogFilterItem, ReportFilters } from '../services/reportService'
 
@@ -58,14 +59,13 @@ export function BacklogPage({
     data,
     totalElements,
 
-    summary,
-
     loading,
     error,
 
     lastUpdated,
 
     handleRefresh,
+    refreshKey,
   } = useBacklogData({
     page,
 
@@ -75,6 +75,16 @@ export function BacklogPage({
     filters,
     excelFilters,
     sortModel,
+  })
+
+  const {
+    summary,
+    loading: summaryLoading,
+    error: summaryError,
+  } = useBacklogSummary({
+    filters,
+    excelFilters,
+    refreshKey,
   })
 
 
@@ -275,6 +285,7 @@ export function BacklogPage({
             <RefreshButton
               loading={
                 loading
+                || summaryLoading
               }
 
               onClick={
@@ -308,7 +319,11 @@ export function BacklogPage({
         }
 
         loading={
-          loading
+          summaryLoading
+        }
+
+        error={
+          summaryError
         }
 
         onStatusClick={

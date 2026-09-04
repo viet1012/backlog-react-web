@@ -13,16 +13,18 @@ import {
 } from '../config/backlogFilterFields'
 
 import {
-  getBacklogStatusSummary,
   searchReports,
   type BacklogFilterItem,
-  type BacklogStatusSummary,
   type ReportFilters,
 } from '../services/reportService'
 
 import type {
   ProductionOrder,
 } from '../types/report'
+
+import {
+  createBacklogFilters,
+} from './backlogFilterUtils'
 
 
 interface UseBacklogDataParams {
@@ -31,89 +33,6 @@ interface UseBacklogDataParams {
   filters: ReportFilters
   excelFilters: BacklogFilterItem[]
   sortModel: GridSortModel
-}
-
-
-// =========================================================
-// TOP FILTERS
-// =========================================================
-
-function createTopFilters(
-  filters: ReportFilters,
-): BacklogFilterItem[] {
-
-  const items: BacklogFilterItem[] = []
-
-  const search =
-    filters.search.trim()
-
-  if (search) {
-    items.push({
-      field: 'VBELN',
-      operator: 'contains',
-      value: search,
-    })
-  }
-
-  if (filters.status) {
-    items.push({
-      field: 'Status',
-      operator: 'equals',
-      value: filters.status,
-    })
-  }
-
-  if (filters.div) {
-    items.push({
-      field: 'Div',
-      operator: 'equals',
-      value: filters.div,
-    })
-  }
-
-  if (filters.currentProcess) {
-    items.push({
-      field: 'CurrentProcess',
-      operator: 'equals',
-      value: filters.currentProcess,
-    })
-  }
-
-  if (filters.shipBy) {
-    items.push({
-      field: 'ShipBy',
-      operator: 'equals',
-      value: filters.shipBy,
-    })
-  }
-
-  if (filters.productionDate) {
-    items.push({
-      field: 'ProductionD',
-      operator: 'is',
-      value: filters.productionDate,
-    })
-  }
-
-  return items
-}
-
-
-// =========================================================
-// REMOVE STATUS FILTER FOR SUMMARY
-// =========================================================
-
-function removeStatusFilters(
-  filters: BacklogFilterItem[],
-): BacklogFilterItem[] {
-
-  return filters.filter(
-    (filter) =>
-      filter.field
-        .trim()
-        .toLowerCase()
-      !== 'status',
-  )
 }
 
 
@@ -138,13 +57,6 @@ export function useBacklogData({
     totalElements,
     setTotalElements,
   ] = useState(0)
-
-  const [
-    summary,
-    setSummary,
-  ] = useState<BacklogStatusSummary | null>(
-    null,
-  )
 
   const [
     loading,
@@ -188,15 +100,11 @@ export function useBacklogData({
         // ALL ACTIVE FILTERS
         // ===================================================
 
-        const topFilters =
-          createTopFilters(
+        const allFilters =
+          createBacklogFilters(
             filters,
+            excelFilters,
           )
-
-        const allFilters = [
-          ...excelFilters,
-          ...topFilters,
-        ]
 
 
         // ===================================================
@@ -206,23 +114,6 @@ export function useBacklogData({
         const detailFilterRequest = {
           filters:
             allFilters,
-
-          logicOperator:
-            'and' as const,
-        }
-
-
-        // ===================================================
-        // SUMMARY REQUEST
-        //
-        // bỏ Status để 4 status cards vẫn luôn hiển thị
-        // ===================================================
-
-        const summaryFilterRequest = {
-          filters:
-            removeStatusFilters(
-              allFilters,
-            ),
 
           logicOperator:
             'and' as const,
@@ -252,26 +143,17 @@ export function useBacklogData({
 
 
         // ===================================================
-        // LOAD DETAIL + SUMMARY
+        // LOAD DETAIL
         // ===================================================
 
-        const [
-          detailResponse,
-          summaryResponse,
-        ] = await Promise.all([
-          searchReports(
+        const detailResponse =
+          await searchReports(
             page,
             pageSize,
             detailFilterRequest,
             controller.signal,
             sortRequest,
-          ),
-
-          getBacklogStatusSummary(
-            summaryFilterRequest,
-            controller.signal,
-          ),
-        ])
+          )
 
 
         if (
@@ -293,10 +175,6 @@ export function useBacklogData({
           detailResponse.totalElements,
         )
 
-        setSummary(
-          summaryResponse,
-        )
-
         setLastUpdated(
           new Date(),
         )
@@ -311,8 +189,6 @@ export function useBacklogData({
 
         setData([])
         setTotalElements(0)
-        setSummary(null)
-
         setError(
           requestError instanceof Error
             ? requestError.message
@@ -366,13 +242,12 @@ export function useBacklogData({
     data,
     totalElements,
 
-    summary,
-
     loading,
     error,
 
     lastUpdated,
 
     handleRefresh,
+    refreshKey,
   }
 }
