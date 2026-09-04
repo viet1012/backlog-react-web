@@ -3,6 +3,7 @@ import FilterAltRoundedIcon
   from '@mui/icons-material/FilterAltRounded'
 
 import {
+  alpha,
   Chip,
   Tooltip,
 } from '@mui/material'
@@ -17,6 +18,7 @@ import type {
   ProductionOrder,
 } from '../../types/report'
 import { useOptionalExcelColumnFilter } from '../common/dataGrid/excelFilterContext'
+import { getBacklogStatusColor } from './backlogStatus'
 
 
 // =========================================================
@@ -203,44 +205,7 @@ function formatNumber(
 // STATUS
 // =========================================================
 
-function getStatusColor(
-  status: string | null,
-) {
 
-  const value =
-    status
-      ?.toUpperCase()
-      .trim()
-    ?? ''
-
-  if (
-    value.includes('DELAY')
-  ) {
-    return 'error' as const
-  }
-
-  if (
-    value.includes('DONE')
-    || value.includes('COMPLETE')
-  ) {
-    return 'success' as const
-  }
-
-  if (
-    value.includes('WIP')
-  ) {
-    return 'warning' as const
-  }
-
-  if (
-    value.includes('WAIT')
-    || value === 'NYI'
-  ) {
-    return 'info' as const
-  }
-
-  return 'default' as const
-}
 
 
 // =========================================================
@@ -382,32 +347,45 @@ export const backlogColumns:
         />
       ),
 
-      renderCell: ({
-        value,
-      }) => (
-        <Chip
-          label={
-            value || 'Unknown'
-          }
+      renderCell: ({ value }) => {
+        const color = getBacklogStatusColor(value)
 
-          color={
-            getStatusColor(
-              value,
-            )
-          }
+        return (
+          <Chip
+            label={value || 'Unknown'}
+            size="small"
+            variant="outlined"
+            sx={{
+              height: 22,
+              fontSize: 11,
+              fontWeight: 700,
 
-          size="small"
+              color,
 
-          variant="outlined"
+              borderColor: alpha(
+                color,
+                0.55,
+              ),
 
-          sx={{
-            height: 22,
+              bgcolor: alpha(
+                color,
+                0.08,
+              ),
 
-            fontSize: 11,
-            fontWeight: 600,
-          }}
-        />
-      ),
+              '& .MuiChip-label': {
+                px: 1,
+              },
+
+              '&:hover': {
+                bgcolor: alpha(
+                  color,
+                  0.14,
+                ),
+              },
+            }}
+          />
+        )
+      }
     },
 
 

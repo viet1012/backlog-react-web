@@ -9,6 +9,7 @@ import { alpha, type Theme } from '@mui/material/styles'
 import type { SystemStyleObject } from '@mui/system'
 import type { ReactNode } from 'react'
 import type { BacklogStatusSummary } from '../../services/reportService'
+import { BACKLOG_STATUS_COLORS, normalizeBacklogStatus } from './backlogStatus'
 
 interface BacklogSummaryProps {
   summary: BacklogStatusSummary | null
@@ -29,17 +30,39 @@ interface StatusConfig {
 // Each status gets its own identity instead of one accent stretched across
 // everything — the color itself communicates where an order sits in the flow.
 const STATUS_CONFIG: StatusConfig[] = [
-  { key: 'NY PROCESS', label: 'NY Process', hint: 'Awaiting release', icon: <AccessTimeOutlined />, color: '#d97706' },
-  { key: 'NYI', label: 'NYI', hint: 'Not yet issued', icon: <AccessTimeOutlined />, color: '#64748b' },
-  { key: 'WIP', label: 'WIP', hint: 'In production', icon: <SettingsOutlined />, color: '#2563eb' },
-  { key: 'WIP_FG', label: 'WIP_FG', hint: 'Finished goods', icon: <LayersOutlined />, color: '#0d9488' },
+  {
+    key: 'NY PROCESS',
+    label: 'NY Process',
+    hint: 'Awaiting release',
+    icon: <AccessTimeOutlined />,
+    color: BACKLOG_STATUS_COLORS['NY PROCESS'],
+  },
+  {
+    key: 'NYI',
+    label: 'NYI',
+    hint: 'Not yet issued',
+    icon: <AccessTimeOutlined />,
+    color: BACKLOG_STATUS_COLORS.NYI,
+  },
+  {
+    key: 'WIP',
+    label: 'WIP',
+    hint: 'In production',
+    icon: <SettingsOutlined />,
+    color: BACKLOG_STATUS_COLORS.WIP,
+  },
+  {
+    key: 'WIP_FG',
+    label: 'WIP_FG',
+    hint: 'Finished goods',
+    icon: <LayersOutlined />,
+    color: BACKLOG_STATUS_COLORS.WIP_FG,
+  },
 ]
 
 const TOTAL_COLOR = '#1e293b'
 
-function normalizeStatus(value?: string | null) {
-  return (value ?? '').trim().toUpperCase()
-}
+
 
 function formatMetric(value: number | undefined, unavailable: boolean) {
   return unavailable ? '—' : (value ?? 0).toLocaleString()
@@ -240,9 +263,9 @@ export function BacklogSummary({
   onStatusClick,
 }: BacklogSummaryProps) {
   const statusesByKey = new Map(
-    (summary?.statuses ?? []).map((item) => [normalizeStatus(item.status), item]),
+    (summary?.statuses ?? []).map((item) => [normalizeBacklogStatus(item.status), item]),
   )
-  const selectedKey = normalizeStatus(selectedStatus)
+  const selectedKey = normalizeBacklogStatus(selectedStatus)
   const unavailable = loading || !summary
 
   return (
