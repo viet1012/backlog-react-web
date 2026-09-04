@@ -5,6 +5,10 @@ import {
 } from '@mui/material'
 
 import {
+  CheckCircleRounded,
+} from '@mui/icons-material'
+
+import {
   alpha,
 } from '@mui/material/styles'
 
@@ -40,6 +44,33 @@ export function FacConfirmProcessGroupButton({
   onClick,
 }: Props) {
 
+  const requiredOrderCount =
+    item.requiredOrderCount ?? 0
+
+  const confirmedOrderCount =
+    item.confirmedOrderCount ?? 0
+
+  const progress =
+    requiredOrderCount > 0
+      ? Math.min(
+        100,
+        Math.max(
+          0,
+          Math.round(
+            (
+              confirmedOrderCount
+              / requiredOrderCount
+            ) * 100,
+          ),
+        ),
+      )
+      : 0
+
+  const completed =
+    requiredOrderCount > 0
+    && confirmedOrderCount >= requiredOrderCount
+
+
   return (
     <Button
       disabled={disabled}
@@ -52,16 +83,22 @@ export function FacConfirmProcessGroupButton({
           ].getColor(theme)
 
         return {
-          minWidth: 220,
-          minHeight: 58,
+          width: 245,
+          minWidth: 245,
+          maxWidth: 245,
 
-          px: 1.25,
-          py: 0.65,
+          minHeight: 66,
+
+          px: 1,
+          py: 0.7,
 
           flexShrink: 0,
 
           justifyContent:
             'flex-start',
+
+          alignItems:
+            'stretch',
 
           textTransform:
             'none',
@@ -70,54 +107,53 @@ export function FacConfirmProcessGroupButton({
             uiTokens.control.borderRadius,
 
           border:
-            `1px solid ${selected
+            `1px solid ${selected || completed
               ? alpha(
                 color,
-                0.7,
+                completed
+                  ? 0.8
+                  : 0.7,
               )
               : theme.palette.divider
             }`,
 
           bgcolor:
-            selected
+            completed
               ? alpha(
                 color,
                 theme.palette.mode === 'dark'
-                  ? 0.28
-                  : 0.14,
+                  ? 0.20
+                  : 0.08,
               )
-              : alpha(
-                theme.palette.background.paper,
-                0.50,
-              ),
+              : selected
+                ? alpha(
+                  color,
+                  theme.palette.mode === 'dark'
+                    ? 0.26
+                    : 0.12,
+                )
+                : alpha(
+                  theme.palette.background.paper,
+                  0.5,
+                ),
 
           color:
-            selected
+            selected || completed
               ? color
               : 'text.primary',
 
           boxShadow:
-            selected
-              ? `0 3px 10px ${alpha(
+            selected || completed
+              ? `0 2px 8px ${alpha(
                 color,
-                0.14,
+                0.12,
               )}`
               : 'none',
 
           transition:
-            'all 160ms ease',
+            'all 150ms ease',
 
           '&:hover': {
-            bgcolor:
-              selected
-                ? alpha(
-                  color,
-                  theme.palette.mode === 'dark'
-                    ? 0.34
-                    : 0.18,
-                )
-                : theme.palette.action.hover,
-
             transform:
               'translateY(-1px)',
           },
@@ -132,17 +168,26 @@ export function FacConfirmProcessGroupButton({
         }
       }}
     >
+
       <Box
         sx={{
-          display: 'flex',
-          alignItems: 'center',
-
-          gap: 1,
-
+          width: '100%',
           minWidth: 0,
+
+          display: 'grid',
+
+          gridTemplateColumns:
+            '30px minmax(0, 1fr)',
+
+          columnGap: 0.8,
+          rowGap: 0.35,
+
+          alignItems: 'center',
         }}
       >
+
         {/* ICON */}
+
         <Box
           sx={(theme) => {
 
@@ -152,23 +197,31 @@ export function FacConfirmProcessGroupButton({
               ].getColor(theme)
 
             return {
-              width: 32,
-              height: 32,
+              gridColumn: 1,
 
-              flexShrink: 0,
+              gridRow:
+                '1 / span 2',
+
+              alignSelf:
+                'start',
+
+              width: 30,
+              height: 30,
 
               display: 'grid',
               placeItems: 'center',
 
               borderRadius: 1.5,
 
+              color,
+
               bgcolor:
-                selected
+                selected || completed
                   ? alpha(
                     color,
                     theme.palette.mode === 'dark'
                       ? 0.30
-                      : 0.20,
+                      : 0.16,
                   )
                   : alpha(
                     theme.palette.text.primary,
@@ -177,97 +230,241 @@ export function FacConfirmProcessGroupButton({
             }
           }}
         >
-          <Box
-            sx={(theme) => {
-
-              const color =
-                FAC_CONFIRM_PROCESS_CONFIG[
-                  item.processGroup
-                ].getColor(theme)
-
-              return {
-                display: 'grid',
-                placeItems: 'center',
-                color,
-              }
-            }}
-          >
-            <FacConfirmAnimatedProcessIcon
-              processGroup={
-                item.processGroup
-              }
-              selected={
-                selected
-              }
-            />
-          </Box>
+          <FacConfirmAnimatedProcessIcon
+            processGroup={
+              item.processGroup
+            }
+            selected={
+              selected
+            }
+          />
         </Box>
 
 
-        {/* TEXT */}
+        {/* HEADER */}
+
         <Box
           sx={{
+            gridColumn: 2,
+
+            display: 'flex',
+            alignItems: 'center',
+
             minWidth: 0,
-            textAlign: 'left',
           }}
         >
+
           <Typography
             sx={{
+              flex: 1,
+
               fontSize: 12.5,
               fontWeight: 800,
               lineHeight: 1.1,
+
+              textAlign: 'left',
             }}
           >
             {item.processGroup}
           </Typography>
 
 
-          {/* CẦN XÁC NHẬN */}
-          <Typography
-            sx={{
-              mt: 0.45,
+          {completed ? (
 
-              fontSize: 12,
-              fontWeight: 600,
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
 
-              color:
-                selected
-                  ? 'inherit'
-                  : 'text.secondary',
+                gap: 0.3,
 
-              whiteSpace: 'nowrap',
-            }}
-          >
-            Cần xác nhận:{' '}
-            {item.requiredOrderCount.toLocaleString()} PO
-            {', '}
-            {item.requiredTotalQty.toLocaleString()} Pcs
-          </Typography>
+                flexShrink: 0,
+              }}
+            >
+              <CheckCircleRounded
+                sx={{
+                  fontSize: 14,
+                }}
+              />
 
+              <Typography
+                sx={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  lineHeight: 1,
+                }}
+              >
+                DONE
+              </Typography>
+            </Box>
 
-          {/* ĐÃ XÁC NHẬN */}
-          <Typography
-            sx={{
-              mt: 0.15,
+          ) : (
 
-              fontSize: 12,
-              fontWeight: 600,
+            <Typography
+              sx={{
+                flexShrink: 0,
 
-              color:
-                selected
-                  ? 'inherit'
-                  : 'text.secondary',
+                fontSize: 12,
+                fontWeight: 800,
+                lineHeight: 1,
+              }}
+            >
+              {progress}%
+            </Typography>
 
-              whiteSpace: 'nowrap',
-            }}
-          >
-            Đã xác nhận:{' '}
-            {item.confirmedOrderCount.toLocaleString()} PO
-            {', '}
-            {item.confirmedTotalQty.toLocaleString()} Pcs
-          </Typography>
+          )}
+
         </Box>
+
+
+        {/* SUMMARY */}
+
+        <Box
+          sx={{
+            gridColumn: 2,
+
+            display: 'grid',
+
+            // QUAN TRỌNG:
+            // label và value luôn thẳng hàng
+            gridTemplateColumns:
+              '82px minmax(0, 1fr)',
+
+            rowGap: 0.15,
+
+            minWidth: 0,
+
+            textAlign: 'left',
+          }}
+        >
+
+          {/* REQUIRED LABEL */}
+
+          <Typography
+            sx={{
+              fontSize: 12,
+              fontWeight: 600,
+
+              lineHeight: 1.25,
+
+              color:
+                selected || completed
+                  ? 'inherit'
+                  : 'text.secondary',
+
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Cần xác nhận:
+          </Typography>
+
+
+          {/* REQUIRED VALUE */}
+
+          <Typography
+            sx={{
+              fontSize: 12,
+              fontWeight: 700,
+
+              lineHeight: 1.25,
+
+              color:
+                selected || completed
+                  ? 'inherit'
+                  : 'text.secondary',
+
+              whiteSpace: 'nowrap',
+
+              textAlign: 'left',
+            }}
+          >
+            <Box
+              component="span"
+              sx={{
+                fontWeight: 800,
+              }}
+            >
+              {requiredOrderCount.toLocaleString()} PO
+            </Box>
+
+            {' · '}
+
+            <Box
+              component="span"
+              sx={{
+                fontWeight: 700,
+              }}
+            >
+              {item.requiredTotalQty.toLocaleString()} Pcs
+            </Box>
+          </Typography>
+
+
+          {/* CONFIRMED LABEL */}
+
+          <Typography
+            sx={{
+              fontSize: 12,
+              fontWeight: 600,
+
+              lineHeight: 1.25,
+
+              color:
+                selected || completed
+                  ? 'inherit'
+                  : 'text.secondary',
+
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Đã xác nhận:
+          </Typography>
+
+
+          {/* CONFIRMED VALUE */}
+
+          <Typography
+            sx={{
+              fontSize: 12,
+              fontWeight: 700,
+
+              lineHeight: 1.25,
+
+              color:
+                selected || completed
+                  ? 'inherit'
+                  : 'text.secondary',
+
+              whiteSpace: 'nowrap',
+
+              textAlign: 'left',
+            }}
+          >
+            <Box
+              component="span"
+              sx={{
+                fontWeight: 800,
+              }}
+            >
+              {confirmedOrderCount.toLocaleString()} PO
+            </Box>
+
+            {' · '}
+
+            <Box
+              component="span"
+              sx={{
+                fontWeight: 700,
+              }}
+            >
+              {item.confirmedTotalQty.toLocaleString()} Pcs
+            </Box>
+          </Typography>
+
+        </Box>
+
       </Box>
+
     </Button>
   )
 }

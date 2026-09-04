@@ -35,6 +35,7 @@ export interface MenuItemConfig {
     path: string
     icon: ReactNode
     status?: MenuItemStatus
+    disabled?: boolean
 }
 
 export interface MenuGroupConfig {
@@ -70,6 +71,7 @@ export const menuGroups:
                     label: 'PC Training',
                     path: '/pc-training',
                     status: 'ready',
+                    disabled: true,
                     icon: (
                         <SchoolOutlined />
                     ),
