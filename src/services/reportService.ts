@@ -77,6 +77,17 @@ export interface ReportFilters {
   productionDate: string
 }
 
+export interface BacklogStatusSummaryItem {
+  status: string
+  poCount: number
+  totalQty: number
+}
+
+export interface BacklogStatusSummary {
+  totalPoCount: number
+  totalQty: number
+  statuses: BacklogStatusSummaryItem[]
+}
 
 // =========================================================
 // API RESPONSE TYPES
@@ -1093,5 +1104,47 @@ export async function searchReports(
 
   return mapPageResponse(
     result,
+  )
+
+
+}
+
+
+// =========================================================
+// GET BACKLOG STATUS SUMMARY
+// =========================================================
+
+export async function getBacklogStatusSummary(
+  filterRequest: BacklogFilterRequest,
+  signal?: AbortSignal,
+): Promise<BacklogStatusSummary> {
+
+  const safeFilterRequest: BacklogFilterRequest = {
+    filters:
+      filterRequest?.filters
+      ?? [],
+
+    logicOperator:
+      filterRequest?.logicOperator
+      ?? 'and',
+  }
+
+  return await fetchJson<BacklogStatusSummary>(
+    `${API_BASE_URL}/api/backlogs/summary/status`,
+    {
+      method: 'POST',
+
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+
+      body:
+        JSON.stringify(
+          safeFilterRequest,
+        ),
+
+      signal,
+    },
   )
 }
