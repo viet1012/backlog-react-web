@@ -371,16 +371,59 @@ export function ExcelColumnFilterProvider({
   }
 
   function applyValueFilter() {
-    if (!field) return
-    const selectedValues = options.filter((value) => selected.has(value))
-
-    if (selectedValues.length === options.length) {
-      replaceCurrentFieldFilter()
-      closeFilter()
+    if (!field) {
       return
     }
 
-    replaceCurrentFieldFilter({ field, operator: 'isAnyOf', values: selectedValues })
+    const selectedValues =
+      options.filter(
+        (value) => selected.has(value),
+      )
+
+    // =====================================================
+    // NO SEARCH
+    // Select all toàn bộ option => không cần filter
+    // =====================================================
+
+    if (
+      !hasSearch
+      && selectedValues.length === options.length
+    ) {
+      replaceCurrentFieldFilter()
+
+      closeFilter()
+
+      return
+    }
+
+
+    // =====================================================
+    // SEARCH ACTIVE
+    //
+    // Khi đang search:
+    // chỉ apply những value đang visible + selected
+    //
+    // VD search:
+    // 520006689226
+    //
+    // => filter đúng PO đó
+    // =====================================================
+
+    const valuesToApply =
+      hasSearch
+        ? visibleOptions.filter(
+          (value) =>
+            selected.has(value),
+        )
+        : selectedValues
+
+
+    replaceCurrentFieldFilter({
+      field,
+      operator: 'isAnyOf',
+      values: valuesToApply,
+    })
+
     closeFilter()
   }
 
