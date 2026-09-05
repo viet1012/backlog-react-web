@@ -56,6 +56,7 @@ import {
 } from '../../theme/dataGridHeaderStyles'
 
 import type {
+  FacConfirmClassify,
   FacConfirmConfirmedProcess,
   FacConfirmFilterItem,
   FacConfirmProcessGroup,
@@ -93,6 +94,7 @@ interface FacConfirmDataTableProps {
   expD: string
 
   procGrp: FacConfirmProcessGroup
+  classify?: FacConfirmClassify
 
   highlightProcGrp:
   FacConfirmProcessGroup | null
@@ -209,6 +211,7 @@ export function FacConfirmDataTable({
   expD,
 
   procGrp,
+  classify,
 
   highlightProcGrp,
 
@@ -292,6 +295,8 @@ export function FacConfirmDataTable({
             expD,
 
             procGrp,
+
+            classify,
           },
           signal,
         ),
@@ -299,6 +304,7 @@ export function FacConfirmDataTable({
         div,
         expD,
         procGrp,
+        classify,
       ],
     )
 

@@ -69,6 +69,7 @@ export const uiTokens = {
 
   action: {
     blue: '#1687D9',
+    success: '#2E9D63',
     danger: '#D64545',
   },
 } as const
@@ -80,11 +81,10 @@ export const glassPanelSx = (theme: Theme) => ({
       : 'rgba(255,255,255,0.76)',
   backdropFilter: 'blur(14px)',
   WebkitBackdropFilter: 'blur(14px)',
-  border: `1px solid ${
-    theme.palette.mode === 'dark'
+  border: `1px solid ${theme.palette.mode === 'dark'
       ? 'rgba(255,255,255,0.10)'
       : 'rgba(255,255,255,0.72)'
-  }`,
+    }`,
   boxShadow:
     theme.palette.mode === 'dark'
       ? '0 8px 24px rgba(0,0,0,0.18)'

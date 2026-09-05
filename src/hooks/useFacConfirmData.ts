@@ -18,6 +18,7 @@ import {
 } from '../config/facConfirmProcessConfig'
 
 import type {
+  FacConfirmClassify,
   FacConfirmConfirmedProcess,
   FacConfirmFilterItem,
   FacConfirmProcessGroup,
@@ -28,9 +29,14 @@ import type {
 interface UseFacConfirmDataParams {
   div: string
   expD: string
+
   procGrp: FacConfirmProcessGroup
+
+  classify?: FacConfirmClassify
+
   page: number
   pageSize: number
+
   excelFilters: FacConfirmFilterItem[]
 }
 
@@ -101,6 +107,7 @@ export function useFacConfirmData({
   div,
   expD,
   procGrp,
+  classify,
   page,
   pageSize,
   excelFilters,
@@ -114,7 +121,6 @@ export function useFacConfirmData({
   >([])
   const [totalElements, setTotalElements] = useState(0)
   const [loading, setLoading] = useState(false)
-  const [processGroupsLoading, setProcessGroupsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
@@ -131,8 +137,6 @@ export function useFacConfirmData({
 
     const controller = new AbortController()
     tableRequestRef.current = controller
-    let mainResultLoaded = false
-
     setLoading(true)
     setError(null)
 
@@ -141,27 +145,56 @@ export function useFacConfirmData({
         div,
         expD,
         procGrp,
+        classify,
         page,
         size: pageSize,
       }
 
       const result = excelFilters.length > 0
-        ? await searchFacConfirm({
-          ...request,
-          filters: excelFilters,
-          logicOperator: 'and',
-        }, controller.signal)
-        : await getFacConfirm(request, controller.signal)
-
-      mainResultLoaded = true
-
-      const aufnrs = getCurrentPageAufnrs(result.content)
-      const confirmed = aufnrs.length > 0
-        ? await getFacConfirmConfirmedProcesses(
-          aufnrs,
+        ? await searchFacConfirm(
+          {
+            ...request,
+            filters: excelFilters,
+            logicOperator: 'and',
+          },
           controller.signal,
         )
-        : []
+        : await getFacConfirm(
+          request,
+          controller.signal,
+        )
+
+      if (
+        controller.signal.aborted
+        || tableRequestRef.current !== controller
+      ) {
+        return
+      }
+
+      const aufnrs = getCurrentPageAufnrs(result.content)
+      let confirmed: FacConfirmConfirmedProcess[] = []
+
+      if (aufnrs.length > 0) {
+        try {
+          confirmed = await getFacConfirmConfirmedProcesses(
+            aufnrs,
+            controller.signal,
+          )
+        } catch (confirmedError) {
+          if (
+            isAbortError(confirmedError)
+            || controller.signal.aborted
+            || tableRequestRef.current !== controller
+          ) {
+            return
+          }
+
+          console.error(
+            'Load Fac Confirm confirmed processes failed:',
+            confirmedError,
+          )
+        }
+      }
 
       if (
         controller.signal.aborted
@@ -184,11 +217,9 @@ export function useFacConfirmData({
 
       console.error('Load Fac Confirm failed:', requestError)
 
-      if (mainResultLoaded) {
-        setRows([])
-        setConfirmedProcesses([])
-        setTotalElements(0)
-      }
+      setRows([])
+      setConfirmedProcesses([])
+      setTotalElements(0)
 
       setError(
         requestError instanceof Error
@@ -201,15 +232,21 @@ export function useFacConfirmData({
         setLoading(false)
       }
     }
-  }, [div, excelFilters, expD, page, pageSize, procGrp])
+  }, [
+    classify,
+    div,
+    excelFilters,
+    expD,
+    page,
+    pageSize,
+    procGrp,
+  ])
 
   const loadProcessGroups = useCallback(async () => {
     summaryRequestRef.current?.abort()
 
     const controller = new AbortController()
     summaryRequestRef.current = controller
-    setProcessGroupsLoading(true)
-
     try {
       const result = await getFacConfirmProcessGroups(
         div,
@@ -237,7 +274,6 @@ export function useFacConfirmData({
     } finally {
       if (summaryRequestRef.current === controller) {
         summaryRequestRef.current = null
-        setProcessGroupsLoading(false)
       }
     }
   }, [div, expD])
@@ -283,7 +319,6 @@ export function useFacConfirmData({
     processGroups,
     totalElements,
     loading,
-    processGroupsLoading,
     error,
     lastUpdated,
     handleRefresh,

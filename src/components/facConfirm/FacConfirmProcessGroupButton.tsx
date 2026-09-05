@@ -13,6 +13,7 @@ import {
 } from '@mui/material/styles'
 
 import type {
+  FacConfirmProcessGroup,
   FacConfirmProcessGroupSummary,
 } from '../../types/facConfirm'
 
@@ -30,7 +31,8 @@ import {
 
 
 interface Props {
-  item: FacConfirmProcessGroupSummary
+  processGroup: FacConfirmProcessGroup
+  item?: FacConfirmProcessGroupSummary
   selected: boolean
   disabled: boolean
   onClick: () => void
@@ -38,6 +40,7 @@ interface Props {
 
 
 export function FacConfirmProcessGroupButton({
+  processGroup,
   item,
   selected,
   disabled,
@@ -45,13 +48,14 @@ export function FacConfirmProcessGroupButton({
 }: Props) {
 
   const requiredOrderCount =
-    item.requiredOrderCount ?? 0
+    item?.requiredOrderCount ?? 0
 
   const confirmedOrderCount =
-    item.confirmedOrderCount ?? 0
+    item?.confirmedOrderCount ?? 0
 
   const progress =
-    requiredOrderCount > 0
+    Boolean(item)
+      && requiredOrderCount > 0
       ? Math.min(
         100,
         Math.max(
@@ -80,7 +84,7 @@ export function FacConfirmProcessGroupButton({
 
         const color =
           FAC_CONFIRM_PROCESS_CONFIG[
-            item.processGroup
+            processGroup
           ].getColor(theme)
 
         return {
@@ -88,7 +92,10 @@ export function FacConfirmProcessGroupButton({
           minWidth: 245,
           maxWidth: 245,
 
+          height: 66,
           minHeight: 66,
+          maxHeight: 66,
+          boxSizing: 'border-box',
 
           px: 1,
           py: 0.7,
@@ -107,65 +114,41 @@ export function FacConfirmProcessGroupButton({
           borderRadius:
             uiTokens.control.borderRadius,
 
-          border:
-            `1px solid ${selected || completed
-              ? alpha(
-                color,
-                completed
-                  ? 0.8
-                  : 0.7,
-              )
-              : theme.palette.divider
+          border: `1px solid ${selected
+            ? alpha(color, 0.7)
+            : theme.palette.divider
             }`,
 
           bgcolor:
-            completed
+            selected
               ? alpha(
                 color,
                 theme.palette.mode === 'dark'
-                  ? 0.20
-                  : 0.08,
+                  ? 0.26
+                  : 0.12,
               )
-              : selected
-                ? alpha(
-                  color,
-                  theme.palette.mode === 'dark'
-                    ? 0.26
-                    : 0.12,
-                )
-                : alpha(
-                  theme.palette.background.paper,
-                  0.5,
-                ),
+              : alpha(
+                theme.palette.background.paper,
+                0.5,
+              ),
 
           color:
-            selected || completed
+            selected
               ? color
               : 'text.primary',
 
           boxShadow:
-            selected || completed
+            selected
               ? `0 2px 8px ${alpha(
                 color,
                 0.12,
               )}`
               : 'none',
 
-          transition:
-            'all 150ms ease',
-
-          '&:hover': {
-            transform:
-              'translateY(-1px)',
-          },
-
-          '@media (prefers-reduced-motion: reduce)': {
-            transform: 'none',
-
-            '&:hover': {
-              transform: 'none',
-            },
-          },
+          transition: theme.transitions.create(
+            ['background-color', 'border-color', 'color', 'box-shadow'],
+            { duration: 150 },
+          ),
         }
       }}
     >
@@ -192,10 +175,15 @@ export function FacConfirmProcessGroupButton({
         <Box
           sx={(theme) => {
 
-            const color =
+            const processColor =
               FAC_CONFIRM_PROCESS_CONFIG[
-                item.processGroup
+                processGroup
               ].getColor(theme)
+
+            const color =
+              completed
+                ? successColor
+                : processColor
 
             return {
               gridColumn: 1,
@@ -233,7 +221,7 @@ export function FacConfirmProcessGroupButton({
         >
           <FacConfirmAnimatedProcessIcon
             processGroup={
-              item.processGroup
+              processGroup
             }
             selected={
               selected
@@ -266,7 +254,7 @@ export function FacConfirmProcessGroupButton({
               textAlign: 'left',
             }}
           >
-            {item.processGroup}
+            {processGroup}
           </Typography>
 
 
@@ -305,13 +293,16 @@ export function FacConfirmProcessGroupButton({
             <Typography
               sx={{
                 flexShrink: 0,
+                minWidth: 38,
 
                 fontSize: 12,
                 fontWeight: 800,
                 lineHeight: 1,
+                textAlign: 'right',
+                fontVariantNumeric: 'tabular-nums',
               }}
             >
-              {progress}%
+              {item ? `${progress}%` : '—'}
             </Typography>
 
           )}
@@ -350,7 +341,7 @@ export function FacConfirmProcessGroupButton({
               lineHeight: 1.25,
 
               color:
-                selected || completed
+                selected
                   ? 'inherit'
                   : 'text.secondary',
 
@@ -371,13 +362,14 @@ export function FacConfirmProcessGroupButton({
               lineHeight: 1.25,
 
               color:
-                selected || completed
+                selected
                   ? 'inherit'
                   : 'text.secondary',
 
               whiteSpace: 'nowrap',
 
               textAlign: 'left',
+              fontVariantNumeric: 'tabular-nums',
             }}
           >
             <Box
@@ -386,7 +378,7 @@ export function FacConfirmProcessGroupButton({
                 fontWeight: 800,
               }}
             >
-              {requiredOrderCount.toLocaleString()} PO
+              {item ? requiredOrderCount.toLocaleString() : '—'} PO
             </Box>
 
             {' · '}
@@ -397,7 +389,7 @@ export function FacConfirmProcessGroupButton({
                 fontWeight: 700,
               }}
             >
-              {item.requiredTotalQty.toLocaleString()} Pcs
+              {item ? item.requiredTotalQty.toLocaleString() : '—'} Pcs
             </Box>
           </Typography>
 
@@ -412,7 +404,7 @@ export function FacConfirmProcessGroupButton({
               lineHeight: 1.25,
 
               color:
-                selected || completed
+                selected
                   ? 'inherit'
                   : 'text.secondary',
 
@@ -433,13 +425,14 @@ export function FacConfirmProcessGroupButton({
               lineHeight: 1.25,
 
               color:
-                selected || completed
+                selected
                   ? 'inherit'
                   : 'text.secondary',
 
               whiteSpace: 'nowrap',
 
               textAlign: 'left',
+              fontVariantNumeric: 'tabular-nums',
             }}
           >
             <Box
@@ -448,7 +441,7 @@ export function FacConfirmProcessGroupButton({
                 fontWeight: 800,
               }}
             >
-              {confirmedOrderCount.toLocaleString()} PO
+              {item ? confirmedOrderCount.toLocaleString() : '—'} PO
             </Box>
 
             {' · '}
@@ -459,7 +452,7 @@ export function FacConfirmProcessGroupButton({
                 fontWeight: 700,
               }}
             >
-              {item.confirmedTotalQty.toLocaleString()} Pcs
+              {item ? item.confirmedTotalQty.toLocaleString() : '—'} Pcs
             </Box>
           </Typography>
 

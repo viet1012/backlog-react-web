@@ -51,6 +51,11 @@ export type FacConfirmProcessGroup =
     | 'Rough'
 
 
+export type FacConfirmClassify =
+    | 'Sale'
+    | 'Stock'
+
+
 export interface FacConfirmProcessGroupSummary {
     processGroup: FacConfirmProcessGroup
 
@@ -61,6 +66,7 @@ export interface FacConfirmProcessGroupSummary {
     confirmedTotalQty: number
 }
 
+
 export interface FacConfirmFilterItem {
     field: string
     operator: string
@@ -68,24 +74,39 @@ export interface FacConfirmFilterItem {
     values?: string[]
 }
 
+
 export interface FacConfirmSearchRequest {
     div: string
     expD: string
+
     procGrp: FacConfirmProcessGroup
+
+    classify?: FacConfirmClassify
+
     page: number
     size: number
+
     filters: FacConfirmFilterItem[]
+
     logicOperator: 'and' | 'or'
 }
+
 
 export interface FacConfirmFilterOptionsRequest {
     field: string
     search?: string
+
     div: string
     expD: string
+
     procGrp: FacConfirmProcessGroup
+
+    classify?: FacConfirmClassify
+
     filters: FacConfirmFilterItem[]
+
     logicOperator: 'and' | 'or'
+
     page?: number
     size?: number
 }
@@ -119,19 +140,20 @@ export interface FacConfirmProcessTimeRequest {
     changes: FacConfirmProcessTimeChange[]
 }
 
+
 export interface FacConfirmProcessTimeResponse {
     success: boolean
     updatedCount: number
     message: string
 }
 
+
 export interface FacConfirmConfirmedProcess {
     aufnr: string
 
     processGrp: FacConfirmBackendProcessName
 
-    confirmFnTime:
-    string | null
+    confirmFnTime: string | null
 
     updater?: string | null
 
