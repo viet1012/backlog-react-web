@@ -24,11 +24,28 @@ export interface FacConfirmRow {
 
     // =====================================================
     // HEAT PROCESS FLAG
-    //
-    // true  = PO có công đoạn Nhiệt
-    // false = PO không có công đoạn Nhiệt
     // =====================================================
     hasHeatProcess: boolean
+
+    // =====================================================
+    // DC53 FLAG
+    //
+    // true = có Heat + Aging (5 days)
+    // =====================================================
+    isDC53: boolean
+
+    // =====================================================
+    // NOTE
+    //
+    // Ví dụ:
+    // DC53 - Có Heat + Aging (5 days)
+    // Có công đoạn Heat
+    // Không có công đoạn Heat
+    // =====================================================
+
+    isTD: boolean
+
+    note: string | null
 
     // =====================================================
     // PROCESS TIMES
@@ -41,7 +58,6 @@ export interface FacConfirmRow {
 
     toPk: string | null
 }
-
 
 export interface FacConfirmPageResponse {
     content: FacConfirmRow[]

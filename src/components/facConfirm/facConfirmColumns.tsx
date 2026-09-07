@@ -96,7 +96,39 @@ const facConfirmColumnDefinitions:
             headerName: 'Product Name',
             width: 200,
         },
+        {
+            field: 'note',
+            headerName: 'Heat Note',
+            width: 220,
 
+            renderCell: (params) => {
+                if (!params.value) {
+                    return '-'
+                }
+
+                return (
+                    <Box
+                        sx={() => ({
+                            width: '100%',
+
+                            fontSize: 12,
+                            fontWeight: 500,
+
+                            // color:
+                            //     FAC_CONFIRM_PROCESS_CONFIG[
+                            //         'Heat'
+                            //     ].getColor(theme),
+
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                        })}
+                    >
+                        {params.value}
+                    </Box>
+                )
+            },
+        },
         {
             field: 'toDrill',
             headerName: 'To Drill',
