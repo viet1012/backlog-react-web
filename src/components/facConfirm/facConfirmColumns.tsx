@@ -12,6 +12,7 @@ import {
 } from '../common/dataGrid/ExcelFilterHeader'
 import { FAC_CONFIRM_PROCESS_CONFIG } from '../../config/facConfirmProcessConfig'
 import { formatFacConfirmDateTime } from '../../utils/facConfirmDateTime'
+import { Box } from '@mui/material'
 
 
 const facConfirmColumnDefinitions:
@@ -112,13 +113,81 @@ const facConfirmColumnDefinitions:
             field: 'heatStart',
             headerName: 'Heat Start',
             width: 165,
-            valueFormatter: (value) => formatFacConfirmDateTime(value),
+
+            valueFormatter: (value) =>
+                formatFacConfirmDateTime(value),
+
+            renderCell: (params) => {
+                if (
+                    params.row.hasHeatProcess === false
+                    && !params.value
+                ) {
+                    return (
+                        <Box
+                            sx={(theme) => ({
+                                width: '100%',
+
+                                color:
+                                    FAC_CONFIRM_PROCESS_CONFIG[
+                                        'Heat'
+                                    ].getColor(theme),
+
+                                fontSize: 12,
+                                fontStyle: 'italic',
+                                fontWeight: 700,
+
+                                whiteSpace: 'nowrap',
+                            })}
+                        >
+                            *No heat process*
+                        </Box>
+                    )
+                }
+
+                return formatFacConfirmDateTime(
+                    params.value,
+                )
+            },
         },
         {
             field: 'heatFinish',
             headerName: 'Heat Finish',
             width: 165,
-            valueFormatter: (value) => formatFacConfirmDateTime(value),
+
+            valueFormatter: (value) =>
+                formatFacConfirmDateTime(value),
+
+            renderCell: (params) => {
+                if (
+                    params.row.hasHeatProcess === false
+                    && !params.value
+                ) {
+                    return (
+                        <Box
+                            sx={(theme) => ({
+                                width: '100%',
+
+                                color:
+                                    FAC_CONFIRM_PROCESS_CONFIG[
+                                        'Heat'
+                                    ].getColor(theme),
+
+                                fontSize: 12,
+                                fontStyle: 'italic',
+                                fontWeight: 700,
+
+                                whiteSpace: 'nowrap',
+                            })}
+                        >
+                            *No heat process*
+                        </Box>
+                    )
+                }
+
+                return formatFacConfirmDateTime(
+                    params.value,
+                )
+            },
         },
         {
             field: 'toPk',

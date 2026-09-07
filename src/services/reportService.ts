@@ -710,11 +710,6 @@ export async function getBacklogFilterOptions(
     request.field,
   )
 
-
-  // -------------------------------------------------------
-  // Chuẩn hóa request
-  // -------------------------------------------------------
-
   const normalizedRequest:
     BacklogFilterOptionsRequest = {
 
@@ -729,7 +724,8 @@ export async function getBacklogFilterOptions(
       ?? 'and',
 
     search:
-      request.search?.trim()
+      request.search
+        ?.trim()
       ?? '',
 
     limit:
@@ -744,10 +740,6 @@ export async function getBacklogFilterOptions(
   }
 
 
-  // -------------------------------------------------------
-  // Cache key
-  // -------------------------------------------------------
-
   const cacheKey =
     createFilterOptionsCacheKey(
       normalizedRequest,
@@ -758,9 +750,9 @@ export async function getBacklogFilterOptions(
     Date.now()
 
 
-  // -------------------------------------------------------
-  // FE MEMORY CACHE
-  // -------------------------------------------------------
+  // =========================================================
+  // CACHE
+  // =========================================================
 
   const cached =
     filterOptionsCache.get(
@@ -783,24 +775,29 @@ export async function getBacklogFilterOptions(
   }
 
 
-  // -------------------------------------------------------
-  // Request đang chạy
-  // -------------------------------------------------------
+  // =========================================================
+  // PENDING
+  //
+  // QUAN TRỌNG:
+  // Có AbortSignal thì KHÔNG reuse pending Promise
+  // =========================================================
 
-  const pending =
-    filterOptionsPending.get(
-      cacheKey,
-    )
+  if (!signal) {
 
+    const pending =
+      filterOptionsPending.get(
+        cacheKey,
+      )
 
-  if (pending) {
-    return pending
+    if (pending) {
+      return pending
+    }
   }
 
 
-  // -------------------------------------------------------
-  // CALL API
-  // -------------------------------------------------------
+  // =========================================================
+  // REQUEST
+  // =========================================================
 
   const apiRequest =
     (async () => {
@@ -836,10 +833,6 @@ export async function getBacklogFilterOptions(
         )
 
 
-      // ---------------------------------------------------
-      // Save cache
-      // ---------------------------------------------------
-
       filterOptionsCache.set(
         cacheKey,
         {
@@ -856,14 +849,13 @@ export async function getBacklogFilterOptions(
     })()
 
 
-  // -------------------------------------------------------
-  // Save pending
-  // -------------------------------------------------------
-
-  filterOptionsPending.set(
-    cacheKey,
-    apiRequest,
-  )
+  // Chỉ cache pending khi request không có AbortSignal
+  if (!signal) {
+    filterOptionsPending.set(
+      cacheKey,
+      apiRequest,
+    )
+  }
 
 
   try {
@@ -872,9 +864,11 @@ export async function getBacklogFilterOptions(
 
   } finally {
 
-    filterOptionsPending.delete(
-      cacheKey,
-    )
+    if (!signal) {
+      filterOptionsPending.delete(
+        cacheKey,
+      )
+    }
   }
 }
 

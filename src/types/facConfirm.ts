@@ -6,6 +6,7 @@ export interface FacConfirmRow {
     aufnr: string
 
     zglobalCode: string | null
+
     pname: string | null
 
     issueD: string | null
@@ -21,6 +22,17 @@ export interface FacConfirmRow {
 
     finalQty: number | null
 
+    // =====================================================
+    // HEAT PROCESS FLAG
+    //
+    // true  = PO có công đoạn Nhiệt
+    // false = PO không có công đoạn Nhiệt
+    // =====================================================
+    hasHeatProcess: boolean
+
+    // =====================================================
+    // PROCESS TIMES
+    // =====================================================
     toDrill: string | null
     toHeat: string | null
 
@@ -69,14 +81,18 @@ export interface FacConfirmProcessGroupSummary {
 
 export interface FacConfirmFilterItem {
     field: string
+
     operator: string
+
     value?: string
+
     values?: string[]
 }
 
 
 export interface FacConfirmSearchRequest {
     div: string
+
     expD: string
 
     procGrp: FacConfirmProcessGroup
@@ -94,9 +110,11 @@ export interface FacConfirmSearchRequest {
 
 export interface FacConfirmFilterOptionsRequest {
     field: string
+
     search?: string
 
     div: string
+
     expD: string
 
     procGrp: FacConfirmProcessGroup
@@ -112,6 +130,10 @@ export interface FacConfirmFilterOptionsRequest {
 }
 
 
+// =========================================================
+// EDITABLE FIELD
+// =========================================================
+
 export type FacConfirmEditableField =
     | 'toDrill'
     | 'toHeat'
@@ -119,6 +141,23 @@ export type FacConfirmEditableField =
     | 'heatFinish'
     | 'toPk'
 
+
+// =========================================================
+// HEAT FIELD
+//
+// Dùng cho rule:
+// hasHeatProcess = false
+// => warning trước khi sửa Heat Start / Heat Finish
+// =========================================================
+
+export type FacConfirmHeatEditableField =
+    | 'heatStart'
+    | 'heatFinish'
+
+
+// =========================================================
+// BACKEND PROCESS NAME
+// =========================================================
 
 export type FacConfirmBackendProcessName =
     | 'To Drill'
@@ -128,25 +167,46 @@ export type FacConfirmBackendProcessName =
     | 'To Packing'
 
 
+// =========================================================
+// PROCESS TIME CHANGE
+// =========================================================
+
 export interface FacConfirmProcessTimeChange {
     aufnr: string
+
     field: FacConfirmEditableField
+
     value: string
 }
 
 
+// =========================================================
+// SAVE REQUEST
+// =========================================================
+
 export interface FacConfirmProcessTimeRequest {
     employeeId: string
+
     changes: FacConfirmProcessTimeChange[]
 }
 
 
+// =========================================================
+// SAVE RESPONSE
+// =========================================================
+
 export interface FacConfirmProcessTimeResponse {
     success: boolean
+
     updatedCount: number
+
     message: string
 }
 
+
+// =========================================================
+// CONFIRMED PROCESS
+// =========================================================
 
 export interface FacConfirmConfirmedProcess {
     aufnr: string
