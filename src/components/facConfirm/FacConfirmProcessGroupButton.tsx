@@ -88,65 +88,60 @@ export function FacConfirmProcessGroupButton({
           ].getColor(theme)
 
         return {
-          width: 245,
-          minWidth: 245,
-          maxWidth: 245,
+          flex: '1 1 0',
+          minWidth: 190,
 
           height: 66,
           minHeight: 66,
           maxHeight: 66,
+
           boxSizing: 'border-box',
 
           px: 1,
           py: 0.7,
 
-          flexShrink: 0,
+          justifyContent: 'flex-start',
+          alignItems: 'stretch',
 
-          justifyContent:
-            'flex-start',
+          textTransform: 'none',
 
-          alignItems:
-            'stretch',
-
-          textTransform:
-            'none',
-
-          borderRadius:
-            uiTokens.control.borderRadius,
+          borderRadius: uiTokens.control.borderRadius,
 
           border: `1px solid ${selected
             ? alpha(color, 0.7)
             : theme.palette.divider
             }`,
 
-          bgcolor:
-            selected
-              ? alpha(
-                color,
-                theme.palette.mode === 'dark'
-                  ? 0.26
-                  : 0.12,
-              )
-              : alpha(
-                theme.palette.background.paper,
-                0.5,
-              ),
+          bgcolor: selected
+            ? alpha(
+              color,
+              theme.palette.mode === 'dark'
+                ? 0.26
+                : 0.12,
+            )
+            : alpha(
+              theme.palette.background.paper,
+              0.5,
+            ),
 
-          color:
-            selected
-              ? color
-              : 'text.primary',
+          color: selected
+            ? color
+            : 'text.primary',
 
-          boxShadow:
-            selected
-              ? `0 2px 8px ${alpha(
-                color,
-                0.12,
-              )}`
-              : 'none',
+          boxShadow: selected
+            ? `0 2px 8px ${alpha(
+              color,
+              0.12,
+            )}`
+            : 'none',
 
           transition: theme.transitions.create(
-            ['background-color', 'border-color', 'color', 'box-shadow'],
+            [
+              'background-color',
+              'border-color',
+              'color',
+              'box-shadow',
+            ],
             { duration: 150 },
           ),
         }

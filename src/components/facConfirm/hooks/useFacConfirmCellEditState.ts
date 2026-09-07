@@ -23,6 +23,7 @@ import type {
 } from '../../../types/facConfirm'
 
 import {
+  normalizeFacConfirmDateTime,
   normalizeFacConfirmDateTimeForApi,
 } from '../../../utils/facConfirmDateTime'
 
@@ -71,12 +72,35 @@ function valuesEqual(
 
 function normalizeOptionalDateTime(
   value: unknown,
+  field?: FacConfirmEditableField,
+  row?: FacConfirmRow,
 ): string | null {
-  if (value == null || String(value).trim() === '') {
+  if (
+    value == null
+    || String(value).trim() === ''
+  ) {
     return null
   }
 
-  return normalizeFacConfirmDateTimeForApi(value)
+  if (!field || !row) {
+    return normalizeFacConfirmDateTime(value)
+  }
+
+  return normalizeFacConfirmDateTimeForApi(
+    value,
+    {
+      field,
+
+      isDC53:
+        row?.isDC53 === true,
+
+      isTD:
+        row?.isTD === true,
+
+      heatStart:
+        row?.heatStart,
+    },
+  )
 }
 
 export function useFacConfirmCellEditState({
@@ -161,15 +185,24 @@ export function useFacConfirmCellEditState({
         (field): ValidatedCellChange => {
           const key = getCellKey(newRow, field)
           const existingBaseline = baselineValuesRef.current.get(key)
-          const baselineValue = baselineValuesRef.current.has(key)
-            ? existingBaseline ?? null
-            : normalizeOptionalDateTime(oldRow[field])
+          const baselineValue =
+            baselineValuesRef.current.has(key)
+              ? existingBaseline ?? null
+              : normalizeOptionalDateTime(
+                oldRow[field],
+              )
 
           return {
             field,
             key,
             baselineValue,
-            nextValue: normalizeOptionalDateTime(newRow[field]),
+
+            nextValue:
+              normalizeOptionalDateTime(
+                newRow[field],
+                field,
+                newRow,
+              ),
           }
         },
       )

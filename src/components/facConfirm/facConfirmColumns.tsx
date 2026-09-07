@@ -113,12 +113,6 @@ const facConfirmColumnDefinitions:
 
                             fontSize: 12,
                             fontWeight: 500,
-
-                            // color:
-                            //     FAC_CONFIRM_PROCESS_CONFIG[
-                            //         'Heat'
-                            //     ].getColor(theme),
-
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -156,22 +150,16 @@ const facConfirmColumnDefinitions:
                 ) {
                     return (
                         <Box
-                            sx={(theme) => ({
+                            sx={{
                                 width: '100%',
-
-                                color:
-                                    FAC_CONFIRM_PROCESS_CONFIG[
-                                        'Heat'
-                                    ].getColor(theme),
-
                                 fontSize: 12,
-                                fontStyle: 'italic',
-                                fontWeight: 700,
-
+                                fontWeight: 500,
                                 whiteSpace: 'nowrap',
-                            })}
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                            }}
                         >
-                            *No heat process*
+                            {params.row.note}
                         </Box>
                     )
                 }
@@ -196,22 +184,16 @@ const facConfirmColumnDefinitions:
                 ) {
                     return (
                         <Box
-                            sx={(theme) => ({
+                            sx={{
                                 width: '100%',
-
-                                color:
-                                    FAC_CONFIRM_PROCESS_CONFIG[
-                                        'Heat'
-                                    ].getColor(theme),
-
                                 fontSize: 12,
-                                fontStyle: 'italic',
-                                fontWeight: 700,
-
+                                fontWeight: 500,
                                 whiteSpace: 'nowrap',
-                            })}
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                            }}
                         >
-                            *No heat process*
+                            {params.row.note}
                         </Box>
                     )
                 }

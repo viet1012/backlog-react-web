@@ -1,5 +1,3 @@
-const INVALID_DATE_TIME_MESSAGE =
-  'Invalid datetime. Use D/M/YYYY H:mm or DD/MM/YYYY HH:mm.'
 
 
 interface FacConfirmDateTimeParts {
@@ -55,6 +53,23 @@ function pad2(
     .padStart(2, '0')
 }
 
+
+// =========================================================
+// INVALID DATETIME MESSAGE
+// =========================================================
+
+function getInvalidDateTimeMessage(): string {
+  const now = new Date()
+
+  return (
+    'Sai định dạng ngày giờ. VD: '
+    + `${pad2(now.getDate())}`
+    + `/${pad2(now.getMonth() + 1)}`
+    + `/${now.getFullYear()}`
+    + ` ${pad2(now.getHours())}`
+    + `:${pad2(now.getMinutes())}`
+  )
+}
 
 // =========================================================
 // LEAP YEAR
@@ -156,7 +171,7 @@ function validateDateTimeParts(
 
   if (!valid) {
     throw new Error(
-      INVALID_DATE_TIME_MESSAGE,
+      getInvalidDateTimeMessage(),
     )
   }
 
@@ -266,7 +281,7 @@ function parseFacConfirmDateTime(
 
 
   throw new Error(
-    INVALID_DATE_TIME_MESSAGE,
+    getInvalidDateTimeMessage(),
   )
 }
 
@@ -274,54 +289,77 @@ function parseFacConfirmDateTime(
 // =========================================================
 // NORMALIZE FOR API
 // =========================================================
+interface NormalizeFacConfirmDateTimeOptions {
+  field?: string
+  isDC53?: boolean
+  isTD?: boolean
+  heatStart?: unknown
+}
+
+// Normalize existing values without applying rules for new edits.
+export function normalizeFacConfirmDateTime(
+  value: unknown,
+): string {
+  const parts = parseFacConfirmDateTime(value)
+
+  return (
+    `${parts.year}-${parts.month}-${parts.day}`
+    + `T${parts.hour}:${parts.minute}:${parts.second}`
+  )
+}
 
 export function normalizeFacConfirmDateTimeForApi(
   value: unknown,
+  options?: NormalizeFacConfirmDateTimeOptions,
 ): string {
-
   const parts =
-    parseFacConfirmDateTime(
-      value,
-    )
+    parseFacConfirmDateTime(value)
 
+  const inputDate = partsToLocalDateTime(parts)
 
-  // =========================================================
-  // KHÔNG CHO USER NHẬP NGÀY QUÁ KHỨ
-  // =========================================================
+  const now = new Date()
 
-  const inputDate = new Date(
-    Number(parts.year),
-    Number(parts.month) - 1,
-    Number(parts.day),
-  )
-
-  inputDate.setHours(
-    0,
-    0,
-    0,
-    0,
-  )
-
-
-  const today = new Date()
-
-  today.setHours(
-    0,
-    0,
-    0,
-    0,
-  )
-
+  // UI nhập chính xác tới phút
+  now.setSeconds(0, 0)
 
   if (
     inputDate.getTime()
-    < today.getTime()
+    < now.getTime()
   ) {
     throw new Error(
-      'Date cannot be in the past.',
+      `Không được chọn thời gian trước `
+      + `${formatDateTimeForMessage(now)}.`,
     )
   }
 
+  // =========================================================
+  // VALIDATE HEAT FINISH
+  //
+  // DC53 -> +5 ngày
+  // TD   -> +2 ngày
+  // =========================================================
+
+  if (
+    options?.field === 'heatFinish'
+    && (
+      options.isDC53 === true
+      || options.isTD === true
+    )
+  ) {
+    validateHeatFinish(
+      value,
+      {
+        isDC53:
+          options.isDC53,
+
+        isTD:
+          options.isTD,
+
+        heatStart:
+          options.heatStart,
+      },
+    )
+  }
 
   return (
     `${parts.year}-${parts.month}-${parts.day}`
@@ -368,4 +406,172 @@ export function formatFacConfirmDateTime(
     // trả lại text để DataGrid không crash.
     return text
   }
+}
+
+interface ValidateHeatFinishOptions {
+  isDC53?: boolean
+  isTD?: boolean
+  heatStart?: unknown
+}
+
+// =========================================================
+// VALIDATE HEAT FINISH
+//
+// DC53:
+//   Heat Start có    -> Finish >= Start + 5 days
+//   Heat Start null  -> Finish >= Now   + 5 days
+//
+// TD:
+//   Heat Start có    -> Finish >= Start + 2 days
+//   Heat Start null  -> Finish >= Now   + 2 days
+// =========================================================
+
+export function validateHeatFinish(
+  heatFinish: unknown,
+  options: ValidateHeatFinishOptions,
+): void {
+
+  // =======================================================
+  // XÁC ĐỊNH SỐ NGÀY CHỜ
+  // DC53 ưu tiên nếu trường hợp dữ liệu bị cả 2 flag
+  // =======================================================
+
+  let waitingDays = 0
+  let materialLabel = ''
+
+  if (options.isDC53 === true) {
+    waitingDays = 5
+    materialLabel = 'DC53'
+  } else if (options.isTD === true) {
+    waitingDays = 2
+    materialLabel = 'TD'
+  }
+
+  // Hàng thường -> không cần check
+  if (waitingDays === 0) {
+    return
+  }
+
+  const finishParts =
+    parseFacConfirmDateTime(
+      heatFinish,
+    )
+
+  const finishDate =
+    partsToLocalDateTime(
+      finishParts,
+    )
+
+  let baseDate: Date
+  let sourceLabel: string
+
+  // =======================================================
+  // CÓ HEAT START
+  // =======================================================
+
+  if (
+    options.heatStart != null
+    && String(options.heatStart).trim() !== ''
+  ) {
+    const startParts =
+      parseFacConfirmDateTime(
+        options.heatStart,
+      )
+
+    baseDate =
+      partsToLocalDateTime(
+        startParts,
+      )
+
+    sourceLabel = 'Heat Start'
+  }
+
+  // =======================================================
+  // CHƯA CÓ HEAT START -> LẤY HIỆN TẠI
+  // =======================================================
+
+  else {
+    baseDate = new Date()
+
+    // UI chỉ nhập tới phút
+    baseDate.setSeconds(
+      0,
+      0,
+    )
+
+    sourceLabel = 'current time'
+  }
+
+  const minimumFinish =
+    addDays(
+      baseDate,
+      waitingDays,
+    )
+
+  // =======================================================
+  // VALIDATE
+  // =======================================================
+
+  if (
+    finishDate.getTime()
+    < minimumFinish.getTime()
+  ) {
+    throw new Error(
+      `${materialLabel}: Heat Finish phải từ `
+      + `${formatDateTimeForMessage(minimumFinish)} trở đi.`,
+    )
+  }
+}
+
+// =========================================================
+// PARTS -> LOCAL DATE
+// =========================================================
+
+function partsToLocalDateTime(
+  parts: FacConfirmDateTimeParts,
+): Date {
+  return new Date(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    Number(parts.hour),
+    Number(parts.minute),
+    Number(parts.second),
+    0,
+  )
+}
+
+// =========================================================
+// ADD DAYS
+// =========================================================
+
+function addDays(
+  value: Date,
+  days: number,
+): Date {
+  const result = new Date(
+    value.getTime(),
+  )
+
+  result.setDate(
+    result.getDate() + days,
+  )
+
+  return result
+}
+
+// =========================================================
+// FORMAT ERROR DATETIME
+// =========================================================
+
+function formatDateTimeForMessage(
+  value: Date,
+): string {
+  return (
+    `${pad2(value.getDate())}`
+    + `/${pad2(value.getMonth() + 1)}`
+    + `/${value.getFullYear()}`
+    + ` ${pad2(value.getHours())}`
+    + `:${pad2(value.getMinutes())}`
+  )
 }

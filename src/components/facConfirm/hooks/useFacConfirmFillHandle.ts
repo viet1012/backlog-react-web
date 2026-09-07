@@ -24,7 +24,7 @@ import type {
 } from '../../../types/facConfirm'
 
 import {
-  normalizeFacConfirmDateTimeForApi,
+  normalizeFacConfirmDateTime,
 } from '../../../utils/facConfirmDateTime'
 
 interface FillCell {
@@ -219,7 +219,7 @@ export function useFacConfirmFillHandle({
 
     const value = sourceRow[selectedCell.field]
     try {
-      normalizeFacConfirmDateTimeForApi(value)
+      normalizeFacConfirmDateTime(value)
     } catch (error) {
       onError(error)
       return
@@ -315,8 +315,6 @@ export function useFacConfirmFillHandle({
 
         const start = Math.min(sourceIndex, targetIndex)
         const end = Math.max(sourceIndex, targetIndex)
-        const updates: FacConfirmRow[] = []
-
         ids.slice(start, end + 1).forEach((id) => {
           if (id === drag.id) {
             return
@@ -327,14 +325,15 @@ export function useFacConfirmFillHandle({
             return
           }
 
-          updates.push(processRowUpdate({
+          const updatedRow = processRowUpdate({
             ...oldRow,
             [drag.field]: drag.value,
-          }, oldRow))
-        })
+          }, oldRow)
 
-        // DataGrid Community accepts one row per updateRows call.
-        updates.forEach((row) => apiRef.current?.updateRows([row]))
+          // Keep the grid and pending changes aligned if a later row fails.
+          // DataGrid Community accepts one row per updateRows call.
+          apiRef.current?.updateRows([updatedRow])
+        })
       } else if (drag.direction === 'horizontal' && targetFieldRef.current) {
         const fields = getHorizontalRange(drag.field, targetFieldRef.current)
         let updatedRow = apiRef.current?.getRow(drag.id) as FacConfirmRow | null
