@@ -31,11 +31,6 @@ export function FacConfirmDateTimeEditCell(
         api,
     } = params
 
-
-    // =========================================================
-    // PICKER STATE
-    // =========================================================
-
     const [open, setOpen] =
         useState(true)
 
@@ -50,46 +45,33 @@ export function FacConfirmDateTimeEditCell(
                 }
             }
 
-            // Cell chưa có giá trị
-            // -> mặc định thời gian hiện tại
             return dayjs()
                 .second(0)
                 .millisecond(0)
         })
 
 
-    // =========================================================
-    // CHANGE
-    // =========================================================
-
     async function handleChange(
         nextValue: Dayjs | null,
     ) {
-        if (!nextValue) {
+        if (
+            !nextValue
+            || !nextValue.isValid()
+        ) {
             return
         }
 
         setPickerValue(nextValue)
 
-        if (!nextValue.isValid()) {
-            return
-        }
-
         await api.setEditCellValue({
             id,
             field,
-
-            value:
-                nextValue.format(
-                    'YYYY-MM-DDTHH:mm:ss',
-                )
+            value: nextValue.format(
+                'YYYY-MM-DDTHH:mm:ss',
+            ),
         })
     }
 
-
-    // =========================================================
-    // ACCEPT
-    // =========================================================
 
     async function handleAccept(
         nextValue: Dayjs | null,
@@ -119,40 +101,33 @@ export function FacConfirmDateTimeEditCell(
     }
 
 
-    // =========================================================
-    // RENDER
-    // =========================================================
-
     return (
         <DateTimePicker
-
             open={open}
 
             value={pickerValue}
-
-            onOpen={() =>
-                setOpen(true)
-            }
-
-            onClose={() =>
-                setOpen(false)
-            }
-
-            onChange={
-                handleChange
-            }
-
-            onAccept={(nextValue) => {
-                void handleAccept(
-                    nextValue,
-                )
-            }}
 
             ampm={false}
 
             format="DD/MM/YYYY HH:mm"
 
             minutesStep={1}
+
+            onOpen={() => {
+                setOpen(true)
+            }}
+
+            onClose={() => {
+                setOpen(false)
+            }}
+
+            onChange={(nextValue) => {
+                void handleChange(nextValue)
+            }}
+
+            onAccept={(nextValue) => {
+                void handleAccept(nextValue)
+            }}
 
             slotProps={{
                 textField: {
@@ -161,6 +136,18 @@ export function FacConfirmDateTimeEditCell(
                     size: 'small',
 
                     fullWidth: true,
+
+                    onClick: (event) => {
+                        event.stopPropagation()
+                    },
+
+                    onDoubleClick: (event) => {
+                        event.stopPropagation()
+                    },
+
+                    onKeyDown: (event) => {
+                        event.stopPropagation()
+                    },
 
                     sx: {
                         height: '100%',

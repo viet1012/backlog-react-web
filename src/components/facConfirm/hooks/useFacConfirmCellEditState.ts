@@ -187,21 +187,67 @@ export function useFacConfirmCellEditState({
       }
 
       const value = row[field]
+
       const hasValue =
         value != null
         && String(value).trim() !== ''
 
-      return !hasValue
-        || confirmedCells.has(
+      // =========================================
+      // 1. Cell rỗng
+      // => cho nhập
+      // =========================================
+      if (!hasValue) {
+        return true
+      }
+
+      // =========================================
+      // 2. Cell từ /confirmed-processes
+      // => đã Fac Confirm
+      // => cho sửa lại
+      // =========================================
+      const confirmedCell =
+        confirmedCells.has(
           getConfirmedCellKey(
             row.aufnr,
             field,
           ),
         )
+
+      if (confirmedCell) {
+        return true
+      }
+
+      // =========================================
+      // 3. Cell đang pending
+      // => user vừa nhập nhưng chưa Confirm Changes
+      // => PHẢI cho sửa tiếp
+      // =========================================
+      const pendingCell =
+        pendingMap.has(
+          getCellKey(
+            row,
+            field,
+          ),
+        )
+
+      if (pendingCell) {
+        return true
+      }
+
+      // =========================================
+      // 4. Có value nhưng:
+      // - không confirmed
+      // - không pending
+      //
+      // => value từ Backlog_Main
+      // => LOCK
+      // =========================================
+      return false
     },
     [
       activeProcess,
       confirmedCells,
+      pendingMap,
     ],
   )
 
