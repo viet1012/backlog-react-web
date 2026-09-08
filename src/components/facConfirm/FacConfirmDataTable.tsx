@@ -720,22 +720,41 @@ export function FacConfirmDataTable({
 
             ...editedCellStyles,
 
+
+
             '& .MuiDataGrid-cell.fac-confirm-fill-source': {
+              position: 'relative',
               overflow: 'visible',
+
+              boxShadow:
+                `inset 0 0 0 1.5px ${theme.palette.primary.main}`,
             },
 
             '& .MuiDataGrid-cell.fac-confirm-fill-source::after': {
               content: '""',
+
               position: 'absolute',
-              right: -1,
-              bottom: -1,
-              width: 7,
-              height: 7,
+
+              right: -4,
+              bottom: -4,
+
+              width: 8,
+              height: 8,
+
               boxSizing: 'border-box',
-              border: `1px solid ${theme.palette.background.paper}`,
-              backgroundColor: theme.palette.primary.main,
+
+              backgroundColor:
+                theme.palette.primary.main,
+
+              border: `1.5px solid ${theme.palette.background.paper}`,
+
+              borderRadius: '1px',
+
               cursor: 'crosshair',
-              zIndex: 2,
+
+              zIndex: 10,
+
+              pointerEvents: 'auto',
             },
 
             '& .MuiDataGrid-cell--editing.fac-confirm-fill-source::after': {

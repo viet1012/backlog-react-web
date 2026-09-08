@@ -1,5 +1,3 @@
-
-
 interface FacConfirmDateTimeParts {
   year: string
   month: string
@@ -393,17 +391,18 @@ export function formatFacConfirmDateTime(
       )
 
 
+    // DISPLAY:
+    // MM/DD/YYYY HH:mm
     return (
-      `${parts.day}/${parts.month}/${parts.year}`
+      `${parts.month}/${parts.day}/${parts.year}`
       + ` ${parts.hour}:${parts.minute}`
     )
 
   } catch {
 
-    // IMPORTANT:
     // Formatter không throw.
-    // Nếu user đang gõ invalid/transient input,
-    // trả lại text để DataGrid không crash.
+    // Nếu value đang invalid/transient
+    // thì giữ nguyên text.
     return text
   }
 }

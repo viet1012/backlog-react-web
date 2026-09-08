@@ -26,7 +26,6 @@ import {
 import {
   dataGridHeaderSx,
 } from '../../../theme/dataGridHeaderStyles'
-import { DinoNoRowsOverlay } from '../DinoNoRowsOverlay'
 import { FactoryNoRowsOverlay } from '../FactoryNoRowsOverlay'
 
 

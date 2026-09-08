@@ -10,10 +10,35 @@ import type {
 import {
     ExcelFilterHeader,
 } from '../common/dataGrid/ExcelFilterHeader'
-import { FAC_CONFIRM_PROCESS_CONFIG } from '../../config/facConfirmProcessConfig'
-import { formatFacConfirmDateTime } from '../../utils/facConfirmDateTime'
-import { Box } from '@mui/material'
 
+import {
+    FAC_CONFIRM_PROCESS_CONFIG,
+} from '../../config/facConfirmProcessConfig'
+
+import {
+    formatFacConfirmDateTime,
+} from '../../utils/facConfirmDateTime'
+
+import {
+    Box,
+} from '@mui/material'
+
+import {
+    FacConfirmDateTimeEditCell,
+} from './FacConfirmDateTimeEditCell'
+
+
+function renderDateTimeEditCell(
+    params: Parameters<
+        typeof FacConfirmDateTimeEditCell
+    >[0],
+) {
+    return (
+        <FacConfirmDateTimeEditCell
+            {...params}
+        />
+    )
+}
 
 const facConfirmColumnDefinitions:
     GridColDef<FacConfirmRow>[] = [
@@ -128,12 +153,16 @@ const facConfirmColumnDefinitions:
             headerName: 'To Drill',
             width: 165,
             valueFormatter: (value) => formatFacConfirmDateTime(value),
+            renderEditCell:
+                renderDateTimeEditCell,
         },
         {
             field: 'toHeat',
             headerName: 'To Heat',
             width: 165,
             valueFormatter: (value) => formatFacConfirmDateTime(value),
+            renderEditCell:
+                renderDateTimeEditCell,
         },
         {
             field: 'heatStart',
@@ -168,6 +197,8 @@ const facConfirmColumnDefinitions:
                     params.value,
                 )
             },
+            renderEditCell:
+                renderDateTimeEditCell,
         },
         {
             field: 'heatFinish',
@@ -202,12 +233,16 @@ const facConfirmColumnDefinitions:
                     params.value,
                 )
             },
+            renderEditCell:
+                renderDateTimeEditCell,
         },
         {
             field: 'toPk',
             headerName: 'To PK',
             width: 165,
             valueFormatter: (value) => formatFacConfirmDateTime(value),
+            renderEditCell:
+                renderDateTimeEditCell,
         },
     ]
 

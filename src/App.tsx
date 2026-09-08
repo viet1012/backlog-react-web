@@ -43,6 +43,13 @@ import {
   type ThemeMode,
 } from './utils/uiPreferences'
 
+import {
+  LocalizationProvider,
+} from '@mui/x-date-pickers/LocalizationProvider'
+
+import {
+  AdapterDayjs,
+} from '@mui/x-date-pickers/AdapterDayjs'
 const DEFAULT_THEME_MODE:
   ThemeMode =
   'light'
@@ -81,140 +88,178 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
 
-      <CssBaseline />
+      <LocalizationProvider
+        dateAdapter={AdapterDayjs}
+      >
 
-      <BrowserRouter>
+        <CssBaseline />
 
-        <Routes>
+        <BrowserRouter>
 
-          <Route
-            element={<MainLayout />}
-          >
+          <Routes>
 
-            {/* =========================
+            <Route
+              element={<MainLayout />}
+            >
+
+              {/* =========================
                 DEFAULT
             ========================= */}
 
-            <Route
-              index
-              element={
-                <Navigate
-                  to="/backlog"
-                  replace
-                />
-              }
-            />
+              <Route
+                index
+                element={
+                  <Navigate
+                    to="/backlog"
+                    replace
+                  />
+                }
+              />
 
-            {/* =========================
+              {/* =========================
                 PRODUCTION
             ========================= */}
 
-            <Route path="sph" element={<SphPage />} />
-            <Route path="asakai" element={<AsakaiPage />} />
-            <Route path="cost-monitoring" element={<CostMonitoringPage />} />
-            <Route
-              path="pc-training"
-              element={
-                <PcTrainingPage
-                  mode={mode}
-                  onToggleMode={toggleThemeMode}
-                />
-              }
-            />
+              <Route
+                path="sph"
+                element={<SphPage />}
+              />
 
-            {/* =========================
+              <Route
+                path="asakai"
+                element={<AsakaiPage />}
+              />
+
+              <Route
+                path="cost-monitoring"
+                element={<CostMonitoringPage />}
+              />
+
+              <Route
+                path="pc-training"
+                element={
+                  <PcTrainingPage
+                    mode={mode}
+                    onToggleMode={toggleThemeMode}
+                  />
+                }
+              />
+
+              {/* =========================
                 PLANNING
             ========================= */}
 
-            <Route
-              path="backlog"
-              element={
-                <BacklogPage
-                  mode={mode}
-                  onToggleMode={
-                    toggleThemeMode
-                  }
-                />
-              }
-            />
+              <Route
+                path="backlog"
+                element={
+                  <BacklogPage
+                    mode={mode}
+                    onToggleMode={
+                      toggleThemeMode
+                    }
+                  />
+                }
+              />
 
-            <Route
-              path="odbf"
-              element={
-                <OdbfPage
-                  mode={mode}
-                  onToggleMode={toggleThemeMode}
-                />
-              }
-            />
+              <Route
+                path="odbf"
+                element={
+                  <OdbfPage
+                    mode={mode}
+                    onToggleMode={toggleThemeMode}
+                  />
+                }
+              />
 
-            <Route
-              path="fac-confirm"
-              element={
-                <FacConfirmPage
-                  mode={mode}
-                  onToggleMode={toggleThemeMode}
-                />
-              }
-            />
+              <Route
+                path="fac-confirm"
+                element={
+                  <FacConfirmPage
+                    mode={mode}
+                    onToggleMode={toggleThemeMode}
+                  />
+                }
+              />
 
-            <Route
-              path="export-list"
-              element={<ExportListPage />}
-            />
+              <Route
+                path="export-list"
+                element={<ExportListPage />}
+              />
 
-            <Route path="packing-list" element={<PackingListPage />} />
+              <Route
+                path="packing-list"
+                element={<PackingListPage />}
+              />
 
-            <Route
-              path="sales-status"
-              element={<SalesStatusPage />}
-            />
+              <Route
+                path="sales-status"
+                element={<SalesStatusPage />}
+              />
 
-
-            {/* =========================
+              {/* =========================
                 SHIPPING SCHEDULE
             ========================= */}
 
-            <Route
-              path="shipping-schedule"
-              element={
-                <ShipmentPage
-                  mode={mode}
-                  onToggleMode={toggleThemeMode}
-                />
-              }
-            />
+              <Route
+                path="shipping-schedule"
+                element={
+                  <ShipmentPage
+                    mode={mode}
+                    onToggleMode={toggleThemeMode}
+                  />
+                }
+              />
 
-            {/* =========================
+              {/* =========================
                 MANAGEMENT
             ========================= */}
 
-            <Route path="bosb" element={<BosbPage />} />
-            <Route path="deadstock" element={<DeadstockPage />} />
-            <Route path="pl" element={<PlPage />} />
-            <Route path="kpi" element={<KpiPage />} />
-            <Route path="ot" element={<OtPage />} />
+              <Route
+                path="bosb"
+                element={<BosbPage />}
+              />
 
+              <Route
+                path="deadstock"
+                element={<DeadstockPage />}
+              />
 
-            {/* =========================
+              <Route
+                path="pl"
+                element={<PlPage />}
+              />
+
+              <Route
+                path="kpi"
+                element={<KpiPage />}
+              />
+
+              <Route
+                path="ot"
+                element={<OtPage />}
+              />
+
+              {/* =========================
                 FALLBACK
             ========================= */}
 
-            <Route
-              path="*"
-              element={
-                <Navigate
-                  to="/backlog"
-                  replace
-                />
-              }
-            />
+              <Route
+                path="*"
+                element={
+                  <Navigate
+                    to="/backlog"
+                    replace
+                  />
+                }
+              />
 
-          </Route>
+            </Route>
 
-        </Routes>
+          </Routes>
 
-      </BrowserRouter>
+        </BrowserRouter>
+
+      </LocalizationProvider>
 
     </ThemeProvider>
   )

@@ -624,7 +624,7 @@ export function LeftSidebar() {
                               <ListItemIcon
                                 sx={{
                                   minWidth:
-                                    32,
+                                    26,
 
                                   justifyContent:
                                     'center',
@@ -657,17 +657,17 @@ export function LeftSidebar() {
                                 sx={{
                                   position: 'absolute',
 
-                                  left: 42,
+                                  left: 34,
 
                                   right:
                                     isReady && (
                                       item.pic
                                       || actionIndicator
                                     )
-                                      ? 78
+                                      ? 72
                                       : statusIndicator
-                                        ? 58
-                                        : 8,
+                                        ? 54
+                                        : 6,
                                   opacity:
                                     collapsed
                                       ? 0
