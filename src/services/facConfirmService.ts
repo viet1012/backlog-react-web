@@ -3,25 +3,19 @@ import {
 } from '../config/api'
 
 import type {
-    FacConfirmClassify,
     FacConfirmPageResponse,
-    FacConfirmProcessGroup,
     FacConfirmProcessGroupSummary,
     FacConfirmFilterOptionsRequest,
     FacConfirmSearchRequest,
     FacConfirmProcessTimeRequest,
     FacConfirmProcessTimeResponse,
     FacConfirmConfirmedProcess,
+    FacConfirmDataScope,
 } from '../types/facConfirm'
 
 
-export interface FacConfirmParams {
-    div: string
-    expD: string
-    procGrp: FacConfirmProcessGroup
-
-    classify?: FacConfirmClassify
-
+export interface FacConfirmParams
+    extends FacConfirmDataScope {
     page: number
     size: number
 }
@@ -40,6 +34,7 @@ export async function getFacConfirm(
         div: params.div,
         expD: params.expD,
         procGrp: params.procGrp,
+        heatType: params.heatType,
         page: String(params.page),
         size: String(params.size),
     })

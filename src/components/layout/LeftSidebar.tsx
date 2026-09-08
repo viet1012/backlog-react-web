@@ -14,9 +14,11 @@ import {
   ChevronLeftRounded,
   ChevronRightRounded,
   ConstructionRounded,
+  EditOutlined,
   ExpandMoreRounded,
   FactoryOutlined,
   ScheduleRounded,
+  VisibilityOutlined,
 } from '@mui/icons-material'
 
 import {
@@ -46,6 +48,7 @@ import {
   iconTransition,
   labelTransition,
 } from './sidebarStyles'
+import { alpha } from '@mui/material/styles'
 
 
 // =========================================================
@@ -601,6 +604,18 @@ export function LeftSidebar() {
                                 }
                                 : null
 
+                          const actionIndicator =
+                            item.action === 'input'
+                              ? {
+                                icon: <EditOutlined />,
+                                label: 'Input',
+                              }
+                              : item.action === 'view'
+                                ? {
+                                  icon: <VisibilityOutlined />,
+                                  label: 'View',
+                                }
+                                : null
                           const menuContent = (
                             <>
 
@@ -636,33 +651,29 @@ export function LeftSidebar() {
                               {/* LABEL */}
 
                               <ListItemText
-                                aria-hidden={
-                                  collapsed
-                                }
-
-                                primary={
-                                  item.label
-                                }
+                                aria-hidden={collapsed}
+                                primary={item.label}
 
                                 sx={{
-                                  position:
-                                    'absolute',
+                                  position: 'absolute',
 
-                                  left:
-                                    42,
+                                  left: 42,
 
                                   right:
-                                    statusIndicator
-                                      ? 82
-                                      : 8,
-
+                                    isReady && (
+                                      item.pic
+                                      || actionIndicator
+                                    )
+                                      ? 78
+                                      : statusIndicator
+                                        ? 58
+                                        : 8,
                                   opacity:
                                     collapsed
                                       ? 0
                                       : 1,
 
-                                  overflow:
-                                    'hidden',
+                                  overflow: 'hidden',
 
                                   pointerEvents:
                                     collapsed
@@ -680,19 +691,21 @@ export function LeftSidebar() {
 
                                 slotProps={{
                                   primary: {
-                                    noWrap:
-                                      true,
+                                    noWrap: true,
 
                                     sx: {
-                                      fontSize:
-                                        uiTokens
-                                          .sidebar
-                                          .menuFontSize,
+                                      fontSize: 11.5,
 
                                       fontWeight:
                                         active
                                           ? 700
                                           : 500,
+
+                                      overflow: 'hidden',
+
+                                      textOverflow: 'ellipsis',
+
+                                      whiteSpace: 'nowrap',
                                     },
                                   },
                                 }}
@@ -701,19 +714,39 @@ export function LeftSidebar() {
                               {statusIndicator && (
                                 <Box
                                   aria-hidden="true"
+
                                   sx={{
                                     position: 'absolute',
-                                    right: collapsed ? 5 : 8,
-                                    top: collapsed ? 5 : '50%',
+
+                                    right:
+                                      collapsed
+                                        ? 5
+                                        : 6,
+
+                                    top:
+                                      collapsed
+                                        ? 5
+                                        : '50%',
+
                                     display: 'flex',
+
                                     alignItems: 'center',
-                                    gap: 0.35,
-                                    color: statusIndicator.color,
-                                    transform: collapsed
-                                      ? 'none'
-                                      : 'translateY(-50%)',
+
+                                    gap: 0.2,
+
+                                    color:
+                                      statusIndicator.color,
+
+                                    transform:
+                                      collapsed
+                                        ? 'none'
+                                        : 'translateY(-50%)',
+
                                     '& svg': {
-                                      fontSize: collapsed ? 9 : 12,
+                                      fontSize:
+                                        collapsed
+                                          ? 9
+                                          : 10,
                                     },
                                   }}
                                 >
@@ -722,8 +755,9 @@ export function LeftSidebar() {
                                   {!collapsed && (
                                     <Typography
                                       component="span"
+
                                       sx={{
-                                        fontSize: 8.5,
+                                        fontSize: 7.5,
                                         fontWeight: 700,
                                         lineHeight: 1,
                                         whiteSpace: 'nowrap',
@@ -731,6 +765,76 @@ export function LeftSidebar() {
                                     >
                                       {statusIndicator.label}
                                     </Typography>
+                                  )}
+                                </Box>
+                              )}
+
+                              {!collapsed && isReady && (
+                                <Box
+                                  sx={{
+                                    position: 'absolute',
+                                    right: 8,
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 0.55,
+
+                                    color: 'text.secondary',
+                                  }}
+                                >
+                                  {item.pic && (
+                                    <Typography
+                                      component="span"
+                                      sx={(theme) => ({
+                                        fontSize: 10,
+                                        fontWeight: 700,
+                                        lineHeight: 1,
+                                        whiteSpace: 'nowrap',
+
+                                        px: 0.55,
+                                        py: 0.3,
+
+                                        borderRadius: 0.7,
+
+                                        color: 'primary.main',
+
+                                        bgcolor: alpha(
+                                          theme.palette.primary.main,
+                                          0.06,
+                                        ),
+
+                                        border: '1px solid',
+
+                                        borderColor: alpha(
+                                          theme.palette.primary.main,
+                                          0.12,
+                                        ),
+                                      })}
+                                    >
+                                      {item.pic}
+                                    </Typography>
+                                  )}
+
+                                  {actionIndicator && (
+                                    <Tooltip
+                                      title={actionIndicator.label}
+                                      placement="right"
+                                    >
+                                      <Box
+                                        sx={{
+                                          display: 'grid',
+                                          placeItems: 'center',
+
+                                          '& svg': {
+                                            fontSize: 16,
+                                          },
+                                        }}
+                                      >
+                                        {actionIndicator.icon}
+                                      </Box>
+                                    </Tooltip>
                                   )}
                                 </Box>
                               )}

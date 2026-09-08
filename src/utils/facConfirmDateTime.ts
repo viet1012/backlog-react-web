@@ -463,7 +463,6 @@ export function validateHeatFinish(
     )
 
   let baseDate: Date
-  let sourceLabel: string
 
   // =======================================================
   // CÓ HEAT START
@@ -483,7 +482,6 @@ export function validateHeatFinish(
         startParts,
       )
 
-    sourceLabel = 'Heat Start'
   }
 
   // =======================================================
@@ -499,7 +497,6 @@ export function validateHeatFinish(
       0,
     )
 
-    sourceLabel = 'current time'
   }
 
   const minimumFinish =

@@ -27,6 +27,7 @@ import {
   dataGridHeaderSx,
 } from '../../../theme/dataGridHeaderStyles'
 import { DinoNoRowsOverlay } from '../DinoNoRowsOverlay'
+import { FactoryNoRowsOverlay } from '../FactoryNoRowsOverlay'
 
 
 export interface ReusableDataGridProps<
@@ -333,7 +334,7 @@ export function ReusableDataGrid<
         toolbar,
         columnMenu,
         noRowsOverlay:
-          DinoNoRowsOverlay,
+          FactoryNoRowsOverlay,
       }}
 
       showToolbar={

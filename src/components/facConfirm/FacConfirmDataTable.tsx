@@ -59,6 +59,7 @@ import type {
   FacConfirmClassify,
   FacConfirmConfirmedProcess,
   FacConfirmFilterItem,
+  FacConfirmHeatType,
   FacConfirmProcessGroup,
   FacConfirmRow,
 } from '../../types/facConfirm'
@@ -95,6 +96,7 @@ interface FacConfirmDataTableProps {
 
   procGrp: FacConfirmProcessGroup
   classify?: FacConfirmClassify
+  heatType: FacConfirmHeatType
 
   highlightProcGrp:
   FacConfirmProcessGroup | null
@@ -140,7 +142,6 @@ interface FacConfirmDataTableProps {
   onSaved?:
   () => void
 }
-
 // =========================================================
 // TOOLBAR
 // =========================================================
@@ -202,7 +203,6 @@ function FacConfirmToolbar({
 // =========================================================
 
 export function FacConfirmDataTable({
-
   rows,
   confirmedProcesses,
   loading,
@@ -212,37 +212,23 @@ export function FacConfirmDataTable({
 
   procGrp,
   classify,
+  heatType,
 
   highlightProcGrp,
-
   excelFilters,
-
   paginationModel,
-
   rowCount,
-
   sortModel,
-
   columnVisibilityModel,
-
   columnOrder,
-
   columnWidths,
-
   onExcelFiltersChange,
-
   onPaginationChange,
-
   onSortChange,
-
   onColumnVisibilityModelChange,
-
   onColumnOrderChange,
-
   onColumnWidthChange,
-
   onSaved,
-
 }: FacConfirmDataTableProps) {
 
   // =======================================================
@@ -280,23 +266,17 @@ export function FacConfirmDataTable({
   const loadOptions =
     useCallback(
       (
-        request:
-          ExcelFilterOptionsRequest,
-
-        signal?:
-          AbortSignal,
+        request: ExcelFilterOptionsRequest,
+        signal?: AbortSignal,
       ) =>
         getFacConfirmFilterOptions(
           {
             ...request,
-
             div,
-
             expD,
-
             procGrp,
-
             classify,
+            heatType,
           },
           signal,
         ),
@@ -305,6 +285,7 @@ export function FacConfirmDataTable({
         expD,
         procGrp,
         classify,
+        heatType,
       ],
     )
 

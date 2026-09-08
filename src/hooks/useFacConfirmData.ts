@@ -18,25 +18,17 @@ import {
 } from '../config/facConfirmProcessConfig'
 
 import type {
-  FacConfirmClassify,
   FacConfirmConfirmedProcess,
+  FacConfirmDataScope,
   FacConfirmFilterItem,
-  FacConfirmProcessGroup,
   FacConfirmProcessGroupSummary,
   FacConfirmRow,
 } from '../types/facConfirm'
 
-interface UseFacConfirmDataParams {
-  div: string
-  expD: string
-
-  procGrp: FacConfirmProcessGroup
-
-  classify?: FacConfirmClassify
-
+interface UseFacConfirmDataParams
+  extends FacConfirmDataScope {
   page: number
   pageSize: number
-
   excelFilters: FacConfirmFilterItem[]
 }
 
@@ -108,6 +100,7 @@ export function useFacConfirmData({
   expD,
   procGrp,
   classify,
+  heatType,
   page,
   pageSize,
   excelFilters,
@@ -146,6 +139,7 @@ export function useFacConfirmData({
         expD,
         procGrp,
         classify,
+        heatType,
         page,
         size: pageSize,
       }
@@ -237,6 +231,7 @@ export function useFacConfirmData({
     div,
     excelFilters,
     expD,
+    heatType,
     page,
     pageSize,
     procGrp,

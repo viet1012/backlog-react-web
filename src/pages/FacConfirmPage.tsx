@@ -48,6 +48,7 @@ import {
 import type {
   FacConfirmClassify,
   FacConfirmFilterItem,
+  FacConfirmHeatType,
   FacConfirmProcessGroup,
 } from '../types/facConfirm'
 
@@ -171,7 +172,12 @@ export function FacConfirmPage({
       ? classify[0]
       : undefined
 
-
+  const [
+    heatType,
+    setHeatType,
+  ] = useState<FacConfirmHeatType>(
+    'All',
+  )
   // =========================================================
   // DATA
   // =========================================================
@@ -194,6 +200,8 @@ export function FacConfirmPage({
 
     classify:
       apiClassify,
+
+    heatType,
 
     page:
       paginationModel.page,
@@ -344,7 +352,23 @@ export function FacConfirmPage({
       ],
     )
 
+  const handleHeatTypeChange =
+    useCallback(
+      (
+        value: FacConfirmHeatType,
+      ) => {
+        setHeatType(value)
 
+        // Filter cũ có thể không còn đúng
+        // với tập dữ liệu Heat mới.
+        setExcelFilters([])
+
+        resetPage()
+      },
+      [
+        resetPage,
+      ],
+    )
   // =========================================================
   // PAGINATION
   // =========================================================
@@ -467,44 +491,24 @@ export function FacConfirmPage({
 
 
       <FacConfirmFilterBar
-        div={
-          div
-        }
+        div={div}
+        expD={expD}
+        procGrp={procGrp}
+        classify={classify}
+        heatType={heatType}
+        processGroups={processGroups}
+        loading={loading}
 
-        expD={
-          expD
-        }
-
-        procGrp={
-          procGrp
-        }
-
-        classify={
-          classify
-        }
-
-        processGroups={
-          processGroups
-        }
-
-        loading={
-          loading
-        }
-
-        onDivChange={
-          handleDivChange
-        }
-
-        onDateChange={
-          handleDateChange
-        }
-
+        onDivChange={handleDivChange}
+        onDateChange={handleDateChange}
         onProcessGroupChange={
           handleProcessGroupChange
         }
-
         onClassifyChange={
           handleClassifyChange
+        }
+        onHeatTypeChange={
+          handleHeatTypeChange
         }
       />
 
@@ -528,99 +532,52 @@ export function FacConfirmPage({
         }}
       >
         <FacConfirmDataTable
-          rows={
-            rows
-          }
+          rows={rows}
+          confirmedProcesses={confirmedProcesses}
+          loading={loading}
 
-          confirmedProcesses={
-            confirmedProcesses
-          }
+          div={div}
+          expD={expD}
 
-          loading={
-            loading
-          }
+          procGrp={procGrp}
+          classify={apiClassify}
+          heatType={heatType}
 
-          div={
-            div
-          }
-
-          expD={
-            expD
-          }
-
-          procGrp={
-            procGrp
-          }
-
-          classify={
-            apiClassify
-          }
-
-          highlightProcGrp={
-            highlightProcGrp
-          }
-
-          excelFilters={
-            excelFilters
-          }
-
-          paginationModel={
-            paginationModel
-          }
-
-          rowCount={
-            totalElements
-          }
-
-          sortModel={
-            sortModel
-          }
+          highlightProcGrp={highlightProcGrp}
+          excelFilters={excelFilters}
+          paginationModel={paginationModel}
+          rowCount={totalElements}
+          sortModel={sortModel}
 
           columnVisibilityModel={
-            preferences
-              .columnVisibilityModel
+            preferences.columnVisibilityModel
           }
-
           columnOrder={
-            preferences
-              .columnOrder
+            preferences.columnOrder
           }
-
           columnWidths={
-            preferences
-              .columnWidths
+            preferences.columnWidths
           }
 
           onExcelFiltersChange={
             handleExcelFiltersChange
           }
-
           onPaginationChange={
             handlePaginationChange
           }
-
           onSortChange={
             handleSortChange
           }
-
           onColumnVisibilityModelChange={
-            preferences
-              .setColumnVisibilityModel
+            preferences.setColumnVisibilityModel
           }
-
           onColumnOrderChange={
-            preferences
-              .setColumnOrder
+            preferences.setColumnOrder
           }
-
           onColumnWidthChange={
-            preferences
-              .setColumnWidth
+            preferences.setColumnWidth
           }
-
-          onSaved={
-            handleRefresh
-          }
+          onSaved={handleRefresh}
         />
       </Box>
 

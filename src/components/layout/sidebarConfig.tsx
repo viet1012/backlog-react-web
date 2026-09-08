@@ -17,7 +17,9 @@ import {
     Inventory2Outlined,
     ReceiptLongOutlined,
     SchoolOutlined,
-    SpaceDashboardOutlined,
+    FormatListBulletedRounded,
+    SummarizeOutlined,
+    PendingActionsOutlined,
 } from '@mui/icons-material'
 
 
@@ -50,7 +52,20 @@ export interface GroupAccent {
     glow: string
 }
 
+export type MenuItemAction =
+    | 'view'
+    | 'input'
 
+export interface MenuItemConfig {
+    label: string
+    path: string
+    icon: ReactNode
+    status?: MenuItemStatus
+    disabled?: boolean
+
+    pic?: string
+    action?: MenuItemAction
+}
 // =========================================================
 // MENU
 // =========================================================
@@ -110,34 +125,61 @@ export const menuGroups:
         // =====================================================
         // PLANNING
         // =====================================================
-
         {
             id: 'planning',
             label: 'PLANNING',
 
             items: [
                 {
-                    label: 'Backlog',
+                    label: 'Backlog Details',
                     path: '/backlog',
                     status: 'ready',
+                    pic: 'PC',
+                    action: 'view',
                     icon: (
-                        <SpaceDashboardOutlined />
+                        <FormatListBulletedRounded />
                     ),
                 },
 
                 {
-                    label: 'Fac Confirm',
+                    label: 'Backlog Summary',
+                    path: '/backlog-summary',
+                    status: 'todo',
+                    pic: 'PC',
+                    action: 'view',
+                    icon: (
+                        <SummarizeOutlined />
+                    ),
+                },
+
+                {
+                    label: 'Remain PO Control',
+                    path: '/remain-po-control',
+                    status: 'todo',
+                    pic: 'PC',
+                    action: 'view',
+                    icon: (
+                        <PendingActionsOutlined />
+                    ),
+                },
+
+                {
+                    label: 'Delivery Confirm',
                     path: '/fac-confirm',
                     status: 'ready',
+                    pic: 'Pro',
+                    action: 'input',
                     icon: (
                         <FactCheckOutlined />
                     ),
                 },
 
                 {
-                    label: 'ODBF',
+                    label: 'ODBF Simulation',
                     path: '/odbf',
                     status: 'ready',
+                    pic: 'PC/Pro',
+                    action: 'view',
                     icon: (
                         <Inventory2Outlined />
                     ),
@@ -147,6 +189,8 @@ export const menuGroups:
                     label: 'Export List',
                     path: '/export-list',
                     status: 'todo',
+                    pic: 'PC',
+                    action: 'view',
                     icon: (
                         <ReceiptLongOutlined />
                     ),
@@ -156,6 +200,8 @@ export const menuGroups:
                     label: 'Packing List',
                     path: '/packing-list',
                     status: 'todo',
+                    pic: 'Pro',
+                    action: 'input',
                     icon: (
                         <InventoryOutlined />
                     ),
@@ -165,13 +211,14 @@ export const menuGroups:
                     label: 'Shipping Schedule',
                     path: '/shipping-schedule',
                     status: 'ready',
+                    pic: 'PC/Pro',
+                    action: 'view',
                     icon: (
                         <EventNoteOutlined />
                     ),
                 },
             ],
         },
-
 
         // =====================================================
         // MANAGEMENT

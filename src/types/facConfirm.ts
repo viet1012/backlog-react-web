@@ -83,6 +83,23 @@ export type FacConfirmClassify =
     | 'Sale'
     | 'Stock'
 
+export type FacConfirmHeatType =
+    | 'All'
+    | 'Normal'
+    | 'DC53'
+    | 'TD'
+
+export interface FacConfirmDataScope {
+    div: string
+
+    expD: string
+
+    procGrp: FacConfirmProcessGroup
+
+    classify?: FacConfirmClassify
+
+    heatType: FacConfirmHeatType
+}
 
 export interface FacConfirmProcessGroupSummary {
     processGroup: FacConfirmProcessGroup
@@ -106,15 +123,8 @@ export interface FacConfirmFilterItem {
 }
 
 
-export interface FacConfirmSearchRequest {
-    div: string
-
-    expD: string
-
-    procGrp: FacConfirmProcessGroup
-
-    classify?: FacConfirmClassify
-
+export interface FacConfirmSearchRequest
+    extends FacConfirmDataScope {
     page: number
     size: number
 
@@ -124,18 +134,11 @@ export interface FacConfirmSearchRequest {
 }
 
 
-export interface FacConfirmFilterOptionsRequest {
+export interface FacConfirmFilterOptionsRequest
+    extends FacConfirmDataScope {
     field: string
 
     search?: string
-
-    div: string
-
-    expD: string
-
-    procGrp: FacConfirmProcessGroup
-
-    classify?: FacConfirmClassify
 
     filters: FacConfirmFilterItem[]
 
