@@ -35,9 +35,24 @@ interface Props {
 interface ValidatedCellChange {
   field: FacConfirmEditableField
   key: string
-  baselineValue: string | null
+  baseline: CellBaseline
   nextValue: string | null
 }
+
+interface CellBaseline {
+  rowId: string
+  aufnr: string
+  zglobalCode: string | null
+  field: FacConfirmEditableField
+  originalValue: string | null
+  normalizedValue: string | null
+}
+
+type FacConfirmRestoreRow = {
+  id: string
+  aufnr: string
+  zglobalCode: string | null
+} & Partial<Pick<FacConfirmRow, FacConfirmEditableField>>
 
 const editedCellClasses: Record<FacConfirmProcessGroup, string> = {
   Rough: 'fac-confirm-edited-rough',
@@ -50,9 +65,17 @@ function getCellKey(
   field: string,
 ): string {
   return [
+    getRowId(row),
+    field,
+  ].join('|')
+}
+
+function getRowId(
+  row: FacConfirmRow,
+): string {
+  return [
     row.aufnr,
     row.zglobalCode ?? '',
-    field,
   ].join('|')
 }
 
@@ -68,6 +91,19 @@ function valuesEqual(
   right: unknown,
 ): boolean {
   return String(left ?? '') === String(right ?? '')
+}
+
+function isEditableField(
+  activeProcess: FacConfirmProcessGroup | null,
+  field: string,
+): field is FacConfirmEditableField {
+  return activeProcess != null
+    && FAC_CONFIRM_PROCESS_CONFIG[
+      activeProcess
+    ].columns.some(
+      (editableField) =>
+        editableField === field,
+    )
 }
 
 function normalizeOptionalDateTime(
@@ -108,7 +144,7 @@ export function useFacConfirmCellEditState({
   confirmedProcesses,
 }: Props) {
   const baselineValuesRef = useRef(
-    new Map<string, string | null>(),
+    new Map<string, CellBaseline>(),
   )
 
   const [editedCells, setEditedCells] = useState(
@@ -118,6 +154,7 @@ export function useFacConfirmCellEditState({
   const [pendingMap, setPendingMap] = useState(
     () => new Map<string, FacConfirmProcessTimeChange>(),
   )
+
 
   const confirmedCells = useMemo(() => {
     const cells = new Map<string, FacConfirmProcessGroup>()
@@ -139,6 +176,34 @@ export function useFacConfirmCellEditState({
 
     return cells
   }, [confirmedProcesses])
+
+  const canEditCell = useCallback(
+    (
+      row: FacConfirmRow,
+      field: string,
+    ): boolean => {
+      if (!isEditableField(activeProcess, field)) {
+        return false
+      }
+
+      const value = row[field]
+      const hasValue =
+        value != null
+        && String(value).trim() !== ''
+
+      return !hasValue
+        || confirmedCells.has(
+          getConfirmedCellKey(
+            row.aufnr,
+            field,
+          ),
+        )
+    },
+    [
+      activeProcess,
+      confirmedCells,
+    ],
+  )
 
   const getCellClassName = useCallback(
     (params: GridCellParams<FacConfirmRow>): string => {
@@ -167,35 +232,44 @@ export function useFacConfirmCellEditState({
       oldRow: FacConfirmRow,
     ): FacConfirmRow => {
       if (!activeProcess) {
-        return newRow
+        return oldRow
       }
 
-      const changedFields = FAC_CONFIRM_PROCESS_CONFIG[
-        activeProcess
-      ].columns.filter((field) =>
-        !valuesEqual(oldRow[field], newRow[field]),
-      )
+      const changedFields =
+        FAC_CONFIRM_PROCESS_CONFIG[
+          activeProcess
+        ].columns.filter(
+          (field) =>
+            !valuesEqual(
+              oldRow[field],
+              newRow[field],
+            )
+            && canEditCell(oldRow, field),
+        )
 
       if (changedFields.length === 0) {
-        return newRow
+        return oldRow
       }
 
       // Validate every changed value before mutating local edit state.
       const validatedChanges = changedFields.map(
         (field): ValidatedCellChange => {
           const key = getCellKey(newRow, field)
-          const existingBaseline = baselineValuesRef.current.get(key)
-          const baselineValue =
-            baselineValuesRef.current.has(key)
-              ? existingBaseline ?? null
-              : normalizeOptionalDateTime(
-                oldRow[field],
-              )
+          const baseline = baselineValuesRef.current.get(key) ?? {
+            rowId: getRowId(oldRow),
+            aufnr: oldRow.aufnr,
+            zglobalCode: oldRow.zglobalCode,
+            field,
+            originalValue: oldRow[field],
+            normalizedValue: normalizeOptionalDateTime(
+              oldRow[field],
+            ),
+          }
 
           return {
             field,
             key,
-            baselineValue,
+            baseline,
 
             nextValue:
               normalizeOptionalDateTime(
@@ -208,12 +282,12 @@ export function useFacConfirmCellEditState({
       )
 
       validatedChanges.forEach((change) => {
-        if (change.nextValue === change.baselineValue) {
+        if (change.nextValue === change.baseline.normalizedValue) {
           baselineValuesRef.current.delete(change.key)
         } else {
           baselineValuesRef.current.set(
             change.key,
-            change.baselineValue,
+            change.baseline,
           )
         }
       })
@@ -224,7 +298,7 @@ export function useFacConfirmCellEditState({
         validatedChanges.forEach((change) => {
           if (
             change.nextValue == null
-            || change.nextValue === change.baselineValue
+            || change.nextValue === change.baseline.normalizedValue
           ) {
             next.delete(change.key)
           } else {
@@ -241,7 +315,7 @@ export function useFacConfirmCellEditState({
         validatedChanges.forEach((change) => {
           if (
             change.nextValue == null
-            || change.nextValue === change.baselineValue
+            || change.nextValue === change.baseline.normalizedValue
           ) {
             next.delete(change.key)
           } else {
@@ -258,13 +332,35 @@ export function useFacConfirmCellEditState({
 
       return newRow
     },
-    [activeProcess],
+    [
+      activeProcess,
+      canEditCell,
+    ],
   )
 
   const pendingChanges = useMemo(
     () => [...pendingMap.values()],
     [pendingMap],
   )
+
+  const getRestoreRows = useCallback((): FacConfirmRestoreRow[] => {
+    const restoreRows = new Map<string, FacConfirmRestoreRow>()
+
+    baselineValuesRef.current.forEach((baseline) => {
+      const currentRow = restoreRows.get(baseline.rowId) ?? {
+        id: baseline.rowId,
+        aufnr: baseline.aufnr,
+        zglobalCode: baseline.zglobalCode,
+      }
+
+      restoreRows.set(baseline.rowId, {
+        ...currentRow,
+        [baseline.field]: baseline.originalValue,
+      })
+    })
+
+    return [...restoreRows.values()]
+  }, [])
 
   const clearChanges = useCallback(() => {
     baselineValuesRef.current.clear()
@@ -274,16 +370,14 @@ export function useFacConfirmCellEditState({
 
   return {
     getCellClassName,
+    canEditCell,
     processRowUpdate,
     pendingChanges,
     hasChanges: pendingChanges.length > 0,
     changeCount: pendingChanges.length,
+    getRestoreRows,
     clearChanges,
   }
 
-  
+
 }
-
-
-
-

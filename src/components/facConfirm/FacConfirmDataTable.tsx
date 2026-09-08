@@ -12,13 +12,18 @@ import {
 import SaveRoundedIcon
   from '@mui/icons-material/SaveRounded'
 
+import UndoRoundedIcon
+  from '@mui/icons-material/UndoRounded'
+
 import {
+  GridCellModes,
   GridToolbarColumnsButton,
   GridToolbarContainer,
   type GridColumnVisibilityModel,
   type GridPaginationModel,
   type GridSortModel,
   useGridApiRef,
+  type GridCellParams,
 } from '@mui/x-data-grid'
 
 import {
@@ -151,6 +156,7 @@ interface FacConfirmToolbarProps {
   saving: boolean
   changeCount: number
   onConfirm: () => void
+  onCancelChanges: () => void
 }
 
 
@@ -159,6 +165,7 @@ function FacConfirmToolbar({
   saving,
   changeCount,
   onConfirm,
+  onCancelChanges,
 }: FacConfirmToolbarProps) {
 
   return (
@@ -177,18 +184,33 @@ function FacConfirmToolbar({
           0.5,
       }}
     >
-      <Box>
+      <Box
+        sx={{
+          display: 'flex',
+          gap: 0.75,
+        }}
+      >
         {hasChanges && (
-          <AppButton
-            appearance="action"
-            loading={saving}
-            icon={!saving ? <SaveRoundedIcon /> : undefined}
-            onClick={onConfirm}
-          >
-            {saving
-              ? 'Saving...'
-              : `Confirm Changes (${changeCount})`}
-          </AppButton>
+          <>
+            <AppButton
+              appearance="action"
+              loading={saving}
+              icon={!saving ? <SaveRoundedIcon /> : undefined}
+              onClick={onConfirm}
+            >
+              {saving
+                ? 'Saving...'
+                : `Confirm Changes (${changeCount})`}
+            </AppButton>
+
+            <AppButton
+              disabled={saving}
+              icon={<UndoRoundedIcon />}
+              onClick={onCancelChanges}
+            >
+              Cancel Changes
+            </AppButton>
+          </>
         )}
       </Box>
 
@@ -324,10 +346,12 @@ export function FacConfirmDataTable({
 
   const {
     getCellClassName,
+    canEditCell,
     processRowUpdate,
     pendingChanges,
     hasChanges,
     changeCount,
+    getRestoreRows,
     clearChanges,
   } = useFacConfirmCellEditState({
     activeProcess:
@@ -469,6 +493,95 @@ export function FacConfirmDataTable({
 
 
   // =======================================================
+  // ROW UPDATE ERROR
+  // =======================================================
+
+  const handleProcessRowUpdateError =
+    useCallback(
+      (
+        error: unknown,
+      ) => {
+
+        const api = apiRef.current
+
+        if (api && highlightProcGrp) {
+          const editableFields =
+            FAC_CONFIRM_PROCESS_CONFIG[
+              highlightProcGrp
+            ].columns
+
+          for (const id of api.getAllRowIds()) {
+            const editingField = editableFields.find(
+              (field) =>
+                api.getCellMode(id, field)
+                === GridCellModes.Edit,
+            )
+
+            if (editingField) {
+              api.stopCellEditMode({
+                id,
+                field: editingField,
+                ignoreModifications: true,
+              })
+
+              break
+            }
+          }
+        }
+
+        console.error(
+          'Fac Confirm row update failed:',
+          error,
+        )
+
+        setEditError(
+          error instanceof Error
+            ? error.message
+            : 'Invalid value.',
+        )
+      },
+      [
+        apiRef,
+        highlightProcGrp,
+      ],
+    )
+
+  const handleCancelChanges =
+    useCallback(
+      () => {
+        if (saving) {
+          return
+        }
+
+        try {
+          const api = apiRef.current
+
+          if (!api) {
+            return
+          }
+
+          const restoreRows = getRestoreRows()
+
+          // DataGrid Community accepts one row per updateRows call.
+          restoreRows.forEach((row) => {
+            api.updateRows([row])
+          })
+
+          clearChanges()
+        } catch (error) {
+          handleProcessRowUpdateError(error)
+        }
+      },
+      [
+        apiRef,
+        clearChanges,
+        getRestoreRows,
+        handleProcessRowUpdateError,
+        saving,
+      ],
+    )
+
+  // =======================================================
   // TOOLBAR WRAPPER
   // =======================================================
 
@@ -491,40 +604,33 @@ export function FacConfirmDataTable({
           onConfirm={
             handleOpenConfirm
           }
+
+          onCancelChanges={
+            handleCancelChanges
+          }
         />
       ),
       [
         hasChanges,
         saving,
         changeCount,
+        handleCancelChanges,
         handleOpenConfirm,
       ],
     )
 
-
-  // =======================================================
-  // ROW UPDATE ERROR
-  // =======================================================
-
-  const handleProcessRowUpdateError =
-    useCallback(
-      (
-        error: unknown,
-      ) => {
-
-        console.error(
-          'Fac Confirm row update failed:',
-          error,
-        )
-
-        setEditError(
-          error instanceof Error
-            ? error.message
-            : 'Invalid value.',
-        )
-      },
-      [],
-    )
+  const isCellEditable = useCallback(
+    (
+      params: GridCellParams<FacConfirmRow>,
+    ): boolean =>
+      canEditCell(
+        params.row,
+        params.field,
+      ),
+    [
+      canEditCell,
+    ],
+  )
 
   const {
     getFillClassName,
@@ -806,6 +912,8 @@ export function FacConfirmDataTable({
           columns={
             columns
           }
+
+          isCellEditable={isCellEditable}
 
           getRowId={(row) =>
             [

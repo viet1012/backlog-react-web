@@ -36,6 +36,7 @@ export interface ReusableDataGridProps<
 
   columns: GridColDef<T>[]
 
+  isCellEditable?: DataGridProps<T>['isCellEditable']
   getRowId: GridRowIdGetter<T>
 
   loading: boolean
@@ -152,6 +153,8 @@ export function ReusableDataGrid<
   sortingMode = 'server',
 
   getCellClassName,
+
+  isCellEditable,
 
   processRowUpdate,
 
@@ -315,6 +318,10 @@ export function ReusableDataGrid<
 
       getCellClassName={
         getCellClassName
+      }
+
+      isCellEditable={
+        isCellEditable
       }
 
       processRowUpdate={
