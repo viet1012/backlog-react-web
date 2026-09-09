@@ -992,7 +992,7 @@ export function BacklogPage({
         setFilters(
           (current) => ({
             ...current,
-            status: '',
+            status,
           }),
         )
 
