@@ -77,16 +77,26 @@ export interface ReportFilters {
   productionDate: string
 }
 
-export interface BacklogStatusSummaryItem {
-  status: string
+// =========================================================
+// BACKLOG STATUS SUMMARY
+// =========================================================
+
+export interface BacklogStatusSummaryCell {
+  date: string
   poCount: number
-  totalQty: number
+  qty: number
+}
+
+export interface BacklogStatusSummaryRow {
+  status: string
+  values: BacklogStatusSummaryCell[]
 }
 
 export interface BacklogStatusSummary {
   totalPoCount: number
   totalQty: number
-  statuses: BacklogStatusSummaryItem[]
+  dates: string[]
+  rows: BacklogStatusSummaryRow[]
 }
 
 // =========================================================

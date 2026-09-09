@@ -1,15 +1,28 @@
 import {
-  AccessTimeOutlined,
-  AssignmentOutlined,
-  LayersOutlined,
-  SettingsOutlined,
-} from '@mui/icons-material'
-import { Alert, Box, Card, CircularProgress, Typography } from '@mui/material'
-import { alpha, type Theme } from '@mui/material/styles'
-import type { SystemStyleObject } from '@mui/system'
-import type { ReactNode } from 'react'
-import type { BacklogStatusSummary } from '../../services/reportService'
-import { BACKLOG_STATUS_COLORS, normalizeBacklogStatus } from './backlogStatus'
+  Alert,
+  Box,
+  CircularProgress,
+  Typography,
+} from '@mui/material'
+
+import {
+  useEffect,
+  useMemo,
+  useRef,
+} from 'react'
+
+import { alpha } from '@mui/material/styles'
+
+import type {
+  BacklogStatusSummary,
+  BacklogStatusSummaryRow,
+} from '../../services/reportService'
+
+import {
+  BACKLOG_STATUS_COLORS,
+  normalizeBacklogStatus,
+} from './backlogStatus'
+
 
 interface BacklogSummaryProps {
   summary: BacklogStatusSummary | null
@@ -19,241 +32,148 @@ interface BacklogSummaryProps {
   onStatusClick: (status: string) => void
 }
 
-interface StatusConfig {
-  key: string
-  label: string
-  hint: string
-  icon: ReactNode
-  color: string
+// =========================================================
+// TODAY
+//
+// Local browser date:
+// 2026-09-09
+// =========================================================
+
+function getTodayKey(): string {
+
+  const now =
+    new Date()
+
+  const year =
+    now.getFullYear()
+
+  const month =
+    String(
+      now.getMonth() + 1,
+    ).padStart(
+      2,
+      '0',
+    )
+
+  const day =
+    String(
+      now.getDate(),
+    ).padStart(
+      2,
+      '0',
+    )
+
+  return `${year}-${month}-${day}`
 }
 
-// Each status gets its own identity instead of one accent stretched across
-// everything — the color itself communicates where an order sits in the flow.
-const STATUS_CONFIG: StatusConfig[] = [
-  {
-    key: 'NY PROCESS',
-    label: 'NY Process',
-    hint: 'Awaiting release',
-    icon: <AccessTimeOutlined />,
-    color: BACKLOG_STATUS_COLORS['NY PROCESS'],
-  },
-  {
-    key: 'NYI',
-    label: 'NYI',
-    hint: 'Not yet issued',
-    icon: <AccessTimeOutlined />,
-    color: BACKLOG_STATUS_COLORS.NYI,
-  },
-  {
-    key: 'WIP',
-    label: 'WIP',
-    hint: 'In production',
-    icon: <SettingsOutlined />,
-    color: BACKLOG_STATUS_COLORS.WIP,
-  },
-  {
-    key: 'WIP_FG',
-    label: 'WIP_FG',
-    hint: 'Finished goods',
-    icon: <LayersOutlined />,
-    color: BACKLOG_STATUS_COLORS.WIP_FG,
-  },
-]
+// =========================================================
+// STATUS COLOR
+// =========================================================
 
-const TOTAL_COLOR = '#1e293b'
+function getStatusColor(
+  status: string,
+): string {
 
+  const key =
+    normalizeBacklogStatus(
+      status,
+    )
 
-
-function formatMetric(value: number | undefined, unavailable: boolean) {
-  return unavailable ? '—' : (value ?? 0).toLocaleString()
+  return (
+    BACKLOG_STATUS_COLORS[
+    key as keyof typeof BACKLOG_STATUS_COLORS
+    ]
+    ?? '#64748b'
+  )
 }
 
-function getCardSx(theme: Theme, color: string, active: boolean): SystemStyleObject<Theme> {
-  const dark = theme.palette.mode === 'dark'
-  return {
-    position: 'relative',
-    border: `1px solid ${active ? alpha(color, dark ? 0.55 : 0.4) : dark ? alpha('#ffffff', 0.08) : alpha('#0f172a', 0.08)}`,
-    bgcolor: active
-      ? alpha(color, dark ? 0.14 : 0.055)
-      : dark ? '#161c2c' : '#ffffff',
-    borderRadius: 2,
-    boxShadow: active
-      ? `0 1px 0 ${alpha(color, 0.9)} inset, 0 4px 16px ${alpha(color, dark ? 0.18 : 0.12)}`
-      : dark ? '0 1px 2px rgba(0,0,0,0.24)' : '0 1px 2px rgba(15,23,42,0.05)',
-    transition: 'border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease, transform 150ms ease',
+
+// =========================================================
+// DATE HEADER
+//
+// 2026-09-04 -> 4-Sep
+// =========================================================
+
+function formatDateHeader(
+  value: string,
+): string {
+
+  const parts =
+    value.split('-')
+
+  if (parts.length !== 3) {
+    return value
   }
+
+  const year =
+    Number(parts[0])
+
+  const month =
+    Number(parts[1])
+
+  const day =
+    Number(parts[2])
+
+  if (
+    !Number.isFinite(year)
+    || !Number.isFinite(month)
+    || !Number.isFinite(day)
+  ) {
+    return value
+  }
+
+  const date =
+    new Date(
+      year,
+      month - 1,
+      day,
+    )
+
+  const monthLabel =
+    date.toLocaleString(
+      'en-US',
+      {
+        month: 'short',
+      },
+    )
+
+  return `${day}-${monthLabel}`
 }
 
-function SummaryIcon({ children, color }: { children: ReactNode; color: string }) {
+
+// =========================================================
+// NUMBER
+// =========================================================
+
+function formatNumber(
+  value: number | null | undefined,
+): string {
+
   return (
-    <Box
-      sx={(theme) => ({
-        width: 30,
-        height: 30,
-        display: 'grid',
-        placeItems: 'center',
-        borderRadius: 1.5,
-        color,
-        bgcolor: alpha(color, theme.palette.mode === 'dark' ? 0.18 : 0.1),
-        flexShrink: 0,
-        '& svg': { fontSize: 17 },
-      })}
-    >
-      {children}
-    </Box>
+    value ?? 0
+  ).toLocaleString()
+}
+
+
+// =========================================================
+// FIND CELL
+// =========================================================
+
+function getCell(
+  row: BacklogStatusSummaryRow,
+  date: string,
+) {
+
+  return row.values.find(
+    (value) =>
+      value.date === date,
   )
 }
 
-function SummaryMetric({ value, unit, unavailable, color, compact = false }: {
-  value: number | undefined
-  unit: 'PO' | 'PCS'
-  unavailable: boolean
-  color: string
-  compact?: boolean
-}) {
-  return (
-    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.4, minWidth: 0 }}>
-      <Typography
-        sx={{
-          fontSize: compact ? 15 : unit === 'PO' ? 21 : 16,
-          fontWeight: unit === 'PO' ? 700 : 600,
-          lineHeight: 1,
-          fontVariantNumeric: 'tabular-nums',
-          color: unit === 'PO' ? color : 'text.primary',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {formatMetric(value, unavailable)}
-      </Typography>
-      <Typography sx={{ fontSize: compact ? 9.5 : 10.5, fontWeight: 600, color: 'text.secondary' }}>
-        {unit}
-      </Typography>
-    </Box>
-  )
-}
 
-function SummaryMetricRow({ poCount, totalQty, unavailable, color, compact = false }: {
-  poCount: number | undefined
-  totalQty: number | undefined
-  unavailable: boolean
-  color: string
-  compact?: boolean
-}) {
-  return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: compact ? 1 : 1.25 }}>
-      <SummaryMetric value={poCount} unit="PO" unavailable={unavailable} color={color} compact={compact} />
-      <Box sx={{ width: '1px', height: compact ? 20 : 26, bgcolor: 'divider' }} />
-      <SummaryMetric value={totalQty} unit="PCS" unavailable={unavailable} color={color} compact={compact} />
-    </Box>
-  )
-}
-
-function TotalSummaryCard({ summary, loading }: {
-  summary: BacklogStatusSummary | null
-  loading: boolean
-}) {
-  return (
-    <Card
-      sx={(theme) => ({
-        ...getCardSx(theme, TOTAL_COLOR, false),
-        minHeight: 106,
-        px: 1.75,
-        py: 1.25,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 1.25,
-      })}
-    >
-      <SummaryIcon color={TOTAL_COLOR}>
-        {loading ? <CircularProgress size={16} sx={{ color: TOTAL_COLOR }} /> : <AssignmentOutlined />}
-      </SummaryIcon>
-      <Box sx={{ minWidth: 0 }}>
-        <Typography sx={{ mb: 0.4, fontSize: 14, fontWeight: 600, color: 'text.secondary' }}>
-          Total orders
-        </Typography>
-        <SummaryMetricRow
-          poCount={summary?.totalPoCount}
-          totalQty={summary?.totalQty}
-          unavailable={loading || !summary}
-          color={TOTAL_COLOR}
-        />
-      </Box>
-    </Card>
-  )
-}
-
-function StatusSummaryCard({
-  config,
-  poCount,
-  totalQty,
-  filterValue,
-  active,
-  loading,
-  unavailable,
-  onClick,
-}: {
-  config: StatusConfig
-  poCount: number | undefined
-  totalQty: number | undefined
-  filterValue: string
-  active: boolean
-  loading: boolean
-  unavailable: boolean
-  onClick: (status: string) => void
-}) {
-  return (
-    <Card
-      onClick={() => {
-        if (!loading) onClick(filterValue)
-      }}
-      role="button"
-      aria-pressed={active}
-      tabIndex={loading ? -1 : 0}
-      onKeyDown={(e) => {
-        if (!loading && (e.key === 'Enter' || e.key === ' ')) {
-          e.preventDefault()
-          onClick(filterValue)
-        }
-      }}
-      sx={(theme) => ({
-        ...getCardSx(theme, config.color, active),
-        minHeight: 56,
-        px: 1.25,
-        py: 0.75,
-        cursor: loading ? 'default' : 'pointer',
-        userSelect: 'none',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 1,
-        outline: 'none',
-        '&:hover': loading ? undefined : {
-          transform: 'translateY(-1px)',
-          borderColor: alpha(config.color, theme.palette.mode === 'dark' ? 0.5 : 0.35),
-        },
-        '&:focus-visible': {
-          boxShadow: `0 0 0 2px ${alpha(config.color, 0.5)}`,
-        },
-        '@media (prefers-reduced-motion: reduce)': {
-          transform: 'none',
-          '&:hover': { transform: 'none' },
-        },
-      })}
-    >
-      <SummaryIcon color={config.color}>{config.icon}</SummaryIcon>
-      <Box sx={{ minWidth: 0, flex: 1 }}>
-        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.6, mb: 0.15 }}>
-          <Typography sx={{ fontSize: 12.5, fontWeight: 700, lineHeight: 1.2, color: active ? config.color : 'text.primary' }}>
-            {config.label}
-          </Typography>
-          <Typography sx={{ fontSize: 10, fontWeight: 500, color: 'text.secondary', display: { xs: 'none', sm: 'inline' } }}>
-            · {config.hint}
-          </Typography>
-        </Box>
-        <SummaryMetricRow poCount={poCount} totalQty={totalQty} unavailable={unavailable} color={config.color} compact />
-      </Box>
-    </Card>
-  )
-}
+// =========================================================
+// COMPONENT
+// =========================================================
 
 export function BacklogSummary({
   summary,
@@ -262,54 +182,685 @@ export function BacklogSummary({
   error,
   onStatusClick,
 }: BacklogSummaryProps) {
-  const statusesByKey = new Map(
-    (summary?.statuses ?? []).map((item) => [normalizeBacklogStatus(item.status), item]),
-  )
-  const selectedKey = normalizeBacklogStatus(selectedStatus)
-  const unavailable = loading || !summary
 
+  const selectedKey =
+    normalizeBacklogStatus(
+      selectedStatus,
+    )
+
+  const dates =
+    summary?.dates ?? []
+
+  const rows =
+    summary?.rows ?? []
+
+  const today =
+    useMemo(
+      () => getTodayKey(),
+      [],
+    )
+
+  const scrollContainerRef =
+    useRef<HTMLDivElement | null>(
+      null,
+    )
+
+  const todayHeaderRef =
+    useRef<HTMLDivElement | null>(
+      null,
+    )
+
+  const hasToday =
+    dates.includes(
+      today,
+    )
+  useEffect(
+    () => {
+
+      if (
+        !summary
+        || !hasToday
+      ) {
+        return
+      }
+
+      const container =
+        scrollContainerRef.current
+
+      const currentColumn =
+        todayHeaderRef.current
+
+      if (
+        !container
+        || !currentColumn
+      ) {
+        return
+      }
+
+      const containerRect =
+        container.getBoundingClientRect()
+
+      const columnRect =
+        currentColumn.getBoundingClientRect()
+
+      const currentColumnCenter =
+        columnRect.left
+        - containerRect.left
+        + container.scrollLeft
+        + columnRect.width / 2
+
+      const targetLeft =
+        currentColumnCenter
+        - container.clientWidth / 2
+
+      container.scrollTo({
+        left:
+          Math.max(
+            0,
+            targetLeft,
+          ),
+
+        behavior: 'auto',
+      })
+
+    },
+    [
+      summary,
+      today,
+      hasToday,
+    ],
+  )
   return (
     <Box sx={{ mb: 0.75 }}>
+
+      {/* =====================================================
+          ERROR
+      ===================================================== */}
+
       {error && (
-        <Alert severity="warning" sx={{ mb: 1, py: 0.25 }}>
+        <Alert
+          severity="warning"
+          sx={{
+            mb: 1,
+            py: 0.25,
+          }}
+        >
           Status summary unavailable: {error}
         </Alert>
       )}
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: '280px minmax(0, 1fr)',
-          gap: 1,
-          '@media (max-width: 1000px)': { gridTemplateColumns: '1fr' },
-        }}
-      >
-        <TotalSummaryCard summary={summary} loading={loading} />
+
+
+      {/* =====================================================
+          LOADING
+      ===================================================== */}
+
+      {loading && !summary && (
         <Box
           sx={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, minmax(240px, 1fr))',
-            gap: 1,
-            '@media (max-width: 700px)': { gridTemplateColumns: '1fr' },
+            height: 120,
+
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
         >
-          {STATUS_CONFIG.map((config) => {
-            const item = statusesByKey.get(config.key)
-            return (
-              <StatusSummaryCard
-                key={config.key}
-                config={config}
-                poCount={item?.poCount}
-                totalQty={item?.totalQty}
-                filterValue={item?.status ?? config.label}
-                active={selectedKey === config.key}
-                loading={loading}
-                unavailable={unavailable}
-                onClick={onStatusClick}
-              />
-            )
-          })}
+          <CircularProgress
+            size={22}
+          />
         </Box>
-      </Box>
+      )}
+
+
+      {/* =====================================================
+          MATRIX
+      ===================================================== */}
+
+      {summary && (
+        <Box
+          ref={scrollContainerRef}
+          sx={(theme) => {
+
+            const dark =
+              theme.palette.mode === 'dark'
+
+            return {
+              width: '100%',
+
+              overflowX: 'auto',
+
+              border:
+                `1px solid ${dark
+                  ? alpha('#ffffff', 0.08)
+                  : alpha('#0f172a', 0.08)
+                }`,
+
+              borderRadius: 1.5,
+
+              bgcolor:
+                dark
+                  ? '#161c2c'
+                  : '#ffffff',
+
+              boxShadow:
+                dark
+                  ? '0 2px 8px rgba(0,0,0,0.18)'
+                  : '0 2px 8px rgba(15,23,42,0.06)',
+            }
+          }}
+        >
+
+          <Box
+            sx={{
+              minWidth:
+                Math.max(
+                  800,
+                  165
+                  + dates.length * 140,
+                ),
+            }}
+          >
+
+            {/* =================================================
+                HEADER
+            ================================================= */}
+            <Box
+              sx={(theme) => {
+                const isDark =
+                  theme.palette.mode === 'dark'
+
+                const headerAccent =
+                  isDark
+                    ? '#4F7FE3'
+                    : '#5F88CC'
+
+                const headerBgTop =
+                  alpha(
+                    headerAccent,
+                    isDark ? 0.24 : 0.4,
+                  )
+
+                const headerBgBottom =
+                  alpha(
+                    headerAccent,
+                    isDark ? 0.11 : 0.07,
+                  )
+
+                const headerBorder =
+                  alpha(
+                    headerAccent,
+                    isDark ? 0.34 : 0.22,
+                  )
+
+                const headerSeparator =
+                  alpha(
+                    headerAccent,
+                    isDark ? 0.26 : 0.16,
+                  )
+
+                const headerBackground =
+                  `linear-gradient(
+                    180deg,
+                    ${headerBgTop} 0%,
+                    ${headerBgBottom} 100%
+                  )`
+
+                return {
+                  display: 'grid',
+
+                  gridTemplateColumns:
+                    `145px repeat(${dates.length}, minmax(130px, 1fr))`,
+
+                  minHeight: 36,
+
+                  alignItems: 'center',
+
+                  background:
+                    headerBackground,
+
+                  borderBottom:
+                    `1px solid ${headerBorder}`,
+
+                  color:
+                    theme.palette.text.primary,
+
+                  '& > *:not(:last-child)': {
+                    borderRight:
+                      `1px solid ${headerSeparator}`,
+                  },
+                }
+              }}
+            >
+
+              <Typography
+                sx={{
+                  px: 2,
+
+                  fontSize: 12.5,
+                  fontWeight: 700,
+
+                  color: 'text.primary',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Status
+              </Typography>
+
+
+              {dates.map(
+                (date) => {
+
+                  const isToday =
+                    date === today
+
+                  return (
+
+                    <Box
+                      key={date}
+
+                      ref={
+                        isToday
+                          ? todayHeaderRef
+                          : undefined
+                      }
+
+                      sx={(theme) => {
+                        return {
+                          position: 'relative',
+
+                          height: '100%',
+
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+
+                          px: 1,
+
+                          bgcolor:
+                            isToday
+                              ? alpha(
+                                theme.palette.primary.main,
+                                theme.palette.mode === 'dark'
+                                  ? 0.20
+                                  : 0.11,
+                              )
+                              : 'transparent',
+
+                          borderLeft:
+                            isToday
+                              ? `1px solid ${alpha(
+                                theme.palette.primary.main,
+                                0.50,
+                              )}`
+                              : undefined,
+
+                          borderRight:
+                            isToday
+                              ? `1px solid ${alpha(
+                                theme.palette.primary.main,
+                                0.50,
+                              )}`
+                              : undefined,
+
+                          '&::after':
+                            isToday
+                              ? {
+                                content: '""',
+
+                                position: 'absolute',
+
+                                left: 10,
+                                right: 10,
+                                bottom: 0,
+
+                                height: 3,
+
+                                bgcolor:
+                                  theme.palette.primary.main,
+                              }
+                              : undefined,
+                        }
+                      }}
+                    >
+
+                      <Typography
+                        sx={{
+                          textAlign: 'center',
+
+                          fontSize: 12.5,
+
+                          fontWeight:
+                            isToday
+                              ? 800
+                              : 700,
+
+                          color:
+                            isToday
+                              ? 'primary.main'
+                              : 'text.primary',
+
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {formatDateHeader(date)}
+                      </Typography>
+
+                    </Box>
+
+                  )
+                },
+              )}
+
+            </Box>
+
+
+            {/* =================================================
+                ROWS
+            ================================================= */}
+
+            {rows.map(
+              (row) => {
+
+                const statusKey =
+                  normalizeBacklogStatus(
+                    row.status,
+                  )
+
+                const active =
+                  selectedKey === statusKey
+
+                const color =
+                  getStatusColor(
+                    row.status,
+                  )
+
+
+                return (
+
+                  <Box
+                    key={row.status}
+
+                    sx={(theme) => ({
+                      display: 'grid',
+
+                      gridTemplateColumns:
+                        `145px repeat(${dates.length}, minmax(130px, 1fr))`,
+
+                      minHeight: 52,
+
+                      borderTop:
+                        `1px solid ${theme.palette.divider
+                        }`,
+
+                      bgcolor:
+                        active
+                          ? alpha(
+                            color,
+                            theme.palette.mode === 'dark'
+                              ? 0.09
+                              : 0.035,
+                          )
+                          : 'transparent',
+                    })}
+                  >
+
+                    {/* =========================================
+                        STATUS
+                    ========================================= */}
+
+                    <Box
+                      role="button"
+
+                      tabIndex={0}
+
+                      onClick={() => {
+                        if (!loading) {
+                          onStatusClick(
+                            row.status,
+                          )
+                        }
+                      }}
+
+                      onKeyDown={(event) => {
+
+                        if (
+                          !loading
+                          && (
+                            event.key === 'Enter'
+                            || event.key === ' '
+                          )
+                        ) {
+
+                          event.preventDefault()
+
+                          onStatusClick(
+                            row.status,
+                          )
+                        }
+                      }}
+
+                      sx={(theme) => ({
+                        position: 'relative',
+
+                        display: 'flex',
+                        alignItems: 'center',
+
+                        px: 2,
+
+                        cursor:
+                          loading
+                            ? 'default'
+                            : 'pointer',
+
+                        userSelect: 'none',
+
+                        bgcolor:
+                          theme.palette.mode === 'dark'
+                            ? alpha('#ffffff', 0.025)
+                            : '#f7f9fc',
+
+                        borderRight:
+                          `1px solid ${theme.palette.divider
+                          }`,
+
+                        '&::before': {
+                          content: '""',
+
+                          position: 'absolute',
+
+                          top: 0,
+                          bottom: 0,
+                          left: 0,
+
+                          width: 3,
+
+                          bgcolor: color,
+                        },
+
+                        '&:hover': loading
+                          ? undefined
+                          : {
+                            bgcolor:
+                              alpha(
+                                color,
+                                theme.palette.mode === 'dark'
+                                  ? 0.12
+                                  : 0.07,
+                              ),
+                          },
+
+                        '&:focus-visible': {
+                          outline:
+                            `2px solid ${alpha(
+                              color,
+                              0.55,
+                            )
+                            }`,
+
+                          outlineOffset: -2,
+                        },
+                      })}
+                    >
+
+                      <Typography
+                        sx={{
+                          fontSize: 13,
+                          fontWeight: 700,
+
+                          color:
+                            active
+                              ? color
+                              : 'text.primary',
+
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {row.status}
+                      </Typography>
+
+                    </Box>
+
+
+                    {/* =========================================
+                        DATE CELLS
+                    ========================================= */}
+
+                    {dates.map(
+                      (date) => {
+
+                        const cell =
+                          getCell(
+                            row,
+                            date,
+                          )
+
+                        const poCount =
+                          cell?.poCount ?? 0
+
+                        const qty =
+                          cell?.qty ?? 0
+                        const isToday =
+                          date === today
+
+                        return (
+
+                          <Box
+                            key={date}
+
+                            sx={(theme) => {
+                              return {
+                                position: 'relative',
+
+                                minWidth: 0,
+
+                                px: 1,
+                                py: 0.65,
+
+                                display: 'flex',
+                                flexDirection: 'column',
+
+                                alignItems: 'center',
+                                justifyContent: 'center',
+
+                                bgcolor:
+                                  isToday
+                                    ? alpha(
+                                      theme.palette.primary.main,
+                                      theme.palette.mode === 'dark'
+                                        ? 0.13
+                                        : 0.075,
+                                    )
+                                    : 'transparent',
+
+                                borderLeft:
+                                  isToday
+                                    ? `1px solid ${alpha(
+                                      theme.palette.primary.main,
+                                      0.40,
+                                    )
+                                    }`
+                                    : undefined,
+
+                                borderRight:
+                                  isToday
+                                    ? `1px solid ${alpha(
+                                      theme.palette.primary.main,
+                                      0.40,
+                                    )
+                                    }`
+                                    : undefined,
+                              }
+                            }}
+                          >
+
+                            <Typography
+                              sx={(theme) => ({
+                                fontSize: 13,
+                                fontWeight: 700,
+
+                                lineHeight: 1.2,
+
+                                color:
+                                  theme.palette.text.primary,
+
+                                fontVariantNumeric:
+                                  'tabular-nums',
+
+                                whiteSpace: 'nowrap',
+                              })}
+                            >
+                              {formatNumber(
+                                poCount,
+                              )}{' '}
+                              PO
+                            </Typography>
+
+
+                            <Typography
+                              sx={(theme) => ({
+                                mt: 0.15,
+
+                                fontSize: 11.5,
+                                fontWeight: 600,
+
+                                lineHeight: 1.2,
+
+                                color:
+                                  alpha(
+                                    theme.palette.text.primary,
+                                    theme.palette.mode === 'dark'
+                                      ? 0.62
+                                      : 0.58,
+                                  ),
+
+                                fontVariantNumeric:
+                                  'tabular-nums',
+
+                                whiteSpace: 'nowrap',
+                              })}
+                            >
+                              {formatNumber(
+                                qty,
+                              )}{' '}
+                              Pcs
+                            </Typography>
+
+                          </Box>
+
+                        )
+                      },
+                    )}
+
+                  </Box>
+
+                )
+              },
+            )}
+
+          </Box>
+
+        </Box>
+      )}
+
     </Box>
   )
 }

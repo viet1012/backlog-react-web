@@ -18,63 +18,82 @@ export const preventColumnHeaderSort:
 // =====================================================
 
 export const dataGridHeaderSx = (theme: Theme) => {
-  const isDark = theme.palette.mode === 'dark'
+  const isDark =
+    theme.palette.mode === 'dark'
 
   // =====================================================
   // COLOR
   // =====================================================
 
-  const headerAccent = isDark
-    ? '#2D67D4'
-    : '#4778C9'
+  const headerAccent =
+    isDark
+      ? '#4F7FE3'
+      : '#5F88CC'
 
-  const headerBgTop = alpha(
-    headerAccent,
-    isDark ? 0.18 : 0.11,
-  )
+  const headerBgTop =
+    alpha(
+      headerAccent,
+      isDark ? 0.24 : 0.16,
+    )
 
-  const headerBgBottom = alpha(
-    headerAccent,
-    isDark ? 0.11 : 0.055,
-  )
+  const headerBgBottom =
+    alpha(
+      headerAccent,
+      isDark ? 0.11 : 0.07,
+    )
 
-  const headerBorder = alpha(
-    headerAccent,
-    isDark ? 0.34 : 0.22,
-  )
+  const headerBorder =
+    alpha(
+      headerAccent,
+      isDark ? 0.34 : 0.22,
+    )
 
-  const headerSeparator = alpha(
-    headerAccent,
-    isDark ? 0.30 : 0.20,
-  )
+  const headerSeparator =
+    alpha(
+      headerAccent,
+      isDark ? 0.26 : 0.16,
+    )
 
-  const headerHoverBg = alpha(
-    headerAccent,
-    isDark ? 0.22 : 0.13,
-  )
+  const headerHoverBg =
+    alpha(
+      headerAccent,
+      isDark ? 0.13 : 0.08,
+    )
 
-  const headerBackground = `linear-gradient(
-    180deg,
-    ${headerBgTop} 0%,
-    ${headerBgBottom} 100%
-  )`
+  const headerText =
+    isDark
+      ? alpha('#ffffff', 0.92)
+      : '#17365F'
+
+  const headerBackground =
+    `linear-gradient(
+      180deg,
+      ${headerBgTop} 0%,
+      ${headerBgBottom} 100%
+    )`
 
   return {
     width: '100%',
     height: '100%',
 
     // =====================================================
-    // REMOVE HEADER ROUNDING
+    // HEADER
     // =====================================================
 
     '& .MuiDataGrid-columnHeaders': {
-      background: `${headerBackground} !important`,
+      background:
+        `${headerBackground} !important`,
 
       borderBottom:
         `1px solid ${headerBorder}`,
 
-      // IMPORTANT
-      borderRadius: '0 !important',
+      borderRadius:
+        '0 !important',
+
+      boxShadow:
+        isDark
+          ? 'inset 0 -1px 0 rgba(255,255,255,0.025)'
+          : 'inset 0 -1px 0 rgba(15,23,42,0.025)',
     },
 
     '& .MuiDataGrid-columnHeadersInner': {
@@ -91,9 +110,15 @@ export const dataGridHeaderSx = (theme: Theme) => {
 
       borderRadius:
         '0 !important',
+
+      transition:
+        'background-color 140ms ease',
     },
 
-    // First column
+    // =====================================================
+    // FIRST / LAST
+    // =====================================================
+
     '& .MuiDataGrid-columnHeader:first-of-type': {
       borderTopLeftRadius:
         '0 !important',
@@ -102,7 +127,6 @@ export const dataGridHeaderSx = (theme: Theme) => {
         '0 !important',
     },
 
-    // Last column
     '& .MuiDataGrid-columnHeader:last-of-type': {
       borderTopRightRadius:
         '0 !important',
@@ -132,14 +156,20 @@ export const dataGridHeaderSx = (theme: Theme) => {
       fontWeight: 700,
 
       color:
-        theme.palette.text.primary,
+        `${headerText} !important`,
 
-      letterSpacing: '-0.01em',
+      letterSpacing:
+        '-0.01em',
+
+      fontSize:
+        '0.79rem',
     },
 
     '& .MuiDataGrid-columnHeaderTitleContainer': {
       borderRadius:
         '0 !important',
+
+      minWidth: 0,
     },
 
     // =====================================================
@@ -147,7 +177,9 @@ export const dataGridHeaderSx = (theme: Theme) => {
     // =====================================================
 
     '& .MuiDataGrid-columnSeparator': {
-      color: headerSeparator,
+      color:
+        headerSeparator,
+
       opacity: 1,
     },
 
@@ -196,14 +228,16 @@ export const dataGridHeaderSx = (theme: Theme) => {
       alignItems: 'center',
       justifyContent: 'center',
 
-      width: 28,
-      height: 28,
-      minWidth: 28,
-      minHeight: 28,
+      width: 27,
+      height: 27,
+
+      minWidth: 27,
+      minHeight: 27,
 
       padding: 0,
 
-      color: headerAccent,
+      color:
+        headerAccent,
 
       backgroundColor:
         'transparent !important',
@@ -214,15 +248,20 @@ export const dataGridHeaderSx = (theme: Theme) => {
       boxShadow:
         'none !important',
 
-      // No rounded button
       borderRadius:
         '0 !important',
 
+      opacity:
+        0.82,
+
       transition:
-        'background-color 140ms ease, color 140ms ease',
+        'background-color 140ms ease, color 140ms ease, opacity 140ms ease',
 
       '&:hover': {
-        color: headerAccent,
+        color:
+          headerAccent,
+
+        opacity: 1,
 
         backgroundColor:
           `${headerHoverBg} !important`,
@@ -233,7 +272,7 @@ export const dataGridHeaderSx = (theme: Theme) => {
     },
 
     // =====================================================
-    // REMOVE MUI ICON BUTTON ROUNDING
+    // REMOVE ICON BUTTON ROUNDING
     // =====================================================
 
     '& .MuiDataGrid-columnHeader .MuiIconButton-root': {
@@ -263,10 +302,11 @@ export const dataGridHeaderSx = (theme: Theme) => {
     // =====================================================
 
     '& .MuiDataGrid-columnHeader:hover': {
-      backgroundColor: `${alpha(
-        headerAccent,
-        isDark ? 0.055 : 0.035,
-      )} !important`,
+      backgroundColor:
+        `${alpha(
+          headerAccent,
+          isDark ? 0.06 : 0.045,
+        )} !important`,
 
       borderRadius:
         '0 !important',
