@@ -16,9 +16,11 @@ import UndoRoundedIcon
   from '@mui/icons-material/UndoRounded'
 
 import {
+  GridCellEditStopReasons,
   GridCellModes,
   GridToolbarColumnsButton,
   GridToolbarContainer,
+  type GridEventListener,
   type GridColumnVisibilityModel,
   type GridPaginationModel,
   type GridSortModel,
@@ -632,6 +634,19 @@ export function FacConfirmDataTable({
     ],
   )
 
+  const handleCellEditStop =
+    useCallback<GridEventListener<'cellEditStop'>>(
+      (params, event) => {
+        if (
+          params.reason ===
+          GridCellEditStopReasons.cellFocusOut
+        ) {
+          event.defaultMuiPrevented = true
+        }
+      },
+      [],
+    )
+
   const {
     getFillClassName,
     handleCellClick,
@@ -990,6 +1005,10 @@ export function FacConfirmDataTable({
 
           onProcessRowUpdateError={
             handleProcessRowUpdateError
+          }
+
+          onCellEditStop={
+            handleCellEditStop
           }
 
           toolbar={

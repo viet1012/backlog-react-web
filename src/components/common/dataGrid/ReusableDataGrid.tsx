@@ -105,6 +105,9 @@ export interface ReusableDataGridProps<
   onProcessRowUpdateError?:
   DataGridProps<T>['onProcessRowUpdateError']
 
+  onCellEditStop?:
+  DataGridProps<T>['onCellEditStop']
+
   apiRef?: RefObject<GridApi | null>
 
   onCellClick?:
@@ -159,6 +162,8 @@ export function ReusableDataGrid<
   processRowUpdate,
 
   onProcessRowUpdateError,
+
+  onCellEditStop,
 
   apiRef,
   onCellClick,
@@ -330,6 +335,10 @@ export function ReusableDataGrid<
 
       onProcessRowUpdateError={
         onProcessRowUpdateError
+      }
+
+      onCellEditStop={
+        onCellEditStop
       }
 
       onCellClick={

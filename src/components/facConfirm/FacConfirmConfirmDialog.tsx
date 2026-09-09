@@ -111,83 +111,43 @@ export function FacConfirmConfirmDialog({
         backdrop: {
           sx: {
             backgroundColor:
-              'rgba(15, 23, 42, 0.30)',
+              'rgba(15, 23, 42, 0.26)',
 
             backdropFilter:
-              'blur(4px)',
+              'blur(2px)',
 
             WebkitBackdropFilter:
-              'blur(4px)',
+              'blur(2px)',
           },
         },
 
         paper: {
           sx: (theme) => ({
             width:
-              560,
+              456,
 
             maxWidth:
               'calc(100vw - 32px)',
 
             borderRadius:
-              '28px',
+              '15px',
 
             overflow:
               'hidden',
 
-            position:
-              'relative',
-
-            background:
-              theme.palette.mode === 'dark'
-                ? 'rgba(18, 24, 34, 0.88)'
-                : 'rgba(255, 255, 255, 0.88)',
-
-            backdropFilter:
-              'blur(24px) saturate(170%)',
-
-            WebkitBackdropFilter:
-              'blur(24px) saturate(170%)',
+            backgroundColor:
+              'background.paper',
 
             border:
-              theme.palette.mode === 'dark'
-                ? '1px solid rgba(255,255,255,0.10)'
-                : '1px solid rgba(255,255,255,0.80)',
+              `1px solid ${alpha(
+                theme.palette.divider,
+                0.8,
+              )}`,
 
             boxShadow:
               theme.palette.mode === 'dark'
-                ? '0 28px 80px rgba(0,0,0,0.55)'
-                : '0 28px 80px rgba(15,23,42,0.25)',
-
-            '&::before': {
-              content:
-                '""',
-
-              position:
-                'absolute',
-
-              inset:
-                0,
-
-              pointerEvents:
-                'none',
-
-              background:
-                theme.palette.mode === 'dark'
-                  ? 'linear-gradient(135deg, rgba(255,255,255,0.06), transparent 45%)'
-                  : 'linear-gradient(135deg, rgba(255,255,255,0.92), rgba(255,255,255,0.20) 50%, transparent)',
-
-              zIndex:
-                0,
-            },
-
-            '& > *': {
-              position:
-                'relative',
-
-              zIndex:
-                1,
-            },
+                ? '0 16px 40px rgba(0,0,0,0.38)'
+                : '0 16px 40px rgba(15,23,42,0.16)',
           }),
         },
       }}
@@ -200,13 +160,13 @@ export function FacConfirmConfirmDialog({
       <Box
         sx={{
           px:
-            4,
+            2.5,
 
           pt:
-            3.5,
+            2.25,
 
           pb:
-            2,
+            1.5,
         }}
       >
         <Box
@@ -234,7 +194,7 @@ export function FacConfirmConfirmDialog({
                 'center',
 
               gap:
-                2,
+                1.5,
             }}
           >
 
@@ -243,10 +203,10 @@ export function FacConfirmConfirmDialog({
             <Box
               sx={(theme) => ({
                 width:
-                  64,
+                  42,
 
                 height:
-                  64,
+                  42,
 
                 display:
                   'grid',
@@ -258,17 +218,16 @@ export function FacConfirmConfirmDialog({
                   0,
 
                 borderRadius:
-                  '50%',
+                  '11px',
 
                 color:
                   'primary.main',
 
-                background:
-                  `linear-gradient(
-                    145deg,
-                    ${alpha(theme.palette.primary.main, 0.16)},
-                    ${alpha(theme.palette.primary.main, 0.04)}
-                  )`,
+                backgroundColor:
+                  alpha(
+                    theme.palette.primary.main,
+                    0.1,
+                  ),
 
                 border:
                   `1px solid ${alpha(
@@ -276,17 +235,12 @@ export function FacConfirmConfirmDialog({
                     0.18,
                   )}`,
 
-                boxShadow:
-                  `0 10px 30px ${alpha(
-                    theme.palette.primary.main,
-                    0.18,
-                  )}`,
               })}
             >
               <SaveRoundedIcon
                 sx={{
                   fontSize:
-                    30,
+                    22,
                 }}
               />
             </Box>
@@ -298,16 +252,16 @@ export function FacConfirmConfirmDialog({
               <Typography
                 sx={{
                   fontSize:
-                    25,
+                    19,
 
                   fontWeight:
-                    900,
+                    800,
 
                   lineHeight:
                     1.15,
 
                   letterSpacing:
-                    '-0.4px',
+                    '-0.2px',
 
                   color:
                     'text.primary',
@@ -319,10 +273,10 @@ export function FacConfirmConfirmDialog({
               <Typography
                 sx={{
                   mt:
-                    0.7,
+                    0.35,
 
                   fontSize:
-                    14,
+                    12.5,
 
                   color:
                     'text.secondary',
@@ -352,13 +306,13 @@ export function FacConfirmConfirmDialog({
 
             sx={{
               width:
-                42,
+                34,
 
               height:
-                42,
+                34,
 
               mt:
-                0.2,
+                0,
             }}
             icon={<CloseRoundedIcon />}
           >
@@ -375,23 +329,23 @@ export function FacConfirmConfirmDialog({
       <DialogContent
         sx={{
           px:
-            4,
+            2.5,
 
           pt:
-            '18px !important',
+            '12px !important',
 
           pb:
-            4,
+            2.25,
         }}
       >
 
         <Typography
           sx={{
             mb:
-              1,
+              0.75,
 
             ml:
-              0.5,
+              0,
 
             fontSize:
               13,
@@ -400,7 +354,7 @@ export function FacConfirmConfirmDialog({
               700,
 
             color:
-              'primary.main',
+              'text.primary',
           }}
         >
           Employee ID
@@ -471,10 +425,10 @@ export function FacConfirmConfirmDialog({
                   <Box
                     sx={(theme) => ({
                       width:
-                        34,
+                        30,
 
                       height:
-                        34,
+                        30,
 
                       display:
                         'grid',
@@ -498,7 +452,7 @@ export function FacConfirmConfirmDialog({
                     <BadgeRoundedIcon
                       sx={{
                         fontSize:
-                          19,
+                          17,
                       }}
                     />
                   </Box>
@@ -510,21 +464,18 @@ export function FacConfirmConfirmDialog({
           sx={(theme) => ({
             '& .MuiOutlinedInput-root': {
               minHeight:
-                58,
+                46,
 
               borderRadius:
-                '18px',
+                '11px',
 
               px:
-                1.5,
+                1,
 
               backgroundColor:
                 theme.palette.mode === 'dark'
-                  ? 'rgba(255,255,255,0.05)'
-                  : 'rgba(255,255,255,0.72)',
-
-              backdropFilter:
-                'blur(12px)',
+                  ? alpha(theme.palette.common.white, 0.035)
+                  : alpha(theme.palette.common.black, 0.018),
 
               transition:
                 'all 160ms ease',
@@ -549,7 +500,7 @@ export function FacConfirmConfirmDialog({
                 boxShadow:
                   `0 0 0 4px ${alpha(
                     theme.palette.primary.main,
-                    0.10,
+                    0.08,
                   )}`,
               },
 
@@ -564,7 +515,7 @@ export function FacConfirmConfirmDialog({
 
             '& input': {
               fontSize:
-                16,
+                14,
 
               fontWeight:
                 600,
@@ -572,13 +523,13 @@ export function FacConfirmConfirmDialog({
 
             '& .MuiFormHelperText-root': {
               mt:
-                1,
+                0.5,
 
               ml:
-                1,
+                0.25,
 
               fontSize:
-                12,
+                11.5,
             },
           })}
         />
@@ -591,9 +542,9 @@ export function FacConfirmConfirmDialog({
 
       <DialogActions
         sx={(theme) => ({
-          px: 4,
-          py: 2.5,
-          gap: 1.25,
+          px: 2.5,
+          py: 1.25,
+          gap: 0.75,
 
           justifyContent: 'flex-end',
 
@@ -604,17 +555,17 @@ export function FacConfirmConfirmDialog({
 
           background:
             theme.palette.mode === 'dark'
-              ? 'rgba(255,255,255,0.025)'
-              : 'rgba(255,255,255,0.32)',
-
-          backdropFilter: 'blur(14px)',
-          WebkitBackdropFilter: 'blur(14px)',
+              ? alpha(theme.palette.common.white, 0.02)
+              : alpha(theme.palette.common.black, 0.015),
         })}
       >
         {/* CANCEL */}
         <AppButton
           disabled={saving}
           onClick={handleClose}
+          sx={{
+            minHeight: 36,
+          }}
         >
           Cancel
         </AppButton>
@@ -636,6 +587,9 @@ export function FacConfirmConfirmDialog({
               : undefined
           }
           onClick={onConfirm}
+          sx={{
+            minHeight: 36,
+          }}
         >
           {saving
             ? 'Saving...'
