@@ -30,6 +30,7 @@ interface BacklogSummaryProps {
   loading?: boolean
   error?: string | null
   onStatusClick: (status: string) => void
+  onCellClick?: (status: string, date: string) => void
 }
 
 // =========================================================
@@ -181,6 +182,7 @@ export function BacklogSummary({
   loading = false,
   error,
   onStatusClick,
+  onCellClick,
 }: BacklogSummaryProps) {
 
   const selectedKey =
@@ -746,6 +748,15 @@ export function BacklogSummary({
                           <Box
                             key={date}
 
+                            onClick={(event) => {
+                              event.stopPropagation()
+
+                              onCellClick?.(
+                                row.status,
+                                date,
+                              )
+                            }}
+
                             sx={(theme) => {
                               return {
                                 position: 'relative',
@@ -760,6 +771,8 @@ export function BacklogSummary({
 
                                 alignItems: 'center',
                                 justifyContent: 'center',
+
+                                cursor: 'pointer',
 
                                 bgcolor:
                                   isToday
@@ -788,6 +801,16 @@ export function BacklogSummary({
                                     )
                                     }`
                                     : undefined,
+
+                                '&:hover': {
+                                  boxShadow:
+                                    `inset 0 0 0 9999px ${alpha(
+                                      theme.palette.primary.main,
+                                      theme.palette.mode === 'dark'
+                                        ? 0.055
+                                        : 0.035,
+                                    )}`,
+                                },
                               }
                             }}
                           >

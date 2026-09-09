@@ -983,6 +983,51 @@ export function BacklogPage({
     )
 
 
+  const handleSummaryCellClick =
+    useCallback(
+      (
+        status: string,
+        date: string,
+      ) => {
+        setFilters(
+          (current) => ({
+            ...current,
+            status: '',
+          }),
+        )
+
+        setExcelFilters(
+          (current) => [
+            ...current.filter((item) => {
+              const field =
+                item.field
+                  .trim()
+                  .toLowerCase()
+
+              return field !== 'status'
+                && field !== 'exportd'
+            }),
+            {
+              field: 'Status',
+              operator: 'equals',
+              value: status,
+            },
+            {
+              field: 'ExportD',
+              operator: 'equals',
+              value: date,
+            },
+          ],
+        )
+
+        setPage(
+          0,
+        )
+      },
+      [],
+    )
+
+
   // =======================================================
   // CLEAR
   // =======================================================
@@ -1155,6 +1200,10 @@ export function BacklogPage({
 
         onStatusClick={
           handleSummaryStatusClick
+        }
+
+        onCellClick={
+          handleSummaryCellClick
         }
       />
 
