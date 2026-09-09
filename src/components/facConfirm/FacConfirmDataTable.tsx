@@ -15,6 +15,9 @@ import SaveRoundedIcon
 import UndoRoundedIcon
   from '@mui/icons-material/UndoRounded'
 
+import FilterAltOffRoundedIcon
+  from '@mui/icons-material/FilterAltOffRounded'
+
 import {
   GridCellEditStopReasons,
   GridCellModes,
@@ -92,6 +95,7 @@ import {
 } from './hooks/useFacConfirmFillHandle'
 
 import { AppButton } from '../common/AppButton'
+import { ClearButton } from '../common/ClearButton'
 
 interface FacConfirmDataTableProps {
   rows: FacConfirmRow[]
@@ -157,8 +161,10 @@ interface FacConfirmToolbarProps {
   hasChanges: boolean
   saving: boolean
   changeCount: number
+  activeFilterCount: number
   onConfirm: () => void
   onCancelChanges: () => void
+  onClearFilters: () => void
 }
 
 
@@ -166,8 +172,10 @@ function FacConfirmToolbar({
   hasChanges,
   saving,
   changeCount,
+  activeFilterCount,
   onConfirm,
   onCancelChanges,
+  onClearFilters,
 }: FacConfirmToolbarProps) {
 
   return (
@@ -216,7 +224,22 @@ function FacConfirmToolbar({
         )}
       </Box>
 
-      <GridToolbarColumnsButton />
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 0.75,
+        }}
+      >
+        {activeFilterCount > 0 && (
+          <ClearButton
+            mode="clearAll"
+            onClick={onClearFilters}
+          />
+        )}
+
+        <GridToolbarColumnsButton />
+      </Box>
     </GridToolbarContainer>
   )
 }
@@ -587,6 +610,16 @@ export function FacConfirmDataTable({
   // TOOLBAR WRAPPER
   // =======================================================
 
+  const handleClearFilters =
+    useCallback(
+      () => {
+        onExcelFiltersChange([])
+      },
+      [
+        onExcelFiltersChange,
+      ],
+    )
+
   const toolbarComponent =
     useCallback(
       () => (
@@ -603,6 +636,10 @@ export function FacConfirmDataTable({
             changeCount
           }
 
+          activeFilterCount={
+            excelFilters.length
+          }
+
           onConfirm={
             handleOpenConfirm
           }
@@ -610,13 +647,19 @@ export function FacConfirmDataTable({
           onCancelChanges={
             handleCancelChanges
           }
+
+          onClearFilters={
+            handleClearFilters
+          }
         />
       ),
       [
         hasChanges,
         saving,
         changeCount,
+        excelFilters.length,
         handleCancelChanges,
+        handleClearFilters,
         handleOpenConfirm,
       ],
     )
