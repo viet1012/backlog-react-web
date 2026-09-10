@@ -8,6 +8,7 @@ export type OdbfDataRowType = 'completed' | 'progress'
 export interface OdbfDateValue {
   completed: number
   progress: number
+  ratio: number | null
 }
 
 export interface OdbfProductSummary {
@@ -20,8 +21,8 @@ export interface OdbfMatrix {
   products: OdbfProductSummary[]
 }
 
-const COMPLETED_STATUS = 'COMPLETED'
-const ON_PROGRESS_STATUS = 'ON PROGRESS'
+const COMPLETED_STATUS = 'OK'
+const ON_PROGRESS_STATUS = 'LATE'
 
 const MONTH_LABELS = [
   'Jan',
@@ -53,17 +54,11 @@ export function formatOdbfDate(dateKey: string): string {
   return `${Number(day)}-${monthLabel}`
 }
 
-export function calculateOdbfRatio(
-  completed: number,
-  progress: number,
-): number | null {
-  const total = completed + progress
-
-  return total === 0 ? null : completed / total * 100
-}
-
-function getStatusType(status2: string): OdbfDataRowType | null {
-  const normalizedStatus = status2.trim().toUpperCase()
+function getStatusType(
+  status2: string,
+): OdbfDataRowType | null {
+  const normalizedStatus =
+    status2.trim().toUpperCase()
 
   if (normalizedStatus === COMPLETED_STATUS) {
     return 'completed'
@@ -81,45 +76,79 @@ export function buildOdbfMatrix(
   metric: OdbfSummaryMetric,
 ): OdbfMatrix {
   const dateKeys = new Set<string>()
-  const productsByName = new Map<string, OdbfProductSummary>()
+  const productsByName =
+    new Map<string, OdbfProductSummary>()
 
   for (const item of items) {
-    const statusType = getStatusType(item.status2)
+    const statusType =
+      getStatusType(item.status2)
 
     if (!statusType) {
       continue
     }
 
-    const dateKey = normalizeOdbfDateKey(item.exportD)
+    const dateKey =
+      normalizeOdbfDateKey(item.exportD)
+
     dateKeys.add(dateKey)
 
-    let product = productsByName.get(item.productGrp)
+    let product =
+      productsByName.get(item.productGrp)
 
     if (!product) {
       product = {
         productGrp: item.productGrp,
         values: new Map(),
       }
-      productsByName.set(item.productGrp, product)
+
+      productsByName.set(
+        item.productGrp,
+        product,
+      )
     }
 
-    let dateValue = product.values.get(dateKey)
+    let dateValue =
+      product.values.get(dateKey)
 
     if (!dateValue) {
       dateValue = {
         completed: 0,
         progress: 0,
+        ratio: null,
       }
-      product.values.set(dateKey, dateValue)
+
+      product.values.set(
+        dateKey,
+        dateValue,
+      )
     }
 
-    dateValue[statusType] += item[metric]
+    dateValue[statusType] +=
+      item[metric]
+
+    // =========================================
+    // Ratio lấy trực tiếp từ API
+    // =========================================
+
+    dateValue.ratio =
+      metric === 'countPo'
+        ? item.poRatio
+        : item.qtyRatio
   }
 
   return {
-    dates: [...dateKeys].sort((left, right) => left.localeCompare(right)),
-    products: [...productsByName.values()].sort((left, right) =>
-      left.productGrp.localeCompare(right.productGrp),
+    dates: [...dateKeys].sort(
+      (left, right) =>
+        left.localeCompare(right),
+    ),
+
+    products: [
+      ...productsByName.values(),
+    ].sort(
+      (left, right) =>
+        left.productGrp.localeCompare(
+          right.productGrp,
+        ),
     ),
   }
 }

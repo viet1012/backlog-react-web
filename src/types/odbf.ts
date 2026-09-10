@@ -4,6 +4,8 @@ export interface OdbfSummaryItem {
     exportD: string
     countPo: number
     sumQty: number
+    poRatio: number | null
+    qtyRatio: number | null
 }
 
 export type OdbfSummaryMetric = 'countPo' | 'sumQty'

@@ -9,7 +9,6 @@ import type {
 } from '../../types/odbf'
 import {
     buildOdbfMatrix,
-    calculateOdbfRatio,
     formatOdbfDate,
     type OdbfDataRowType,
     type OdbfProductSummary,
@@ -216,11 +215,17 @@ function OdbfDataRow({
                 }
 
                 if (rowType === 'ratio') {
-                    const ratio = calculateOdbfRatio(value.completed, value.progress)
-
                     return (
-                        <OdbfValueCell key={date} currentDate={currentDate} ratio>
-                            {ratio === null ? '-' : `${Math.round(ratio)}%`}
+                        <OdbfValueCell
+                            key={date}
+                            currentDate={currentDate}
+                            ratio
+                        >
+                            {value.ratio === null
+                                ? '-'
+                                : `${Math.round(
+                                    value.ratio,
+                                )}%`}
                         </OdbfValueCell>
                     )
                 }
@@ -261,7 +266,7 @@ function OdbfProductRows({
     return (
         <>
             <OdbfDataRow
-                label="Completed"
+                label="OK"
                 rowType="completed"
                 product={product}
                 dates={dates}
@@ -271,7 +276,7 @@ function OdbfProductRows({
                 groupStart
             />
             <OdbfDataRow
-                label="On Progress"
+                label="Late"
                 rowType="progress"
                 product={product}
                 dates={dates}
