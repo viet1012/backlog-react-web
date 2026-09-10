@@ -372,6 +372,7 @@ export function FacConfirmDataTable({
     getCellClassName,
     canEditCell,
     processRowUpdate,
+    applyPendingChangesToRows,
     pendingChanges,
     hasChanges,
     changeCount,
@@ -383,6 +384,11 @@ export function FacConfirmDataTable({
 
     confirmedProcesses,
   })
+
+  const displayRows = useMemo(
+    () => applyPendingChangesToRows(rows),
+    [applyPendingChangesToRows, rows],
+  )
 
   const apiRef = useGridApiRef()
 
@@ -1041,7 +1047,7 @@ export function FacConfirmDataTable({
           apiRef={apiRef}
 
           rows={
-            rows
+            displayRows
           }
 
           columns={

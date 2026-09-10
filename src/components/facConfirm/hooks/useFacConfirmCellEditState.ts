@@ -343,8 +343,7 @@ export function useFacConfirmCellEditState({
 
         validatedChanges.forEach((change) => {
           if (
-            change.nextValue == null
-            || change.nextValue === change.baseline.normalizedValue
+            change.nextValue === change.baseline.normalizedValue
           ) {
             next.delete(change.key)
           } else {
@@ -360,8 +359,7 @@ export function useFacConfirmCellEditState({
 
         validatedChanges.forEach((change) => {
           if (
-            change.nextValue == null
-            || change.nextValue === change.baseline.normalizedValue
+            change.nextValue === change.baseline.normalizedValue
           ) {
             next.delete(change.key)
           } else {
@@ -388,6 +386,48 @@ export function useFacConfirmCellEditState({
     () => [...pendingMap.values()],
     [pendingMap],
   )
+
+  const applyPendingChangesToRows =
+    useCallback(
+      (
+        rows: FacConfirmRow[],
+      ): FacConfirmRow[] => {
+
+        if (pendingMap.size === 0) {
+          return rows
+        }
+
+        return rows.map((row) => {
+          const nextRow: FacConfirmRow = {
+            ...row,
+          }
+
+          let changed = false
+
+          Object.values(
+            FAC_CONFIRM_PROCESS_CONFIG,
+          ).forEach((config) => {
+            config.columns.forEach((field) => {
+              const pending = pendingMap.get(
+                getCellKey(row, field),
+              )
+
+              if (!pending) {
+                return
+              }
+
+              nextRow[field] = pending.value
+              changed = true
+            })
+          })
+
+          return changed
+            ? nextRow
+            : row
+        })
+      },
+      [pendingMap],
+    )
 
   const getRestoreRows = useCallback((): FacConfirmRestoreRow[] => {
     const restoreRows = new Map<string, FacConfirmRestoreRow>()
@@ -418,6 +458,7 @@ export function useFacConfirmCellEditState({
     getCellClassName,
     canEditCell,
     processRowUpdate,
+    applyPendingChangesToRows,
     pendingChanges,
     hasChanges: pendingChanges.length > 0,
     changeCount: pendingChanges.length,

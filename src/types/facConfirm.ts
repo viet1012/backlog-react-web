@@ -207,7 +207,7 @@ export interface FacConfirmProcessTimeChange {
 
     field: FacConfirmEditableField
 
-    value: string
+    value: string | null
 }
 
 
