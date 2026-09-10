@@ -43,12 +43,33 @@ interface FacConfirmFilterBarProps {
   ) => void
 }
 
-const heatTypeOptions: FacConfirmHeatType[] = [
-  'All',
-  'Normal',
-  'DC53',
-  'TD',
-]
+function getHeatTypeOptions(
+  div: string,
+): FacConfirmHeatType[] {
+  switch (div) {
+    case 'MO':
+      return [
+        'All',
+      ]
+
+    case 'GU':
+      return [
+        'All',
+        'Normal',
+        'Molypden',
+      ]
+
+    case 'PR':
+    case 'PR-RET':
+    default:
+      return [
+        'All',
+        'Normal',
+        'DC53',
+        'TD',
+      ]
+  }
+}
 
 export function FacConfirmFilterBar({
   div,
@@ -64,6 +85,10 @@ export function FacConfirmFilterBar({
   onClassifyChange,
   onHeatTypeChange,
 }: FacConfirmFilterBarProps) {
+
+  const heatTypeOptions =
+    getHeatTypeOptions(div)
+
   const handleHeatTypeChange = (
     event: SelectChangeEvent<FacConfirmHeatType>,
   ) => {

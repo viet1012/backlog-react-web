@@ -112,6 +112,9 @@ export interface ReusableDataGridProps<
 
   onCellClick?:
   GridEventListener<'cellClick'>
+
+  onCellKeyDown?:
+  GridEventListener<'cellKeyDown'>
 }
 
 
@@ -167,6 +170,7 @@ export function ReusableDataGrid<
 
   apiRef,
   onCellClick,
+  onCellKeyDown,
 
 }: ReusableDataGridProps<T>) {
 
@@ -343,6 +347,9 @@ export function ReusableDataGrid<
 
       onCellClick={
         onCellClick
+      }
+      onCellKeyDown={
+        onCellKeyDown
       }
 
       slots={{

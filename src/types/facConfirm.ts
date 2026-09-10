@@ -23,33 +23,35 @@ export interface FacConfirmRow {
     finalQty: number | null
 
     // =====================================================
-    // HEAT PROCESS FLAG
+    // HEAT
     // =====================================================
+
+    // DB F2_Backlog_Main.WaitingDays
+    //
+    // 5 = DC53
+    // 2 = TD
+    // 7 = Molypden
+    waitingDays: number | null
+
     hasHeatProcess: boolean
 
-    // =====================================================
-    // DC53 FLAG
-    //
-    // true = có Heat + Aging (5 days)
-    // =====================================================
     isDC53: boolean
-
-    // =====================================================
-    // NOTE
-    //
-    // Ví dụ:
-    // DC53 - Có Heat + Aging (5 days)
-    // Có công đoạn Heat
-    // Không có công đoạn Heat
-    // =====================================================
 
     isTD: boolean
 
+    isMolypden: boolean
+
+    // Ví dụ:
+    // DC53 chờ 5 ngày
+    // TD chờ 2 ngày
+    // Molypden chờ 7 ngày
+    // Không có Heat
     note: string | null
 
     // =====================================================
     // PROCESS TIMES
     // =====================================================
+
     toDrill: string | null
     toHeat: string | null
 
@@ -58,6 +60,7 @@ export interface FacConfirmRow {
 
     toPk: string | null
 }
+
 
 export interface FacConfirmPageResponse {
     content: FacConfirmRow[]
@@ -83,11 +86,18 @@ export type FacConfirmClassify =
     | 'Sale'
     | 'Stock'
 
+
+// =========================================================
+// HEAT TYPE
+// =========================================================
+
 export type FacConfirmHeatType =
     | 'All'
     | 'Normal'
     | 'DC53'
     | 'TD'
+    | 'Molypden'
+
 
 export interface FacConfirmDataScope {
     div: string
@@ -100,6 +110,7 @@ export interface FacConfirmDataScope {
 
     heatType: FacConfirmHeatType
 }
+
 
 export interface FacConfirmProcessGroupSummary {
     processGroup: FacConfirmProcessGroup
@@ -125,6 +136,7 @@ export interface FacConfirmFilterItem {
 
 export interface FacConfirmSearchRequest
     extends FacConfirmDataScope {
+
     page: number
     size: number
 
@@ -136,6 +148,7 @@ export interface FacConfirmSearchRequest
 
 export interface FacConfirmFilterOptionsRequest
     extends FacConfirmDataScope {
+
     field: string
 
     search?: string
@@ -164,9 +177,8 @@ export type FacConfirmEditableField =
 // =========================================================
 // HEAT FIELD
 //
-// Dùng cho rule:
-// hasHeatProcess = false
-// => warning trước khi sửa Heat Start / Heat Finish
+// Dùng cho warning trước khi sửa
+// Heat Start / Heat Finish
 // =========================================================
 
 export type FacConfirmHeatEditableField =

@@ -243,23 +243,63 @@ export function FacConfirmPage({
         nextDiv: string,
       ) => {
 
+        let nextHeatType: FacConfirmHeatType =
+          heatType
+
+        // =========================================
+        // MOLD
+        // Chỉ được All
+        // =========================================
+        if (nextDiv === 'MO') {
+          nextHeatType = 'All'
+        }
+
+        // =========================================
+        // GUIDE
+        // All / Normal / Molypden
+        // =========================================
+        else if (nextDiv === 'GU') {
+
+          const allowedGuideHeatTypes:
+            FacConfirmHeatType[] = [
+              'All',
+              'Normal',
+              'Molypden',
+            ]
+
+          if (
+            !allowedGuideHeatTypes.includes(
+              heatType
+            )
+          ) {
+            nextHeatType = 'All'
+          }
+        }
+
+        // =========================================
+        // PRESS / PRESS RETAINER
+        // Giữ Heat Type hiện tại
+        // =========================================
+
+        setHeatType(
+          nextHeatType
+        )
+
         setDiv(
           nextDiv
         )
 
+        setExcelFilters([])
 
         saveFacConfirmPreferences({
-          div:
-            nextDiv,
-
+          div: nextDiv,
           procGrp,
         })
 
-
         resetPage()
-
       },
       [
+        heatType,
         procGrp,
         resetPage,
       ],

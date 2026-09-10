@@ -173,30 +173,15 @@ const facConfirmColumnDefinitions:
                 formatFacConfirmDateTime(value),
 
             renderCell: (params) => {
-                if (
-                    params.row.hasHeatProcess === false
-                    && !params.value
-                ) {
-                    return (
-                        <Box
-                            sx={{
-                                width: '100%',
-                                fontSize: 12,
-                                fontWeight: 500,
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                            }}
-                        >
-                            {params.row.note}
-                        </Box>
-                    )
+                if (!params.value) {
+                    return ''
                 }
 
                 return formatFacConfirmDateTime(
                     params.value,
                 )
             },
+
             renderEditCell:
                 renderDateTimeEditCell,
         },
@@ -209,30 +194,15 @@ const facConfirmColumnDefinitions:
                 formatFacConfirmDateTime(value),
 
             renderCell: (params) => {
-                if (
-                    params.row.hasHeatProcess === false
-                    && !params.value
-                ) {
-                    return (
-                        <Box
-                            sx={{
-                                width: '100%',
-                                fontSize: 12,
-                                fontWeight: 500,
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                            }}
-                        >
-                            {params.row.note}
-                        </Box>
-                    )
+                if (!params.value) {
+                    return ''
                 }
 
                 return formatFacConfirmDateTime(
                     params.value,
                 )
             },
+
             renderEditCell:
                 renderDateTimeEditCell,
         },

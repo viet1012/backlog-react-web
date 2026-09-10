@@ -516,6 +516,7 @@ export function FacConfirmDataTable({
     )
 
 
+
   // =======================================================
   // ROW UPDATE ERROR
   // =======================================================
@@ -605,6 +606,83 @@ export function FacConfirmDataTable({
       ],
     )
 
+
+  const handleCellKeyDown =
+    useCallback<GridEventListener<'cellKeyDown'>>(
+      (
+        params,
+        event,
+      ) => {
+
+        if (
+          event.key !== 'Delete'
+          && event.key !== 'Backspace'
+        ) {
+          return
+        }
+
+        if (
+          !canEditCell(
+            params.row,
+            params.field,
+          )
+        ) {
+          return
+        }
+
+        if (
+          params.row[
+          params.field as keyof FacConfirmRow
+          ] == null
+        ) {
+          return
+        }
+
+        const api =
+          apiRef.current
+
+        if (!api) {
+          return
+        }
+
+        event.defaultMuiPrevented = true
+
+        try {
+
+          const oldRow =
+            params.row
+
+          const newRow = {
+            ...oldRow,
+
+            [params.field]:
+              null,
+          } as FacConfirmRow
+
+          const updatedRow =
+            processRowUpdate(
+              newRow,
+              oldRow,
+            )
+
+          api.updateRows([
+            updatedRow,
+          ])
+
+        } catch (error) {
+
+          handleProcessRowUpdateError(
+            error,
+          )
+        }
+      },
+      [
+        apiRef,
+        canEditCell,
+        processRowUpdate,
+        handleProcessRowUpdateError,
+      ],
+    )
   // =======================================================
   // TOOLBAR WRAPPER
   // =======================================================
@@ -1040,6 +1118,10 @@ export function FacConfirmDataTable({
           }
 
           onCellClick={handleCellClick}
+
+          onCellKeyDown={
+            handleCellKeyDown
+          }
 
           processRowUpdate={
             processRowUpdate
