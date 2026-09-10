@@ -72,6 +72,11 @@ interface BacklogFilterBarProps {
   excelFilterCount:
   number
 
+  summaryFilter: {
+    status: string
+    date: string
+  } | null
+
   loading:
   boolean
 
@@ -101,6 +106,7 @@ export function BacklogFilterBar({
   filters,
   options,
   excelFilterCount,
+  summaryFilter,
   loading,
   onFilterChange,
   onClear,
@@ -127,6 +133,7 @@ export function BacklogFilterBar({
   const hasAnyFilter =
     activeFilters.length > 0
     || excelFilterCount > 0
+    || summaryFilter != null
 
 
   return (
@@ -395,6 +402,27 @@ export function BacklogFilterBar({
                 }
               />
             ),
+          )}
+
+
+          {summaryFilter && (
+            <>
+              <Chip
+                size="small"
+
+                variant="outlined"
+
+                label={`Status: ${summaryFilter.status}`}
+              />
+
+              <Chip
+                size="small"
+
+                variant="outlined"
+
+                label={`Export Date: ${summaryFilter.date}`}
+              />
+            </>
           )}
 
 

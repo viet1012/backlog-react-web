@@ -39,7 +39,16 @@ interface BacklogSummaryProps {
   loading?: boolean
   error?: string | null
   onStatusClick: (status: string) => void
-  onCellClick?: (status: string, date: string) => void
+  selectedCell: {
+    status: string
+    date: string
+  } | null
+  onCellClick: (
+    cell: {
+      status: string
+      date: string
+    } | null,
+  ) => void
 }
 
 // =========================================================
@@ -191,6 +200,7 @@ export function BacklogSummary({
   loading = false,
   error,
   onStatusClick,
+  selectedCell,
   onCellClick,
 }: BacklogSummaryProps) {
 
@@ -930,6 +940,10 @@ export function BacklogSummary({
                             const isToday =
                               date === today
 
+                            const selected =
+                              selectedCell?.status === row.status
+                              && selectedCell.date === date
+
                             return (
 
                               <Box
@@ -938,10 +952,15 @@ export function BacklogSummary({
                                 onClick={(event) => {
                                   event.stopPropagation()
 
-                                  onCellClick?.(
-                                    row.status,
-                                    date,
-                                  )
+                                  const nextSelectedCell =
+                                    selected
+                                      ? null
+                                      : {
+                                        status: row.status,
+                                        date,
+                                      }
+
+                                  onCellClick(nextSelectedCell)
                                 }}
 
                                 sx={(theme) => {
@@ -962,7 +981,14 @@ export function BacklogSummary({
                                     cursor: 'pointer',
 
                                     bgcolor:
-                                      isToday
+                                      selected
+                                        ? alpha(
+                                          theme.palette.primary.main,
+                                          theme.palette.mode === 'dark'
+                                            ? 0.22
+                                            : 0.14,
+                                        )
+                                        : isToday
                                         ? alpha(
                                           theme.palette.primary.main,
                                           theme.palette.mode === 'dark'
@@ -989,14 +1015,27 @@ export function BacklogSummary({
                                         }`
                                         : undefined,
 
+                                    boxShadow:
+                                      selected
+                                        ? `inset 0 0 0 2px ${alpha(
+                                          theme.palette.primary.main,
+                                          0.65,
+                                        )}`
+                                        : undefined,
+
                                     '&:hover': {
                                       boxShadow:
-                                        `inset 0 0 0 9999px ${alpha(
-                                          theme.palette.primary.main,
-                                          theme.palette.mode === 'dark'
-                                            ? 0.055
-                                            : 0.035,
-                                        )}`,
+                                        selected
+                                          ? `inset 0 0 0 2px ${alpha(
+                                            theme.palette.primary.main,
+                                            0.8,
+                                          )}`
+                                          : `inset 0 0 0 9999px ${alpha(
+                                            theme.palette.primary.main,
+                                            theme.palette.mode === 'dark'
+                                              ? 0.055
+                                              : 0.035,
+                                          )}`,
                                     },
                                   }
                                 }}

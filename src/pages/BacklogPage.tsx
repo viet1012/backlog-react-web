@@ -443,6 +443,7 @@ import type {
 import {
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from 'react'
 
@@ -485,6 +486,12 @@ interface BacklogSelectOptions {
   div: string[]
   currentProcess: string[]
   shipBy: string[]
+}
+
+
+interface SummaryCellFilter {
+  status: string
+  date: string
 }
 
 
@@ -603,6 +610,31 @@ export function BacklogPage({
     )
 
 
+  const [
+    summaryCellFilter,
+    setSummaryCellFilter,
+  ] =
+    useState<SummaryCellFilter | null>(
+      null,
+    )
+
+
+  const effectiveFilters =
+    useMemo<ReportFilters>(
+      () =>
+        summaryCellFilter
+          ? {
+            ...filters,
+            status: '',
+          }
+          : filters,
+      [
+        filters,
+        summaryCellFilter,
+      ],
+    )
+
+
   const preferences =
     useGridPreferences(
       'backlog',
@@ -632,6 +664,46 @@ export function BacklogPage({
   ] =
     useState<BacklogFilterItem[]>(
       [],
+    )
+
+
+  const effectiveExcelFilters =
+    useMemo<BacklogFilterItem[]>(
+      () => {
+        if (!summaryCellFilter) {
+          return excelFilters
+        }
+
+        return [
+          ...excelFilters.filter(
+            (item) => {
+              const field =
+                item.field
+                  .trim()
+                  .toLowerCase()
+
+              return field !== 'status'
+                && field !== 'exportd'
+            },
+          ),
+          {
+            field: 'Status',
+            operator: 'equals',
+            value:
+              summaryCellFilter.status,
+          },
+          {
+            field: 'ExportD',
+            operator: 'equals',
+            value:
+              summaryCellFilter.date,
+          },
+        ]
+      },
+      [
+        excelFilters,
+        summaryCellFilter,
+      ],
     )
 
 
@@ -673,8 +745,10 @@ export function BacklogPage({
       pageSize:
         preferences.pageSize,
 
-      filters,
-      excelFilters,
+      filters:
+        effectiveFilters,
+      excelFilters:
+        effectiveExcelFilters,
       sortModel,
     })
 
@@ -986,38 +1060,11 @@ export function BacklogPage({
   const handleSummaryCellClick =
     useCallback(
       (
-        status: string,
-        date: string,
+        cell:
+          SummaryCellFilter | null,
       ) => {
-        setFilters(
-          (current) => ({
-            ...current,
-            status,
-          }),
-        )
-
-        setExcelFilters(
-          (current) => [
-            ...current.filter((item) => {
-              const field =
-                item.field
-                  .trim()
-                  .toLowerCase()
-
-              return field !== 'status'
-                && field !== 'exportd'
-            }),
-            {
-              field: 'Status',
-              operator: 'equals',
-              value: status,
-            },
-            {
-              field: 'ExportD',
-              operator: 'equals',
-              value: date,
-            },
-          ],
+        setSummaryCellFilter(
+          cell,
         )
 
         setPage(
@@ -1042,6 +1089,10 @@ export function BacklogPage({
 
         setExcelFilters(
           [],
+        )
+
+        setSummaryCellFilter(
+          null,
         )
 
         setPage(
@@ -1202,9 +1253,14 @@ export function BacklogPage({
           handleSummaryStatusClick
         }
 
+        selectedCell={
+          summaryCellFilter
+        }
+
         onCellClick={
           handleSummaryCellClick
         }
+
       />
 
 
@@ -1219,6 +1275,10 @@ export function BacklogPage({
 
         excelFilterCount={
           excelFilters.length
+        }
+
+        summaryFilter={
+          summaryCellFilter
         }
 
         loading={
@@ -1283,7 +1343,7 @@ export function BacklogPage({
           }
 
           excelFilters={
-            excelFilters
+            effectiveExcelFilters
           }
 
           sortModel={

@@ -35,6 +35,23 @@ function getLocalDateKey(date = new Date()): string {
     return `${year}-${month}-${day}`
 }
 
+function getHighlightDateKeys(): Set<string> {
+    const result = new Set<string>()
+
+    const today = new Date()
+
+    for (let i = 0; i < 3; i++) {
+        const date = new Date(today)
+        date.setDate(today.getDate() + i)
+
+        result.add(
+            getLocalDateKey(date),
+        )
+    }
+
+    return result
+}
+
 function formatMetricValue(
     value: number,
     metric: OdbfSummaryMetric,
@@ -156,7 +173,7 @@ function OdbfDataRow({
     product,
     dates,
     metric,
-    currentDateKey,
+    highlightDateKeys,
     productHeader,
     groupStart = false,
 }: {
@@ -165,7 +182,7 @@ function OdbfDataRow({
     product: OdbfProductSummary
     dates: string[]
     metric: OdbfSummaryMetric
-    currentDateKey: string
+    highlightDateKeys: Set<string>
     productHeader?: ReactNode
     groupStart?: boolean
 }) {
@@ -200,7 +217,7 @@ function OdbfDataRow({
 
             {dates.map((date) => {
                 const value = product.values.get(date)
-                const currentDate = date === currentDateKey
+                const currentDate = highlightDateKeys.has(date)
 
                 if (!value) {
                     return (
@@ -244,12 +261,12 @@ function OdbfProductRows({
     product,
     dates,
     metric,
-    currentDateKey,
+    highlightDateKeys,
 }: {
     product: OdbfProductSummary
     dates: string[]
     metric: OdbfSummaryMetric
-    currentDateKey: string
+    highlightDateKeys: Set<string>
 }) {
     const productHeader = (
         <StickyBodyCell
@@ -271,7 +288,7 @@ function OdbfProductRows({
                 product={product}
                 dates={dates}
                 metric={metric}
-                currentDateKey={currentDateKey}
+                highlightDateKeys={highlightDateKeys}
                 productHeader={productHeader}
                 groupStart
             />
@@ -281,7 +298,7 @@ function OdbfProductRows({
                 product={product}
                 dates={dates}
                 metric={metric}
-                currentDateKey={currentDateKey}
+                highlightDateKeys={highlightDateKeys}
             />
             <OdbfDataRow
                 label="Ratio"
@@ -289,7 +306,7 @@ function OdbfProductRows({
                 product={product}
                 dates={dates}
                 metric={metric}
-                currentDateKey={currentDateKey}
+                highlightDateKeys={highlightDateKeys}
             />
         </>
     )
@@ -305,7 +322,10 @@ export function OdbfSummaryTable({
         () => buildOdbfMatrix(items, metric),
         [items, metric],
     )
-    const currentDateKey = getLocalDateKey()
+    const highlightDateKeys = useMemo(
+        () => getHighlightDateKeys(),
+        [],
+    )
 
     return (
         <Box component="section" aria-label={title} sx={{ minWidth: 0 }}>
@@ -378,7 +398,7 @@ export function OdbfSummaryTable({
                                         key={date}
                                         width={DATE_COLUMN_WIDTH}
                                         align="center"
-                                        currentDate={date === currentDateKey}
+                                        currentDate={highlightDateKeys.has(date)}
                                     >
                                         {formatOdbfDate(date)}
                                     </HeaderCell>
@@ -393,7 +413,7 @@ export function OdbfSummaryTable({
                                     product={product}
                                     dates={matrix.dates}
                                     metric={metric}
-                                    currentDateKey={currentDateKey}
+                                    highlightDateKeys={highlightDateKeys}
                                 />
                             ))}
                         </Box>
