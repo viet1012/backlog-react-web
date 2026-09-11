@@ -134,6 +134,21 @@ export interface FacConfirmFilterItem {
 }
 
 
+export interface FacConfirmProcessGroupRequest {
+    div: string
+
+    expD: string
+
+    classify?: FacConfirmClassify
+
+    heatType: FacConfirmHeatType
+
+    filters: FacConfirmFilterItem[]
+
+    logicOperator: 'and' | 'or'
+}
+
+
 export interface FacConfirmSearchRequest
     extends FacConfirmDataScope {
 

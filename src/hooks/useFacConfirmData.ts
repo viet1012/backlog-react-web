@@ -244,8 +244,14 @@ export function useFacConfirmData({
     summaryRequestRef.current = controller
     try {
       const result = await getFacConfirmProcessGroups(
-        div,
-        expD,
+        {
+          div,
+          expD,
+          classify,
+          heatType,
+          filters: excelFilters,
+          logicOperator: 'and',
+        },
         controller.signal,
       )
 
@@ -271,7 +277,13 @@ export function useFacConfirmData({
         summaryRequestRef.current = null
       }
     }
-  }, [div, expD])
+  }, [
+    classify,
+    div,
+    excelFilters,
+    expD,
+    heatType,
+  ])
 
   useEffect(() => {
     let active = true

@@ -4,6 +4,7 @@ import {
 
 import type {
     FacConfirmPageResponse,
+    FacConfirmProcessGroupRequest,
     FacConfirmProcessGroupSummary,
     FacConfirmFilterOptionsRequest,
     FacConfirmSearchRequest,
@@ -101,29 +102,27 @@ export async function getFacConfirm(
 // =========================================================
 
 export async function getFacConfirmProcessGroups(
-    div: string,
-    expD: string,
+    request: FacConfirmProcessGroupRequest,
     signal?: AbortSignal,
 ): Promise<FacConfirmProcessGroupSummary[]> {
 
-    const query = new URLSearchParams({
-        div,
-        expD,
-    })
-
-
     const url =
-        `${API_BASE_URL}/api/fac-confirm/process-groups?${query.toString()}`
+        `${API_BASE_URL}/api/fac-confirm/process-groups`
 
 
     const response = await fetch(
         url,
         {
-            method: 'GET',
+            method: 'POST',
 
             headers: {
                 Accept: 'application/json',
+                'Content-Type': 'application/json',
             },
+
+            body: JSON.stringify(
+                request,
+            ),
 
             signal,
         },
