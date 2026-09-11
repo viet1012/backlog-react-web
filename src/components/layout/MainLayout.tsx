@@ -24,6 +24,7 @@ export function MainLayout() {
       <Box
         component="main"
         sx={{
+          display: 'flex',
           flex: 1,
           minWidth: 0,
           minHeight: 0,

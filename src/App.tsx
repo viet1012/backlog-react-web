@@ -29,6 +29,7 @@ import { OdbfPage } from './pages/OdbfPage'
 import { OtPage } from './pages/OtPage'
 import { PackingListPage } from './pages/PackingListPage'
 import { PlPage } from './pages/PlPage'
+import { RemainPoControlPage } from './pages/RemainPoControlPage'
 import { SalesStatusPage } from './pages/SalesStatusPage'
 import { ShipmentPage } from './pages/ShipmentPage'
 import { SphPage } from './pages/SphPage'
@@ -50,6 +51,7 @@ import {
 import {
   AdapterDayjs,
 } from '@mui/x-date-pickers/AdapterDayjs'
+
 const DEFAULT_THEME_MODE:
   ThemeMode =
   'light'
@@ -160,7 +162,10 @@ function App() {
                   />
                 }
               />
-
+              <Route
+                path="remain-po-control"
+                element={<RemainPoControlPage />}
+              />
               <Route
                 path="odbf"
                 element={
@@ -223,7 +228,7 @@ function App() {
                 path="deadstock"
                 element={<DeadstockPage />}
               />
-
+              fbacklog
               <Route
                 path="pl"
                 element={<PlPage />}

@@ -155,7 +155,7 @@ export const menuGroups:
                 {
                     label: 'Remain PO Control',
                     path: '/remain-po-control',
-                    status: 'todo',
+                    status: 'ready',
                     pic: 'PC',
                     action: 'view',
                     icon: (

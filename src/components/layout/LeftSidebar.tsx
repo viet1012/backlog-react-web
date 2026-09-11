@@ -548,12 +548,10 @@ export function LeftSidebar() {
                 >
                   <List
                     disablePadding
-
                     sx={{
-                      px:
-                        collapsed
-                          ? 0.5
-                          : 0.75,
+                      px: collapsed
+                        ? 0.35
+                        : 0.35,
                     }}
                   >
 
