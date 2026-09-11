@@ -140,7 +140,7 @@ export function BacklogFilterBar({
     <GlassPanel
       sx={{
         mb:
-          0.5,
+          0,
 
         p:
           1.25,

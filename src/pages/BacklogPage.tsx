@@ -1311,6 +1311,8 @@ export function BacklogPage({
 
       <Card
         sx={{
+          border: 'none',
+
           flex:
             1,
 

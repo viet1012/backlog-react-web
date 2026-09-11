@@ -1021,6 +1021,7 @@ export async function searchReports(
   filterRequest: BacklogFilterRequest,
   signal?: AbortSignal,
   sortRequest?: BacklogSortRequest,
+  search = '',
 ): Promise<PageResponse<ProductionOrder>> {
 
   validatePage(
@@ -1040,6 +1041,22 @@ export async function searchReports(
       size:
         String(pageSize),
     })
+
+
+  // -------------------------------------------------------
+  // GLOBAL SEARCH
+  // -------------------------------------------------------
+
+  const keyword =
+    search.trim()
+
+
+  if (keyword) {
+    query.set(
+      'search',
+      keyword,
+    )
+  }
 
 
   // -------------------------------------------------------
@@ -1121,7 +1138,24 @@ export async function searchReports(
 export async function getBacklogStatusSummary(
   filterRequest: BacklogFilterRequest,
   signal?: AbortSignal,
+  search = '',
 ): Promise<BacklogStatusSummary> {
+
+  const query =
+    new URLSearchParams()
+
+  const keyword =
+    search.trim()
+
+  if (keyword) {
+    query.set(
+      'search',
+      keyword,
+    )
+  }
+
+  const queryString =
+    query.toString()
 
   const safeFilterRequest: BacklogFilterRequest = {
     filters:
@@ -1134,7 +1168,11 @@ export async function getBacklogStatusSummary(
   }
 
   return await fetchJson<BacklogStatusSummary>(
-    `${API_BASE_URL}/api/backlogs/summary/status`,
+    `${API_BASE_URL}/api/backlogs/summary/status${
+      queryString
+        ? `?${queryString}`
+        : ''
+    }`,
     {
       method: 'POST',
 

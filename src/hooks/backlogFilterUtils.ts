@@ -5,9 +5,7 @@ export function createBacklogFilters(
   excelFilters: BacklogFilterItem[],
 ): BacklogFilterItem[] {
   const topFilters: BacklogFilterItem[] = []
-  const search = filters.search.trim()
 
-  if (search) topFilters.push({ field: 'VBELN', operator: 'contains', value: search })
   if (filters.status) topFilters.push({ field: 'Status', operator: 'equals', value: filters.status })
   if (filters.div) topFilters.push({ field: 'Div', operator: 'equals', value: filters.div })
   if (filters.currentProcess) {

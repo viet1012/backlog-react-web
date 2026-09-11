@@ -1,12 +1,19 @@
-import { alpha, type Theme } from '@mui/material/styles'
-import type { GridEventListener } from '@mui/x-data-grid'
+import {
+  alpha,
+  type Theme,
+} from '@mui/material/styles'
+
+import type {
+  GridEventListener,
+} from '@mui/x-data-grid'
 
 // =====================================================
 // PREVENT COLUMN HEADER SORT
 // =====================================================
 
 export const preventColumnHeaderSort:
-  GridEventListener<'columnHeaderClick'> = (
+  GridEventListener<'columnHeaderClick'> =
+  (
     _params,
     event,
   ) => {
@@ -14,311 +21,525 @@ export const preventColumnHeaderSort:
   }
 
 // =====================================================
-// DATAGRID HEADER STYLE
+// DATAGRID GLASS STYLE
 // =====================================================
 
-export const dataGridHeaderSx = (theme: Theme) => {
-  const isDark =
-    theme.palette.mode === 'dark'
+export const dataGridHeaderSx =
+  (theme: Theme) => {
 
-  // =====================================================
-  // COLOR
-  // =====================================================
+    const isDark =
+      theme.palette.mode === 'dark'
 
-  const headerAccent =
-    isDark
-      ? '#4F7FE3'
-      : '#5F88CC'
+    const accent =
+      isDark
+        ? '#7AA2F7'
+        : '#4F74B8'
 
-  const headerBgTop =
-    alpha(
-      headerAccent,
-      isDark ? 0.24 : 0.16,
-    )
+    const gridBorder =
+      isDark
+        ? alpha('#FFFFFF', 0.10)
+        : alpha('#334155', 0.10)
 
-  const headerBgBottom =
-    alpha(
-      headerAccent,
-      isDark ? 0.11 : 0.07,
-    )
+    const headerGlass =
+      isDark
+        ? alpha('#111827', 0.58)
+        : alpha('#F8FAFC', 0.62)
 
-  const headerBorder =
-    alpha(
-      headerAccent,
-      isDark ? 0.34 : 0.22,
-    )
+    const bodyGlass =
+      isDark
+        ? alpha('#0F172A', 0.44)
+        : alpha('#FFFFFF', 0.52)
 
-  const headerSeparator =
-    alpha(
-      headerAccent,
-      isDark ? 0.26 : 0.16,
-    )
+    const rowGlass =
+      isDark
+        ? alpha('#172033', 0.34)
+        : alpha('#FFFFFF', 0.34)
 
-  const headerHoverBg =
-    alpha(
-      headerAccent,
-      isDark ? 0.13 : 0.08,
-    )
+    const rowGlassAlt =
+      isDark
+        ? alpha('#1E293B', 0.26)
+        : alpha('#F8FAFC', 0.32)
 
-  const headerText =
-    isDark
-      ? alpha('#ffffff', 0.92)
-      : '#17365F'
+    const hoverGlass =
+      isDark
+        ? alpha(accent, 0.12)
+        : alpha(accent, 0.075)
 
-  const headerBackground =
-    `linear-gradient(
-      180deg,
-      ${headerBgTop} 0%,
-      ${headerBgBottom} 100%
-    )`
+    const headerHoverGlass =
+      isDark
+        ? alpha('#FFFFFF', 0.06)
+        : alpha('#0F172A', 0.045)
 
-  return {
-    width: '100%',
-    height: '100%',
+    const separatorColor =
+      isDark
+        ? alpha('#FFFFFF', 0.11)
+        : alpha('#334155', 0.11)
 
-    // =====================================================
-    // HEADER
-    // =====================================================
+    const headerText =
+      isDark
+        ? alpha('#FFFFFF', 0.94)
+        : '#1E293B'
 
-    '& .MuiDataGrid-columnHeaders': {
-      background:
-        `${headerBackground} !important`,
+    return {
+      width: '100%',
+      height: '100%',
 
-      borderBottom:
-        `1px solid ${headerBorder}`,
+      position: 'relative',
 
-      borderRadius:
-        '0 !important',
+      border:
+        'none',
+
+      borderRadius: 2.2,
+
+      overflow: 'hidden',
+
+      backgroundColor:
+        'transparent',
+
+      backgroundImage:
+        isDark
+          ? `
+              radial-gradient(
+                circle at 18% 0%,
+                ${alpha(accent, 0.10)} 0%,
+                transparent 34%
+              ),
+              linear-gradient(
+                180deg,
+                ${alpha('#0F172A', 0.38)} 0%,
+                ${alpha('#111827', 0.26)} 100%
+              )
+            `
+          : `
+              radial-gradient(
+                circle at 18% 0%,
+                ${alpha(accent, 0.09)} 0%,
+                transparent 34%
+              ),
+              linear-gradient(
+                180deg,
+                ${alpha('#FFFFFF', 0.68)} 0%,
+                ${alpha('#F8FAFC', 0.46)} 100%
+              )
+            `,
 
       boxShadow:
         isDark
-          ? 'inset 0 -1px 0 rgba(255,255,255,0.025)'
-          : 'inset 0 -1px 0 rgba(15,23,42,0.025)',
-    },
+          ? '0 10px 30px rgba(0,0,0,0.16)'
+          : '0 10px 30px rgba(15,23,42,0.07)',
 
-    '& .MuiDataGrid-columnHeadersInner': {
-      background:
-        'transparent !important',
+      backdropFilter:
+        'blur(18px) saturate(145%)',
 
-      borderRadius:
-        '0 !important',
-    },
+      WebkitBackdropFilter:
+        'blur(18px) saturate(145%)',
 
-    '& .MuiDataGrid-columnHeader': {
-      background:
-        'transparent !important',
+      // =====================================================
+      // MAIN / VIRTUAL SCROLLER
+      // =====================================================
 
-      borderRadius:
-        '0 !important',
+      '& .MuiDataGrid-main': {
+        backgroundColor:
+          bodyGlass,
 
-      transition:
-        'background-color 140ms ease',
-    },
+        backdropFilter:
+          'blur(14px) saturate(135%)',
 
-    // =====================================================
-    // FIRST / LAST
-    // =====================================================
+        WebkitBackdropFilter:
+          'blur(14px) saturate(135%)',
+      },
 
-    '& .MuiDataGrid-columnHeader:first-of-type': {
-      borderTopLeftRadius:
-        '0 !important',
+      '& .MuiDataGrid-virtualScroller': {
+        backgroundColor:
+          'transparent',
+      },
 
-      borderBottomLeftRadius:
-        '0 !important',
-    },
+      '& .MuiDataGrid-virtualScrollerContent': {
+        backgroundColor:
+          'transparent',
+      },
 
-    '& .MuiDataGrid-columnHeader:last-of-type': {
-      borderTopRightRadius:
-        '0 !important',
+      '& .MuiDataGrid-virtualScrollerRenderZone': {
+        backgroundColor:
+          'transparent',
+      },
 
-      borderBottomRightRadius:
-        '0 !important',
-    },
+      // =====================================================
+      // COLUMN HEADER AREA
+      // =====================================================
 
-    // =====================================================
-    // FILLER / SCROLLBAR HEADER
-    // =====================================================
+      '& .MuiDataGrid-columnHeaders': {
+        position: 'relative',
 
-    '& .MuiDataGrid-filler, & .MuiDataGrid-scrollbarFiller, & .MuiDataGrid-scrollbarFiller--header':
-    {
-      background:
-        `${headerBackground} !important`,
+        background:
+          `${headerGlass} !important`,
 
-      borderRadius:
-        '0 !important',
-    },
+        backdropFilter:
+          'blur(22px) saturate(160%)',
 
-    // =====================================================
-    // HEADER TEXT
-    // =====================================================
+        WebkitBackdropFilter:
+          'blur(22px) saturate(160%)',
 
-    '& .MuiDataGrid-columnHeaderTitle': {
-      fontWeight: 700,
+        borderBottom:
+          `1px solid ${isDark
+            ? alpha('#FFFFFF', 0.09)
+            : alpha('#334155', 0.08)
+          }`,
 
-      color:
-        `${headerText} !important`,
+        boxShadow:
+          isDark
+            ? '0 4px 16px rgba(0,0,0,0.10)'
+            : '0 4px 16px rgba(15,23,42,0.06)',
 
-      letterSpacing:
-        '-0.01em',
+        '&::before, &::after': {
+          content: 'none',
+          display: 'none',
+        },
+      },
+      '& .MuiDataGrid-columnHeadersInner': {
+        background:
+          'transparent !important',
 
-      fontSize:
-        '0.79rem',
-    },
+        '&::before, &::after': {
+          content: 'none',
+          display: 'none',
+        },
+      },
 
-    '& .MuiDataGrid-columnHeaderTitleContainer': {
-      borderRadius:
-        '0 !important',
+      // =====================================================
+      // COLUMN HEADER
+      // =====================================================
 
-      minWidth: 0,
-    },
+      '& .MuiDataGrid-columnHeader': {
+        background:
+          'transparent !important',
 
-    // =====================================================
-    // COLUMN SEPARATOR
-    // =====================================================
+        transition:
+          'background-color 140ms ease, box-shadow 140ms ease',
 
-    '& .MuiDataGrid-columnSeparator': {
-      color:
-        headerSeparator,
+        '&:hover': {
+          backgroundColor:
+            `${headerHoverGlass} !important`,
+        },
 
-      opacity: 1,
-    },
+        '&:focus, &:focus-within': {
+          outline: 'none',
+        },
+      },
 
-    // =====================================================
-    // HIDE SORT ICON
-    // =====================================================
+      // =====================================================
+      // HEADER TEXT
+      // =====================================================
 
-    '& .MuiDataGrid-sortIcon': {
-      display:
-        'none !important',
-    },
+      '& .MuiDataGrid-columnHeaderTitle': {
+        fontWeight: 700,
 
-    '& .MuiDataGrid-iconButtonContainer': {
-      display:
-        'none !important',
-    },
-
-    // =====================================================
-    // COLUMN MENU
-    // =====================================================
-
-    '& .MuiDataGrid-menuIcon': {
-      display:
-        'flex !important',
-
-      visibility:
-        'visible !important',
-
-      width:
-        'auto !important',
-
-      backgroundColor:
-        'transparent !important',
-
-      borderRadius:
-        '0 !important',
-    },
-
-    '& .MuiDataGrid-menuIconButton': {
-      display:
-        'inline-flex !important',
-
-      visibility:
-        'visible !important',
-
-      alignItems: 'center',
-      justifyContent: 'center',
-
-      width: 27,
-      height: 27,
-
-      minWidth: 27,
-      minHeight: 27,
-
-      padding: 0,
-
-      color:
-        headerAccent,
-
-      backgroundColor:
-        'transparent !important',
-
-      border:
-        'none !important',
-
-      boxShadow:
-        'none !important',
-
-      borderRadius:
-        '0 !important',
-
-      opacity:
-        0.82,
-
-      transition:
-        'background-color 140ms ease, color 140ms ease, opacity 140ms ease',
-
-      '&:hover': {
         color:
-          headerAccent,
+          `${headerText} !important`,
+
+        fontSize:
+          '0.79rem',
+
+        letterSpacing:
+          '-0.012em',
+
+        textShadow:
+          isDark
+            ? '0 1px 1px rgba(0,0,0,0.25)'
+            : '0 1px 0 rgba(255,255,255,0.75)',
+      },
+
+      '& .MuiDataGrid-columnHeaderTitleContainer': {
+        minWidth: 0,
+
+        gap: 0.5,
+      },
+
+      // =====================================================
+      // COLUMN SEPARATOR
+      // =====================================================
+
+      '& .MuiDataGrid-columnSeparator': {
+        color:
+          separatorColor,
 
         opacity: 1,
 
-        backgroundColor:
-          `${headerHoverBg} !important`,
+        '&:hover': {
+          color:
+            isDark
+              ? alpha('#FFFFFF', 0.42)
+              : alpha('#334155', 0.42),
+        },
+      },
+
+      // =====================================================
+      // FILLER
+      // =====================================================
+
+      '& .MuiDataGrid-filler, & .MuiDataGrid-scrollbarFiller, & .MuiDataGrid-scrollbarFiller--header':
+      {
+        background:
+          `${headerGlass} !important`,
+
+        backdropFilter:
+          'blur(22px) saturate(160%)',
+
+        WebkitBackdropFilter:
+          'blur(22px) saturate(160%)',
+      },
+
+      // =====================================================
+      // SORT ICON
+      // =====================================================
+
+      '& .MuiDataGrid-sortIcon': {
+        display:
+          'none !important',
+      },
+
+      '& .MuiDataGrid-iconButtonContainer': {
+        display:
+          'none !important',
+      },
+
+      // =====================================================
+      // COLUMN MENU
+      // =====================================================
+
+      '& .MuiDataGrid-menuIcon': {
+        display:
+          'flex !important',
+
+        visibility:
+          'visible !important',
+
+        width:
+          'auto !important',
+
+        opacity: 1,
+      },
+
+      '& .MuiDataGrid-menuIconButton': {
+        width: 28,
+        height: 28,
+
+        minWidth: 28,
+        minHeight: 28,
+
+        padding: 0,
+
+        color:
+          isDark
+            ? alpha('#FFFFFF', 0.78)
+            : alpha('#1E293B', 0.74),
 
         borderRadius:
-          '0 !important',
-      },
-    },
+          '8px !important',
 
-    // =====================================================
-    // REMOVE ICON BUTTON ROUNDING
-    // =====================================================
-
-    '& .MuiDataGrid-columnHeader .MuiIconButton-root': {
-      backgroundColor:
-        'transparent !important',
-
-      border:
-        'none !important',
-
-      boxShadow:
-        'none !important',
-
-      borderRadius:
-        '0 !important',
-
-      '&:hover': {
         backgroundColor:
-          `${headerHoverBg} !important`,
+          `${alpha(
+            isDark
+              ? '#FFFFFF'
+              : '#1E293B',
+            isDark
+              ? 0.035
+              : 0.025,
+          )} !important`,
 
-        borderRadius:
-          '0 !important',
+        border:
+          `1px solid ${alpha(
+            isDark
+              ? '#FFFFFF'
+              : '#334155',
+            isDark
+              ? 0.10
+              : 0.08,
+          )}`,
+
+        transition:
+          'all 140ms ease',
+
+        '&:hover': {
+          color:
+            isDark
+              ? '#FFFFFF'
+              : '#0F172A',
+
+          backgroundColor:
+            `${alpha(
+              isDark
+                ? '#FFFFFF'
+                : '#0F172A',
+              isDark
+                ? 0.10
+                : 0.07,
+            )} !important`,
+
+          borderColor:
+            alpha(
+              isDark
+                ? '#FFFFFF'
+                : '#334155',
+              0.18,
+            ),
+
+          transform:
+            'translateY(-1px)',
+
+          boxShadow:
+            isDark
+              ? '0 3px 10px rgba(0,0,0,0.16)'
+              : '0 3px 10px rgba(15,23,42,0.10)',
+        },
       },
-    },
 
-    // =====================================================
-    // HEADER HOVER
-    // =====================================================
+      // =====================================================
+      // ROWS
+      // =====================================================
 
-    '& .MuiDataGrid-columnHeader:hover': {
-      backgroundColor:
-        `${alpha(
-          headerAccent,
-          isDark ? 0.06 : 0.045,
-        )} !important`,
+      '& .MuiDataGrid-row': {
+        backgroundColor:
+          rowGlass,
 
-      borderRadius:
-        '0 !important',
-    },
+        transition:
+          'background-color 130ms ease, box-shadow 130ms ease',
 
-    // =====================================================
-    // ROW
-    // =====================================================
+        '&:nth-of-type(even)': {
+          backgroundColor:
+            rowGlassAlt,
+        },
 
-    '& .MuiDataGrid-row': {
-      transition:
-        'background-color 160ms ease',
-    },
+        '&:hover': {
+          backgroundColor:
+            `${hoverGlass} !important`,
+
+          boxShadow:
+            isDark
+              ? `
+                  inset 0 1px 0 rgba(255,255,255,0.035),
+                  inset 0 -1px 0 rgba(255,255,255,0.02)
+                `
+              : `
+                  inset 0 1px 0 rgba(255,255,255,0.55),
+                  inset 0 -1px 0 rgba(15,23,42,0.025)
+                `,
+        },
+      },
+
+      // =====================================================
+      // CELLS
+      // =====================================================
+
+      '& .MuiDataGrid-cell': {
+        backgroundColor:
+          'transparent',
+
+        borderBottom:
+          `1px solid ${isDark
+            ? alpha('#FFFFFF', 0.050)
+            : alpha('#0F172A', 0.055)
+          }`,
+
+        borderRight:
+          `1px solid ${isDark
+            ? alpha('#FFFFFF', 0.025)
+            : alpha('#0F172A', 0.025)
+          }`,
+      },
+
+      '& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within':
+      {
+        outline: 'none',
+      },
+
+      // =====================================================
+      // EDIT CELL
+      // =====================================================
+
+      '& .MuiDataGrid-cell--editing': {
+        backgroundColor:
+          isDark
+            ? `${alpha('#111827', 0.82)} !important`
+            : `${alpha('#FFFFFF', 0.88)} !important`,
+
+        backdropFilter:
+          'blur(18px)',
+
+        WebkitBackdropFilter:
+          'blur(18px)',
+
+        boxShadow:
+          `inset 0 0 0 1.5px ${alpha(accent, 0.70)} !important`,
+      },
+
+      // =====================================================
+      // FOOTER
+      // =====================================================
+
+      '& .MuiDataGrid-footerContainer': {
+        borderTop:
+          `1px solid ${gridBorder}`,
+
+        backgroundColor:
+          isDark
+            ? alpha('#111827', 0.58)
+            : alpha('#F8FAFC', 0.64),
+
+        backdropFilter:
+          'blur(20px) saturate(145%)',
+
+        WebkitBackdropFilter:
+          'blur(20px) saturate(145%)',
+
+        boxShadow:
+          isDark
+            ? 'inset 0 1px 0 rgba(255,255,255,0.05)'
+            : 'inset 0 1px 0 rgba(255,255,255,0.82)',
+      },
+
+      // =====================================================
+      // SCROLLBAR
+      // =====================================================
+
+      '& .MuiDataGrid-scrollbar': {
+        '&::-webkit-scrollbar': {
+          width: 10,
+          height: 10,
+        },
+
+        '&::-webkit-scrollbar-track': {
+          background:
+            'transparent',
+        },
+
+        '&::-webkit-scrollbar-thumb': {
+          backgroundColor:
+            alpha(
+              accent,
+              isDark
+                ? 0.28
+                : 0.22,
+            ),
+
+          borderRadius: 999,
+
+          border:
+            '3px solid transparent',
+
+          backgroundClip:
+            'padding-box',
+        },
+
+        '&::-webkit-scrollbar-thumb:hover': {
+          backgroundColor:
+            alpha(
+              accent,
+              isDark
+                ? 0.42
+                : 0.34,
+            ),
+        },
+      },
+    }
   }
-}

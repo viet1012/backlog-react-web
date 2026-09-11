@@ -153,6 +153,7 @@ export function useBacklogData({
             detailFilterRequest,
             controller.signal,
             sortRequest,
+            filters.search,
           )
 
 
@@ -216,6 +217,7 @@ export function useBacklogData({
   }, [
     excelFilters,
     filters,
+    filters.search,
     page,
     pageSize,
     refreshKey,

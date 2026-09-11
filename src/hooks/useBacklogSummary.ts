@@ -21,11 +21,11 @@ export function useBacklogSummary({
   const [summary, setSummary] = useState<BacklogStatusSummary | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { search, div, currentProcess, shipBy, productionDate } = filters
+  const { div, currentProcess, shipBy, productionDate } = filters
 
   const summaryFilters = useMemo(
     () => removeStatusFilters(createBacklogFilters({
-      search,
+      search: '',
       status: '',
       div,
       currentProcess,
@@ -37,7 +37,6 @@ export function useBacklogSummary({
       div,
       excelFilters,
       productionDate,
-      search,
       shipBy,
     ],
   )
@@ -53,6 +52,7 @@ export function useBacklogSummary({
     void getBacklogStatusSummary(
       { filters: summaryFilters, logicOperator: 'and' },
       controller.signal,
+      filters.search,
     )
       .then((response) => {
         if (!controller.signal.aborted) setSummary(response)
@@ -71,7 +71,7 @@ export function useBacklogSummary({
       })
 
     return () => controller.abort()
-  }, [refreshKey, summaryFilters])
+  }, [filters.search, refreshKey, summaryFilters])
 
   return { summary, loading, error }
 }

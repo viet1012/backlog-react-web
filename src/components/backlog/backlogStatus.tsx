@@ -4,7 +4,7 @@ export const BACKLOG_STATUS_COLORS = {
     'NY PROCESS': '#d97706',
     NYI: '#64748b',
     WIP: '#2563eb',
-    WIP_FG: '#0d9488',
+    Finished: '#0d9488',
 } as const
 
 export type BacklogStatusKey =

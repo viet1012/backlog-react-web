@@ -315,6 +315,16 @@ export function BacklogSummary({
 
           borderRadius: 1.5,
 
+          borderBottomLeftRadius:
+            collapsed || !summary
+              ? 1.5
+              : 0,
+
+          borderBottomRightRadius:
+            collapsed || !summary
+              ? 1.5
+              : 0,
+
           bgcolor:
             alpha(
               theme.palette.primary.main,
@@ -363,7 +373,7 @@ export function BacklogSummary({
         timeout={180}
         unmountOnExit
       >
-        <Box sx={{ pt: 0.75 }}>
+        <Box sx={{ pt: 0 }}>
 
           {/* =====================================================
           ERROR
@@ -426,7 +436,12 @@ export function BacklogSummary({
                       : alpha('#0f172a', 0.08)
                     }`,
 
+                  borderTop: 'none',
+
                   borderRadius: 1.5,
+
+                  borderTopLeftRadius: 0,
+                  borderTopRightRadius: 0,
 
                   bgcolor:
                     dark
@@ -502,7 +517,7 @@ export function BacklogSummary({
                       gridTemplateColumns:
                         `125px repeat(${dates.length}, minmax(130px, 1fr))`,
 
-                      minHeight: 36,
+                      minHeight: 33,
 
                       alignItems: 'center',
 
@@ -719,7 +734,7 @@ export function BacklogSummary({
                           gridTemplateColumns:
                             `125px repeat(${dates.length}, minmax(130px, 1fr))`,
 
-                          minHeight: 52,
+                          minHeight: 41,
 
                           borderTop:
                             `1px solid ${theme.palette.divider
@@ -937,8 +952,26 @@ export function BacklogSummary({
 
                             const qty =
                               cell?.qty ?? 0
+
                             const isToday =
                               date === today
+
+                            const isFinished =
+                              statusKey === 'FINISHED'
+
+                            const isZero =
+                              poCount === 0
+
+                            const isOverdue =
+                              !isFinished
+                              && poCount > 0
+                              && date <= today
+
+                            const showTodayCellHighlight =
+                              isToday
+                              && !isFinished
+                              && !isZero
+                              && !isOverdue
 
                             const selected =
                               selectedCell?.status === row.status
@@ -970,7 +1003,7 @@ export function BacklogSummary({
                                     minWidth: 0,
 
                                     px: 1,
-                                    py: 0.65,
+                                    py: 0.3,
 
                                     display: 'flex',
                                     flexDirection: 'column',
@@ -981,24 +1014,38 @@ export function BacklogSummary({
                                     cursor: 'pointer',
 
                                     bgcolor:
-                                      selected
+                                      isFinished
                                         ? alpha(
-                                          theme.palette.primary.main,
+                                          theme.palette.grey[500],
                                           theme.palette.mode === 'dark'
-                                            ? 0.22
-                                            : 0.14,
+                                            ? 0.10
+                                            : 0.07,
                                         )
-                                        : isToday
-                                        ? alpha(
-                                          theme.palette.primary.main,
-                                          theme.palette.mode === 'dark'
-                                            ? 0.13
-                                            : 0.075,
-                                        )
-                                        : 'transparent',
+                                        : isZero
+                                          ? alpha(
+                                            theme.palette.grey[500],
+                                            theme.palette.mode === 'dark'
+                                              ? 0.10
+                                              : 0.08,
+                                          )
+                                          : isOverdue
+                                            ? alpha(
+                                              theme.palette.error.main,
+                                              theme.palette.mode === 'dark'
+                                                ? 0.20
+                                                : 0.11,
+                                            )
+                                            : isToday
+                                              ? alpha(
+                                                theme.palette.primary.main,
+                                                theme.palette.mode === 'dark'
+                                                  ? 0.13
+                                                  : 0.075,
+                                              )
+                                              : 'transparent',
 
                                     borderLeft:
-                                      isToday
+                                      showTodayCellHighlight
                                         ? `1px solid ${alpha(
                                           theme.palette.primary.main,
                                           0.40,
@@ -1007,7 +1054,7 @@ export function BacklogSummary({
                                         : undefined,
 
                                     borderRight:
-                                      isToday
+                                      showTodayCellHighlight
                                         ? `1px solid ${alpha(
                                           theme.palette.primary.main,
                                           0.40,
@@ -1024,18 +1071,35 @@ export function BacklogSummary({
                                         : undefined,
 
                                     '&:hover': {
+                                      bgcolor:
+                                        isFinished || isZero
+                                          ? alpha(
+                                            theme.palette.grey[500],
+                                            theme.palette.mode === 'dark'
+                                              ? 0.14
+                                              : 0.11,
+                                          )
+                                          : isOverdue
+                                            ? alpha(
+                                              theme.palette.error.main,
+                                              theme.palette.mode === 'dark'
+                                                ? 0.26
+                                                : 0.15,
+                                            )
+                                            : alpha(
+                                              theme.palette.primary.main,
+                                              theme.palette.mode === 'dark'
+                                                ? 0.055
+                                                : 0.035,
+                                            ),
+
                                       boxShadow:
                                         selected
                                           ? `inset 0 0 0 2px ${alpha(
                                             theme.palette.primary.main,
                                             0.8,
                                           )}`
-                                          : `inset 0 0 0 9999px ${alpha(
-                                            theme.palette.primary.main,
-                                            theme.palette.mode === 'dark'
-                                              ? 0.055
-                                              : 0.035,
-                                          )}`,
+                                          : undefined,
                                     },
                                   }
                                 }}
@@ -1043,13 +1107,20 @@ export function BacklogSummary({
 
                                 <Typography
                                   sx={(theme) => ({
-                                    fontSize: 13,
-                                    fontWeight: 700,
+                                    fontSize: 12.5,
+                                    fontWeight:
+                                      isOverdue
+                                        ? 800
+                                        : 700,
 
                                     lineHeight: 1.2,
 
                                     color:
-                                      theme.palette.text.primary,
+                                      isFinished || isZero
+                                        ? theme.palette.text.disabled
+                                        : isOverdue
+                                          ? theme.palette.error.main
+                                          : theme.palette.text.primary,
 
                                     fontVariantNumeric:
                                       'tabular-nums',
@@ -1066,20 +1137,29 @@ export function BacklogSummary({
 
                                 <Typography
                                   sx={(theme) => ({
-                                    mt: 0.15,
+                                    mt: 0.05,
 
-                                    fontSize: 11.5,
+                                    fontSize: 10.75,
                                     fontWeight: 600,
 
                                     lineHeight: 1.2,
 
                                     color:
-                                      alpha(
-                                        theme.palette.text.primary,
-                                        theme.palette.mode === 'dark'
-                                          ? 0.62
-                                          : 0.58,
-                                      ),
+                                      isFinished || isZero
+                                        ? theme.palette.text.disabled
+                                        : isOverdue
+                                          ? alpha(
+                                            theme.palette.error.main,
+                                            theme.palette.mode === 'dark'
+                                              ? 0.76
+                                              : 0.72,
+                                          )
+                                          : alpha(
+                                            theme.palette.text.primary,
+                                            theme.palette.mode === 'dark'
+                                              ? 0.62
+                                              : 0.58,
+                                          ),
 
                                     fontVariantNumeric:
                                       'tabular-nums',
