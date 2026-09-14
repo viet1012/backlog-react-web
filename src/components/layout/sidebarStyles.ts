@@ -678,56 +678,81 @@ export function getFooterSx(
     theme: Theme,
 ): SystemStyleObject<Theme> {
 
-    return {
-        mx:
-            1,
+      return {
+          position:
+              'relative',
+
+          overflow:
+              'hidden',
+
+          mx:
+              1,
 
         mb:
             1,
 
-        px:
-            1.25,
+          px:
+              1,
 
-        py:
-            0.85,
+          py:
+              0.75,
 
-        borderRadius:
-            '10px',
+          minHeight:
+              58,
+
+          borderRadius:
+              '14px',
 
         background:
-            theme.palette.mode === 'dark'
-                ? `
-          linear-gradient(
-            135deg,
-            rgba(255,255,255,0.045),
-            rgba(255,255,255,0.02)
-          )
-        `
-                : `
-          linear-gradient(
-            135deg,
-            rgba(255,255,255,0.58),
-            rgba(255,255,255,0.34)
-          )
-        `,
+              theme.palette.mode === 'dark'
+                  ? `
+            linear-gradient(
+              145deg,
+              rgba(25,61,88,0.52),
+              rgba(7,25,43,0.42)
+            )
+          `
+                  : `
+            linear-gradient(
+              145deg,
+              rgba(255,255,255,0.76),
+              rgba(225,241,252,0.48)
+            )
+          `,
 
         border:
-            theme.palette.mode === 'dark'
-                ? '1px solid rgba(255,255,255,0.055)'
-                : '1px solid rgba(255,255,255,0.78)',
+              theme.palette.mode === 'dark'
+                  ? '1px solid rgba(113,196,245,0.14)'
+                  : '1px solid rgba(112,156,190,0.18)',
 
         backdropFilter:
-            'blur(10px) saturate(130%)',
+              'blur(14px) saturate(140%)',
 
         WebkitBackdropFilter:
-            'blur(10px) saturate(130%)',
+              'blur(14px) saturate(140%)',
 
         boxShadow:
-            theme.palette.mode === 'dark'
-                ? '0 6px 18px rgba(0,0,0,0.08)'
-                : `
-          0 6px 18px rgba(15,23,42,0.035),
-          inset 0 1px 0 rgba(255,255,255,0.78)
-        `,
-    }
+              theme.palette.mode === 'dark'
+                  ? '0 8px 22px rgba(0,0,0,0.16), inset 0 1px 0 rgba(220,245,255,0.07)'
+                  : `
+            0 8px 22px rgba(31,74,108,0.07),
+            inset 0 1px 0 rgba(255,255,255,0.88)
+          `,
+
+          '&::before': {
+              content: '""',
+              position: 'absolute',
+              inset: 0,
+              pointerEvents: 'none',
+              borderRadius: 'inherit',
+              background: theme.palette.mode === 'dark'
+                  ? 'linear-gradient(135deg, rgba(220,247,255,0.07), transparent 42%)'
+                  : 'linear-gradient(135deg, rgba(255,255,255,0.52), transparent 46%)',
+          },
+
+          '& > *': {
+              position: 'relative',
+              zIndex: 1,
+          },
+      }
 }

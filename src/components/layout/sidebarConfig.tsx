@@ -20,7 +20,9 @@ import {
     FormatListBulletedRounded,
     SummarizeOutlined,
     PendingActionsOutlined,
+    HomeOutlined,
 } from '@mui/icons-material'
+import type { UserRole } from '../../services/authService'
 
 
 // =========================================================
@@ -31,14 +33,6 @@ export type MenuItemStatus =
     | 'ready'
     | 'developing'
     | 'todo'
-
-export interface MenuItemConfig {
-    label: string
-    path: string
-    icon: ReactNode
-    status?: MenuItemStatus
-    disabled?: boolean
-}
 
 export interface MenuGroupConfig {
     id: string
@@ -63,7 +57,7 @@ export interface MenuItemConfig {
     status?: MenuItemStatus
     disabled?: boolean
 
-    pic?: string
+    roles?: UserRole[]
     action?: MenuItemAction
 }
 // =========================================================
@@ -131,10 +125,20 @@ export const menuGroups:
 
             items: [
                 {
+                    label: 'User Home',
+                    path: '/user-home',
+                    status: 'ready',
+                    roles: ['USER'],
+                    icon: (
+                        <HomeOutlined />
+                    ),
+                },
+
+                {
                     label: 'Backlog Details',
                     path: '/backlog',
                     status: 'ready',
-                    pic: 'PC',
+                    roles: ['PC'],
                     action: 'view',
                     icon: (
                         <FormatListBulletedRounded />
@@ -145,7 +149,7 @@ export const menuGroups:
                     label: 'Backlog Summary',
                     path: '/backlog-summary',
                     status: 'todo',
-                    pic: 'PC',
+                    roles: ['PC'],
                     action: 'view',
                     icon: (
                         <SummarizeOutlined />
@@ -156,7 +160,7 @@ export const menuGroups:
                     label: 'Remain PO Control',
                     path: '/remain-po-control',
                     status: 'ready',
-                    pic: 'PC',
+                    roles: ['PC'],
                     action: 'view',
                     icon: (
                         <PendingActionsOutlined />
@@ -167,7 +171,7 @@ export const menuGroups:
                     label: 'Delivery Confirm',
                     path: '/fac-confirm',
                     status: 'ready',
-                    pic: 'Pro',
+                    roles: ['PRO'],
                     action: 'input',
                     icon: (
                         <FactCheckOutlined />
@@ -178,7 +182,7 @@ export const menuGroups:
                     label: 'ODBF Simulation',
                     path: '/odbf',
                     status: 'ready',
-                    pic: 'PC/Pro',
+                    roles: ['PC', 'PRO'],
                     action: 'view',
                     icon: (
                         <Inventory2Outlined />
@@ -189,7 +193,7 @@ export const menuGroups:
                     label: 'Export List',
                     path: '/export-list',
                     status: 'todo',
-                    pic: 'PC',
+                    roles: ['PC'],
                     action: 'view',
                     icon: (
                         <ReceiptLongOutlined />
@@ -200,7 +204,7 @@ export const menuGroups:
                     label: 'Packing List',
                     path: '/packing-list',
                     status: 'todo',
-                    pic: 'Pro',
+                    roles: ['PRO'],
                     action: 'input',
                     icon: (
                         <InventoryOutlined />
@@ -211,7 +215,7 @@ export const menuGroups:
                     label: 'Shipping Schedule',
                     path: '/shipping-schedule',
                     status: 'ready',
-                    pic: 'PC/Pro',
+                    roles: ['PC', 'PRO'],
                     action: 'view',
                     icon: (
                         <EventNoteOutlined />

@@ -13,7 +13,13 @@ import {
   createPageBackgroundSx,
   loginCardSx,
 } from '../components/auth/loginStyles'
-import { isAuthenticated, login } from '../services/authService'
+import {
+  AuthApiError,
+  getDefaultAuthRoute,
+  isAuthenticated,
+  login,
+  register,
+} from '../services/authService'
 
 type AuthMode = 'login' | 'register'
 
@@ -32,7 +38,7 @@ export function LoginPage() {
   const [error, setError] = useState('')
 
   if (isAuthenticated()) {
-    return <Navigate to="/odbf" replace />
+    return <Navigate to={getDefaultAuthRoute()} replace />
   }
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
@@ -41,20 +47,22 @@ export function LoginPage() {
     setLoading(true)
 
     try {
-      const authenticated = await login(employeeId.trim(), password, remember)
-
-      if (!authenticated) {
-        setError('Invalid Employee ID or password.')
-        return
-      }
-
-      navigate('/odbf', { replace: true })
+      const session = await login(employeeId.trim(), password, remember)
+      navigate(getDefaultAuthRoute(session), { replace: true })
+    } catch (requestError) {
+      setError(
+        requestError instanceof AuthApiError && requestError.status === 401
+          ? 'Invalid Employee ID or password.'
+          : requestError instanceof Error
+          ? requestError.message
+          : 'Invalid Employee ID or password.',
+      )
     } finally {
       setLoading(false)
     }
   }
 
-  function handleRegister(event: FormEvent<HTMLFormElement>) {
+  async function handleRegister(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const trimmedEmployeeId = registerEmployeeId.trim()
 
@@ -71,8 +79,24 @@ export function LoginPage() {
       return
     }
 
-    setRegisterEmployeeId(trimmedEmployeeId)
-    setError('Account registration is not available yet.')
+    setError('')
+    setLoading(true)
+
+    try {
+      await register(trimmedEmployeeId, registerPassword)
+      setEmployeeId(trimmedEmployeeId)
+      setMode('login')
+      setRegisterPassword('')
+      setConfirmPassword('')
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : 'Unable to create account.',
+      )
+    } finally {
+      setLoading(false)
+    }
   }
 
   function changeMode(nextMode: AuthMode) {
@@ -118,13 +142,13 @@ export function LoginPage() {
 
             {isLogin ? (
               <LoginForm
-                employeeId={registerEmployeeId}
+                employeeId={employeeId}
                 password={password}
                 remember={remember}
                 showPassword={showPassword}
                 loading={loading}
                 error={error}
-                onEmployeeIdChange={setRegisterEmployeeId}
+                onEmployeeIdChange={setEmployeeId}
                 onPasswordChange={setPassword}
                 onRememberChange={setRemember}
                 onTogglePassword={() => setShowPassword((value) => !value)}
@@ -133,13 +157,13 @@ export function LoginPage() {
               />
             ) : (
               <RegisterForm
-                employeeId={employeeId}
+                employeeId={registerEmployeeId}
                 password={registerPassword}
                 confirmPassword={confirmPassword}
                 showPassword={showRegisterPassword}
                 loading={loading}
                 error={error}
-                onEmployeeIdChange={setEmployeeId}
+                onEmployeeIdChange={setRegisterEmployeeId}
                 onPasswordChange={setRegisterPassword}
                 onConfirmPasswordChange={setConfirmPassword}
                 onTogglePassword={() => setShowRegisterPassword((value) => !value)}

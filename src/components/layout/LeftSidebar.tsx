@@ -50,9 +50,10 @@ import {
   iconTransition,
   labelTransition,
 } from './sidebarStyles'
-import { alpha } from '@mui/material/styles'
 import {
+  getAuthSession,
   getAuthenticatedUsername,
+  hasAnyRole,
   logout,
 } from '../../services/authService'
 
@@ -68,6 +69,20 @@ export function LeftSidebar() {
 
   const navigate =
     useNavigate()
+
+  const session =
+    getAuthSession()
+
+  const username =
+    getAuthenticatedUsername()
+    ?? 'Production User'
+
+  const avatarInitial =
+    username.trim().charAt(0).toUpperCase()
+    || 'U'
+
+  const primaryRole =
+    session?.roles[0]
 
   function handleLogout() {
     logout()
@@ -447,6 +462,17 @@ export function LeftSidebar() {
         {menuGroups.map(
           (group) => {
 
+            const visibleItems =
+              group.items.filter(
+                (item) =>
+                  !item.roles
+                  || hasAnyRole(item.roles),
+              )
+
+            if (visibleItems.length === 0) {
+              return null
+            }
+
             const groupOpen =
               openGroups[
               group.id
@@ -569,7 +595,7 @@ export function LeftSidebar() {
                     }}
                   >
 
-                    {group.items
+                    {visibleItems
                       .filter((item) => !item.disabled)
                       .map(
                         (item) => {
@@ -672,10 +698,7 @@ export function LeftSidebar() {
                                   left: 34,
 
                                   right:
-                                    isReady && (
-                                      item.pic
-                                      || actionIndicator
-                                    )
+                                    isReady && actionIndicator
                                       ? 72
                                       : statusIndicator
                                         ? 54
@@ -796,39 +819,6 @@ export function LeftSidebar() {
                                     color: 'text.secondary',
                                   }}
                                 >
-                                  {item.pic && (
-                                    <Typography
-                                      component="span"
-                                      sx={(theme) => ({
-                                        fontSize: 10,
-                                        fontWeight: 700,
-                                        lineHeight: 1,
-                                        whiteSpace: 'nowrap',
-
-                                        px: 0.55,
-                                        py: 0.3,
-
-                                        borderRadius: 0.7,
-
-                                        color: 'primary.main',
-
-                                        bgcolor: alpha(
-                                          theme.palette.primary.main,
-                                          0.06,
-                                        ),
-
-                                        border: '1px solid',
-
-                                        borderColor: alpha(
-                                          theme.palette.primary.main,
-                                          0.12,
-                                        ),
-                                      })}
-                                    >
-                                      {item.pic}
-                                    </Typography>
-                                  )}
-
                                   {actionIndicator && (
                                     <Tooltip
                                       title={actionIndicator.label}
@@ -983,48 +973,298 @@ export function LeftSidebar() {
       {/* ===================================================
           FOOTER
       =================================================== */}
-
       <Box
         sx={(theme) => ({
           ...getFooterSx(theme),
+
+          position: 'relative',
+
           display: 'flex',
           alignItems: 'center',
+
+          gap: 0.8,
+
+          minHeight: collapsed ? 48 : 56,
+
+          px: collapsed ? 0.5 : 1.2,
+          py: collapsed ? 0.55 : 0.8,
+
           justifyContent: collapsed
             ? 'center'
             : 'space-between',
+
+          overflow: 'hidden',
+
+          borderRadius: collapsed
+            ? 2
+            : '16px',
+
+          border: collapsed
+            ? '1px solid transparent'
+            : theme.palette.mode === 'dark'
+              ? '1px solid rgba(110, 195, 245, 0.14)'
+              : '1px solid rgba(92, 146, 190, 0.16)',
+
+          background: collapsed
+            ? 'transparent'
+            : theme.palette.mode === 'dark'
+              ? `
+          linear-gradient(
+            145deg,
+            rgba(27, 53, 76, 0.54) 0%,
+            rgba(16, 37, 58, 0.42) 100%
+          )
+        `
+              : `
+          linear-gradient(
+            145deg,
+            rgba(255,255,255,0.82) 0%,
+            rgba(239,247,255,0.72) 100%
+          )
+        `,
+
+          backdropFilter: collapsed
+            ? 'none'
+            : 'blur(14px) saturate(135%)',
+
+          WebkitBackdropFilter: collapsed
+            ? 'none'
+            : 'blur(14px) saturate(135%)',
+
+          boxShadow: collapsed
+            ? 'none'
+            : theme.palette.mode === 'dark'
+              ? `
+          0 8px 22px rgba(0,0,0,0.14),
+          inset 0 1px 0 rgba(255,255,255,0.07)
+        `
+              : `
+          0 8px 22px rgba(62,100,135,0.08),
+          inset 0 1px 0 rgba(255,255,255,0.75)
+        `,
+
+          '&::before': collapsed
+            ? {}
+            : {
+              content: '""',
+
+              position: 'absolute',
+
+              inset: 0,
+
+              pointerEvents: 'none',
+
+              borderRadius: 'inherit',
+
+              background: `
+            linear-gradient(
+              135deg,
+              rgba(255,255,255,0.20) 0%,
+              rgba(255,255,255,0.04) 28%,
+              transparent 48%
+            )
+          `,
+
+              opacity: theme.palette.mode === 'dark'
+                ? 0.45
+                : 0.7,
+            },
+
+          '& > *': {
+            position: 'relative',
+            zIndex: 1,
+          },
         })}
       >
-        {!collapsed && (
-          <Box sx={{ minWidth: 0 }}>
-            <Typography
-              color="text.secondary"
-              noWrap
-              sx={{ fontSize: uiTokens.sidebar.sectionFontSize, fontWeight: 600 }}
-            >
-              {getAuthenticatedUsername() ?? 'Production User'}
-            </Typography>
-            <Typography
-              color="text.disabled"
-              noWrap
-              sx={{ fontSize: uiTokens.sidebar.sectionFontSize, letterSpacing: '0.03em' }}
-            >
-              Production System
-            </Typography>
-          </Box>
-        )}
-
-        <Tooltip title="Sign out" placement="right">
-          <IconButton
-            aria-label="Sign out"
-            size="small"
-            onClick={handleLogout}
-            sx={{ color: 'text.secondary' }}
+        {collapsed ? (
+          <Tooltip
+            title="Sign out"
+            placement="right"
           >
-            <LogoutRounded sx={{ fontSize: 17 }} />
-          </IconButton>
-        </Tooltip>
-      </Box>
+            <IconButton
+              aria-label="Sign out"
+              onClick={handleLogout}
+              sx={(theme) => ({
+                width: 34,
+                height: 34,
 
+                color: 'text.secondary',
+
+                bgcolor: theme.palette.mode === 'dark'
+                  ? 'rgba(255,255,255,0.035)'
+                  : 'rgba(55,110,155,0.04)',
+
+                border:
+                  '1px solid rgba(135, 178, 207, 0.12)',
+
+                borderRadius: '10px',
+
+                transition:
+                  'color 180ms ease, background 180ms ease, border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease',
+
+                '&:hover': {
+                  color: 'error.light',
+
+                  bgcolor:
+                    'rgba(210, 65, 65, 0.08)',
+
+                  borderColor:
+                    'rgba(220, 92, 92, 0.2)',
+
+                  transform:
+                    'translateY(-1px)',
+
+                  boxShadow:
+                    '0 5px 13px rgba(120, 30, 30, 0.1)',
+                },
+              })}
+            >
+              <LogoutRounded
+                sx={{
+                  fontSize: 17,
+                }}
+              />
+            </IconButton>
+          </Tooltip>
+        ) : (
+          <>
+            <Box
+              sx={{
+                minWidth: 0,
+                flex: 1,
+
+                display: 'flex',
+                flexDirection: 'column',
+
+                justifyContent: 'center',
+              }}
+            >
+              <Typography
+                noWrap
+                sx={{
+                  fontSize: 11.5,
+
+                  fontWeight: 750,
+
+                  lineHeight: 1.2,
+
+                  color: 'text.primary',
+
+                  overflow: 'hidden',
+
+                  textOverflow: 'ellipsis',
+
+                  letterSpacing: '-0.01em',
+                }}
+              >
+                {username}
+              </Typography>
+
+              <Box
+                component="span"
+                sx={(theme) => ({
+                  mt: 0.5,
+
+                  px: 0.72,
+                  py: 0.22,
+
+                  display: 'inline-flex',
+
+                  alignSelf: 'flex-start',
+
+                  maxWidth: '100%',
+
+                  borderRadius: 999,
+
+                  color: theme.palette.mode === 'dark'
+                    ? '#72c7ff'
+                    : '#2563eb',
+
+                  bgcolor: theme.palette.mode === 'dark'
+                    ? 'rgba(68, 170, 235, 0.10)'
+                    : 'rgba(37, 99, 235, 0.07)',
+
+                  border: theme.palette.mode === 'dark'
+                    ? '1px solid rgba(94, 189, 245, 0.18)'
+                    : '1px solid rgba(37, 99, 235, 0.12)',
+
+                  boxShadow: theme.palette.mode === 'dark'
+                    ? 'inset 0 1px 0 rgba(255,255,255,0.04)'
+                    : 'none',
+
+                  fontSize: 8.5,
+
+                  fontWeight: 800,
+
+                  lineHeight: 1,
+
+                  letterSpacing: '0.09em',
+
+                  whiteSpace: 'nowrap',
+                })}
+              >
+                {primaryRole ?? 'Production System'}
+              </Box>
+            </Box>
+
+            <Tooltip
+              title="Sign out"
+              placement="right"
+            >
+              <IconButton
+                aria-label="Sign out"
+                size="small"
+                onClick={handleLogout}
+                sx={(theme) => ({
+                  width: 32,
+                  height: 32,
+
+                  flexShrink: 0,
+
+                  color: 'text.secondary',
+
+                  bgcolor: theme.palette.mode === 'dark'
+                    ? 'rgba(255,255,255,0.035)'
+                    : 'rgba(60, 110, 150, 0.035)',
+
+                  border:
+                    '1px solid rgba(135, 178, 207, 0.12)',
+
+                  borderRadius: '10px',
+
+                  boxShadow:
+                    'inset 0 1px 0 rgba(255,255,255,0.04)',
+
+                  transition:
+                    'color 180ms ease, background 180ms ease, border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease',
+
+                  '&:hover': {
+                    color: 'error.main',
+
+                    bgcolor:
+                      'rgba(210, 65, 65, 0.08)',
+
+                    borderColor:
+                      'rgba(220, 92, 92, 0.22)',
+
+                    transform:
+                      'translateY(-1px)',
+
+                    boxShadow:
+                      '0 6px 14px rgba(120, 30, 30, 0.10)',
+                  },
+                })}
+              >
+                <LogoutRounded
+                  sx={{
+                    fontSize: 17,
+                  }}
+                />
+              </IconButton>
+            </Tooltip>
+          </>
+        )}
+      </Box>
     </Box>
   )
 }

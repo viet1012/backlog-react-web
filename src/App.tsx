@@ -17,6 +17,7 @@ import {
 
 import { MainLayout } from './components/layout/MainLayout'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
+import { RoleRoute } from './components/auth/RoleRoute'
 
 import { BacklogPage } from './pages/BacklogPage'
 import { AsakaiPage } from './pages/AsakaiPage'
@@ -27,6 +28,7 @@ import { ExportListPage } from './pages/ExportListPage'
 import { FacConfirmPage } from './pages/FacConfirmPage'
 import { KpiPage } from './pages/KpiPage'
 import { LoginPage } from './pages/LoginPage'
+import { UserHomePage } from './pages/UserHomePage'
 import { OdbfPage } from './pages/OdbfPage'
 import { OtPage } from './pages/OtPage'
 import { PackingListPage } from './pages/PackingListPage'
@@ -53,6 +55,7 @@ import {
 import {
   AdapterDayjs,
 } from '@mui/x-date-pickers/AdapterDayjs'
+import { getDefaultAuthRoute } from './services/authService'
 
 const DEFAULT_THEME_MODE:
   ThemeMode =
@@ -121,7 +124,7 @@ function App() {
                 index
                 element={
                   <Navigate
-                    to="/odbf"
+                    to={getDefaultAuthRoute()}
                     replace
                   />
                 }
@@ -160,50 +163,30 @@ function App() {
                 PLANNING
             ========================= */}
 
-              <Route
-                path="backlog"
-                element={
-                  <BacklogPage
-                    mode={mode}
-                    onToggleMode={
-                      toggleThemeMode
-                    }
-                  />
-                }
-              />
-              <Route
-                path="remain-po-control"
-                element={<RemainPoControlPage />}
-              />
-              <Route
-                path="odbf"
-                element={
-                  <OdbfPage
-                    mode={mode}
-                    onToggleMode={toggleThemeMode}
-                  />
-                }
-              />
+              <Route element={<RoleRoute roles={['PC']} />}>
+                <Route path="backlog" element={<BacklogPage mode={mode} onToggleMode={toggleThemeMode} />} />
+                <Route path="remain-po-control" element={<RemainPoControlPage />} />
+                <Route path="export-list" element={<ExportListPage />} />
+              </Route>
+
+              <Route element={<RoleRoute roles={['PRO']} />}>
+                <Route path="fac-confirm" element={<FacConfirmPage mode={mode} onToggleMode={toggleThemeMode} />} />
+                <Route path="packing-list" element={<PackingListPage />} />
+              </Route>
+
+              <Route element={<RoleRoute roles={['PC', 'PRO']} />}>
+                <Route path="odbf" element={<OdbfPage mode={mode} onToggleMode={toggleThemeMode} />} />
+                <Route path="shipping-schedule" element={<ShipmentPage mode={mode} onToggleMode={toggleThemeMode} />} />
+              </Route>
 
               <Route
-                path="fac-confirm"
+                path="user-home"
                 element={
-                  <FacConfirmPage
-                    mode={mode}
-                    onToggleMode={toggleThemeMode}
-                  />
+                  <RoleRoute roles={['USER']} />
                 }
-              />
-
-              <Route
-                path="export-list"
-                element={<ExportListPage />}
-              />
-
-              <Route
-                path="packing-list"
-                element={<PackingListPage />}
-              />
+              >
+                <Route index element={<UserHomePage mode={mode} onToggleMode={toggleThemeMode} />} />
+              </Route>
 
               <Route
                 path="sales-status"
@@ -213,16 +196,6 @@ function App() {
               {/* =========================
                 SHIPPING SCHEDULE
             ========================= */}
-
-              <Route
-                path="shipping-schedule"
-                element={
-                  <ShipmentPage
-                    mode={mode}
-                    onToggleMode={toggleThemeMode}
-                  />
-                }
-              />
 
               {/* =========================
                 MANAGEMENT
@@ -261,7 +234,7 @@ function App() {
                 path="*"
                 element={
                   <Navigate
-                    to="/odbf"
+                    to={getDefaultAuthRoute()}
                     replace
                   />
                 }
