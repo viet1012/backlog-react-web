@@ -16,6 +16,7 @@ import {
 } from 'react-router-dom'
 
 import { MainLayout } from './components/layout/MainLayout'
+import { ProtectedRoute } from './components/auth/ProtectedRoute'
 
 import { BacklogPage } from './pages/BacklogPage'
 import { AsakaiPage } from './pages/AsakaiPage'
@@ -25,6 +26,7 @@ import { DeadstockPage } from './pages/DeadstockPage'
 import { ExportListPage } from './pages/ExportListPage'
 import { FacConfirmPage } from './pages/FacConfirmPage'
 import { KpiPage } from './pages/KpiPage'
+import { LoginPage } from './pages/LoginPage'
 import { OdbfPage } from './pages/OdbfPage'
 import { OtPage } from './pages/OtPage'
 import { PackingListPage } from './pages/PackingListPage'
@@ -101,8 +103,15 @@ function App() {
           <Routes>
 
             <Route
-              element={<MainLayout />}
-            >
+              path="login"
+              element={<LoginPage />}
+            />
+
+            <Route element={<ProtectedRoute />}>
+
+              <Route
+                element={<MainLayout />}
+              >
 
               {/* =========================
                 DEFAULT
@@ -112,7 +121,7 @@ function App() {
                 index
                 element={
                   <Navigate
-                    to="/backlog"
+                    to="/odbf"
                     replace
                   />
                 }
@@ -252,11 +261,13 @@ function App() {
                 path="*"
                 element={
                   <Navigate
-                    to="/backlog"
+                    to="/odbf"
                     replace
                   />
                 }
               />
+
+              </Route>
 
             </Route>
 

@@ -17,6 +17,7 @@ import {
   EditOutlined,
   ExpandMoreRounded,
   FactoryOutlined,
+  LogoutRounded,
   ScheduleRounded,
   VisibilityOutlined,
 } from '@mui/icons-material'
@@ -28,6 +29,7 @@ import {
 import {
   NavLink,
   useLocation,
+  useNavigate,
 } from 'react-router-dom'
 
 import {
@@ -49,6 +51,10 @@ import {
   labelTransition,
 } from './sidebarStyles'
 import { alpha } from '@mui/material/styles'
+import {
+  getAuthenticatedUsername,
+  logout,
+} from '../../services/authService'
 
 
 // =========================================================
@@ -59,6 +65,14 @@ export function LeftSidebar() {
 
   const location =
     useLocation()
+
+  const navigate =
+    useNavigate()
+
+  function handleLogout() {
+    logout()
+    navigate('/login', { replace: true })
+  }
 
 
   // =======================================================
@@ -970,31 +984,46 @@ export function LeftSidebar() {
           FOOTER
       =================================================== */}
 
-      {!collapsed && (
-        <Box
-          sx={(theme) =>
-            getFooterSx(
-              theme,
-            )
-          }
-        >
-          <Typography
-            color="text.disabled"
+      <Box
+        sx={(theme) => ({
+          ...getFooterSx(theme),
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: collapsed
+            ? 'center'
+            : 'space-between',
+        })}
+      >
+        {!collapsed && (
+          <Box sx={{ minWidth: 0 }}>
+            <Typography
+              color="text.secondary"
+              noWrap
+              sx={{ fontSize: uiTokens.sidebar.sectionFontSize, fontWeight: 600 }}
+            >
+              {getAuthenticatedUsername() ?? 'Production User'}
+            </Typography>
+            <Typography
+              color="text.disabled"
+              noWrap
+              sx={{ fontSize: uiTokens.sidebar.sectionFontSize, letterSpacing: '0.03em' }}
+            >
+              Production System
+            </Typography>
+          </Box>
+        )}
 
-            sx={{
-              fontSize:
-                uiTokens
-                  .sidebar
-                  .sectionFontSize,
-
-              letterSpacing:
-                '0.03em',
-            }}
+        <Tooltip title="Sign out" placement="right">
+          <IconButton
+            aria-label="Sign out"
+            size="small"
+            onClick={handleLogout}
+            sx={{ color: 'text.secondary' }}
           >
-            Production System
-          </Typography>
-        </Box>
-      )}
+            <LogoutRounded sx={{ fontSize: 17 }} />
+          </IconButton>
+        </Tooltip>
+      </Box>
 
     </Box>
   )
