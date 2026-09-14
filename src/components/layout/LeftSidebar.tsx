@@ -77,9 +77,7 @@ export function LeftSidebar() {
     getAuthenticatedUsername()
     ?? 'Production User'
 
-  const avatarInitial =
-    username.trim().charAt(0).toUpperCase()
-    || 'U'
+
 
   const primaryRole =
     session?.roles[0]
