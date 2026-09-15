@@ -171,7 +171,7 @@ export const menuGroups:
                     label: 'Delivery Confirm',
                     path: '/fac-confirm',
                     status: 'ready',
-                    roles: ['PRO'],
+                    roles: ['PC', 'PRO'],
                     action: 'input',
                     icon: (
                         <FactCheckOutlined />
