@@ -30,7 +30,6 @@ export interface ProductionOrder {
 
   Div: string | null
   FERTH: string | null
-
   PO_SRG_Convert: string | null
 
   ToDrill: string | null
@@ -39,7 +38,6 @@ export interface ProductionOrder {
 
   Status: string | null
   CurrentProcess: string | null
-
   HeatCharge: string | null
 
   ProcessQty: number | null
@@ -53,6 +51,17 @@ export interface ProductionOrder {
   C_PRODH: string | null
   C_KEYCONTROL1: string | null
   C_KEYCONTROL3: string | null
+
+  // NEW
+  Classify: string | null
+  ProcessGrp2: string | null
+  ProductGrp: string | null
+  CountODBF: string | null
+  Status2: string | null
+  Pickup_Time: string | null
+  PK_Received: string | null
+  WaitingDays: number | null
+  Heat_Note: string | null
 
   Updater: string | null
   UpdatedAt: string | null

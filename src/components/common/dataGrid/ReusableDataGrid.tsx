@@ -27,6 +27,7 @@ import {
   dataGridHeaderSx,
 } from '../../../theme/dataGridHeaderStyles'
 import { FactoryNoRowsOverlay } from '../FactoryNoRowsOverlay'
+import { appScrollbarSx } from '../../../theme/scrollbarStyle'
 
 
 export interface ReusableDataGridProps<
@@ -370,41 +371,21 @@ export function ReusableDataGrid<
       onColumnHeaderClick={
         onColumnHeaderClick
       }
+      sx={(theme) => ({
+        ...dataGridHeaderSx(theme),
 
-      sx={{
-        ...dataGridHeaderSx,
-
-        // Scrollbar của DataGrid
         '& .MuiDataGrid-scrollbar--vertical': {
-          width: '14px',
+          width: 14,
         },
 
         '& .MuiDataGrid-scrollbar--horizontal': {
-          height: '14px',
+          height: 14,
         },
 
-        // Thanh kéo
-        '& .MuiDataGrid-scrollbar::-webkit-scrollbar': {
-          width: '14px',
-          height: '14px',
+        '& .MuiDataGrid-scrollbar': {
+          ...appScrollbarSx,
         },
-
-        '& .MuiDataGrid-scrollbar::-webkit-scrollbar-thumb': {
-          backgroundColor: 'rgba(148, 163, 184, 0.65)',
-          borderRadius: '999px',
-          border: '3px solid transparent',
-          backgroundClip: 'padding-box',
-        },
-
-        '& .MuiDataGrid-scrollbar::-webkit-scrollbar-thumb:hover': {
-          backgroundColor: 'rgba(148, 163, 184, 0.9)',
-          backgroundClip: 'padding-box',
-        },
-
-        '& .MuiDataGrid-scrollbar::-webkit-scrollbar-track': {
-          backgroundColor: 'rgba(148, 163, 184, 0.08)',
-        },
-      }}
+      })}
 
     />
   )

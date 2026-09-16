@@ -10,6 +10,7 @@ import type {
 import {
     ExcelFilterHeader,
 } from '../common/dataGrid/ExcelFilterHeader'
+import { DATA_GRID_COLUMN_WIDTHS } from '../common/dataGrid/dataGridColumnWidths'
 
 import {
     FAC_CONFIRM_PROCESS_CONFIG,
@@ -46,85 +47,85 @@ const facConfirmColumnDefinitions:
         {
             field: 'ferth',
             headerName: 'Product Type',
-            width: 150,
+            width: DATA_GRID_COLUMN_WIDTHS.productType,
         },
 
         {
             field: 'productGrp',
             headerName: 'Product Group',
-            width: 150,
+            width: 130,
         },
 
         {
             field: 'aufnr',
             headerName: 'AUFNR',
-            width: 150,
+            width: 130,
         },
 
         {
             field: 'zglobalCode',
             headerName: 'Global Code',
-            width: 170,
+            width: DATA_GRID_COLUMN_WIDTHS.globalCode,
         },
 
         {
             field: 'issueD',
             headerName: 'Issue Date',
-            width: 125,
+            width: DATA_GRID_COLUMN_WIDTHS.date,
         },
 
         {
             field: 'exportD',
             headerName: 'Export Date',
-            width: 125,
+            width: DATA_GRID_COLUMN_WIDTHS.date,
         },
 
         {
             field: 'cusId',
             headerName: 'Customer',
-            width: 110,
+            width: DATA_GRID_COLUMN_WIDTHS.customer,
         },
 
         {
             field: 'shipBy',
             headerName: 'Ship By',
-            width: 100,
+            width: DATA_GRID_COLUMN_WIDTHS.shipBy,
         },
 
         {
             field: 'mtoId',
             headerName: 'MTO ID',
-            width: 130,
+            width: DATA_GRID_COLUMN_WIDTHS.mtoId,
         },
 
         {
             field: 'prtAddcmt2',
             headerName: 'Comment',
-            width: 220,
+            width: DATA_GRID_COLUMN_WIDTHS.comment,
         },
 
         {
             field: 'currentProcess',
             headerName: 'Current Process',
-            width: 150,
+            width: DATA_GRID_COLUMN_WIDTHS.currentProcess,
         },
 
         {
             field: 'finalQty',
             headerName: 'Final Qty',
-            width: 100,
+            width: DATA_GRID_COLUMN_WIDTHS.quantity,
             type: 'number',
         },
 
         {
             field: 'pname',
             headerName: 'Product Name',
-            width: 200,
+            width: DATA_GRID_COLUMN_WIDTHS.productName,
         },
         {
             field: 'note',
             headerName: 'Heat Note',
-            width: 220,
+            width: DATA_GRID_COLUMN_WIDTHS.heatNote,
 
             renderCell: (params) => {
                 if (!params.value) {
@@ -151,7 +152,7 @@ const facConfirmColumnDefinitions:
         {
             field: 'toDrill',
             headerName: 'To Drill',
-            width: 165,
+            width: DATA_GRID_COLUMN_WIDTHS.date,
             valueFormatter: (value) => formatFacConfirmDateTime(value),
             renderEditCell:
                 renderDateTimeEditCell,
@@ -159,7 +160,7 @@ const facConfirmColumnDefinitions:
         {
             field: 'toHeat',
             headerName: 'To Heat',
-            width: 165,
+            width: DATA_GRID_COLUMN_WIDTHS.date,
             valueFormatter: (value) => formatFacConfirmDateTime(value),
             renderEditCell:
                 renderDateTimeEditCell,
@@ -167,7 +168,7 @@ const facConfirmColumnDefinitions:
         {
             field: 'heatStart',
             headerName: 'Heat Start',
-            width: 165,
+            width: DATA_GRID_COLUMN_WIDTHS.date,
 
             valueFormatter: (value) =>
                 formatFacConfirmDateTime(value),
@@ -188,7 +189,7 @@ const facConfirmColumnDefinitions:
         {
             field: 'heatFinish',
             headerName: 'Heat Finish',
-            width: 165,
+            width: DATA_GRID_COLUMN_WIDTHS.date,
 
             valueFormatter: (value) =>
                 formatFacConfirmDateTime(value),
@@ -209,7 +210,7 @@ const facConfirmColumnDefinitions:
         {
             field: 'toPk',
             headerName: 'To PK',
-            width: 165,
+            width: DATA_GRID_COLUMN_WIDTHS.date,
             valueFormatter: (value) => formatFacConfirmDateTime(value),
             renderEditCell:
                 renderDateTimeEditCell,

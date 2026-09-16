@@ -214,7 +214,7 @@ export const menuGroups:
                 {
                     label: 'Shipping Schedule',
                     path: '/shipping-schedule',
-                    status: 'ready',
+                    status: 'todo',
                     roles: ['PC', 'PRO'],
                     action: 'view',
                     icon: (

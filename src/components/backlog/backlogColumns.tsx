@@ -17,6 +17,7 @@ import {
 import type {
   ProductionOrder,
 } from '../../types/report'
+import { DATA_GRID_COLUMN_WIDTHS } from '../common/dataGrid/dataGridColumnWidths'
 import { useOptionalExcelColumnFilter } from '../common/dataGrid/excelFilterContext'
 import { getBacklogStatusColor } from './backlogStatus'
 
@@ -240,7 +241,7 @@ const textColumn = (
 const dateColumn = (
   field: keyof ProductionOrder,
   headerName: string,
-  width = 155,
+  width = 120,
 ): GridColDef<ProductionOrder> => ({
 
   field,
@@ -267,7 +268,7 @@ const dateColumn = (
 const numberColumn = (
   field: keyof ProductionOrder,
   headerName: string,
-  width = 120,
+  width = 110,
 ): GridColDef<ProductionOrder> => ({
 
   field,
@@ -310,23 +311,23 @@ export const backlogColumns:
     textColumn(
       'VBELN',
       'Sales Order',
-      135,
+      120,
     ),
 
     textColumn(
       'ZGLOBAL_CODE',
       'Global Code',
-      150,
+      DATA_GRID_COLUMN_WIDTHS.globalCode,
     ),
 
     textColumn(
       'PNAME',
       'Product Name',
-      260,
+      DATA_GRID_COLUMN_WIDTHS.productName,
     ),
 
 
-    // -------------------------------------------------------
+    // --------------------------f-----------------------------
     // STATUS
     // -------------------------------------------------------
 
@@ -336,7 +337,7 @@ export const backlogColumns:
       headerName:
         'Status',
 
-      width: 120,
+      width: 100,
 
       sortable: true,
 
@@ -392,7 +393,7 @@ export const backlogColumns:
     textColumn(
       'CurrentProcess',
       'Current Process',
-      170,
+      DATA_GRID_COLUMN_WIDTHS.currentProcess,
     ),
 
 
@@ -402,14 +403,14 @@ export const backlogColumns:
 
     textColumn(
       'PIER_AUFNR',
-      'Parent Order',
-      150,
+      'PIER_AUFNR',
+      130,
     ),
 
     textColumn(
       'AUFNR',
       'Production Order',
-      150,
+      140,
     ),
 
 
@@ -420,6 +421,7 @@ export const backlogColumns:
     dateColumn(
       'IssueD',
       'Issue Date',
+      DATA_GRID_COLUMN_WIDTHS.date,
     ),
 
     dateColumn(
@@ -435,6 +437,7 @@ export const backlogColumns:
     dateColumn(
       'ExportD',
       'Export Date',
+      DATA_GRID_COLUMN_WIDTHS.date,
     ),
 
     dateColumn(
@@ -455,13 +458,13 @@ export const backlogColumns:
     textColumn(
       'RRONYU1',
       'Customer Code',
-      120,
+      DATA_GRID_COLUMN_WIDTHS.customer,
     ),
 
     textColumn(
       'ShipBy',
       'Ship By',
-      100,
+      DATA_GRID_COLUMN_WIDTHS.shipBy,
     ),
 
 
@@ -510,7 +513,7 @@ export const backlogColumns:
     textColumn(
       'MTO_ID',
       'MTO ID',
-      150,
+      DATA_GRID_COLUMN_WIDTHS.mtoId,
     ),
 
 
@@ -521,13 +524,13 @@ export const backlogColumns:
     textColumn(
       'PRT_ADDCMT1',
       'Comment 1',
-      220,
+      180,
     ),
 
     textColumn(
       'PRT_ADDCMT2',
       'Comment 2',
-      220,
+      DATA_GRID_COLUMN_WIDTHS.comment,
     ),
 
     textColumn(
@@ -550,7 +553,7 @@ export const backlogColumns:
     textColumn(
       'FERTH',
       'Product Type',
-      150,
+      DATA_GRID_COLUMN_WIDTHS.productType,
     ),
 
     textColumn(
@@ -567,23 +570,26 @@ export const backlogColumns:
     dateColumn(
       'ToDrill',
       'To Drill',
+      DATA_GRID_COLUMN_WIDTHS.date,
     ),
 
     dateColumn(
       'ToHeat',
       'To Heat',
+      DATA_GRID_COLUMN_WIDTHS.date,
     ),
 
     dateColumn(
       'ToPK',
       'To Packing',
+      DATA_GRID_COLUMN_WIDTHS.date,
     ),
 
 
     textColumn(
       'HeatCharge',
       'Heat Charge',
-      170,
+      130,
     ),
 
 
@@ -609,6 +615,7 @@ export const backlogColumns:
     numberColumn(
       'FinalQty',
       'Final Qty',
+      DATA_GRID_COLUMN_WIDTHS.quantity,
     ),
 
 
@@ -633,23 +640,83 @@ export const backlogColumns:
 
     textColumn(
       'C_PRODH',
-      'Product Hierarchy',
-      150,
+      'C_PRODH',
+      130,
     ),
 
     textColumn(
       'C_KEYCONTROL1',
       'Key Control 1',
-      230,
+      140,
     ),
 
     textColumn(
       'C_KEYCONTROL3',
       'Key Control 3',
-      230,
+      140,
     ),
 
+    // -------------------------------------------------------
+    // CLASSIFICATION / PROCESS GROUP
+    // -------------------------------------------------------
 
+    textColumn(
+      'Classify',
+      'Classify',
+      120,
+    ),
+
+    textColumn(
+      'ProcessGrp2',
+      'Process Group',
+      140,
+    ),
+
+    textColumn(
+      'ProductGrp',
+      'Product Group',
+      130,
+    ),
+
+    textColumn(
+      'CountODBF',
+      'Count ODBF',
+      110,
+    ),
+
+    textColumn(
+      'Status2',
+      'Status 2',
+      120,
+    ),
+
+    // -------------------------------------------------------
+    // PICKUP / PACKING
+    // -------------------------------------------------------
+
+    dateColumn(
+      'Pickup_Time',
+      'Pickup Time',
+      DATA_GRID_COLUMN_WIDTHS.date,
+    ),
+
+    dateColumn(
+      'PK_Received',
+      'PK Received',
+      DATA_GRID_COLUMN_WIDTHS.date,
+    ),
+
+    numberColumn(
+      'WaitingDays',
+      'Waiting Days',
+      DATA_GRID_COLUMN_WIDTHS.quantity,
+    ),
+
+    textColumn(
+      'Heat_Note',
+      'Heat Note',
+      DATA_GRID_COLUMN_WIDTHS.heatNote,
+    ),
     // -------------------------------------------------------
     // UPDATE
     // -------------------------------------------------------

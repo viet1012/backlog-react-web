@@ -1,8 +1,8 @@
 // src/constants/backlogStatus.ts
 
 export const BACKLOG_STATUS_COLORS = {
-    'NY PROCESS': '#d97706',
     NYI: '#64748b',
+    'NY PROCESS': '#d97706',
     WIP: '#2563eb',
     Finished: '#0d9488',
 } as const

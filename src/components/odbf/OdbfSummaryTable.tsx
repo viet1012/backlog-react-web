@@ -13,6 +13,7 @@ import {
     type OdbfDataRowType,
     type OdbfProductSummary,
 } from '../../utils/odbfSummaryMatrix'
+import { appScrollbarSx } from '../../theme/scrollbarStyle'
 
 interface OdbfSummaryTableProps {
     title: string
@@ -357,17 +358,30 @@ export function OdbfSummaryTable({
                     sx={(theme) => ({
                         width: '100%',
                         minWidth: 0,
+
                         overflowX: 'auto',
                         overflowY: 'visible',
+
+                        // Shared scrollbar
+                        ...appScrollbarSx,
+
                         bgcolor: alpha(
                             theme.palette.background.paper,
-                            theme.palette.mode === 'dark' ? 0.94 : 0.9,
+                            theme.palette.mode === 'dark'
+                                ? 0.94
+                                : 0.9,
                         ),
-                        border: `1px solid ${theme.palette.divider}`,
-                        borderRadius: uiTokens.card.borderRadius,
-                        boxShadow: theme.palette.mode === 'dark'
-                            ? '0 2px 8px rgba(0,0,0,0.12)'
-                            : '0 2px 8px rgba(15,23,42,0.04)',
+
+                        border:
+                            `1px solid ${theme.palette.divider}`,
+
+                        borderRadius:
+                            uiTokens.card.borderRadius,
+
+                        boxShadow:
+                            theme.palette.mode === 'dark'
+                                ? '0 2px 8px rgba(0,0,0,0.12)'
+                                : '0 2px 8px rgba(15,23,42,0.04)',
                     })}
                 >
                     <Box

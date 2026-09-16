@@ -556,6 +556,51 @@ function mapApiBacklog(
         item.cKeycontrol3,
       ),
 
+    Classify:
+      nullableString(
+        item.classify,
+      ),
+
+    ProcessGrp2:
+      nullableString(
+        item.processGrp2,
+      ),
+
+    ProductGrp:
+      nullableString(
+        item.productGrp,
+      ),
+
+    CountODBF:
+      nullableString(
+        item.countOdbf,
+      ),
+
+    Status2:
+      nullableString(
+        item.status2,
+      ),
+
+    Pickup_Time:
+      nullableString(
+        item.pickupTime,
+      ),
+
+    PK_Received:
+      nullableString(
+        item.pkReceived,
+      ),
+
+    WaitingDays:
+      nullableNumber(
+        item.waitingDays,
+      ),
+
+    Heat_Note:
+      nullableString(
+        item.heatNote,
+      ),
+
     Updater:
       nullableString(
         item.updater,

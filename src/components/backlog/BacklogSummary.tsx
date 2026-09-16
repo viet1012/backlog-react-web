@@ -31,6 +31,10 @@ import {
   BACKLOG_STATUS_COLORS,
   normalizeBacklogStatus,
 } from './backlogStatus'
+import { appScrollbarSx } from '../../theme/scrollbarStyle'
+
+const STATUS_COLUMN_WIDTH = 110
+const DATE_COLUMN_WIDTH = 100
 
 
 interface BacklogSummaryProps {
@@ -430,6 +434,9 @@ export function BacklogSummary({
 
                   overflowX: 'auto',
 
+                  // Shared scrollbar
+                  ...appScrollbarSx,
+
                   border:
                     `1px solid ${dark
                       ? alpha('#ffffff', 0.08)
@@ -458,12 +465,9 @@ export function BacklogSummary({
 
               <Box
                 sx={{
-                  minWidth:
-                    Math.max(
-                      800,
-                      80
-                      + dates.length * 140,
-                    ),
+                  width: 'max-content',
+
+                  minWidth: '100%',
                 }}
               >
 
@@ -515,7 +519,7 @@ export function BacklogSummary({
                       display: 'grid',
 
                       gridTemplateColumns:
-                        `125px repeat(${dates.length}, minmax(130px, 1fr))`,
+                        `${STATUS_COLUMN_WIDTH}px repeat(${dates.length}, minmax(${DATE_COLUMN_WIDTH}px, 1fr))`,
 
                       minHeight: 33,
 
@@ -616,6 +620,8 @@ export function BacklogSummary({
                             return {
                               position: 'relative',
 
+                              boxSizing: 'border-box',
+
                               height: '100%',
 
                               display: 'flex',
@@ -634,17 +640,13 @@ export function BacklogSummary({
                                   )
                                   : 'transparent',
 
-                              borderLeft:
+                              boxShadow:
                                 isToday
-                                  ? `1px solid ${alpha(
+                                  ? `inset 1px 0 0 ${alpha(
                                     theme.palette.primary.main,
                                     0.50,
-                                  )}`
-                                  : undefined,
-
-                              borderRight:
-                                isToday
-                                  ? `1px solid ${alpha(
+                                  )},
+                                    inset -1px 0 0 ${alpha(
                                     theme.palette.primary.main,
                                     0.50,
                                   )}`
@@ -654,17 +656,33 @@ export function BacklogSummary({
                                 isToday
                                   ? {
                                     content: '""',
-
                                     position: 'absolute',
 
-                                    left: 10,
-                                    right: 10,
+                                    left: 0,
+                                    right: 0,
                                     bottom: 0,
 
                                     height: 3,
 
                                     bgcolor:
                                       theme.palette.primary.main,
+
+                                    animation:
+                                      'todayPulse 2.4s ease-in-out infinite',
+
+                                    '@keyframes todayPulse': {
+                                      '0%, 100%': {
+                                        opacity: 0.45,
+                                      },
+                                      '50%': {
+                                        opacity: 1,
+                                      },
+                                    },
+
+                                    '@media (prefers-reduced-motion: reduce)': {
+                                      animation: 'none',
+                                      opacity: 1,
+                                    },
                                   }
                                   : undefined,
                             }
@@ -732,7 +750,7 @@ export function BacklogSummary({
                           display: 'grid',
 
                           gridTemplateColumns:
-                            `125px repeat(${dates.length}, minmax(130px, 1fr))`,
+                            `${STATUS_COLUMN_WIDTH}px repeat(${dates.length}, minmax(${DATE_COLUMN_WIDTH}px, 1fr))`,
 
                           minHeight: 41,
 
@@ -999,7 +1017,7 @@ export function BacklogSummary({
                                 sx={(theme) => {
                                   return {
                                     position: 'relative',
-
+                                    boxSizing: 'border-box',
                                     minWidth: 0,
 
                                     px: 1,
@@ -1049,8 +1067,7 @@ export function BacklogSummary({
                                         ? `1px solid ${alpha(
                                           theme.palette.primary.main,
                                           0.40,
-                                        )
-                                        }`
+                                        )}`
                                         : undefined,
 
                                     borderRight:
@@ -1058,9 +1075,8 @@ export function BacklogSummary({
                                         ? `1px solid ${alpha(
                                           theme.palette.primary.main,
                                           0.40,
-                                        )
-                                        }`
-                                        : undefined,
+                                        )}`
+                                        : `1px solid ${theme.palette.divider}`,
 
                                     boxShadow:
                                       selected
