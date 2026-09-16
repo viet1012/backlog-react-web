@@ -50,9 +50,21 @@ export function FacConfirmDateTimeEditCell(
             }
         }
 
-        return dayjs()
+        const now = dayjs()
             .second(0)
             .millisecond(0)
+
+        const minute = now.minute()
+
+        const roundedMinute =
+            Math.ceil(minute / 5) * 5
+
+        // Ví dụ:
+        // 15:52 -> 15:55
+        // 15:58 -> 16:00
+        return now
+            .startOf('hour')
+            .add(roundedMinute, 'minute')
     })()
 
     const [open, setOpen] =
