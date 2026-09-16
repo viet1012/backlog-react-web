@@ -116,129 +116,129 @@ function App() {
                 element={<MainLayout />}
               >
 
-              {/* =========================
+                {/* =========================
                 DEFAULT
             ========================= */}
 
-              <Route
-                index
-                element={
-                  <Navigate
-                    to={getDefaultAuthRoute()}
-                    replace
-                  />
-                }
-              />
+                <Route
+                  index
+                  element={
+                    <Navigate
+                      to={getDefaultAuthRoute()}
+                      replace
+                    />
+                  }
+                />
 
-              {/* =========================
+                {/* =========================
                 PRODUCTION
             ========================= */}
 
-              <Route
-                path="sph"
-                element={<SphPage />}
-              />
+                <Route
+                  path="sph"
+                  element={<SphPage />}
+                />
 
-              <Route
-                path="asakai"
-                element={<AsakaiPage />}
-              />
+                <Route
+                  path="asakai"
+                  element={<AsakaiPage />}
+                />
 
-              <Route
-                path="cost-monitoring"
-                element={<CostMonitoringPage />}
-              />
+                <Route
+                  path="cost-monitoring"
+                  element={<CostMonitoringPage />}
+                />
 
-              <Route
-                path="pc-training"
-                element={
-                  <PcTrainingPage
-                    mode={mode}
-                    onToggleMode={toggleThemeMode}
-                  />
-                }
-              />
+                <Route
+                  path="pc-training"
+                  element={
+                    <PcTrainingPage
+                      mode={mode}
+                      onToggleMode={toggleThemeMode}
+                    />
+                  }
+                />
 
-              {/* =========================
+                {/* =========================
                 PLANNING
             ========================= */}
 
-              <Route element={<RoleRoute roles={['PC']} />}>
-                <Route path="backlog" element={<BacklogPage mode={mode} onToggleMode={toggleThemeMode} />} />
-                <Route path="remain-po-control" element={<RemainPoControlPage />} />
-                <Route path="export-list" element={<ExportListPage />} />
-              </Route>
+                <Route element={<RoleRoute roles={['PC']} />}>
+                  <Route path="backlog" element={<BacklogPage mode={mode} onToggleMode={toggleThemeMode} />} />
+                  <Route path="remain-po-control" element={<RemainPoControlPage />} />
+                  <Route path="export-list" element={<ExportListPage />} />
+                </Route>
 
-              <Route element={<RoleRoute roles={['PRO']} />}>
-                <Route path="fac-confirm" element={<FacConfirmPage mode={mode} onToggleMode={toggleThemeMode} />} />
-                <Route path="packing-list" element={<PackingListPage />} />
-              </Route>
+                <Route element={<RoleRoute roles={['PC', 'PRO']} />}>
+                  <Route path="fac-confirm" element={<FacConfirmPage mode={mode} onToggleMode={toggleThemeMode} />} />
+                  <Route path="packing-list" element={<PackingListPage />} />
+                </Route>
 
-              <Route element={<RoleRoute roles={['PC', 'PRO']} />}>
-                <Route path="odbf" element={<OdbfPage mode={mode} onToggleMode={toggleThemeMode} />} />
-                <Route path="shipping-schedule" element={<ShipmentPage mode={mode} onToggleMode={toggleThemeMode} />} />
-              </Route>
+                <Route element={<RoleRoute roles={['PC', 'PRO']} />}>
+                  <Route path="odbf" element={<OdbfPage mode={mode} onToggleMode={toggleThemeMode} />} />
+                  <Route path="shipping-schedule" element={<ShipmentPage mode={mode} onToggleMode={toggleThemeMode} />} />
+                </Route>
 
-              <Route
-                path="user-home"
-                element={
-                  <RoleRoute roles={['USER']} />
-                }
-              >
-                <Route index element={<UserHomePage mode={mode} onToggleMode={toggleThemeMode} />} />
-              </Route>
+                <Route
+                  path="user-home"
+                  element={
+                    <RoleRoute roles={['USER']} />
+                  }
+                >
+                  <Route index element={<UserHomePage mode={mode} onToggleMode={toggleThemeMode} />} />
+                </Route>
 
-              <Route
-                path="sales-status"
-                element={<SalesStatusPage />}
-              />
+                <Route
+                  path="sales-status"
+                  element={<SalesStatusPage />}
+                />
 
-              {/* =========================
+                {/* =========================
                 SHIPPING SCHEDULE
             ========================= */}
 
-              {/* =========================
+                {/* =========================
                 MANAGEMENT
             ========================= */}
 
-              <Route
-                path="bosb"
-                element={<BosbPage />}
-              />
+                <Route
+                  path="bosb"
+                  element={<BosbPage />}
+                />
 
-              <Route
-                path="deadstock"
-                element={<DeadstockPage />}
-              />
-              fbacklog
-              <Route
-                path="pl"
-                element={<PlPage />}
-              />
+                <Route
+                  path="deadstock"
+                  element={<DeadstockPage />}
+                />
+                fbacklog
+                <Route
+                  path="pl"
+                  element={<PlPage />}
+                />
 
-              <Route
-                path="kpi"
-                element={<KpiPage />}
-              />
+                <Route
+                  path="kpi"
+                  element={<KpiPage />}
+                />
 
-              <Route
-                path="ot"
-                element={<OtPage />}
-              />
+                <Route
+                  path="ot"
+                  element={<OtPage />}
+                />
 
-              {/* =========================
+                {/* =========================
                 FALLBACK
             ========================= */}
 
-              <Route
-                path="*"
-                element={
-                  <Navigate
-                    to={getDefaultAuthRoute()}
-                    replace
-                  />
-                }
-              />
+                <Route
+                  path="*"
+                  element={
+                    <Navigate
+                      to={getDefaultAuthRoute()}
+                      replace
+                    />
+                  }
+                />
 
               </Route>
 

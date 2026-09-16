@@ -371,9 +371,40 @@ export function ReusableDataGrid<
         onColumnHeaderClick
       }
 
-      sx={
-        dataGridHeaderSx
-      }
+      sx={{
+        ...dataGridHeaderSx,
+
+        // Scrollbar của DataGrid
+        '& .MuiDataGrid-scrollbar--vertical': {
+          width: '14px',
+        },
+
+        '& .MuiDataGrid-scrollbar--horizontal': {
+          height: '14px',
+        },
+
+        // Thanh kéo
+        '& .MuiDataGrid-scrollbar::-webkit-scrollbar': {
+          width: '14px',
+          height: '14px',
+        },
+
+        '& .MuiDataGrid-scrollbar::-webkit-scrollbar-thumb': {
+          backgroundColor: 'rgba(148, 163, 184, 0.65)',
+          borderRadius: '999px',
+          border: '3px solid transparent',
+          backgroundClip: 'padding-box',
+        },
+
+        '& .MuiDataGrid-scrollbar::-webkit-scrollbar-thumb:hover': {
+          backgroundColor: 'rgba(148, 163, 184, 0.9)',
+          backgroundClip: 'padding-box',
+        },
+
+        '& .MuiDataGrid-scrollbar::-webkit-scrollbar-track': {
+          backgroundColor: 'rgba(148, 163, 184, 0.08)',
+        },
+      }}
 
     />
   )
