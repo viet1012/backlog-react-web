@@ -163,6 +163,21 @@ export interface FacConfirmSearchRequest
 }
 
 
+export interface FacConfirmExcelExportRequest
+    extends FacConfirmDataScope {
+
+    search: string
+
+    filters: FacConfirmFilterItem[]
+
+    logicOperator: 'and' | 'or'
+
+    sort?: string | null
+
+    columns: string[]
+}
+
+
 export interface FacConfirmFilterOptionsRequest
     extends FacConfirmDataScope {
 

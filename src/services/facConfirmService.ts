@@ -12,6 +12,7 @@ import type {
     FacConfirmProcessTimeResponse,
     FacConfirmConfirmedProcess,
     FacConfirmDataScope,
+    FacConfirmExcelExportRequest,
 } from '../types/facConfirm'
 
 
@@ -405,4 +406,94 @@ export async function saveFacConfirmProcessTimes(
         await response.json()
 
     return result
+}
+
+
+// =========================================================
+// EXPORT EXCEL
+// =========================================================
+
+export async function exportFacConfirmExcel(
+    request: FacConfirmExcelExportRequest,
+): Promise<void> {
+
+    const response = await fetch(
+        `${API_BASE_URL}/api/fac-confirm/export/excel`,
+        {
+            method: 'POST',
+
+            headers: {
+                Accept:
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Type': 'application/json',
+            },
+
+            body: JSON.stringify(request),
+        },
+    )
+
+
+    if (!response.ok) {
+        const message =
+            await response.text()
+
+        throw new Error(
+            message
+            || `Fac Confirm Excel export failed: ${response.status}`,
+        )
+    }
+
+
+    const blob =
+        await response.blob()
+
+    let fileName =
+        'fac-confirm.xlsx'
+
+    const contentDisposition =
+        response.headers.get(
+            'Content-Disposition',
+        )
+
+    if (contentDisposition) {
+        const utf8Match =
+            contentDisposition.match(
+                /filename\*=UTF-8''([^;]+)/i,
+            )
+
+        if (utf8Match?.[1]) {
+            try {
+                fileName =
+                    decodeURIComponent(
+                        utf8Match[1],
+                    )
+            } catch {
+                // Keep the fallback file name.
+            }
+        } else {
+            const normalMatch =
+                contentDisposition.match(
+                    /filename="?([^";]+)"?/i,
+                )
+
+            if (normalMatch?.[1]) {
+                fileName =
+                    normalMatch[1]
+            }
+        }
+    }
+
+
+    const downloadUrl =
+        URL.createObjectURL(blob)
+
+    const anchor =
+        document.createElement('a')
+
+    anchor.href = downloadUrl
+    anchor.download = fileName
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    URL.revokeObjectURL(downloadUrl)
 }

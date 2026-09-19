@@ -1,11 +1,17 @@
 import {
   useCallback,
+  useMemo,
   useState,
 } from 'react'
+
+import DownloadRoundedIcon
+  from '@mui/icons-material/DownloadRounded'
 
 import {
   Alert,
   Box,
+  Button,
+  Stack,
 } from '@mui/material'
 
 import type {
@@ -16,6 +22,10 @@ import type {
 import {
   FacConfirmDataTable,
 } from '../components/facConfirm/FacConfirmDataTable'
+
+import {
+  getFacConfirmColumns,
+} from '../components/facConfirm/facConfirmColumns'
 
 import {
   FacConfirmFilterBar,
@@ -44,6 +54,10 @@ import {
 import {
   useGridPreferences,
 } from '../hooks/useGridPreferences'
+
+import {
+  exportFacConfirmExcel,
+} from '../services/facConfirmService'
 
 import type {
   FacConfirmClassify,
@@ -145,6 +159,13 @@ export function FacConfirmPage({
     setSearch,
   ] =
     useState('')
+
+
+  const [
+    exporting,
+    setExporting,
+  ] =
+    useState(false)
 
 
   const preferences =
@@ -518,6 +539,120 @@ export function FacConfirmPage({
     )
 
 
+  const exportColumns =
+    useMemo(
+      () => {
+        const allFields =
+          getFacConfirmColumns(
+            highlightProcGrp,
+          ).map(
+            (column) =>
+              column.field,
+          )
+
+        const knownFields =
+          new Set(allFields)
+
+        const orderedFields =
+          preferences.columnOrder.filter(
+            (field) =>
+              knownFields.has(field),
+          )
+
+        const orderedSet =
+          new Set(orderedFields)
+
+        const missingFields =
+          allFields.filter(
+            (field) =>
+              !orderedSet.has(field),
+          )
+
+        return [
+          ...orderedFields,
+          ...missingFields,
+        ].filter(
+          (field) =>
+            preferences.columnVisibilityModel[
+              field
+            ] !== false,
+        )
+      },
+      [
+        highlightProcGrp,
+        preferences.columnOrder,
+        preferences.columnVisibilityModel,
+      ],
+    )
+
+
+  const exportSort =
+    useMemo(
+      () => {
+        const sort =
+          sortModel[0]
+
+        if (!sort?.field || !sort.sort) {
+          return null
+        }
+
+        return `${sort.field},${sort.sort}`
+      },
+      [
+        sortModel,
+      ],
+    )
+
+
+  const handleExportExcel =
+    useCallback(
+      async () => {
+        if (exportColumns.length === 0) {
+          console.error(
+            'No visible columns to export',
+          )
+
+          return
+        }
+
+        try {
+          setExporting(true)
+
+          await exportFacConfirmExcel({
+            div,
+            expD,
+            procGrp,
+            classify: apiClassify,
+            heatType,
+            search: search.trim(),
+            filters: excelFilters,
+            logicOperator: 'and',
+            sort: exportSort,
+            columns: exportColumns,
+          })
+        } catch (exportError) {
+          console.error(
+            'Export Fac Confirm Excel failed:',
+            exportError,
+          )
+        } finally {
+          setExporting(false)
+        }
+      },
+      [
+        apiClassify,
+        div,
+        excelFilters,
+        expD,
+        exportColumns,
+        exportSort,
+        heatType,
+        procGrp,
+        search,
+      ],
+    )
+
+
   return (
     <PageShell>
 
@@ -541,15 +676,42 @@ export function FacConfirmPage({
         }
 
         actions={
-          <RefreshButton
-            loading={
-              loading
-            }
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{ alignItems: 'center' }}
+          >
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={
+                <DownloadRoundedIcon />
+              }
+              disabled={
+                exporting
+                || exportColumns.length === 0
+              }
+              onClick={
+                handleExportExcel
+              }
+            >
+              {
+                exporting
+                  ? 'Exporting...'
+                  : 'Export Excel'
+              }
+            </Button>
 
-            onClick={
-              handleRefresh
-            }
-          />
+            <RefreshButton
+              loading={
+                loading
+              }
+
+              onClick={
+                handleRefresh
+              }
+            />
+          </Stack>
         }
 
         mode={
