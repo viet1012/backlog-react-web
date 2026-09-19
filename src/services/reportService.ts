@@ -34,6 +34,13 @@ export interface BacklogFilterItem {
   values?: string[]
 }
 
+export interface BacklogExcelExportRequest {
+  filter: BacklogFilterRequest
+  search: string
+  sort: string | null
+  columns: string[]
+}
+
 export interface BacklogFilterRequest {
   filters: BacklogFilterItem[]
   logicOperator: 'and' | 'or'
@@ -1233,5 +1240,158 @@ export async function getBacklogStatusSummary(
 
       signal,
     },
+  )
+}
+
+
+// =========================================================
+// EXPORT BACKLOG EXCEL
+// =========================================================
+
+export async function exportBacklogExcel(
+  request: BacklogExcelExportRequest,
+): Promise<void> {
+
+  const response =
+    await fetch(
+      `${API_BASE_URL}/api/backlogs/export/excel`,
+      {
+        method: 'POST',
+
+        headers: {
+          Accept:
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+
+          'Content-Type':
+            'application/json',
+        },
+
+        body:
+          JSON.stringify(
+            request,
+          ),
+      },
+    )
+
+
+  if (!response.ok) {
+
+    let message =
+      `Export Excel failed (${response.status})`
+
+
+    try {
+
+      const errorText =
+        await response.text()
+
+
+      if (errorText) {
+        message =
+          errorText
+      }
+
+    } catch {
+      // ignore
+    }
+
+
+    throw new Error(
+      message,
+    )
+  }
+
+
+  const blob =
+    await response.blob()
+
+
+  // =======================================================
+  // FILE NAME
+  // =======================================================
+
+  let fileName =
+    'backlog.xlsx'
+
+
+  const contentDisposition =
+    response.headers.get(
+      'Content-Disposition',
+    )
+
+
+  if (contentDisposition) {
+
+    const utf8Match =
+      contentDisposition.match(
+        /filename\*=UTF-8''([^;]+)/i,
+      )
+
+
+    if (utf8Match?.[1]) {
+
+      try {
+
+        fileName =
+          decodeURIComponent(
+            utf8Match[1],
+          )
+
+      } catch {
+        // fallback
+      }
+
+    } else {
+
+      const normalMatch =
+        contentDisposition.match(
+          /filename="?([^";]+)"?/i,
+        )
+
+
+      if (normalMatch?.[1]) {
+        fileName =
+          normalMatch[1]
+      }
+    }
+  }
+
+
+  // =======================================================
+  // DOWNLOAD
+  // =======================================================
+
+  const downloadUrl =
+    URL.createObjectURL(
+      blob,
+    )
+
+
+  const anchor =
+    document.createElement(
+      'a',
+    )
+
+
+  anchor.href =
+    downloadUrl
+
+  anchor.download =
+    fileName
+
+
+  document.body.appendChild(
+    anchor,
+  )
+
+
+  anchor.click()
+
+
+  anchor.remove()
+
+
+  URL.revokeObjectURL(
+    downloadUrl,
   )
 }

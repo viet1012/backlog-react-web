@@ -140,6 +140,13 @@ export function FacConfirmPage({
     useState<FacConfirmFilterItem[]>([])
 
 
+  const [
+    search,
+    setSearch,
+  ] =
+    useState('')
+
+
   const preferences =
     useGridPreferences(
       'fac-confirm',
@@ -210,6 +217,8 @@ export function FacConfirmPage({
       paginationModel.pageSize,
 
     excelFilters,
+
+    search,
   })
 
 
@@ -467,6 +476,29 @@ export function FacConfirmPage({
 
 
   // =========================================================
+  // SEARCH
+  // =========================================================
+
+  const handleSearchChange =
+    useCallback(
+      (
+        value: string,
+      ) => {
+
+        setSearch(
+          value
+        )
+
+        resetPage()
+
+      },
+      [
+        resetPage,
+      ],
+    )
+
+
+  // =========================================================
   // SORT
   // =========================================================
 
@@ -536,6 +568,7 @@ export function FacConfirmPage({
         procGrp={procGrp}
         classify={classify}
         heatType={heatType}
+        search={search}
         processGroups={processGroups}
         loading={loading}
 
@@ -549,6 +582,9 @@ export function FacConfirmPage({
         }
         onHeatTypeChange={
           handleHeatTypeChange
+        }
+        onSearchChange={
+          handleSearchChange
         }
       />
 

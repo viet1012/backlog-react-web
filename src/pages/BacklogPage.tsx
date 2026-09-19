@@ -1,434 +1,11 @@
-// import { Alert, Card} from '@mui/material'
-// import type { PaletteMode } from '@mui/material/styles'
-// import type { GridPaginationModel, GridSortModel } from '@mui/x-data-grid'
-// import { useCallback, useState } from 'react'
-// import { DataTable } from '../components/DataTable'
-// import { BacklogFilterBar } from '../components/backlog/BacklogFilterBar'
-// import { BacklogSummary } from '../components/backlog/BacklogSummary'
-// import { PageHeader } from '../components/common/PageHeader'
-// import { PageShell } from '../components/common/PageShell'
-// import { RefreshButton } from '../components/common/RefreshButton'
-// import { UpdatedStatus } from '../components/common/UpdatedStatus'
-// import { useBacklogData } from '../hooks/useBacklogData'
-// import { useBacklogSummary } from '../hooks/useBacklogSummary'
-// import { useGridPreferences } from '../hooks/useGridPreferences'
-// import type { BacklogFilterItem, ReportFilters } from '../services/reportService'
-
-// const initialFilters: ReportFilters = {
-//   search: '', status: '', div: '', currentProcess: '', shipBy: '', productionDate: '',
-// }
-
-// interface BacklogPageProps { mode: PaletteMode; onToggleMode: () => void }
-
-// export function BacklogPage({
-//   mode,
-//   onToggleMode,
-// }: BacklogPageProps) {
-
-//   const [
-//     filters,
-//     setFilters,
-//   ] = useState<ReportFilters>(
-//     initialFilters,
-//   )
-
-//   const preferences =
-//     useGridPreferences(
-//       'backlog',
-//       100,
-//     )
-
-//   const [
-//     page,
-//     setPage,
-//   ] = useState(0)
-
-//   const [
-//     sortModel,
-//     setSortModel,
-//   ] = useState<GridSortModel>([])
-
-//   const [
-//     excelFilters,
-//     setExcelFilters,
-//   ] = useState<BacklogFilterItem[]>([])
-
-
-//   const {
-//     data,
-//     totalElements,
-
-//     loading,
-//     error,
-
-//     lastUpdated,
-
-//     handleRefresh,
-//     refreshKey,
-//   } = useBacklogData({
-//     page,
-
-//     pageSize:
-//       preferences.pageSize,
-
-//     filters,
-//     excelFilters,
-//     sortModel,
-//   })
-
-//   const {
-//     summary,
-//     loading: summaryLoading,
-//     error: summaryError,
-//   } = useBacklogSummary({
-//     filters,
-//     excelFilters,
-//     refreshKey,
-//   })
-
-
-//   // =======================================================
-//   // FILTER
-//   // =======================================================
-
-//   const handleFilterChange =
-//     useCallback(
-//       (
-//         name:
-//           keyof ReportFilters,
-
-//         value:
-//           string,
-//       ) => {
-
-//         setFilters(
-//           (current) => ({
-//             ...current,
-//             [name]: value,
-//           }),
-//         )
-
-//         setPage(0)
-//       },
-//       [],
-//     )
-
-
-//   // =======================================================
-//   // SUMMARY STATUS
-//   // =======================================================
-
-//   const handleSummaryStatusClick =
-//     useCallback(
-//       (status: string) => {
-
-//         setFilters(
-//           (current) => {
-
-//             const sameStatus =
-//               current.status
-//                 .trim()
-//                 .toUpperCase()
-//               ===
-//               status
-//                 .trim()
-//                 .toUpperCase()
-
-//             return {
-//               ...current,
-
-//               status:
-//                 sameStatus
-//                   ? ''
-//                   : status,
-//             }
-//           },
-//         )
-
-//         setPage(0)
-//       },
-//       [],
-//     )
-
-
-//   // =======================================================
-//   // CLEAR
-//   // =======================================================
-
-//   const handleClearFilters =
-//     useCallback(
-//       () => {
-
-//         setFilters(
-//           initialFilters,
-//         )
-
-//         setExcelFilters([])
-
-//         setPage(0)
-//       },
-//       [],
-//     )
-
-
-//   // =======================================================
-//   // PAGINATION
-//   // =======================================================
-
-//   const handlePaginationChange =
-//     useCallback(
-//       (
-//         model:
-//           GridPaginationModel,
-//       ) => {
-
-//         if (
-//           model.pageSize
-//           !== preferences.pageSize
-//         ) {
-
-//           preferences.setPageSize(
-//             model.pageSize,
-//           )
-
-//           setPage(0)
-
-//           return
-//         }
-
-//         setPage(
-//           model.page,
-//         )
-//       },
-//       [preferences],
-//     )
-
-
-//   // =======================================================
-//   // EXCEL FILTER
-//   // =======================================================
-
-//   const handleExcelFiltersChange =
-//     useCallback(
-//       (
-//         nextFilters:
-//           BacklogFilterItem[],
-//       ) => {
-
-//         setExcelFilters(
-//           nextFilters,
-//         )
-
-//         setPage(0)
-//       },
-//       [],
-//     )
-
-
-//   // =======================================================
-//   // SORT
-//   // =======================================================
-
-//   const handleSortChange =
-//     useCallback(
-//       (
-//         model:
-//           GridSortModel,
-//       ) => {
-
-//         setSortModel(
-//           model,
-//         )
-
-//         setPage(0)
-//       },
-//       [],
-//     )
-
-
-//   return (
-//     <PageShell>
-
-//       <PageHeader
-//         title="PRODUCTION BACKLOG"
-
-//         subtitle="Monitor production status, process flow and delivery progress."
-
-//         status={
-//           <UpdatedStatus
-//             updatedAt={lastUpdated}
-//             error={Boolean(error)}
-//           />
-//         }
-
-//         actions={
-//           <RefreshButton
-//             loading={
-//               loading ||
-//               summaryLoading
-//             }
-//             onClick={handleRefresh}
-//           />
-//         }
-
-//         mode={mode}
-//         onToggleMode={onToggleMode}
-//       />
-
-
-//       {/* SUMMARY */}
-
-//       <BacklogSummary
-//         summary={
-//           summary
-//         }
-
-//         selectedStatus={
-//           filters.status
-//         }
-
-//         loading={
-//           summaryLoading
-//         }
-
-//         error={
-//           summaryError
-//         }
-
-//         onStatusClick={
-//           handleSummaryStatusClick
-//         }
-//       />
-
-
-//       {/* FILTER */}
-
-//       <BacklogFilterBar
-//         filters={
-//           filters
-//         }
-
-//         excelFilterCount={
-//           excelFilters.length
-//         }
-
-//         loading={
-//           loading
-//         }
-
-//         onFilterChange={
-//           handleFilterChange
-//         }
-
-//         onClear={
-//           handleClearFilters
-//         }
-
-//         onRefresh={
-//           handleRefresh
-//         }
-//       />
-
-
-//       {error && (
-//         <Alert
-//           severity="error"
-//           sx={{
-//             mb: 1.5,
-//           }}
-//         >
-//           {error}
-//         </Alert>
-//       )}
-
-
-//       {/* TABLE */}
-
-//       <Card
-//         sx={{
-//           flex: 1,
-//           minHeight: 0,
-//           overflow: 'hidden',
-//         }}
-//       >
-//         <DataTable
-//           data={
-//             data
-//           }
-
-//           loading={
-//             loading
-//           }
-
-//           page={
-//             page
-//           }
-
-//           pageSize={
-//             preferences.pageSize
-//           }
-
-//           totalElements={
-//             totalElements
-//           }
-
-//           excelFilters={
-//             excelFilters
-//           }
-
-//           sortModel={
-//             sortModel
-//           }
-
-//           columnVisibilityModel={
-//             preferences.columnVisibilityModel
-//           }
-
-//           columnOrder={
-//             preferences.columnOrder
-//           }
-
-//           columnWidths={
-//             preferences.columnWidths
-//           }
-
-//           onColumnVisibilityModelChange={
-//             preferences
-//               .setColumnVisibilityModel
-//           }
-
-//           onColumnOrderChange={
-//             preferences
-//               .setColumnOrder
-//           }
-
-//           onColumnWidthChange={
-//             preferences
-//               .setColumnWidth
-//           }
-
-//           onExcelFiltersChange={
-//             handleExcelFiltersChange
-//           }
-
-//           onSortChange={
-//             handleSortChange
-//           }
-
-//           onPaginationChange={
-//             handlePaginationChange
-//           }
-//         />
-//       </Card>
-
-//     </PageShell>
-//   )
-// }
-
+import DownloadRoundedIcon
+  from '@mui/icons-material/DownloadRounded'
 
 import {
   Alert,
+  Button,
   Card,
+  Stack,
 } from '@mui/material'
 
 import type {
@@ -459,11 +36,14 @@ import { useBacklogSummary } from '../hooks/useBacklogSummary'
 import { useGridPreferences } from '../hooks/useGridPreferences'
 
 import {
+  exportBacklogExcel,
   getBacklogFilterOptions,
   type BacklogFilterItem,
   type ReportFilters,
 } from '../services/reportService'
-
+import {
+  backlogColumns,
+} from '../components/backlog/backlogColumns'
 
 const initialFilters: ReportFilters = {
   search: '',
@@ -634,6 +214,17 @@ export function BacklogPage({
       ],
     )
 
+  const optionContextFilters =
+    useMemo(
+      () =>
+        buildSimpleFilters(
+          effectiveFilters,
+        ),
+      [
+        effectiveFilters,
+      ],
+    )
+
 
   const preferences =
     useGridPreferences(
@@ -706,6 +297,11 @@ export function BacklogPage({
       ],
     )
 
+  const [
+    exporting,
+    setExporting,
+  ] =
+    useState(false)
 
   // =======================================================
   // DROPDOWN OPTIONS
@@ -1140,7 +736,169 @@ export function BacklogPage({
       ],
     )
 
+  const exportColumns =
+    useMemo(
+      () => {
 
+        const allFields =
+          backlogColumns.map(
+            (column) =>
+              column.field,
+          )
+
+
+        const knownFields =
+          new Set(
+            allFields,
+          )
+
+
+        const orderedFields =
+          preferences.columnOrder
+            .filter(
+              (field) =>
+                knownFields.has(
+                  field,
+                ),
+            )
+
+
+        const orderedSet =
+          new Set(
+            orderedFields,
+          )
+
+
+        const missingFields =
+          allFields.filter(
+            (field) =>
+              !orderedSet.has(
+                field,
+              ),
+          )
+
+
+        return [
+          ...orderedFields,
+          ...missingFields,
+        ].filter(
+          (field) =>
+            preferences
+              .columnVisibilityModel[
+            field
+            ] !== false,
+        )
+      },
+      [
+        preferences.columnOrder,
+        preferences.columnVisibilityModel,
+      ],
+    )
+
+  const exportSort =
+    useMemo(
+      () => {
+
+        const sort =
+          sortModel[0]
+
+
+        if (
+          !sort?.field
+          || !sort.sort
+        ) {
+          return null
+        }
+
+
+        return `${sort.field},${sort.sort}`
+      },
+      [
+        sortModel,
+      ],
+    )
+
+  // =======================================================
+  // EXPORT EXCEL
+  // =======================================================
+
+  const handleExportExcel =
+    useCallback(
+      async () => {
+
+        if (
+          exportColumns.length === 0
+        ) {
+          console.error(
+            'No visible columns to export',
+          )
+
+          return
+        }
+
+
+        try {
+
+          setExporting(
+            true,
+          )
+
+
+          const simpleFilters =
+            buildSimpleFilters(
+              effectiveFilters,
+            )
+
+
+          const allFilters = [
+            ...simpleFilters,
+            ...effectiveExcelFilters,
+          ]
+
+
+          await exportBacklogExcel({
+            filter: {
+              filters:
+                allFilters,
+
+              logicOperator:
+                'and',
+            },
+
+            search:
+              effectiveFilters
+                .search
+                .trim(),
+
+            sort:
+              exportSort,
+
+            columns:
+              exportColumns,
+          })
+
+
+        } catch (error) {
+
+          console.error(
+            'Export backlog Excel failed:',
+            error,
+          )
+
+        } finally {
+
+          setExporting(
+            false,
+          )
+        }
+      },
+      [
+        effectiveFilters,
+        effectiveExcelFilters,
+        exportColumns,
+        exportSort,
+      ],
+    )
   // =======================================================
   // EXCEL FILTER
   // =======================================================
@@ -1210,16 +968,45 @@ export function BacklogPage({
         }
 
         actions={
-          <RefreshButton
-            loading={
-              loading
-              || summaryLoading
-            }
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              alignItems: 'center',
+            }}
+          >
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={
+                <DownloadRoundedIcon />
+              }
+              disabled={
+                exporting
+                || exportColumns.length === 0
+              }
+              onClick={
+                handleExportExcel
+              }
+            >
+              {
+                exporting
+                  ? 'Exporting...'
+                  : 'Export Excel'
+              }
+            </Button>
 
-            onClick={
-              handleRefresh
-            }
-          />
+
+            <RefreshButton
+              loading={
+                loading
+                || summaryLoading
+              }
+              onClick={
+                handleRefresh
+              }
+            />
+          </Stack>
         }
 
         mode={
@@ -1346,6 +1133,10 @@ export function BacklogPage({
 
           excelFilters={
             effectiveExcelFilters
+          }
+
+          optionContextFilters={
+            optionContextFilters
           }
 
           sortModel={

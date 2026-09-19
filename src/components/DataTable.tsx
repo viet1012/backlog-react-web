@@ -28,6 +28,7 @@ interface DataTableProps {
   pageSize: number
   totalElements: number
   excelFilters: BacklogFilterItem[]
+  optionContextFilters: BacklogFilterItem[]
   sortModel: GridSortModel
   columnVisibilityModel: GridColumnVisibilityModel
   columnOrder: string[]
@@ -72,6 +73,7 @@ export function DataTable({
   pageSize,
   totalElements,
   excelFilters,
+  optionContextFilters,
   sortModel,
   columnVisibilityModel,
   columnOrder,
@@ -86,6 +88,7 @@ export function DataTable({
   return (
     <ExcelColumnFilterProvider
       excelFilters={excelFilters}
+      optionContextFilters={optionContextFilters}
       onExcelFiltersChange={onExcelFiltersChange}
       isFilterableField={isExcelFilterField}
       getFilterKind={getFilterKind}

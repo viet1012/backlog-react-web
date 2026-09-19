@@ -158,6 +158,8 @@ export interface FacConfirmSearchRequest
     filters: FacConfirmFilterItem[]
 
     logicOperator: 'and' | 'or'
+
+    search?: string
 }
 
 

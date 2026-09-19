@@ -30,6 +30,7 @@ interface UseFacConfirmDataParams
   page: number
   pageSize: number
   excelFilters: FacConfirmFilterItem[]
+  search: string
 }
 
 function isAbortError(error: unknown): boolean {
@@ -104,6 +105,7 @@ export function useFacConfirmData({
   page,
   pageSize,
   excelFilters,
+  search,
 }: UseFacConfirmDataParams) {
   const [rows, setRows] = useState<FacConfirmRow[]>([])
   const [confirmedProcesses, setConfirmedProcesses] = useState<
@@ -144,12 +146,15 @@ export function useFacConfirmData({
         size: pageSize,
       }
 
-      const result = excelFilters.length > 0
+      const trimmedSearch = search.trim()
+
+      const result = excelFilters.length > 0 || trimmedSearch
         ? await searchFacConfirm(
           {
             ...request,
             filters: excelFilters,
             logicOperator: 'and',
+            search: trimmedSearch || undefined,
           },
           controller.signal,
         )
@@ -235,6 +240,7 @@ export function useFacConfirmData({
     page,
     pageSize,
     procGrp,
+    search,
   ])
 
   const loadProcessGroups = useCallback(async () => {

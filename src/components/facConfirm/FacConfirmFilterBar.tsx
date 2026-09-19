@@ -1,11 +1,20 @@
 import {
   Box,
   FormControl,
+  IconButton,
+  InputAdornment,
   InputLabel,
   MenuItem,
   Select,
   TextField,
 } from '@mui/material'
+
+import SearchRoundedIcon
+  from '@mui/icons-material/SearchRounded'
+
+import CloseRoundedIcon
+  from '@mui/icons-material/CloseRounded'
+
 import type {
   SelectChangeEvent,
 } from '@mui/material/Select'
@@ -27,6 +36,7 @@ interface FacConfirmFilterBarProps {
   procGrp: FacConfirmProcessGroup
   classify: FacConfirmClassify[]
   heatType: FacConfirmHeatType
+  search: string
   processGroups: FacConfirmProcessGroupSummary[]
   loading: boolean
 
@@ -41,6 +51,7 @@ interface FacConfirmFilterBarProps {
   onHeatTypeChange: (
     value: FacConfirmHeatType
   ) => void
+  onSearchChange: (value: string) => void
 }
 
 function getHeatTypeOptions(
@@ -77,6 +88,7 @@ export function FacConfirmFilterBar({
   procGrp,
   classify,
   heatType,
+  search,
   processGroups,
   loading,
   onDivChange,
@@ -84,6 +96,7 @@ export function FacConfirmFilterBar({
   onProcessGroupChange,
   onClassifyChange,
   onHeatTypeChange,
+  onSearchChange,
 }: FacConfirmFilterBarProps) {
 
   const heatTypeOptions =
@@ -212,6 +225,54 @@ export function FacConfirmFilterBar({
             ))}
           </Select>
         </FormControl>
+
+        <TextField
+          placeholder="Search order, global code, product..."
+          size="small"
+          value={search}
+          onChange={(event) =>
+            onSearchChange(event.target.value)
+          }
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchRoundedIcon
+                    sx={{
+                      fontSize: 19,
+                    }}
+                  />
+                </InputAdornment>
+              ),
+
+              endAdornment: search
+                ? (
+                  <InputAdornment position="end">
+                    <IconButton
+                      size="small"
+                      onClick={() =>
+                        onSearchChange('')
+                      }
+                    >
+                      <CloseRoundedIcon
+                        sx={{
+                          fontSize: 17,
+                        }}
+                      />
+                    </IconButton>
+                  </InputAdornment>
+                )
+                : null,
+            },
+          }}
+          sx={{
+            width: {
+              xs: '100%',
+              sm: 260,
+            },
+            flexShrink: 1,
+          }}
+        />
 
         <FacConfirmProcessGroupStrip
           value={procGrp}

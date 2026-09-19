@@ -29,6 +29,7 @@ import { ExcelFilterValueList } from './ExcelFilterValueList'
 interface ExcelColumnFilterProviderProps {
   children: ReactNode
   excelFilters: ExcelFilterItem[]
+  optionContextFilters?: ExcelFilterItem[]
   onExcelFiltersChange: (filters: ExcelFilterItem[]) => void
   isFilterableField: (field: string) => boolean
   getFilterKind: (field: string) => ExcelFilterKind
@@ -39,6 +40,8 @@ interface ExcelColumnFilterProviderProps {
 }
 
 type FilterView = 'values' | 'condition'
+
+const EMPTY_OPTION_CONTEXT_FILTERS: ExcelFilterItem[] = []
 
 const conditionLabels: Record<string, string> = {
   equals: 'Equals',
@@ -271,6 +274,7 @@ function FilterFooter({
 export function ExcelColumnFilterProvider({
   children,
   excelFilters,
+  optionContextFilters = EMPTY_OPTION_CONTEXT_FILTERS,
   onExcelFiltersChange,
   isFilterableField,
   getFilterKind,
@@ -305,7 +309,7 @@ export function ExcelColumnFilterProvider({
 
     void loadOptions({
       field,
-      filters: otherColumnFilters,
+      filters: [...optionContextFilters, ...otherColumnFilters],
       logicOperator: 'and',
       search: '',
       limit: 500,
@@ -331,7 +335,7 @@ export function ExcelColumnFilterProvider({
       })
 
     return () => controller.abort()
-  }, [anchorEl, excelFilters, field, loadOptions])
+  }, [anchorEl, excelFilters, field, loadOptions, optionContextFilters])
 
   const visibleOptions = useMemo(
     () => filterVisibleOptions(options, search),
