@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useMemo,
   useState,
 } from 'react'
@@ -92,6 +93,11 @@ import {
 import {
   useFacConfirmFillHandle,
 } from './hooks/useFacConfirmFillHandle'
+
+import {
+  FAC_GUIDE_FOCUS_EDIT_COLUMNS_EVENT,
+  FAC_TOUR_EDIT_COLUMN_CLASS,
+} from './guide/facConfirmGuideEvents'
 
 import { AppButton } from '../common/AppButton'
 import { ClearButton } from '../common/ClearButton'
@@ -200,7 +206,13 @@ function FacConfirmToolbar({
         }}
       >
         {hasChanges && (
-          <>
+          <Box
+            data-tour="fac-confirm-actions"
+            sx={{
+              display: 'flex',
+              gap: 0.75,
+            }}
+          >
             <AppButton
               appearance="action"
               loading={saving}
@@ -219,7 +231,7 @@ function FacConfirmToolbar({
             >
               Cancel Changes
             </AppButton>
-          </>
+          </Box>
         )}
       </Box>
 
@@ -237,7 +249,15 @@ function FacConfirmToolbar({
           />
         )}
 
-        <GridToolbarColumnsButton />
+        <Box
+          component="span"
+          data-tour="fac-columns"
+          sx={{
+            display: 'inline-flex',
+          }}
+        >
+          <GridToolbarColumnsButton />
+        </Box>
       </Box>
     </GridToolbarContainer>
   )
@@ -357,7 +377,34 @@ export function FacConfirmDataTable({
       () =>
         getFacConfirmColumns(
           highlightProcGrp,
-        ),
+        ).map((column) => {
+
+          if (!column.editable) {
+            return column
+          }
+
+          // Tour (Bước 9) chiếu sáng tiêu đề các cột nhập được.
+          // Nối thêm vào class sẵn có, không ghi đè.
+          const current =
+            column.headerClassName
+
+          return {
+            ...column,
+
+            headerClassName:
+              typeof current === 'function'
+                ? (
+                  params: Parameters<typeof current>[0],
+                ) => [
+                  current(params),
+                  FAC_TOUR_EDIT_COLUMN_CLASS,
+                ].filter(Boolean).join(' ')
+                : [
+                  current,
+                  FAC_TOUR_EDIT_COLUMN_CLASS,
+                ].filter(Boolean).join(' '),
+          }
+        }),
       [
         highlightProcGrp,
       ],
@@ -391,6 +438,57 @@ export function FacConfirmDataTable({
   )
 
   const apiRef = useGridApiRef()
+
+
+  // =======================================================
+  // GUIDE TOUR: CUỘN TỚI CỘT NHẬP ĐƯỢC
+  // =======================================================
+
+  useEffect(() => {
+    const handleFocusEditColumns = () => {
+      const api = apiRef.current
+
+      if (!api || !highlightProcGrp) {
+        return
+      }
+
+      const colIndexes =
+        FAC_CONFIRM_PROCESS_CONFIG[
+          highlightProcGrp
+        ].columns
+          .map((field) =>
+            api.getColumnIndex(field, true),
+          )
+          .filter((colIndex) => colIndex >= 0)
+
+      if (colIndexes.length === 0) {
+        return
+      }
+
+      // Cuộn tới cột cuối rồi cột đầu
+      // => cả cụm cột hiện ra (nếu đủ rộng), cột đầu luôn thấy.
+      api.scrollToIndexes({
+        colIndex: Math.max(...colIndexes),
+      })
+
+      api.scrollToIndexes({
+        colIndex: Math.min(...colIndexes),
+      })
+    }
+
+    window.addEventListener(
+      FAC_GUIDE_FOCUS_EDIT_COLUMNS_EVENT,
+      handleFocusEditColumns,
+    )
+
+    return () => window.removeEventListener(
+      FAC_GUIDE_FOCUS_EDIT_COLUMNS_EVENT,
+      handleFocusEditColumns,
+    )
+  }, [
+    apiRef,
+    highlightProcGrp,
+  ])
 
   // =======================================================
   // CONFIRM ALL CHANGES

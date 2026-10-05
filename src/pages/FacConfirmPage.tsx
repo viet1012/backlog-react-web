@@ -7,11 +7,16 @@ import {
 import DownloadRoundedIcon
   from '@mui/icons-material/DownloadRounded'
 
+import HelpOutlineRoundedIcon
+  from '@mui/icons-material/HelpOutlineRounded'
+
 import {
   Alert,
   Box,
   Button,
+  IconButton,
   Stack,
+  Tooltip,
 } from '@mui/material'
 
 import type {
@@ -30,6 +35,19 @@ import {
 import {
   FacConfirmFilterBar,
 } from '../components/facConfirm/FacConfirmFilterBar'
+
+import {
+  GuideTour,
+} from '../components/facConfirm/guide/GuideTour'
+
+import {
+  useGuideTour,
+} from '../components/facConfirm/guide/useGuideTour'
+
+import {
+  FAC_CONFIRM_GUIDE_KEY,
+  facConfirmGuideSteps,
+} from '../components/facConfirm/guide/facConfirmGuideSteps'
 
 import {
   PageHeader,
@@ -166,6 +184,12 @@ export function FacConfirmPage({
     setExporting,
   ] =
     useState(false)
+
+
+  const guide =
+    useGuideTour(
+      FAC_CONFIRM_GUIDE_KEY,
+    )
 
 
   const preferences =
@@ -681,7 +705,22 @@ export function FacConfirmPage({
             spacing={1}
             sx={{ alignItems: 'center' }}
           >
+            <Tooltip title="Hướng dẫn sử dụng">
+              <IconButton
+                size="small"
+                aria-label="Hướng dẫn sử dụng"
+                onClick={
+                  guide.start
+                }
+              >
+                <HelpOutlineRoundedIcon
+                  fontSize="small"
+                />
+              </IconButton>
+            </Tooltip>
+
             <Button
+              data-tour="fac-export"
               variant="outlined"
               size="small"
               startIcon={
@@ -702,15 +741,20 @@ export function FacConfirmPage({
               }
             </Button>
 
-            <RefreshButton
-              loading={
-                loading
-              }
+            <Box
+              component="span"
+              data-tour="fac-refresh"
+            >
+              <RefreshButton
+                loading={
+                  loading
+                }
 
-              onClick={
-                handleRefresh
-              }
-            />
+                onClick={
+                  handleRefresh
+                }
+              />
+            </Box>
           </Stack>
         }
 
@@ -724,31 +768,35 @@ export function FacConfirmPage({
       />
 
 
-      <FacConfirmFilterBar
-        div={div}
-        expD={expD}
-        procGrp={procGrp}
-        classify={classify}
-        heatType={heatType}
-        search={search}
-        processGroups={processGroups}
-        loading={loading}
+      <Box
+        data-tour="fac-filter-bar"
+      >
+        <FacConfirmFilterBar
+          div={div}
+          expD={expD}
+          procGrp={procGrp}
+          classify={classify}
+          heatType={heatType}
+          search={search}
+          processGroups={processGroups}
+          loading={loading}
 
-        onDivChange={handleDivChange}
-        onDateChange={handleDateChange}
-        onProcessGroupChange={
-          handleProcessGroupChange
-        }
-        onClassifyChange={
-          handleClassifyChange
-        }
-        onHeatTypeChange={
-          handleHeatTypeChange
-        }
-        onSearchChange={
-          handleSearchChange
-        }
-      />
+          onDivChange={handleDivChange}
+          onDateChange={handleDateChange}
+          onProcessGroupChange={
+            handleProcessGroupChange
+          }
+          onClassifyChange={
+            handleClassifyChange
+          }
+          onHeatTypeChange={
+            handleHeatTypeChange
+          }
+          onSearchChange={
+            handleSearchChange
+          }
+        />
+      </Box>
 
 
       {error && (
@@ -761,6 +809,7 @@ export function FacConfirmPage({
 
 
       <Box
+        data-tour="fac-table"
         sx={{
           flex: 1,
 
@@ -818,6 +867,13 @@ export function FacConfirmPage({
           onSaved={handleRefresh}
         />
       </Box>
+
+
+      <GuideTour
+        open={guide.open}
+        steps={facConfirmGuideSteps}
+        onClose={guide.close}
+      />
 
     </PageShell>
   )

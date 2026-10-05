@@ -130,6 +130,7 @@ export function FacConfirmFilterBar({
         }}
       >
         <FormControl
+          data-tour="fac-div"
           size="small"
           disabled={loading}
           sx={{
@@ -170,6 +171,7 @@ export function FacConfirmFilterBar({
         </FormControl>
 
         <TextField
+          data-tour="fac-date"
           label="Export Date"
           type="date"
           size="small"
@@ -192,13 +194,22 @@ export function FacConfirmFilterBar({
           }}
         />
 
-        <FacConfirmClassifyControl
-          value={classify}
-          disabled={loading}
-          onChange={onClassifyChange}
-        />
+        <Box
+          data-tour="fac-classify"
+          sx={{
+            display: 'flex',
+            flexShrink: 0,
+          }}
+        >
+          <FacConfirmClassifyControl
+            value={classify}
+            disabled={loading}
+            onChange={onClassifyChange}
+          />
+        </Box>
 
         <FormControl
+          data-tour="fac-heat"
           size="small"
           disabled={loading}
           sx={{
@@ -227,6 +238,7 @@ export function FacConfirmFilterBar({
         </FormControl>
 
         <TextField
+          data-tour="fac-search"
           placeholder="Search order, global code, product..."
           size="small"
           value={search}
@@ -274,12 +286,21 @@ export function FacConfirmFilterBar({
           }}
         />
 
-        <FacConfirmProcessGroupStrip
-          value={procGrp}
-          items={processGroups}
-          loading={loading}
-          onChange={onProcessGroupChange}
-        />
+        <Box
+          data-tour="fac-procgrp"
+          sx={{
+            display: 'flex',
+            flex: '1 1 420px',
+            minWidth: 0,
+          }}
+        >
+          <FacConfirmProcessGroupStrip
+            value={procGrp}
+            items={processGroups}
+            loading={loading}
+            onChange={onProcessGroupChange}
+          />
+        </Box>
       </Box>
     </GlassPanel>
   )
