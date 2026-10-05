@@ -165,7 +165,7 @@ function App() {
 
                 <Route element={<RoleRoute roles={['PC']} />}>
                   <Route path="backlog" element={<BacklogPage mode={mode} onToggleMode={toggleThemeMode} />} />
-                  <Route path="remain-po-control" element={<RemainPoControlPage />} />
+                  <Route path="remain-po-control" element={<RemainPoControlPage mode={mode} />} />
                   <Route path="export-list" element={<ExportListPage />} />
                 </Route>
 
@@ -210,7 +210,7 @@ function App() {
                   path="deadstock"
                   element={<DeadstockPage />}
                 />
-                fbacklog
+
                 <Route
                   path="pl"
                   element={<PlPage />}
