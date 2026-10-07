@@ -306,6 +306,10 @@ export function getBrandCardSx(
         WebkitBackdropFilter:
             'blur(12px) saturate(135%)',
 
+        // Tách lớp riêng để ảnh logo trong ô có backdrop-filter không bị nhòe
+        transform:
+            'translateZ(0)',
+
         boxShadow:
             theme.palette.mode === 'dark'
                 ? `

@@ -1,8 +1,11 @@
 import {
-  Alert, Box, Button, CircularProgress, IconButton, InputAdornment, TextField, Typography,
+  Alert, Box, Button, CircularProgress, IconButton, InputAdornment, Typography,
 } from '@mui/material'
-import { VisibilityOffOutlined, VisibilityOutlined } from '@mui/icons-material'
+import {
+  LockOutlined, PersonOutlineRounded, VisibilityOffOutlined, VisibilityOutlined,
+} from '@mui/icons-material'
 import type { FormEvent } from 'react'
+import { AuthField } from './AuthField'
 import {
   authModeActionSx,
   authModeFooterSx,
@@ -33,6 +36,11 @@ export function RegisterForm(props: RegisterFormProps) {
     onEmployeeIdChange, onPasswordChange, onConfirmPasswordChange,
     onTogglePassword, onSignIn, onSubmit,
   } = props
+  const lockAdornment = (
+    <InputAdornment position="start">
+      <LockOutlined />
+    </InputAdornment>
+  )
   const passwordAdornment = (
     <InputAdornment position="end">
       <IconButton
@@ -48,24 +56,36 @@ export function RegisterForm(props: RegisterFormProps) {
   )
 
   return (
-    <Box component="form" onSubmit={onSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+    <Box component="form" onSubmit={onSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       {error && <Alert severity="error" sx={loginAlertSx}>{error}</Alert>}
-      <TextField
-        label="Employee ID (MSNV)" value={employeeId} autoComplete="username"
+      <AuthField
+        id="register-employee-id" label="Employee ID (MSNV)" placeholder="e.g. 22847"
+        value={employeeId} autoComplete="username"
         onChange={(event) => onEmployeeIdChange(event.target.value)}
-        autoFocus fullWidth required disabled={loading} sx={loginFieldSx}
+        autoFocus required disabled={loading} sx={loginFieldSx}
+        slotProps={{
+          input: {
+            startAdornment: (
+              <InputAdornment position="start">
+                <PersonOutlineRounded />
+              </InputAdornment>
+            ),
+          },
+        }}
       />
-      <TextField
-        label="Password" type={showPassword ? 'text' : 'password'} value={password}
+      <AuthField
+        id="register-password" label="Password" placeholder="Enter your password"
+        type={showPassword ? 'text' : 'password'} value={password}
         onChange={(event) => onPasswordChange(event.target.value)}
-        autoComplete="new-password" fullWidth required disabled={loading} sx={passwordToggleFieldSx}
-        slotProps={{ input: { endAdornment: passwordAdornment } }}
+        autoComplete="new-password" required disabled={loading} sx={passwordToggleFieldSx}
+        slotProps={{ input: { startAdornment: lockAdornment, endAdornment: passwordAdornment } }}
       />
-      <TextField
-        label="Confirm Password" type={showPassword ? 'text' : 'password'} value={confirmPassword}
+      <AuthField
+        id="register-confirm-password" label="Confirm Password" placeholder="Re-enter your password"
+        type={showPassword ? 'text' : 'password'} value={confirmPassword}
         onChange={(event) => onConfirmPasswordChange(event.target.value)}
-        autoComplete="new-password" fullWidth required disabled={loading} sx={passwordToggleFieldSx}
-        slotProps={{ input: { endAdornment: passwordAdornment } }}
+        autoComplete="new-password" required disabled={loading} sx={passwordToggleFieldSx}
+        slotProps={{ input: { startAdornment: lockAdornment, endAdornment: passwordAdornment } }}
       />
       <Button type="submit" variant="contained" size="large" disabled={loading} sx={loginButtonSx}>
         {loading ? <CircularProgress size={22} color="inherit" /> : 'Create Account'}

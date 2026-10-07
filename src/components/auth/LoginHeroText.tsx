@@ -1,6 +1,8 @@
 import { Box, Typography } from '@mui/material'
 import { useEffect, useState } from 'react'
 
+import { v } from './loginStyles'
+
 const TABS = [
   'PEOPLE',
   'PROCESS',
@@ -65,7 +67,7 @@ export function LoginHeroText() {
               textShadow:
                 activeIndex === index
                   ? '0 0 16px rgba(95,190,255,0.32)'
-                  : 'none',
+                  : v('brandTextShadow'),
 
               transition:
                 'color 450ms ease, text-shadow 450ms ease',
@@ -125,8 +127,7 @@ export function LoginHeroText() {
 
           color: 'rgba(245, 249, 255, 0.95)',
 
-          textShadow:
-            '0 4px 22px rgba(0,0,0,0.30)',
+          textShadow: v('heroShadow'),
         }}
       >
         Your Time.

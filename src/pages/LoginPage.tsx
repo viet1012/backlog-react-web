@@ -1,15 +1,22 @@
 import { Box, Typography } from '@mui/material'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 
+import dayBackground from '../assets/bg-day.jpg'
 import factoryBackground from '../assets/login-factory-bg.png'
+import { AuthCardHeader } from '../components/auth/AuthCardHeader'
 import { LoginBrand } from '../components/auth/LoginBrand'
 import { LoginForm } from '../components/auth/LoginForm'
 import { LoginHeroText } from '../components/auth/LoginHeroText'
 import { RegisterForm } from '../components/auth/RegisterForm'
 import {
+  authModeActionSx,
+  BACKGROUND_FADE_MS,
   centerContainerSx,
+  createAuthModeSwitchSx,
+  createAuthThemeVars,
+  createDayBackgroundLayerSx,
   createPageBackgroundSx,
   loginCardSx,
 } from '../components/auth/loginStyles'
@@ -20,6 +27,7 @@ import {
   login,
   register,
 } from '../services/authService'
+import { useIsDaytime } from '../hooks/useIsDaytime'
 
 type AuthMode = 'login' | 'register'
 
@@ -36,6 +44,29 @@ export function LoginPage() {
   const [showRegisterPassword, setShowRegisterPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const isDaytime = useIsDaytime()
+
+  // Bật fade màu cho toàn trang trong lúc chuyển ngày/đêm (khớp với fade background)
+  const [prevIsDaytime, setPrevIsDaytime] = useState(isDaytime)
+  const [modeSwitching, setModeSwitching] = useState(false)
+  if (prevIsDaytime !== isDaytime) {
+    setPrevIsDaytime(isDaytime)
+    setModeSwitching(true)
+  }
+
+  useEffect(() => {
+    if (!modeSwitching) return
+    const timer = window.setTimeout(() => setModeSwitching(false), BACKGROUND_FADE_MS)
+    return () => window.clearTimeout(timer)
+  }, [modeSwitching])
+
+  // Preload cả 2 ảnh để lúc chuyển ngày/đêm không bị trễ
+  useEffect(() => {
+    for (const src of [dayBackground, factoryBackground]) {
+      const image = new Image()
+      image.src = src
+    }
+  }, [])
 
   if (isAuthenticated()) {
     return <Navigate to={getDefaultAuthRoute()} replace />
@@ -107,7 +138,15 @@ export function LoginPage() {
   const isLogin = mode === 'login'
 
   return (
-    <Box sx={createPageBackgroundSx(factoryBackground)}>
+    <Box
+      data-mode-switching={modeSwitching}
+      style={createAuthThemeVars(isDaytime)}
+      sx={[
+        createPageBackgroundSx(factoryBackground, { nightOverlayVisible: !isDaytime }),
+        createAuthModeSwitchSx(),
+      ]}
+    >
+      <Box aria-hidden sx={createDayBackgroundLayerSx(dayBackground, isDaytime)} />
       <LoginBrand />
       <LoginHeroText />
 
@@ -124,21 +163,32 @@ export function LoginPage() {
               '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
             }}
           >
-            <Box sx={{ mb: 3 }}>
-              <Typography
-                sx={{
-                  fontSize: { xs: 24, sm: 27 },
-                  fontWeight: 700,
-                  letterSpacing: '-0.025em',
-                  lineHeight: 1.15,
-                }}
-              >
-                {isLogin ? 'Production Control' : 'Create Account'}
-              </Typography>
-              <Typography sx={{ mt: 0.8, color: 'rgba(213, 230, 246, 0.62)', fontSize: 13.5 }}>
-                {isLogin ? 'Sign in to continue' : 'Register to Production Control'}
-              </Typography>
-            </Box>
+            {isLogin ? (
+              <AuthCardHeader
+                title="Production Control"
+                subtitle="Sign in with your S-Patrol account"
+              />
+            ) : (
+              <AuthCardHeader
+                title="Create Account"
+                subtitle="Register to Production Control"
+                hint={(
+                  <>
+                    Already have an S-Patrol account? No need to register —{' '}
+                    <Typography
+                      component="button"
+                      type="button"
+                      onClick={() => changeMode('login')}
+                      disabled={loading}
+                      sx={authModeActionSx}
+                    >
+                      sign in directly
+                    </Typography>
+                    .
+                  </>
+                )}
+              />
+            )}
 
             {isLogin ? (
               <LoginForm
@@ -148,8 +198,14 @@ export function LoginPage() {
                 showPassword={showPassword}
                 loading={loading}
                 error={error}
-                onEmployeeIdChange={setEmployeeId}
-                onPasswordChange={setPassword}
+                onEmployeeIdChange={(value) => {
+                  setEmployeeId(value)
+                  setError('')
+                }}
+                onPasswordChange={(value) => {
+                  setPassword(value)
+                  setError('')
+                }}
                 onRememberChange={setRemember}
                 onTogglePassword={() => setShowPassword((value) => !value)}
                 onCreateAccount={() => changeMode('register')}

@@ -16,11 +16,11 @@ import {
   ConstructionRounded,
   EditOutlined,
   ExpandMoreRounded,
-  FactoryOutlined,
   LogoutRounded,
   ScheduleRounded,
   VisibilityOutlined,
 } from '@mui/icons-material'
+import logo from '../../assets/logo.png'
 
 import {
   useState,
@@ -57,6 +57,7 @@ import {
   logout,
 } from '../../services/authService'
 
+import { LogoutConfirmDialog } from './LogoutConfirmDialog'
 
 // =========================================================
 // SIDEBAR
@@ -82,7 +83,10 @@ export function LeftSidebar() {
   const primaryRole =
     session?.roles[0]
 
+  const [logoutOpen, setLogoutOpen] = useState(false)
+
   function handleLogout() {
+    setLogoutOpen(false)
     logout()
     navigate('/login', { replace: true })
   }
@@ -209,9 +213,9 @@ export function LeftSidebar() {
           >
             {/* LOGO */}
             <Box
-              sx={{
-                width: 32,
-                height: 32,
+              sx={(theme) => ({
+                width: 36,
+                height: 36,
 
                 flexShrink: 0,
 
@@ -220,20 +224,37 @@ export function LeftSidebar() {
 
                 borderRadius: '10px',
 
-                color: '#fff',
+                overflow: 'hidden',
 
-                background:
-                  'linear-gradient(135deg, #2563eb 0%, #38bdf8 100%)',
+                bgcolor: theme.palette.mode === 'dark'
+                  ? 'rgba(255,255,255,0.08)'
+                  : '#EEF4FF',
+
+                border: '1px solid',
+
+                borderColor: theme.palette.mode === 'dark'
+                  ? 'rgba(132,207,255,0.22)'
+                  : 'rgba(37,99,235,0.14)',
 
                 boxShadow:
-                  '0 5px 14px rgba(37,99,235,0.24)',
-
-                '& svg': {
-                  fontSize: 18,
-                },
-              }}
+                  '0 4px 12px rgba(37,99,235,0.14)',
+              })}
             >
-              <FactoryOutlined />
+              <Box
+                component="img"
+                src={logo}
+                alt="F2"
+                sx={{
+                  width: 30,
+                  height: 30,
+
+                  objectFit: 'contain',
+                  imageRendering: 'auto',
+
+                  filter:
+                    'drop-shadow(0 1px 2px rgba(0,0,0,0.18))',
+                }}
+              />
             </Box>
 
             {/* TITLE */}
@@ -1081,7 +1102,7 @@ export function LeftSidebar() {
           >
             <IconButton
               aria-label="Sign out"
-              onClick={handleLogout}
+              onClick={() => setLogoutOpen(true)}
               sx={(theme) => ({
                 width: 34,
                 height: 34,
@@ -1212,7 +1233,7 @@ export function LeftSidebar() {
               <IconButton
                 aria-label="Sign out"
                 size="small"
-                onClick={handleLogout}
+                onClick={() => setLogoutOpen(true)}
                 sx={(theme) => ({
                   width: 32,
                   height: 32,
@@ -1262,6 +1283,13 @@ export function LeftSidebar() {
             </Tooltip>
           </>
         )}
+        <LogoutConfirmDialog
+          open={logoutOpen}
+          username={username}
+          role={primaryRole}
+          onCancel={() => setLogoutOpen(false)}
+          onConfirm={handleLogout}
+        />
       </Box>
     </Box>
   )

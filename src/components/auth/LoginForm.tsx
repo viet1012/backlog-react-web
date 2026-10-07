@@ -1,4 +1,4 @@
-﻿import {
+import {
   Alert,
   Box,
   Button,
@@ -7,20 +7,28 @@
   FormControlLabel,
   IconButton,
   InputAdornment,
-  TextField,
   Typography,
 } from '@mui/material'
 
 import {
+  ArrowForwardRounded,
+  LockOutlined,
+  PersonOutlineRounded,
   VisibilityOffOutlined,
   VisibilityOutlined,
 } from '@mui/icons-material'
 
-import type { FormEvent } from 'react'
+import { useState } from 'react'
+import type { FormEvent, KeyboardEvent } from 'react'
 
+import { AuthField } from './AuthField'
 import {
+  authCheckboxLabelSx,
+  authCheckboxSx,
+  authHintSx,
   authModeActionSx,
   authModeFooterSx,
+  capsLockHintSx,
   loginAlertSx,
   loginButtonSx,
   loginFieldSx,
@@ -57,6 +65,13 @@ export function LoginForm({
   onCreateAccount,
   onSubmit,
 }: LoginFormProps) {
+  const canSubmit = employeeId.trim() !== '' && password !== ''
+  const [capsLockOn, setCapsLockOn] = useState(false)
+
+  function handlePasswordKey(event: KeyboardEvent) {
+    setCapsLockOn(event.getModifierState('CapsLock'))
+  }
+
   return (
     <Box
       component="form"
@@ -67,81 +82,99 @@ export function LoginForm({
         gap: 2,
       }}
     >
-      {error && (
-        <Alert
-          severity="error"
-          sx={loginAlertSx}
-        >
-          {error}
-        </Alert>
-      )}
-
       {/* MSNV */}
-      <TextField
+      <AuthField
+        id="login-employee-id"
         label="Employee ID (MSNV)"
+        placeholder="e.g. 22847"
         value={employeeId}
         onChange={(event) =>
           onEmployeeIdChange(event.target.value)
         }
         autoComplete="username"
         autoFocus
-        fullWidth
         required
         disabled={loading}
         sx={loginFieldSx}
-      />
-
-      {/* PASSWORD */}
-      <TextField
-        label="Password"
-        type={showPassword ? 'text' : 'password'}
-        value={password}
-        onChange={(event) =>
-          onPasswordChange(event.target.value)
-        }
-        autoComplete="current-password"
-        fullWidth
-        required
-        disabled={loading}
-        sx={passwordToggleFieldSx}
         slotProps={{
           input: {
-            endAdornment: (
-              <InputAdornment position="end">
-                <IconButton
-                  aria-label={
-                    showPassword
-                      ? 'Hide password'
-                      : 'Show password'
-                  }
-                  title={
-                    showPassword
-                      ? 'Hide password'
-                      : 'Show password'
-                  }
-                  aria-pressed={showPassword}
-                  edge="end"
-                  disabled={loading}
-                  onClick={onTogglePassword}
-                >
-                  <Box
-                    component="span"
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    {showPassword
-                      ? <VisibilityOffOutlined />
-                      : <VisibilityOutlined />}
-                  </Box>
-                </IconButton>
+            startAdornment: (
+              <InputAdornment position="start">
+                <PersonOutlineRounded />
               </InputAdornment>
             ),
           },
         }}
       />
+
+      {/* PASSWORD */}
+      <Box>
+        <AuthField
+          id="login-password"
+          label="Password"
+          placeholder="Enter your password"
+          type={showPassword ? 'text' : 'password'}
+          value={password}
+          onChange={(event) =>
+            onPasswordChange(event.target.value)
+          }
+          autoComplete="current-password"
+          required
+          disabled={loading}
+          sx={passwordToggleFieldSx}
+          onKeyDown={handlePasswordKey}
+          onKeyUp={handlePasswordKey}
+          onBlur={() => setCapsLockOn(false)}
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <LockOutlined />
+                </InputAdornment>
+              ),
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    aria-label={
+                      showPassword
+                        ? 'Hide password'
+                        : 'Show password'
+                    }
+                    title={
+                      showPassword
+                        ? 'Hide password'
+                        : 'Show password'
+                    }
+                    aria-pressed={showPassword}
+                    edge="end"
+                    disabled={loading}
+                    onClick={onTogglePassword}
+                  >
+                    <Box
+                      component="span"
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {showPassword
+                        ? <VisibilityOffOutlined />
+                        : <VisibilityOutlined />}
+                    </Box>
+                  </IconButton>
+                </InputAdornment>
+              ),
+            },
+          }}
+        />
+
+        {capsLockOn && (
+          <Typography role="status" sx={capsLockHintSx}>
+            Caps Lock is on
+          </Typography>
+        )}
+      </Box>
 
       {/* OPTIONS */}
       <Box
@@ -150,6 +183,7 @@ export function LoginForm({
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 1,
+          mt: -0.75,
         }}
       >
         <FormControlLabel
@@ -163,46 +197,52 @@ export function LoginForm({
                 )
               }
               size="small"
-              sx={{
-                color:
-                  'rgba(175, 210, 236, 0.55)',
-
-                '&.Mui-checked': {
-                  color: '#43a9ff',
-                },
-              }}
+              sx={authCheckboxSx}
             />
           }
           label="Remember me"
-          sx={{
-            m: 0,
-
-            '& .MuiFormControlLabel-label': {
-              fontSize: 12.5,
-              color:
-                'rgba(225, 237, 248, 0.72)',
-            },
-          }}
+          sx={authCheckboxLabelSx}
         />
       </Box>
+
+      {error && (
+        <Alert
+          severity="error"
+          role="alert"
+          sx={loginAlertSx}
+        >
+          {error}
+        </Alert>
+      )}
 
       {/* SIGN IN */}
       <Button
         type="submit"
         variant="contained"
         size="large"
-        disabled={loading}
+        disabled={loading || !canSubmit}
+        endIcon={loading ? undefined : <ArrowForwardRounded />}
         sx={loginButtonSx}
       >
         {loading ? (
-          <CircularProgress
-            size={22}
-            color="inherit"
-          />
+          <Box
+            component="span"
+            sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}
+          >
+            <CircularProgress
+              size={16}
+              color="inherit"
+            />
+            Signing in...
+          </Box>
         ) : (
           'Sign In'
         )}
       </Button>
+
+      <Typography sx={authHintSx}>
+        Already using S-Patrol? Sign in with the same Employee ID and password.
+      </Typography>
 
       <Typography
         sx={authModeFooterSx}

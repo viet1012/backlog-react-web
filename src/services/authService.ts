@@ -11,9 +11,14 @@ export type UserRole =
   | 'PRO'
   | 'USER'
 
+// Backend dùng chung tài khoản S-Patrol (HSE_Patrol_Account):
+// - accountId luôn null => định danh user bằng employeeId
+// - status luôn 'ACTIVE' (không còn LOCKED / not active)
+// - name, fac, dept, section, line, group: null khi MSNV không có trong HR
+// - roles tính lại từ HR mỗi lần login, luôn có ít nhất 1 role
 export interface AuthSession {
   authenticated: true
-  accountId: number
+  accountId: number | null
   employeeId: string
   name: string | null
   fac: string | null
@@ -26,7 +31,7 @@ export interface AuthSession {
 }
 
 export interface RegisterResponse {
-  accountId: number
+  accountId: number | null
   employeeId: string
   status: string
   message: string

@@ -1,5 +1,6 @@
-import { FactoryRounded } from '@mui/icons-material'
 import { Box, Typography } from '@mui/material'
+import logo from '../../assets/logo.png'
+import { v } from './loginStyles'
 
 export function LoginBrand() {
   return (
@@ -33,8 +34,8 @@ export function LoginBrand() {
         sx={{
           position: 'relative',
 
-          width: 40,
-          height: 40,
+          width: 56,
+          height: 56,
 
           display: 'grid',
           placeItems: 'center',
@@ -52,6 +53,9 @@ export function LoginBrand() {
           backdropFilter: 'blur(16px) saturate(135%)',
           WebkitBackdropFilter:
             'blur(16px) saturate(135%)',
+
+          // Tách lớp riêng để ảnh logo trong ô có backdrop-filter không bị nhòe
+          transform: 'translateZ(0)',
 
           boxShadow: `
             0 10px 28px rgba(0, 0, 0, 0.18),
@@ -127,15 +131,22 @@ export function LoginBrand() {
           },
         }}
       >
-        <FactoryRounded
+        <Box
+          component="img"
+          src={logo}
+          alt="F2"
           sx={{
             position: 'relative',
             zIndex: 1,
 
-            fontSize: 21,
+            width: 50,
+            height: 50,
+
+            objectFit: 'contain',
+            imageRendering: 'auto',
 
             filter:
-              'drop-shadow(0 2px 8px rgba(70,180,245,0.22))',
+              'drop-shadow(0 1px 2px rgba(0,0,0,0.18))',
           }}
         />
       </Box>
@@ -158,8 +169,7 @@ export function LoginBrand() {
 
             color: 'rgba(247, 251, 255, 0.96)',
 
-            textShadow:
-              '0 3px 14px rgba(0,0,0,0.28)',
+            textShadow: v('brandTitleShadow'),
           }}
         >
           F2
@@ -179,6 +189,8 @@ export function LoginBrand() {
 
             color:
               'rgba(198, 222, 241, 0.58)',
+
+            textShadow: v('brandTextShadow'),
           }}
         >
           FACTORY OPERATIONS
