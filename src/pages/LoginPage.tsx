@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 
-import dayBackground from '../assets/bg-day.jpg'
+import dayBackground from '../assets/bg-day.png'
 import factoryBackground from '../assets/login-factory-bg.png'
 import { AuthCardHeader } from '../components/auth/AuthCardHeader'
 import { LoginBrand } from '../components/auth/LoginBrand'
@@ -85,8 +85,8 @@ export function LoginPage() {
         requestError instanceof AuthApiError && requestError.status === 401
           ? 'Invalid Employee ID or password.'
           : requestError instanceof Error
-          ? requestError.message
-          : 'Invalid Employee ID or password.',
+            ? requestError.message
+            : 'Invalid Employee ID or password.',
       )
     } finally {
       setLoading(false)

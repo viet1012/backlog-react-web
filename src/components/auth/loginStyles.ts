@@ -601,6 +601,55 @@ export const centerContainerSx = {
 
 
 /* =========================================================
+   BACKGROUND IMAGE LAYER (dùng chung cho ảnh đêm và ảnh ngày)
+   Chuyển động nhẹ, không rotate, scale tối đa 1.03 để ảnh không bị nội suy nhòe.
+   Mép ảnh: lớp rộng 104% (inset -2%), dịch tối đa ~1.25% mỗi chiều -> không lộ viền.
+========================================================= */
+const BG_LAYER_INSET = '-2%'
+
+function bgImageLayerBase(backgroundImage: string) {
+  return {
+    content: '""',
+    position: 'absolute',
+    inset: BG_LAYER_INSET,
+
+    backgroundImage: `url(${backgroundImage})`,
+    backgroundPosition: 'center',
+    backgroundSize: 'cover',
+    backgroundRepeat: 'no-repeat',
+
+    transformOrigin: 'center center',
+    willChange: 'transform',
+    backfaceVisibility: 'hidden',
+    WebkitBackfaceVisibility: 'hidden',
+
+    animation: 'factoryCinematicMotion 30s ease-in-out infinite alternate',
+  }
+}
+
+const cinematicMotionKeyframes = {
+  '0%': {
+    transform: 'scale(1) translate3d(-1.2%, -0.4%, 0)',
+  },
+  '50%': {
+    transform: 'scale(1.015) translate3d(0%, 0.2%, 0)',
+  },
+  '100%': {
+    transform: 'scale(1.03) translate3d(1.2%, -0.3%, 0)',
+  },
+}
+
+const bgReducedMotionSx = {
+  '@media (prefers-reduced-motion: reduce)': {
+    '&::before': {
+      animation: 'none',
+      transform: 'none',
+    },
+  },
+}
+
+
+/* =========================================================
    PAGE BACKGROUND
 ========================================================= */
 interface PageBackgroundOptions {
@@ -630,27 +679,7 @@ export function createPageBackgroundSx(
     backgroundColor: '#020912',
 
     '&::before': {
-      content: '""',
-
-      position: 'absolute',
-
-      inset: '-8%',
-
-      backgroundImage: `url(${backgroundImage})`,
-      backgroundPosition: 'center',
-      backgroundSize: 'cover',
-      backgroundRepeat: 'no-repeat',
-
-      transformOrigin: 'center center',
-
-      willChange: 'transform',
-
-      backfaceVisibility: 'hidden',
-      WebkitBackfaceVisibility: 'hidden',
-
-      animation:
-        'factoryCinematicMotion 24s ease-in-out infinite alternate',
-
+      ...bgImageLayerBase(backgroundImage),
       zIndex: 0,
     },
 
@@ -691,31 +720,9 @@ export function createPageBackgroundSx(
       zIndex: 0,
     },
 
-    '@keyframes factoryCinematicMotion': {
-      '0%': {
-        transform:
-          'scale(1.04) translate3d(-1.8%, -0.7%, 0) rotate(-0.35deg)',
-      },
+    '@keyframes factoryCinematicMotion': cinematicMotionKeyframes,
 
-      '50%': {
-        transform:
-          'scale(1.075) translate3d(0%, 0.25%, 0) rotate(0deg)',
-      },
-
-      '100%': {
-        transform:
-          'scale(1.10) translate3d(1.8%, -0.4%, 0) rotate(0.35deg)',
-      },
-    },
-
-    '@media (prefers-reduced-motion: reduce)': {
-      '&::before': {
-        animation: 'none',
-
-        transform:
-          'scale(1.04)',
-      },
-    },
+    ...bgReducedMotionSx,
   }
 }
 
@@ -757,24 +764,7 @@ export function createDayBackgroundLayerSx(
     transition: `opacity ${BACKGROUND_FADE_MS}ms ease-in-out`,
 
     // Cùng chuyển động với ảnh đêm để lúc fade không bị lệch khung
-    '&::before': {
-      content: '""',
-      position: 'absolute',
-      inset: '-8%',
-
-      backgroundImage: `url(${backgroundImage})`,
-      backgroundPosition: 'center',
-      backgroundSize: 'cover',
-      backgroundRepeat: 'no-repeat',
-
-      transformOrigin: 'center center',
-      willChange: 'transform',
-      backfaceVisibility: 'hidden',
-      WebkitBackfaceVisibility: 'hidden',
-
-      animation:
-        'factoryCinematicMotion 24s ease-in-out infinite alternate',
-    },
+    '&::before': bgImageLayerBase(backgroundImage),
 
     // Overlay tối cho ảnh ngày: đậm hơn ở góc trái (logo F2, slogan) và quanh card
     '&::after': {
@@ -806,28 +796,8 @@ export function createDayBackgroundLayerSx(
       `,
     },
 
-    '@keyframes factoryCinematicMotion': {
-      '0%': {
-        transform:
-          'scale(1.04) translate3d(-1.8%, -0.7%, 0) rotate(-0.35deg)',
-      },
+    '@keyframes factoryCinematicMotion': cinematicMotionKeyframes,
 
-      '50%': {
-        transform:
-          'scale(1.075) translate3d(0%, 0.25%, 0) rotate(0deg)',
-      },
-
-      '100%': {
-        transform:
-          'scale(1.10) translate3d(1.8%, -0.4%, 0) rotate(0.35deg)',
-      },
-    },
-
-    '@media (prefers-reduced-motion: reduce)': {
-      '&::before': {
-        animation: 'none',
-        transform: 'scale(1.04)',
-      },
-    },
+    ...bgReducedMotionSx,
   }
 }
