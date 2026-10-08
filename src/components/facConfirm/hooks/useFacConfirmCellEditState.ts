@@ -17,6 +17,7 @@ import {
 import {
   getEditableFields,
   getMatchedEditRule,
+  getRuleLockedFields,
   isFieldEditableForRow,
 } from '../../../config/facConfirmEditRules'
 
@@ -65,6 +66,18 @@ const editedCellClasses: Record<FacConfirmProcessGroup, string> = {
   Heat: 'fac-confirm-edited-heat',
   Fine: 'fac-confirm-edited-fine',
 }
+
+// Ô đã sửa nhưng chưa lưu (thêm cùng editedCellClasses)
+const PENDING_CELL_CLASS = 'fac-confirm-pending'
+
+// Ô còn trống mà người dùng sửa được ở công đoạn đang chọn
+const editableEmptyCellClasses: Record<FacConfirmProcessGroup, string> = {
+  Rough: 'fac-confirm-editable-rough',
+  Heat: 'fac-confirm-editable-heat',
+  Fine: 'fac-confirm-editable-fine',
+}
+
+const RULE_LOCKED_CELL_CLASS = 'fac-confirm-rule-locked'
 
 function getCellKey(
   row: FacConfirmRow,
@@ -274,18 +287,46 @@ export function useFacConfirmCellEditState({
       )
 
       if (editedProcess) {
-        return editedCellClasses[editedProcess]
+        return [
+          editedCellClasses[editedProcess],
+          PENDING_CELL_CLASS,
+        ].join(' ')
       }
 
       const confirmedProcess = confirmedCells.get(
         getConfirmedCellKey(params.row.aufnr, params.field),
       )
 
-      return confirmedProcess
-        ? editedCellClasses[confirmedProcess]
-        : ''
+      if (confirmedProcess) {
+        return editedCellClasses[confirmedProcess]
+      }
+
+      if (!activeProcess) {
+        return ''
+      }
+
+      // Ô bị quy tắc khóa => nền sọc chéo
+      if (
+        getRuleLockedFields(params.row, activeProcess)
+          .some((field) => field === params.field)
+      ) {
+        return RULE_LOCKED_CELL_CLASS
+      }
+
+      // Ô trống sửa được (quy tắc + khóa Backlog qua canEditCell)
+      // => nền nhạt màu công đoạn
+      const value = params.row[params.field as keyof FacConfirmRow]
+
+      if (
+        (value == null || String(value).trim() === '')
+        && canEditCell(params.row, params.field)
+      ) {
+        return editableEmptyCellClasses[activeProcess]
+      }
+
+      return ''
     },
-    [confirmedCells, editedCells],
+    [activeProcess, canEditCell, confirmedCells, editedCells],
   )
 
   const processRowUpdate = useCallback(

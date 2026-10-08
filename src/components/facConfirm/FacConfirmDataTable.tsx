@@ -7,6 +7,7 @@ import {
 
 import {
   Box,
+  Tooltip,
   alpha,
 } from '@mui/material'
 
@@ -57,7 +58,9 @@ import {
 } from '../../config/facConfirmProcessConfig'
 
 import {
+  getEditableFieldCoverage,
   getEditableFields,
+  getFieldRuleDescription,
 } from '../../config/facConfirmEditRules'
 
 import {
@@ -76,6 +79,7 @@ import {
 import type {
   FacConfirmClassify,
   FacConfirmConfirmedProcess,
+  FacConfirmEditableField,
   FacConfirmFilterItem,
   FacConfirmHeatType,
   FacConfirmProcessGroup,
@@ -358,49 +362,6 @@ export function FacConfirmDataTable({
 
 
   // =======================================================
-  // COLUMNS
-  // =======================================================
-
-  const columns =
-    useMemo(
-      () =>
-        getFacConfirmColumns(
-          highlightProcGrp,
-        ).map((column) => {
-
-          if (!column.editable) {
-            return column
-          }
-
-          // Tour (Bước 9) chiếu sáng tiêu đề các cột nhập được.
-          // Nối thêm vào class sẵn có, không ghi đè.
-          const current =
-            column.headerClassName
-
-          return {
-            ...column,
-
-            headerClassName:
-              typeof current === 'function'
-                ? (
-                  params: Parameters<typeof current>[0],
-                ) => [
-                  current(params),
-                  FAC_TOUR_EDIT_COLUMN_CLASS,
-                ].filter(Boolean).join(' ')
-                : [
-                  current,
-                  FAC_TOUR_EDIT_COLUMN_CLASS,
-                ].filter(Boolean).join(' '),
-          }
-        }),
-      [
-        highlightProcGrp,
-      ],
-    )
-
-
-  // =======================================================
   // CELL EDIT STATE
   // =======================================================
 
@@ -427,6 +388,128 @@ export function FacConfirmDataTable({
     [applyPendingChangesToRows, rows],
   )
 
+
+  // =======================================================
+  // QUYỀN SỬA THEO DÒNG ĐANG HIỂN THỊ
+  //
+  // allFields : sửa được ở mọi dòng  -> tô đậm tiêu đề
+  // someFields: sửa được ở một số dòng -> tô nhạt + tooltip
+  // =======================================================
+
+  const editableCoverage = useMemo(
+    () => getEditableFieldCoverage(
+      displayRows,
+      highlightProcGrp,
+    ),
+    [displayRows, highlightProcGrp],
+  )
+
+  // Key chuỗi để columns không tạo lại mỗi lần sửa ô
+  const allFieldsKey =
+    editableCoverage.allFields.join(',')
+
+  const someFieldsKey =
+    editableCoverage.someFields.join(',')
+
+  // Cột chiếu sáng ở tour Bước 9 (allFields + someFields)
+  const tourFields = useMemo(
+    () => [
+      allFieldsKey,
+      someFieldsKey,
+    ].join(',').split(',').filter(Boolean),
+    [allFieldsKey, someFieldsKey],
+  )
+
+
+  // =======================================================
+  // COLUMNS
+  // =======================================================
+
+  const columns =
+    useMemo(
+      () => {
+        const someFields =
+          new Set(someFieldsKey.split(','))
+
+        return getFacConfirmColumns(
+          highlightProcGrp,
+        ).map((column) => {
+
+          if (
+            !highlightProcGrp
+            || !tourFields.includes(column.field)
+          ) {
+            return column
+          }
+
+          // Tour (Bước 9) chiếu sáng tiêu đề các cột nhập được.
+          // Nối thêm vào class sẵn có, không ghi đè.
+          const current =
+            column.headerClassName
+
+          const description =
+            someFields.has(column.field)
+              ? getFieldRuleDescription(
+                highlightProcGrp,
+                column.field as FacConfirmEditableField,
+              )
+              : null
+
+          const renderHeader =
+            column.renderHeader
+
+          return {
+            ...column,
+
+            headerClassName:
+              typeof current === 'function'
+                ? (
+                  params: Parameters<typeof current>[0],
+                ) => [
+                  current(params),
+                  FAC_TOUR_EDIT_COLUMN_CLASS,
+                ].filter(Boolean).join(' ')
+                : [
+                  current,
+                  FAC_TOUR_EDIT_COLUMN_CLASS,
+                ].filter(Boolean).join(' '),
+
+            // Cột chỉ sửa được ở một số dòng: tooltip theo quy tắc
+            ...(description && renderHeader
+              ? {
+                renderHeader: (
+                  params: Parameters<typeof renderHeader>[0],
+                ) => (
+                  <Tooltip
+                    title={description}
+                    placement="top"
+                    arrow
+                  >
+                    <Box
+                      component="span"
+                      sx={{
+                        display: 'flex',
+                        width: '100%',
+                        height: '100%',
+                        minWidth: 0,
+                      }}
+                    >
+                      {renderHeader(params)}
+                    </Box>
+                  </Tooltip>
+                ),
+              }
+              : {}),
+          }
+        })
+      },
+      [
+        highlightProcGrp,
+        someFieldsKey,
+        tourFields,
+      ],
+    )
+
   const apiRef = useGridApiRef()
 
 
@@ -443,9 +526,7 @@ export function FacConfirmDataTable({
       }
 
       const colIndexes =
-        FAC_CONFIRM_PROCESS_CONFIG[
-          highlightProcGrp
-        ].columns
+        tourFields
           .map((field) =>
             api.getColumnIndex(field, true),
           )
@@ -478,6 +559,7 @@ export function FacConfirmDataTable({
   }, [
     apiRef,
     highlightProcGrp,
+    tourFields,
   ])
 
   // =======================================================
@@ -935,7 +1017,7 @@ export function FacConfirmDataTable({
               )
 
 
-            highlightConfig.columns.forEach(
+            editableCoverage.allFields.forEach(
               (
                 field,
               ) => {
@@ -962,6 +1044,44 @@ export function FacConfirmDataTable({
 
                   transition:
                     'background-color 180ms ease',
+                }
+              },
+            )
+
+
+            // Sửa được ở một số dòng: nền nhạt hơn, gạch chân chấm
+            editableCoverage.someFields.forEach(
+              (
+                field,
+              ) => {
+
+                headerStyles[
+                  `& .MuiDataGrid-columnHeader[data-field="${field}"]`
+                ] = {
+
+                  backgroundColor:
+                    alpha(
+                      activeColor,
+
+                      theme.palette.mode ===
+                        'dark'
+                        ? 0.09
+                        : 0.05,
+                    ),
+
+                  color:
+                    activeColor,
+
+                  fontWeight:
+                    700,
+
+                  transition:
+                    'background-color 180ms ease',
+
+                  '& [role="button"] > span:first-of-type': {
+                    textDecoration: 'underline dotted',
+                    textUnderlineOffset: '3px',
+                  },
                 }
               },
             )
@@ -1009,6 +1129,84 @@ export function FacConfirmDataTable({
             )
 
 
+          // Ô trống sửa được ở công đoạn đang chọn
+          // (canEditCell: gồm quy tắc + khóa Backlog): nền nhạt màu công đoạn.
+          // Ô quy tắc khóa: sọc chéo (xem fac-confirm-rule-locked).
+          //
+          // Ô đã sửa chưa lưu: nền đậm hơn (editedCellStyles)
+          // + viền trái 2px màu công đoạn.
+          // Gộp với shadow của fill handle để không bị ghi đè.
+          const editableCellStyles =
+            Object.fromEntries(
+
+              (
+                Object.keys(
+                  processColors,
+                ) as FacConfirmProcessGroup[]
+              ).flatMap(
+                (
+                  process,
+                ) => {
+
+                  const color =
+                    processColors[
+                    process
+                    ]
+
+                  const pendingClassName =
+                    `.fac-confirm-edited-${process.toLowerCase()}.fac-confirm-pending`
+
+                  const pendingShadow =
+                    `inset 2px 0 0 ${color}`
+
+                  return [
+                    [
+                      `& .MuiDataGrid-cell.fac-confirm-editable-${process.toLowerCase()}`,
+                      {
+
+                        backgroundColor:
+                          alpha(
+                            color,
+
+                            theme.palette.mode ===
+                              'dark'
+                              ? 0.12
+                              : 0.07,
+                          ),
+                      },
+                    ],
+
+                    [
+                      `& .MuiDataGrid-cell${pendingClassName}`,
+                      {
+                        boxShadow:
+                          pendingShadow,
+                      },
+                    ],
+
+                    [
+                      `& .MuiDataGrid-cell${pendingClassName}.fac-confirm-fill-source`,
+                      {
+                        boxShadow:
+                          `${pendingShadow}, `
+                          + `inset 0 0 0 1.5px ${theme.palette.primary.main}`,
+                      },
+                    ],
+
+                    [
+                      `& .MuiDataGrid-cell${pendingClassName}.fac-confirm-fill-range`,
+                      {
+                        boxShadow:
+                          `${pendingShadow}, `
+                          + `inset 0 0 0 9999px ${alpha(theme.palette.primary.main, 0.08)}`,
+                      },
+                    ],
+                  ]
+                },
+              ),
+            )
+
+
           return {
 
             width:
@@ -1036,6 +1234,23 @@ export function FacConfirmDataTable({
 
 
             ...editedCellStyles,
+
+            ...editableCellStyles,
+
+            // Sọc chéo thấy được cả khi ô trống
+            '& .MuiDataGrid-cell.fac-confirm-rule-locked': {
+              backgroundImage:
+                `repeating-linear-gradient(`
+                + `135deg, `
+                + `${theme.palette.action.selected} 0 4px, `
+                + `transparent 4px 9px)`,
+
+              color:
+                theme.palette.text.disabled,
+
+              cursor:
+                'not-allowed',
+            },
 
 
 

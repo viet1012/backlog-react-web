@@ -29,6 +29,10 @@ export interface FacConfirmEditRule {
     // Mô tả tiếng Việt cho người đọc code
     description: string
 
+    // Tên nhóm dòng khớp quy tắc, dùng cho tooltip tiêu đề cột
+    // (vd "Chỉ nhập với hàng Không có Heat")
+    matchLabel: string
+
     process: FacConfirmProcessGroup
 
     matches: (row: FacConfirmRow) => boolean
@@ -69,6 +73,7 @@ export const FAC_CONFIRM_EDIT_RULES: readonly FacConfirmEditRule[] = [
         description:
             'Rough + dòng Không có Heat: nhập To Drill và To CLG, khóa To Heat.',
         process: 'Rough',
+        matchLabel: 'hàng Không có Heat',
         matches: isNoHeatRow,
         editableFields: ['toDrill', 'heatFinish'],
 
@@ -152,4 +157,93 @@ export function getRuleLockedFields(
     return FAC_CONFIRM_PROCESS_CONFIG[process].columns.filter(
         (field) => !rule.editableFields.includes(field),
     )
+}
+
+
+// =========================================================
+// COVERAGE THEO DÒNG ĐANG HIỂN THỊ
+//
+// allFields : field sửa được ở MỌI dòng
+// someFields: field sửa được ở ít nhất một dòng, không phải mọi dòng
+//
+// Chưa có dòng (đang tải / rỗng) => theo cột của công đoạn,
+// để tiêu đề không nhấp nháy.
+// =========================================================
+
+export interface FacConfirmEditableFieldCoverage {
+    allFields: FacConfirmEditableField[]
+    someFields: FacConfirmEditableField[]
+}
+
+export function getEditableFieldCoverage(
+    rows: readonly FacConfirmRow[],
+    process: FacConfirmProcessGroup | null,
+): FacConfirmEditableFieldCoverage {
+    if (!process) {
+        return { allFields: [], someFields: [] }
+    }
+
+    if (rows.length === 0) {
+        return {
+            allFields: [...FAC_CONFIRM_PROCESS_CONFIG[process].columns],
+            someFields: [],
+        }
+    }
+
+    const counts = new Map<FacConfirmEditableField, number>()
+
+    rows.forEach((row) => {
+        getEditableFields(row, process).forEach((field) => {
+            counts.set(field, (counts.get(field) ?? 0) + 1)
+        })
+    })
+
+    // Giữ thứ tự cột: cột công đoạn trước, cột quy tắc mở thêm sau
+    const fields = getProcessEditableFields(process)
+
+    return {
+        allFields: fields.filter(
+            (field) => counts.get(field) === rows.length,
+        ),
+        someFields: fields.filter((field) => {
+            const count = counts.get(field) ?? 0
+            return count > 0 && count < rows.length
+        }),
+    }
+}
+
+
+// =========================================================
+// MÔ TẢ THEO FIELD (tooltip tiêu đề cột)
+//
+// Quy tắc mở thêm field   => "Chỉ nhập với <matchLabel>"
+// Quy tắc khóa field      => "Không nhập với <matchLabel>"
+// =========================================================
+
+export function getFieldRuleDescription(
+    process: FacConfirmProcessGroup,
+    field: FacConfirmEditableField,
+): string | null {
+    const isProcessColumn =
+        FAC_CONFIRM_PROCESS_CONFIG[process].columns.includes(field)
+
+    const descriptions = FAC_CONFIRM_EDIT_RULES
+        .filter((rule) => rule.process === process)
+        .flatMap((rule) => {
+            const ruleAllows = rule.editableFields.includes(field)
+
+            if (!isProcessColumn && ruleAllows) {
+                return [`Chỉ nhập với ${rule.matchLabel}`]
+            }
+
+            if (isProcessColumn && !ruleAllows) {
+                return [`Không nhập với ${rule.matchLabel}`]
+            }
+
+            return []
+        })
+
+    return descriptions.length > 0
+        ? descriptions.join('. ')
+        : null
 }
