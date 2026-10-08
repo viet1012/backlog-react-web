@@ -98,7 +98,7 @@ export const facConfirmGuideSteps: GuideStep[] = [
             },
             {
               label: 'Heat',
-              items: ['Heat Start', 'Heat Finish'],
+              items: ['Heat Start', 'To CLG'],
               color: FAC_CONFIRM_PROCESS_CONFIG.Heat.getColor,
             },
             {
