@@ -108,6 +108,7 @@ export const facConfirmGuideSteps: GuideStep[] = [
             },
           ]}
         />
+        <Note>Hàng <Hl>Không có Heat</Hl>: Rough nhập To Drill và To CLG.</Note>
         <Badges kinds={['saved']} />
         <Note>Nút bị mờ: công đoạn đó chưa có dữ liệu.</Note>
       </GuideBody>

@@ -57,6 +57,10 @@ import {
 } from '../../config/facConfirmProcessConfig'
 
 import {
+  getEditableFields,
+} from '../../config/facConfirmEditRules'
+
+import {
   getFacConfirmFilterOptions,
   saveFacConfirmProcessTimes,
 } from '../../services/facConfirmService'
@@ -575,13 +579,18 @@ export function FacConfirmDataTable({
         const api = apiRef.current
 
         if (api && highlightProcGrp) {
-          const editableFields =
-            FAC_CONFIRM_PROCESS_CONFIG[
-              highlightProcGrp
-            ].columns
-
           for (const id of api.getAllRowIds()) {
-            const editingField = editableFields.find(
+            const row =
+              api.getRow(id) as FacConfirmRow | null
+
+            if (!row) {
+              continue
+            }
+
+            const editingField = getEditableFields(
+              row,
+              highlightProcGrp,
+            ).find(
               (field) =>
                 api.getCellMode(id, field)
                 === GridCellModes.Edit,

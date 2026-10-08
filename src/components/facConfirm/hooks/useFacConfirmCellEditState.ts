@@ -14,6 +14,12 @@ import {
   getFacConfirmProcessIdentityByBackendName,
 } from '../../../config/facConfirmProcessConfig'
 
+import {
+  getEditableFields,
+  getMatchedEditRule,
+  isFieldEditableForRow,
+} from '../../../config/facConfirmEditRules'
+
 import type {
   FacConfirmConfirmedProcess,
   FacConfirmEditableField,
@@ -93,23 +99,11 @@ function valuesEqual(
   return String(left ?? '') === String(right ?? '')
 }
 
-function isEditableField(
-  activeProcess: FacConfirmProcessGroup | null,
-  field: string,
-): field is FacConfirmEditableField {
-  return activeProcess != null
-    && FAC_CONFIRM_PROCESS_CONFIG[
-      activeProcess
-    ].columns.some(
-      (editableField) =>
-        editableField === field,
-    )
-}
-
 function normalizeOptionalDateTime(
   value: unknown,
   field?: FacConfirmEditableField,
   row?: FacConfirmRow,
+  process?: FacConfirmProcessGroup,
 ): string | null {
   if (
     value == null
@@ -120,6 +114,20 @@ function normalizeOptionalDateTime(
 
   if (!field || !row) {
     return normalizeFacConfirmDateTime(value)
+  }
+
+  // Quy tắc có validate riêng => thay validate mặc định của field
+  const ruleValidate = process
+    ? getMatchedEditRule(row, process)?.validate
+    : undefined
+
+  if (ruleValidate) {
+    const normalized =
+      normalizeFacConfirmDateTimeForApi(value)
+
+    ruleValidate(row, field, normalized)
+
+    return normalized
   }
 
   return normalizeFacConfirmDateTimeForApi(
@@ -182,7 +190,7 @@ export function useFacConfirmCellEditState({
       row: FacConfirmRow,
       field: string,
     ): boolean => {
-      if (!isEditableField(activeProcess, field)) {
+      if (!isFieldEditableForRow(row, activeProcess, field)) {
         return false
       }
 
@@ -282,9 +290,10 @@ export function useFacConfirmCellEditState({
       }
 
       const changedFields =
-        FAC_CONFIRM_PROCESS_CONFIG[
-          activeProcess
-        ].columns.filter(
+        getEditableFields(
+          oldRow,
+          activeProcess,
+        ).filter(
           (field) =>
             !valuesEqual(
               oldRow[field],
@@ -322,6 +331,7 @@ export function useFacConfirmCellEditState({
                 newRow[field],
                 field,
                 newRow,
+                activeProcess,
               ),
           }
         },

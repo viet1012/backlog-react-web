@@ -520,6 +520,47 @@ export function validateHeatFinish(
 }
 
 // =========================================================
+// VALIDATE NOT BEFORE
+//
+// value >= minimum. minimum trống -> bỏ qua.
+// Dùng cho validate của quy tắc sửa ô (facConfirmEditRules).
+// =========================================================
+
+export function validateFacConfirmDateTimeNotBefore(
+  value: unknown,
+  minimum: unknown,
+  label: string,
+): void {
+
+  if (
+    minimum == null
+    || String(minimum).trim() === ''
+  ) {
+    return
+  }
+
+  const valueDate =
+    partsToLocalDateTime(
+      parseFacConfirmDateTime(value),
+    )
+
+  const minimumDate =
+    partsToLocalDateTime(
+      parseFacConfirmDateTime(minimum),
+    )
+
+  if (
+    valueDate.getTime()
+    < minimumDate.getTime()
+  ) {
+    throw new Error(
+      `${label} phải từ `
+      + `${formatDateTimeForMessage(minimumDate)} trở đi.`,
+    )
+  }
+}
+
+// =========================================================
 // PARTS -> LOCAL DATE
 // =========================================================
 

@@ -13,8 +13,8 @@ import {
 import { DATA_GRID_COLUMN_WIDTHS } from '../common/dataGrid/dataGridColumnWidths'
 
 import {
-    FAC_CONFIRM_PROCESS_CONFIG,
-} from '../../config/facConfirmProcessConfig'
+    getProcessEditableFields,
+} from '../../config/facConfirmEditRules'
 
 import {
     formatFacConfirmDateTime,
@@ -227,10 +227,12 @@ export function getFacConfirmColumns(
         FacConfirmProcessGroup | null,
 ): GridColDef<FacConfirmRow>[] {
 
+    // Cột có thể sửa ở công đoạn (gồm cột quy tắc mở thêm).
+    // Quyền từng ô: isCellEditable -> getEditableFields.
     const allowedFields: Set<string> | null =
         activeProcess
             ? new Set<string>(
-                FAC_CONFIRM_PROCESS_CONFIG[activeProcess].columns,
+                getProcessEditableFields(activeProcess),
             )
             : null
 

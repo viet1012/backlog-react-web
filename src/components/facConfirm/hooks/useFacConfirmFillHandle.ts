@@ -1,7 +1,6 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
@@ -14,8 +13,8 @@ import type {
 } from '@mui/x-data-grid'
 
 import {
-  FAC_CONFIRM_PROCESS_CONFIG,
-} from '../../../config/facConfirmProcessConfig'
+  isFieldEditableForRow,
+} from '../../../config/facConfirmEditRules'
 
 import type {
   FacConfirmEditableField,
@@ -55,16 +54,6 @@ interface Props {
 const FILL_HANDLE_HIT_SIZE = 12
 const DIRECTION_LOCK_THRESHOLD = 5
 
-function isEditableField(
-  activeProcess: FacConfirmProcessGroup | null,
-  field: string,
-): field is FacConfirmEditableField {
-  return activeProcess != null
-    && FAC_CONFIRM_PROCESS_CONFIG[activeProcess].columns.some(
-      (editableField) => editableField === field,
-    )
-}
-
 function getCellFromPoint(
   clientX: number,
   clientY: number,
@@ -98,10 +87,11 @@ export function useFacConfirmFillHandle({
   const targetIdRef = useRef<GridRowId | null>(null)
   const targetFieldRef = useRef<FacConfirmEditableField | null>(null)
 
-  const allowedFields = useMemo(
-    () => new Set(activeProcess
-      ? FAC_CONFIRM_PROCESS_CONFIG[activeProcess].columns
-      : []),
+  // Quyền theo từng dòng (facConfirmEditRules)
+  const isAllowedCell = useCallback(
+    (row: FacConfirmRow | null | undefined, field: string) =>
+      row != null
+      && isFieldEditableForRow(row, activeProcess, field),
     [activeProcess],
   )
 
@@ -159,10 +149,17 @@ export function useFacConfirmFillHandle({
     setRangeIds(new Set(ids.slice(start, end + 1)))
   }, [getPageRowIds])
 
+  // Chỉ trả các ô dòng này được sửa; ô bị khóa ở giữa dải tự bỏ qua.
   const getHorizontalRange = useCallback((
+    rowId: GridRowId,
     sourceField: FacConfirmEditableField,
     targetField: string,
   ): FacConfirmEditableField[] | null => {
+    const row = apiRef.current?.getRow(rowId) as FacConfirmRow | null
+    if (!isAllowedCell(row, targetField)) {
+      return null
+    }
+
     const visibleFields = apiRef.current?.getVisibleColumns().map(
       (column) => column.field,
     ) ?? []
@@ -177,14 +174,14 @@ export function useFacConfirmFillHandle({
     const end = Math.max(sourceIndex, targetIndex)
     const fields = visibleFields.slice(start, end + 1)
 
-    return fields.every((field) => allowedFields.has(field as FacConfirmEditableField))
-      ? fields as FacConfirmEditableField[]
-      : null
-  }, [allowedFields, apiRef])
+    return fields.filter(
+      (field): field is FacConfirmEditableField => isAllowedCell(row, field),
+    )
+  }, [apiRef, isAllowedCell])
 
   const handleCellClick = useCallback((params: GridCellParams<FacConfirmRow>) => {
     setSelectedCell(
-      isEditableField(activeProcess, params.field)
+      isFieldEditableForRow(params.row, activeProcess, params.field)
         ? { id: params.id, field: params.field }
         : null,
     )
@@ -208,12 +205,12 @@ export function useFacConfirmFillHandle({
       && event.clientX >= rect.right - FILL_HANDLE_HIT_SIZE
       && event.clientY >= rect.bottom - FILL_HANDLE_HIT_SIZE
 
-    if (!isHandle || !allowedFields.has(selectedCell.field)) {
+    if (!isHandle) {
       return
     }
 
     const sourceRow = apiRef.current?.getRow(selectedCell.id) as FacConfirmRow | null
-    if (!sourceRow) {
+    if (!sourceRow || !isAllowedCell(sourceRow, selectedCell.field)) {
       return
     }
 
@@ -242,7 +239,7 @@ export function useFacConfirmFillHandle({
     setRangeFields(new Set([selectedCell.field]))
     setDragDirection(null)
     setIsDragging(true)
-  }, [allowedFields, apiRef, onError, selectedCell])
+  }, [apiRef, isAllowedCell, onError, selectedCell])
 
   const handlePointerMove = useCallback((event: ReactPointerEvent<HTMLElement>) => {
     const drag = dragRef.current
@@ -278,7 +275,7 @@ export function useFacConfirmFillHandle({
     }
 
     const fields = target?.id === String(drag.id)
-      ? getHorizontalRange(drag.field, target.field)
+      ? getHorizontalRange(drag.id, drag.field, target.field)
       : null
 
     if (fields) {
@@ -321,7 +318,8 @@ export function useFacConfirmFillHandle({
           }
 
           const oldRow = apiRef.current?.getRow(id) as FacConfirmRow | null
-          if (!oldRow) {
+          // Dòng đích không cho sửa ô này => bỏ qua, không báo lỗi
+          if (!oldRow || !isAllowedCell(oldRow, drag.field)) {
             return
           }
 
@@ -335,7 +333,7 @@ export function useFacConfirmFillHandle({
           apiRef.current?.updateRows([updatedRow])
         })
       } else if (drag.direction === 'horizontal' && targetFieldRef.current) {
-        const fields = getHorizontalRange(drag.field, targetFieldRef.current)
+        const fields = getHorizontalRange(drag.id, drag.field, targetFieldRef.current)
         let updatedRow = apiRef.current?.getRow(drag.id) as FacConfirmRow | null
 
         fields?.forEach((field) => {
@@ -355,7 +353,7 @@ export function useFacConfirmFillHandle({
     } finally {
       cancelDrag()
     }
-  }, [apiRef, cancelDrag, getHorizontalRange, getPageRowIds, onError, processRowUpdate])
+  }, [apiRef, cancelDrag, getHorizontalRange, getPageRowIds, isAllowedCell, onError, processRowUpdate])
 
   const handlePointerCancel = useCallback(() => {
     cancelDrag()
@@ -363,21 +361,23 @@ export function useFacConfirmFillHandle({
 
   const getFillClassName = useCallback((params: GridCellParams<FacConfirmRow>) => {
     const classes: string[] = []
+    const allowed = isAllowedCell(params.row, params.field)
     if (
       selectedCell?.id === params.id
       && selectedCell.field === params.field
-      && allowedFields.has(params.field as FacConfirmEditableField)
+      && allowed
     ) {
       classes.push('fac-confirm-fill-source')
     }
-    if (rangeIds.has(params.id) && dragRef.current?.field === params.field) {
+    // Ô bị khóa trong dải không tô => thấy rõ ô nào sẽ được ghi
+    if (allowed && rangeIds.has(params.id) && dragRef.current?.field === params.field) {
       classes.push('fac-confirm-fill-range')
     }
-    if (params.id === dragRef.current?.id && rangeFields.has(params.field)) {
+    if (allowed && params.id === dragRef.current?.id && rangeFields.has(params.field)) {
       classes.push('fac-confirm-fill-range')
     }
     return classes.join(' ')
-  }, [allowedFields, rangeFields, rangeIds, selectedCell])
+  }, [isAllowedCell, rangeFields, rangeIds, selectedCell])
 
   return {
     getFillClassName,
