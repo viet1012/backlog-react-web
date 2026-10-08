@@ -83,7 +83,7 @@ export function getFacConfirmHeatFieldLabel(
             return 'Heat Start'
 
         case 'heatFinish':
-            return 'Heat Finish'
+            return 'To CLG'
     }
 }
 

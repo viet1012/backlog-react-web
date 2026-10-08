@@ -188,7 +188,7 @@ const facConfirmColumnDefinitions:
         },
         {
             field: 'heatFinish',
-            headerName: 'Heat Finish',
+            headerName: 'To CLG',
             width: DATA_GRID_COLUMN_WIDTHS.date,
 
             valueFormatter: (value) =>

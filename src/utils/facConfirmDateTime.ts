@@ -513,7 +513,7 @@ export function validateHeatFinish(
     < minimumFinish.getTime()
   ) {
     throw new Error(
-      `${materialLabel}: Heat Finish phải từ `
+      `${materialLabel}: To CLG phải từ `
       + `${formatDateTimeForMessage(minimumFinish)} trở đi.`,
     )
   }
