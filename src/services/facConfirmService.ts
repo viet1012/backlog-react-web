@@ -353,6 +353,42 @@ export async function getFacConfirmConfirmedProcesses(
 
 
 // =========================================================
+// ERROR MESSAGE
+//
+// Body lỗi có thể là text thường hoặc JSON
+// ({ message } / { error } / { detail }).
+// =========================================================
+
+async function readErrorMessage(
+    response: Response,
+): Promise<string> {
+
+    const text =
+        (await response.text().catch(() => '')).trim()
+
+    try {
+        const data =
+            JSON.parse(text) as {
+                message?: unknown
+                detail?: unknown
+                error?: unknown
+            }
+
+        const message =
+            [data.message, data.detail, data.error].find(
+                (value): value is string =>
+                    typeof value === 'string'
+                    && value.trim() !== '',
+            )
+
+        return message ?? text
+    } catch {
+        return text
+    }
+}
+
+
+// =========================================================
 // SAVE PROCESS TIMES
 // =========================================================
 
@@ -394,7 +430,7 @@ export async function saveFacConfirmProcessTimes(
 
     if (!response.ok) {
         const message =
-            await response.text()
+            await readErrorMessage(response)
 
         throw new Error(
             message
