@@ -4,12 +4,9 @@ import {
 } from 'react'
 import type { ReactNode } from 'react'
 
-import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded'
-import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import LockRoundedIcon from '@mui/icons-material/LockRounded'
 import PauseRoundedIcon from '@mui/icons-material/PauseRounded'
 import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded'
-import SaveRoundedIcon from '@mui/icons-material/SaveRounded'
 
 import {
   alpha,
@@ -392,7 +389,6 @@ export function FacConfirmEditDemo() {
 const CONFIRM_CAPTIONS = [
   'Có 3 ô đã sửa nhưng chưa lưu',
   'Bấm Confirm Changes',
-  'Nhập Employee ID rồi bấm Confirm',
   'Đã lưu, bảng tự tải lại',
 ]
 
@@ -434,12 +430,9 @@ function ToolbarButton({
 
 export function FacConfirmConfirmDemo() {
   return (
-    <DemoShell
-      captions={CONFIRM_CAPTIONS}
-      height={196}
-    >
+    <DemoShell captions={CONFIRM_CAPTIONS}>
       {(f) => {
-        const saved = f === 3
+        const saved = f === 2
 
         return (
           <>
@@ -469,152 +462,6 @@ export function FacConfirmConfirmDemo() {
                 <MiniCell key={`${item}-h`} />,
               ])}
             </Box>
-
-            {/* Hộp thoại nhập Employee ID
-                (giống FacConfirmConfirmDialog) */}
-            {f === 2 && (
-              <Box
-                sx={{
-                  position: 'absolute',
-                  inset: 0,
-                  display: 'grid',
-                  placeItems: 'center',
-                  bgcolor: alpha('#0f172a', 0.35),
-                  zIndex: 2,
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 220,
-                    borderRadius: 1.5,
-                    bgcolor: 'background.paper',
-                    boxShadow: 8,
-                    overflow: 'hidden',
-                    fontSize: 11.5,
-                  }}
-                >
-                  {/* Tiêu đề */}
-                  <Stack
-                    direction="row"
-                    spacing={0.75}
-                    sx={{
-                      alignItems: 'center',
-                      px: 1.25,
-                      pt: 1,
-                      pb: 0.75,
-                    }}
-                  >
-                    <Box
-                      sx={(theme) => ({
-                        width: 24,
-                        height: 24,
-                        display: 'grid',
-                        placeItems: 'center',
-                        flexShrink: 0,
-                        borderRadius: 1,
-                        bgcolor: alpha(theme.palette.primary.main, 0.1),
-                        color: 'primary.main',
-                      })}
-                    >
-                      <SaveRoundedIcon sx={{ fontSize: 14 }} />
-                    </Box>
-
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Box sx={{ fontSize: 12.5, fontWeight: 800, lineHeight: 1.15 }}>
-                        Confirm Changes
-                      </Box>
-                      <Box sx={{ fontSize: 10.5, color: 'text.secondary' }}>
-                        3 change(s) ready to save
-                      </Box>
-                    </Box>
-
-                    <CloseRoundedIcon
-                      sx={{ fontSize: 14, color: 'text.secondary' }}
-                    />
-                  </Stack>
-
-                  {/* Nội dung */}
-                  <Box sx={{ px: 1.25, pb: 0.75 }}>
-                    <Box sx={{ fontWeight: 700, mb: 0.5 }}>
-                      Employee ID
-                    </Box>
-
-                    <Stack
-                      direction="row"
-                      spacing={0.5}
-                      sx={{
-                        alignItems: 'center',
-                        px: 0.75,
-                        height: 26,
-                        border: 1.5,
-                        borderColor: 'primary.main',
-                        borderRadius: 1,
-                      }}
-                    >
-                      <BadgeRoundedIcon
-                        sx={{ fontSize: 13, color: 'primary.main' }}
-                      />
-                      <Box sx={{ fontWeight: 600 }}>
-                        123456
-                        <Box
-                          component="span"
-                          sx={{
-                            display: 'inline-block',
-                            width: '1px',
-                            height: 12,
-                            ml: '1px',
-                            verticalAlign: 'middle',
-                            bgcolor: 'text.primary',
-                          }}
-                        />
-                      </Box>
-                    </Stack>
-
-                    <Box sx={{ mt: 0.25, fontSize: 10, color: 'text.secondary' }}>
-                      Numbers only
-                    </Box>
-                  </Box>
-
-                  {/* Nút */}
-                  <Stack
-                    direction="row"
-                    spacing={0.75}
-                    sx={{
-                      justifyContent: 'flex-end',
-                      px: 1.25,
-                      py: 0.75,
-                      borderTop: 1,
-                      borderColor: 'divider',
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        px: 1,
-                        py: 0.25,
-                        borderRadius: 0.75,
-                        border: 1,
-                        borderColor: 'divider',
-                        color: 'text.secondary',
-                      }}
-                    >
-                      Cancel
-                    </Box>
-                    <Box
-                      sx={{
-                        px: 1.25,
-                        py: 0.25,
-                        borderRadius: 0.75,
-                        bgcolor: 'primary.main',
-                        color: 'primary.contrastText',
-                        fontWeight: 600,
-                      }}
-                    >
-                      Confirm
-                    </Box>
-                  </Stack>
-                </Box>
-              </Box>
-            )}
           </>
         )
       }}

@@ -292,6 +292,14 @@ export function getAuthenticatedUsername():
   )
 }
 
+export function getCurrentEmployeeId():
+  string | null {
+  return (
+    getAuthSession()?.employeeId.trim()
+    || null
+  )
+}
+
 // =========================================================
 // LOGOUT
 // =========================================================

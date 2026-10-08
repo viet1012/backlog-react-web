@@ -62,6 +62,10 @@ import {
 } from '../../services/facConfirmService'
 
 import {
+  getCurrentEmployeeId,
+} from '../../services/authService'
+
+import {
   preventColumnHeaderSort,
 } from '../../theme/dataGridHeaderStyles'
 
@@ -77,10 +81,6 @@ import type {
 import {
   getFacConfirmColumns,
 } from './facConfirmColumns'
-
-import {
-  FacConfirmConfirmDialog,
-} from './FacConfirmConfirmDialog'
 
 import {
   FacConfirmEditErrorSnackbar,
@@ -302,21 +302,6 @@ export function FacConfirmDataTable({
   // =======================================================
 
   const [
-    confirmDialogOpen,
-    setConfirmDialogOpen,
-  ] = useState(false)
-
-  const [
-    employeeId,
-    setEmployeeId,
-  ] = useState('')
-
-  const [
-    employeeError,
-    setEmployeeError,
-  ] = useState('')
-
-  const [
     saving,
     setSaving,
   ] = useState(false)
@@ -493,45 +478,9 @@ export function FacConfirmDataTable({
   // =======================================================
   // CONFIRM ALL CHANGES
   // =======================================================
-  const handleOpenConfirm =
-    useCallback(
-      () => {
-
-        if (!hasChanges) {
-          return
-        }
-
-        setEmployeeError('')
-        setEmployeeId('')
-        setConfirmDialogOpen(true)
-      },
-      [
-        hasChanges,
-      ],
-    )
   const handleSaveChanges =
     useCallback(
       async () => {
-
-        const msnv =
-          employeeId.trim()
-
-        if (!msnv) {
-          setEmployeeError(
-            'Please enter employee ID.',
-          )
-
-          return
-        }
-
-        // Nếu MSNV công ty chỉ là số
-        if (!/^\d+$/.test(msnv)) {
-          setEmployeeError(
-            'Employee ID must contain numbers only.',
-          )
-
-          return
-        }
 
         if (
           !hasChanges
@@ -540,26 +489,30 @@ export function FacConfirmDataTable({
           return
         }
 
+        // MSNV lấy từ tài khoản đang đăng nhập
+        const employeeId =
+          getCurrentEmployeeId()
+
+        if (!employeeId) {
+          setEditError(
+            'Không xác định được tài khoản, vui lòng đăng nhập lại.',
+          )
+
+          return
+        }
+
         try {
 
           setSaving(true)
-          setEmployeeError('')
 
           await saveFacConfirmProcessTimes({
-            employeeId:
-              msnv,
+            employeeId,
 
             changes:
               pendingChanges,
           })
 
           clearChanges()
-
-          setConfirmDialogOpen(
-            false,
-          )
-
-          setEmployeeId('')
 
           onSaved?.()
 
@@ -570,7 +523,8 @@ export function FacConfirmDataTable({
             error,
           )
 
-          setEmployeeError(
+          // Giữ nguyên các thay đổi chưa lưu
+          setEditError(
             error instanceof Error
               ? error.message
               : 'Unable to save Fac Confirm.',
@@ -582,7 +536,6 @@ export function FacConfirmDataTable({
         }
       },
       [
-        employeeId,
         hasChanges,
         saving,
         pendingChanges,
@@ -591,26 +544,14 @@ export function FacConfirmDataTable({
       ],
     )
 
-  const handleEmployeeIdChange =
-    useCallback(
-      (value: string) => {
-        setEmployeeId(value)
-
-        if (employeeError) {
-          setEmployeeError('')
-        }
-      },
-      [employeeError],
-    )
-
-  const handleCloseConfirm =
+  const handleOpenConfirm =
     useCallback(
       () => {
-        if (!saving) {
-          setConfirmDialogOpen(false)
-        }
+        void handleSaveChanges()
       },
-      [saving],
+      [
+        handleSaveChanges,
+      ],
     )
 
   const handleCloseEditError =
@@ -1254,16 +1195,6 @@ export function FacConfirmDataTable({
         />
 
       </Box>
-      <FacConfirmConfirmDialog
-        open={confirmDialogOpen}
-        employeeId={employeeId}
-        employeeError={employeeError}
-        saving={saving}
-        changeCount={changeCount}
-        onEmployeeIdChange={handleEmployeeIdChange}
-        onConfirm={() => void handleSaveChanges()}
-        onCancel={handleCloseConfirm}
-      />
 
       <FacConfirmEditErrorSnackbar
         message={editError}

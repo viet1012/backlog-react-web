@@ -230,7 +230,7 @@ export const facConfirmGuideSteps: GuideStep[] = [
       </Note>
     ),
     bullets: [
-      <><Ui filled>Confirm Changes (n)</Ui>, nhập <strong>Employee ID</strong>, rồi <Ui filled>Confirm</Ui></>,
+      <><Ui filled>Confirm Changes (n)</Ui> để lưu, hệ thống tự ghi nhận tài khoản đang đăng nhập</>,
       <><Ui>Cancel Changes</Ui> hủy mọi thay đổi chưa lưu</>,
     ],
   },
