@@ -6,7 +6,11 @@ import type {
 } from '../types/facConfirm'
 
 interface ProcessGroupConfig {
+    // Cột công đoạn này xác nhận (sửa được mặc định).
     columns: readonly FacConfirmEditableField[]
+
+    // Map field <-> tên process ở backend.
+    // Gồm cả field chỉ để xem (vd heatStart) để đọc dữ liệu đã xác nhận trước đây.
     backendProcessNames: Readonly<
         Partial<Record<FacConfirmEditableField, FacConfirmBackendProcessName>>
     >
@@ -27,7 +31,8 @@ export const FAC_CONFIRM_PROCESS_CONFIG: Record<
     },
 
     Heat: {
-        columns: ['heatStart', 'heatFinish'],
+        // Heat Start chỉ để xem, Heat chỉ xác nhận To CLG
+        columns: ['heatFinish'],
         backendProcessNames: {
             heatStart: 'Heat Start',
             heatFinish: 'Heat Finish',
@@ -55,21 +60,26 @@ const processIdentities = (
         FacConfirmProcessGroup,
         ProcessGroupConfig,
     ][]
-).flatMap(([processGroup, config]) =>
-    config.columns.map((field): FacConfirmProcessIdentity => {
-        const backendProcessName = config.backendProcessNames[field]
-
-        if (!backendProcessName) {
+).flatMap(([processGroup, config]) => {
+    config.columns.forEach((field) => {
+        if (!config.backendProcessNames[field]) {
             throw new Error(`Missing backend process name for ${field}`)
         }
+    })
 
-        return {
-            field,
-            processGroup,
-            backendProcessName,
-        }
-    }),
-)
+    // Dựng từ backendProcessNames (không phải columns)
+    // để field chỉ để xem vẫn map được dữ liệu cũ.
+    return (
+        Object.entries(config.backendProcessNames) as [
+            FacConfirmEditableField,
+            FacConfirmBackendProcessName,
+        ][]
+    ).map(([field, backendProcessName]): FacConfirmProcessIdentity => ({
+        field,
+        processGroup,
+        backendProcessName,
+    }))
+})
 
 const processIdentityByField = new Map(
     processIdentities.map((identity) => [identity.field, identity]),

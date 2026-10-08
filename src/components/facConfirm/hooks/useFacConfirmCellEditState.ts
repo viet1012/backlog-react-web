@@ -17,6 +17,7 @@ import {
 import {
   getEditableFields,
   getMatchedEditRule,
+  getProcessEditableFields,
   getRuleLockedFields,
   isFieldEditableForRow,
 } from '../../../config/facConfirmEditRules'
@@ -78,6 +79,14 @@ const editableEmptyCellClasses: Record<FacConfirmProcessGroup, string> = {
 }
 
 const RULE_LOCKED_CELL_CLASS = 'fac-confirm-rule-locked'
+
+// Field mà ít nhất một công đoạn được sửa (gồm quy tắc).
+// Field chỉ để xem (vd heatStart) không tô màu dù có dữ liệu đã xác nhận cũ.
+const CONFIRMABLE_FIELDS = new Set<string>(
+  (
+    Object.keys(FAC_CONFIRM_PROCESS_CONFIG) as FacConfirmProcessGroup[]
+  ).flatMap(getProcessEditableFields),
+)
 
 function getCellKey(
   row: FacConfirmRow,
@@ -188,6 +197,10 @@ export function useFacConfirmCellEditState({
       const identity = getFacConfirmProcessIdentityByBackendName(
         item.processGrp,
       )
+
+      if (!CONFIRMABLE_FIELDS.has(identity.field)) {
+        return
+      }
 
       // Tô màu theo công đoạn đã xác nhận (ownerProcess),
       // dữ liệu cũ không có thì theo processGrp.
