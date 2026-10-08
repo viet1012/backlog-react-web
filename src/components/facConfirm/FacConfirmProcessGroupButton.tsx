@@ -1,6 +1,7 @@
 import {
   Box,
   Button,
+  Skeleton,
   Typography,
 } from '@mui/material'
 
@@ -34,8 +35,33 @@ interface Props {
   processGroup: FacConfirmProcessGroup
   item?: FacConfirmProcessGroupSummary
   selected: boolean
+
+  // Đang tải số liệu (chưa có item) => skeleton, giữ nguyên kích thước thẻ
+  loading: boolean
+
   disabled: boolean
   onClick: () => void
+}
+
+
+// Skeleton cao đúng bằng dòng chữ 12px => thẻ không giật khi có số liệu
+function ValueSkeleton({
+  width,
+}: {
+  width: number
+}) {
+  return (
+    <Skeleton
+      variant="text"
+      sx={{
+        display: 'inline-block',
+        width,
+        fontSize: 12,
+        lineHeight: 1.25,
+        verticalAlign: 'middle',
+      }}
+    />
+  )
 }
 
 
@@ -43,9 +69,14 @@ export function FacConfirmProcessGroupButton({
   processGroup,
   item,
   selected,
+  loading,
   disabled,
   onClick,
 }: Props) {
+
+  const showSkeleton =
+    !item && loading
+
 
   const requiredOrderCount =
     item?.requiredOrderCount ?? 0
@@ -103,6 +134,10 @@ export function FacConfirmProcessGroupButton({
           justifyContent: 'flex-start',
           alignItems: 'stretch',
 
+          // Chứa thanh tiến độ ở đáy thẻ
+          position: 'relative',
+          overflow: 'hidden',
+
           textTransform: 'none',
 
           borderRadius: uiTokens.control.borderRadius,
@@ -141,9 +176,27 @@ export function FacConfirmProcessGroupButton({
               'border-color',
               'color',
               'box-shadow',
+              'transform',
             ],
-            { duration: 150 },
+            { duration: 200 },
           ),
+
+          // Ấn vào: thu nhẹ
+          '&:active:not(.Mui-disabled)': {
+            transform: 'scale(0.98)',
+          },
+
+          '@media (prefers-reduced-motion: reduce)': {
+            transition: 'none',
+
+            '&:active:not(.Mui-disabled)': {
+              transform: 'none',
+            },
+
+            '& .fac-procgrp-progress': {
+              transition: 'none',
+            },
+          },
         }
       }}
     >
@@ -297,7 +350,11 @@ export function FacConfirmProcessGroupButton({
                 fontVariantNumeric: 'tabular-nums',
               }}
             >
-              {item ? `${progress}%` : '—'}
+              {item
+                ? `${progress}%`
+                : showSkeleton
+                  ? <ValueSkeleton width={28} />
+                  : '—'}
             </Typography>
 
           )}
@@ -367,25 +424,31 @@ export function FacConfirmProcessGroupButton({
               fontVariantNumeric: 'tabular-nums',
             }}
           >
-            <Box
-              component="span"
-              sx={{
-                fontWeight: 800,
-              }}
-            >
-              {item ? requiredOrderCount.toLocaleString() : '—'} PO
-            </Box>
+            {showSkeleton ? (
+              <ValueSkeleton width={96} />
+            ) : (
+              <>
+                <Box
+                  component="span"
+                  sx={{
+                    fontWeight: 800,
+                  }}
+                >
+                  {item ? requiredOrderCount.toLocaleString() : '—'} PO
+                </Box>
 
-            {' · '}
+                {' · '}
 
-            <Box
-              component="span"
-              sx={{
-                fontWeight: 700,
-              }}
-            >
-              {item ? item.requiredTotalQty.toLocaleString() : '—'} Pcs
-            </Box>
+                <Box
+                  component="span"
+                  sx={{
+                    fontWeight: 700,
+                  }}
+                >
+                  {item ? item.requiredTotalQty.toLocaleString() : '—'} Pcs
+                </Box>
+              </>
+            )}
           </Typography>
 
 
@@ -430,30 +493,62 @@ export function FacConfirmProcessGroupButton({
               fontVariantNumeric: 'tabular-nums',
             }}
           >
-            <Box
-              component="span"
-              sx={{
-                fontWeight: 800,
-              }}
-            >
-              {item ? confirmedOrderCount.toLocaleString() : '—'} PO
-            </Box>
+            {showSkeleton ? (
+              <ValueSkeleton width={96} />
+            ) : (
+              <>
+                <Box
+                  component="span"
+                  sx={{
+                    fontWeight: 800,
+                  }}
+                >
+                  {item ? confirmedOrderCount.toLocaleString() : '—'} PO
+                </Box>
 
-            {' · '}
+                {' · '}
 
-            <Box
-              component="span"
-              sx={{
-                fontWeight: 700,
-              }}
-            >
-              {item ? item.confirmedTotalQty.toLocaleString() : '—'} Pcs
-            </Box>
+                <Box
+                  component="span"
+                  sx={{
+                    fontWeight: 700,
+                  }}
+                >
+                  {item ? item.confirmedTotalQty.toLocaleString() : '—'} Pcs
+                </Box>
+              </>
+            )}
           </Typography>
 
         </Box>
 
       </Box>
+
+
+      {/* TIẾN ĐỘ ĐÃ XÁC NHẬN */}
+
+      {item && (
+        <Box
+          aria-hidden
+          className="fac-procgrp-progress"
+          sx={(theme) => ({
+            position: 'absolute',
+            left: 0,
+            bottom: 0,
+
+            height: 3,
+            width: `${progress}%`,
+
+            bgcolor:
+              FAC_CONFIRM_PROCESS_CONFIG[
+                processGroup
+              ].getColor(theme),
+
+            transition:
+              'width 300ms ease',
+          })}
+        />
+      )}
 
     </Button>
   )

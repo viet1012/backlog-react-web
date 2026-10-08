@@ -1,6 +1,8 @@
 import {
   useCallback,
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 
@@ -26,7 +28,12 @@ import type {
 
 import {
   FacConfirmDataTable,
+  type FacConfirmDataTableHandle,
 } from '../components/facConfirm/FacConfirmDataTable'
+
+import {
+  FacConfirmUnsavedChangesDialog,
+} from '../components/facConfirm/FacConfirmUnsavedChangesDialog'
 
 import {
   getFacConfirmColumns,
@@ -96,6 +103,10 @@ interface FacConfirmPageProps {
 }
 
 
+// Chờ người dùng ngừng gõ rồi mới gọi API
+const SEARCH_DEBOUNCE_MS = 300
+
+
 function getToday(): string {
   const now = new Date()
 
@@ -150,15 +161,6 @@ export function FacConfirmPage({
 
 
   const [
-    highlightProcGrp,
-    setHighlightProcGrp,
-  ] =
-    useState<FacConfirmProcessGroup | null>(
-      pagePreferences.procGrp,
-    )
-
-
-  const [
     sortModel,
     setSortModel,
   ] =
@@ -172,11 +174,44 @@ export function FacConfirmPage({
     useState<FacConfirmFilterItem[]>([])
 
 
+  // searchInput: giá trị ô nhập (cập nhật ngay)
+  // search: giá trị gửi API (sau debounce)
+  const [
+    searchInput,
+    setSearchInput,
+  ] =
+    useState('')
+
   const [
     search,
     setSearch,
   ] =
     useState('')
+
+
+  const tableRef =
+    useRef<FacConfirmDataTableHandle>(null)
+
+
+  // Công đoạn người dùng muốn chuyển sang khi còn thay đổi chưa lưu
+  const [
+    pendingProcGrp,
+    setPendingProcGrp,
+  ] =
+    useState<FacConfirmProcessGroup | null>(null)
+
+  // Số ô chưa lưu lúc mở dialog (không đọc ref khi render)
+  const [
+    pendingChangeCount,
+    setPendingChangeCount,
+  ] =
+    useState(0)
+
+  const [
+    switchSaving,
+    setSwitchSaving,
+  ] =
+    useState(false)
 
 
   const [
@@ -240,6 +275,10 @@ export function FacConfirmPage({
     processGroups,
     totalElements,
     loading,
+    initialLoading,
+    stale,
+    loadedProcGrp,
+    summaryLoading,
     error,
     lastUpdated,
     handleRefresh,
@@ -267,7 +306,11 @@ export function FacConfirmPage({
   })
 
 
-  // Nếu chưa dùng thì tránh eslint warning
+  // Bảng tô màu / quyền sửa theo công đoạn của dữ liệu đang hiển thị.
+  // Thẻ công đoạn đổi ngay, bảng đổi khi dữ liệu mới về => không lệch, không chớp.
+  const highlightProcGrp =
+    loadedProcGrp
+    ?? procGrp
 
 
   // =========================================================
@@ -387,7 +430,7 @@ export function FacConfirmPage({
   // PROCESS GROUP
   // =========================================================
 
-  const handleProcessGroupChange =
+  const applyProcessGroupChange =
     useCallback(
       (
         value:
@@ -395,10 +438,6 @@ export function FacConfirmPage({
       ) => {
 
         setProcGrp(
-          value
-        )
-
-        setHighlightProcGrp(
           value
         )
 
@@ -418,6 +457,108 @@ export function FacConfirmPage({
         div,
         resetPage,
       ],
+    )
+
+
+  const handleProcessGroupChange =
+    useCallback(
+      (
+        value:
+          FacConfirmProcessGroup,
+      ) => {
+
+        if (value === procGrp) {
+          return
+        }
+
+        // Còn thay đổi chưa lưu => hỏi trước khi đổi
+        const table =
+          tableRef.current
+
+        if (table?.hasChanges) {
+          setPendingChangeCount(
+            table.changeCount
+          )
+
+          setPendingProcGrp(
+            value
+          )
+
+          return
+        }
+
+        applyProcessGroupChange(
+          value
+        )
+      },
+      [
+        applyProcessGroupChange,
+        procGrp,
+      ],
+    )
+
+
+  const handleUnsavedSave =
+    useCallback(
+      async () => {
+        const nextProcGrp =
+          pendingProcGrp
+
+        if (!nextProcGrp) {
+          return
+        }
+
+        setSwitchSaving(true)
+
+        const saved =
+          await tableRef.current?.save()
+          ?? false
+
+        setSwitchSaving(false)
+        setPendingProcGrp(null)
+
+        // Lưu lỗi: ở lại công đoạn hiện tại, lỗi hiện ở snackbar của bảng
+        if (saved) {
+          applyProcessGroupChange(
+            nextProcGrp
+          )
+        }
+      },
+      [
+        applyProcessGroupChange,
+        pendingProcGrp,
+      ],
+    )
+
+
+  const handleUnsavedDiscard =
+    useCallback(
+      () => {
+        const nextProcGrp =
+          pendingProcGrp
+
+        tableRef.current?.discard()
+        setPendingProcGrp(null)
+
+        if (nextProcGrp) {
+          applyProcessGroupChange(
+            nextProcGrp
+          )
+        }
+      },
+      [
+        applyProcessGroupChange,
+        pendingProcGrp,
+      ],
+    )
+
+
+  const handleUnsavedStay =
+    useCallback(
+      () => {
+        setPendingProcGrp(null)
+      },
+      [],
     )
 
 
@@ -530,17 +671,37 @@ export function FacConfirmPage({
         value: string,
       ) => {
 
-        setSearch(
+        setSearchInput(
           value
         )
 
-        resetPage()
-
       },
-      [
-        resetPage,
-      ],
+      [],
     )
+
+
+  useEffect(() => {
+    if (searchInput === search) {
+      return
+    }
+
+    const timer = window.setTimeout(
+      () => {
+        setSearch(
+          searchInput
+        )
+
+        resetPage()
+      },
+      SEARCH_DEBOUNCE_MS,
+    )
+
+    return () => window.clearTimeout(timer)
+  }, [
+    resetPage,
+    search,
+    searchInput,
+  ])
 
 
   // =========================================================
@@ -568,7 +729,7 @@ export function FacConfirmPage({
       () => {
         const allFields =
           getFacConfirmColumns(
-            highlightProcGrp,
+            procGrp,
           ).map(
             (column) =>
               column.field,
@@ -603,7 +764,7 @@ export function FacConfirmPage({
         )
       },
       [
-        highlightProcGrp,
+        procGrp,
         preferences.columnOrder,
         preferences.columnVisibilityModel,
       ],
@@ -777,9 +938,10 @@ export function FacConfirmPage({
           procGrp={procGrp}
           classify={classify}
           heatType={heatType}
-          search={search}
+          search={searchInput}
           processGroups={processGroups}
           loading={loading}
+          summaryLoading={summaryLoading}
 
           onDivChange={handleDivChange}
           onDateChange={handleDateChange}
@@ -799,9 +961,20 @@ export function FacConfirmPage({
       </Box>
 
 
+      {/* Lỗi tải: dữ liệu cũ vẫn giữ trên bảng */}
       {error && (
         <Alert
           severity="error"
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              disabled={loading}
+              onClick={handleRefresh}
+            >
+              Thử lại
+            </Button>
+          }
         >
           {error}
         </Alert>
@@ -819,9 +992,12 @@ export function FacConfirmPage({
         }}
       >
         <FacConfirmDataTable
+          ref={tableRef}
           rows={rows}
           confirmedProcesses={confirmedProcesses}
           loading={loading}
+          initialLoading={initialLoading}
+          stale={stale}
 
           div={div}
           expD={expD}
@@ -867,6 +1043,18 @@ export function FacConfirmPage({
           onSaved={handleRefresh}
         />
       </Box>
+
+
+      <FacConfirmUnsavedChangesDialog
+        open={pendingProcGrp != null}
+        changeCount={
+          pendingChangeCount
+        }
+        saving={switchSaving}
+        onSave={() => void handleUnsavedSave()}
+        onDiscard={handleUnsavedDiscard}
+        onStay={handleUnsavedStay}
+      />
 
 
       <GuideTour

@@ -40,6 +40,9 @@ interface FacConfirmFilterBarProps {
   processGroups: FacConfirmProcessGroupSummary[]
   loading: boolean
 
+  // Đang tải số liệu thẻ công đoạn
+  summaryLoading: boolean
+
   onDivChange: (value: string) => void
   onDateChange: (value: string) => void
   onProcessGroupChange: (
@@ -91,6 +94,7 @@ export function FacConfirmFilterBar({
   search,
   processGroups,
   loading,
+  summaryLoading,
   onDivChange,
   onDateChange,
   onProcessGroupChange,
@@ -297,7 +301,7 @@ export function FacConfirmFilterBar({
           <FacConfirmProcessGroupStrip
             value={procGrp}
             items={processGroups}
-            loading={loading}
+            loading={summaryLoading}
             onChange={onProcessGroupChange}
           />
         </Box>

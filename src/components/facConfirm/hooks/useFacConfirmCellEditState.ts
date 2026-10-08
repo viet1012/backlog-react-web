@@ -81,7 +81,7 @@ const editableEmptyCellClasses: Record<FacConfirmProcessGroup, string> = {
 const RULE_LOCKED_CELL_CLASS = 'fac-confirm-rule-locked'
 
 // Field mà ít nhất một công đoạn được sửa (gồm quy tắc).
-// Field chỉ để xem (vd heatStart) không tô màu dù có dữ liệu đã xác nhận cũ.
+// Field không sửa được (vd heatStart) không tô màu dù có dữ liệu đã xác nhận cũ.
 const CONFIRMABLE_FIELDS = new Set<string>(
   (
     Object.keys(FAC_CONFIRM_PROCESS_CONFIG) as FacConfirmProcessGroup[]

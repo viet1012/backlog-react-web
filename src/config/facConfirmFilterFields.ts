@@ -4,13 +4,13 @@ import type { ExcelFilterKind } from '../components/common/dataGrid/excelFilterC
 export const FAC_CONFIRM_FILTER_FIELDS = [
   'ferth', 'productGrp', 'aufnr', 'zglobalCode', 'pname', 'issueD',
   'exportD', 'cusId', 'shipBy', 'mtoId', 'prtAddcmt2', 'currentProcess',
-  'finalQty', 'toDrill', 'toHeat', 'heatStart', 'heatFinish', 'toPk', 'note',
+  'finalQty', 'toDrill', 'toHeat', 'heatFinish', 'toPk', 'note',
 ] as const satisfies readonly (keyof FacConfirmRow)[]
 
 export type FacConfirmFilterField = (typeof FAC_CONFIRM_FILTER_FIELDS)[number]
 
 const dateFields = new Set<FacConfirmFilterField>([
-  'issueD', 'exportD', 'toDrill', 'toHeat', 'heatStart', 'heatFinish', 'toPk',
+  'issueD', 'exportD', 'toDrill', 'toHeat', 'heatFinish', 'toPk',
 ])
 
 export function isFacConfirmFilterField(field: string): field is FacConfirmFilterField {

@@ -463,6 +463,10 @@ export function validateHeatFinish(
 
   let baseDate: Date
 
+  // Có Heat Start => báo theo thời điểm bắt đầu Heat
+  // (cột Heat Start không còn hiển thị trên bảng)
+  let fromHeatStart = false
+
   // =======================================================
   // CÓ HEAT START
   // =======================================================
@@ -481,6 +485,7 @@ export function validateHeatFinish(
         startParts,
       )
 
+    fromHeatStart = true
   }
 
   // =======================================================
@@ -513,8 +518,12 @@ export function validateHeatFinish(
     < minimumFinish.getTime()
   ) {
     throw new Error(
-      `${materialLabel}: To CLG phải từ `
-      + `${formatDateTimeForMessage(minimumFinish)} trở đi.`,
+      fromHeatStart
+        ? `${materialLabel}: To CLG phải từ thời điểm bắt đầu Heat `
+          + `(${formatDateTimeForMessage(baseDate)}) + ${waitingDays} ngày, `
+          + `tức từ ${formatDateTimeForMessage(minimumFinish)} trở đi.`
+        : `${materialLabel}: To CLG phải từ `
+          + `${formatDateTimeForMessage(minimumFinish)} trở đi.`,
     )
   }
 }

@@ -8,6 +8,8 @@ import { FacConfirmProcessGroupButton } from './FacConfirmProcessGroupButton'
 interface FacConfirmProcessGroupStripProps {
   value: FacConfirmProcessGroup
   items: FacConfirmProcessGroupSummary[]
+
+  // Đang tải số liệu => skeleton cho phần số
   loading: boolean
   onChange: (value: FacConfirmProcessGroup) => void
 }
@@ -50,7 +52,9 @@ export function FacConfirmProcessGroupStrip({
             processGroup={processGroup}
             item={item}
             selected={processGroup === value}
-            disabled={loading || !item}
+            loading={loading}
+            // Không khóa khi bảng đang tải: đổi nhanh được, request cũ tự hủy
+            disabled={!item}
             onClick={() => onChange(processGroup)}
           />
         )

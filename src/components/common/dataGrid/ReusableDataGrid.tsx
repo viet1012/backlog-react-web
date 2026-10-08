@@ -116,6 +116,15 @@ export interface ReusableDataGridProps<
 
   onCellKeyDown?:
   GridEventListener<'cellKeyDown'>
+
+  // Mặc định: overlay tải của DataGrid.
+  // 'skeleton' => dòng skeleton (vd chỉ dùng cho lần tải đầu).
+  loadingOverlayVariant?:
+  'skeleton' | 'linear-progress' | 'circular-progress'
+
+  // Thay overlay rỗng mặc định (FactoryNoRowsOverlay)
+  noRowsOverlay?:
+  GridSlotsComponent['noRowsOverlay']
 }
 
 
@@ -172,6 +181,9 @@ export function ReusableDataGrid<
   apiRef,
   onCellClick,
   onCellKeyDown,
+
+  loadingOverlayVariant,
+  noRowsOverlay,
 
 }: ReusableDataGridProps<T>) {
 
@@ -357,8 +369,20 @@ export function ReusableDataGrid<
         toolbar,
         columnMenu,
         noRowsOverlay:
-          FactoryNoRowsOverlay,
+          noRowsOverlay
+          ?? FactoryNoRowsOverlay,
       }}
+
+      slotProps={
+        loadingOverlayVariant
+          ? {
+            loadingOverlay: {
+              variant: loadingOverlayVariant,
+              noRowsVariant: loadingOverlayVariant,
+            },
+          }
+          : undefined
+      }
 
       showToolbar={
         Boolean(toolbar)

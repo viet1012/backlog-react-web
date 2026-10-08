@@ -21,6 +21,7 @@ import type {
   FacConfirmConfirmedProcess,
   FacConfirmDataScope,
   FacConfirmFilterItem,
+  FacConfirmProcessGroup,
   FacConfirmProcessGroupSummary,
   FacConfirmRow,
 } from '../types/facConfirm'
@@ -31,6 +32,62 @@ interface UseFacConfirmDataParams
   pageSize: number
   excelFilters: FacConfirmFilterItem[]
   search: string
+}
+
+// =========================================================
+// CACHE TẠM THEO BỘ LỌC
+//
+// Quay lại bộ lọc vừa xem => hiện ngay từ cache, rồi tải lại ngầm.
+// Tối đa CACHE_MAX_ENTRIES mục, sống CACHE_TTL_MS.
+// Lưu xong / Làm mới => clearFacConfirmCache().
+// =========================================================
+
+interface FacConfirmCacheEntry {
+  storedAt: number
+  procGrp: FacConfirmProcessGroup
+  rows: FacConfirmRow[]
+  confirmedProcesses: FacConfirmConfirmedProcess[]
+  totalElements: number
+}
+
+const CACHE_MAX_ENTRIES = 10
+const CACHE_TTL_MS = 60_000
+
+const facConfirmCache = new Map<string, FacConfirmCacheEntry>()
+
+function readCache(key: string): FacConfirmCacheEntry | null {
+  const entry = facConfirmCache.get(key)
+
+  if (!entry) {
+    return null
+  }
+
+  if (Date.now() - entry.storedAt > CACHE_TTL_MS) {
+    facConfirmCache.delete(key)
+    return null
+  }
+
+  return entry
+}
+
+function writeCache(key: string, entry: FacConfirmCacheEntry): void {
+  // Map giữ thứ tự chèn => xóa rồi chèn lại để mục mới nhất ở cuối
+  facConfirmCache.delete(key)
+  facConfirmCache.set(key, entry)
+
+  while (facConfirmCache.size > CACHE_MAX_ENTRIES) {
+    const oldestKey = facConfirmCache.keys().next().value
+
+    if (oldestKey === undefined) {
+      break
+    }
+
+    facConfirmCache.delete(oldestKey)
+  }
+}
+
+export function clearFacConfirmCache(): void {
+  facConfirmCache.clear()
 }
 
 function isAbortError(error: unknown): boolean {
@@ -116,8 +173,40 @@ export function useFacConfirmData({
   >([])
   const [totalElements, setTotalElements] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [summaryLoading, setSummaryLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+
+  // Bộ lọc của dữ liệu đang hiển thị (khác requestKey => đang hiện dữ liệu cũ)
+  const [loaded, setLoaded] = useState<{
+    key: string
+    procGrp: FacConfirmProcessGroup
+  } | null>(null)
+
+  const requestKey = useMemo(
+    () => JSON.stringify({
+      div,
+      expD,
+      procGrp,
+      classify: classify ?? null,
+      heatType,
+      search: search.trim(),
+      excelFilters,
+      page,
+      pageSize,
+    }),
+    [
+      classify,
+      div,
+      excelFilters,
+      expD,
+      heatType,
+      page,
+      pageSize,
+      procGrp,
+      search,
+    ],
+  )
 
   const tableRequestRef = useRef<AbortController | null>(null)
   const summaryRequestRef = useRef<AbortController | null>(null)
@@ -134,6 +223,16 @@ export function useFacConfirmData({
     tableRequestRef.current = controller
     setLoading(true)
     setError(null)
+
+    // Có cache => hiện ngay, vẫn tải lại ngầm bên dưới
+    const cached = readCache(requestKey)
+
+    if (cached) {
+      setRows(cached.rows)
+      setConfirmedProcesses(cached.confirmedProcesses)
+      setTotalElements(cached.totalElements)
+      setLoaded({ key: requestKey, procGrp: cached.procGrp })
+    }
 
     try {
       const request = {
@@ -205,7 +304,16 @@ export function useFacConfirmData({
       setRows(result.content)
       setConfirmedProcesses(confirmed)
       setTotalElements(result.totalElements)
+      setLoaded({ key: requestKey, procGrp })
       setLastUpdated(new Date())
+
+      writeCache(requestKey, {
+        storedAt: Date.now(),
+        procGrp,
+        rows: result.content,
+        confirmedProcesses: confirmed,
+        totalElements: result.totalElements,
+      })
     } catch (requestError) {
       if (
         isAbortError(requestError)
@@ -216,10 +324,7 @@ export function useFacConfirmData({
 
       console.error('Load Fac Confirm failed:', requestError)
 
-      setRows([])
-      setConfirmedProcesses([])
-      setTotalElements(0)
-
+      // Giữ dữ liệu cũ (nếu có), chỉ báo lỗi
       setError(
         requestError instanceof Error
           ? requestError.message
@@ -240,6 +345,7 @@ export function useFacConfirmData({
     page,
     pageSize,
     procGrp,
+    requestKey,
     search,
   ])
 
@@ -248,6 +354,8 @@ export function useFacConfirmData({
 
     const controller = new AbortController()
     summaryRequestRef.current = controller
+    setSummaryLoading(true)
+
     try {
       const result = await getFacConfirmProcessGroups(
         {
@@ -281,6 +389,7 @@ export function useFacConfirmData({
     } finally {
       if (summaryRequestRef.current === controller) {
         summaryRequestRef.current = null
+        setSummaryLoading(false)
       }
     }
   }, [
@@ -321,7 +430,9 @@ export function useFacConfirmData({
     }
   }, [loadProcessGroups])
 
+  // Làm mới / sau khi lưu: bỏ cache để không hiện dữ liệu cũ
   const handleRefresh = useCallback(() => {
+    clearFacConfirmCache()
     void loadData()
     void loadProcessGroups()
   }, [loadData, loadProcessGroups])
@@ -332,6 +443,17 @@ export function useFacConfirmData({
     processGroups,
     totalElements,
     loading,
+
+    // Lần tải đầu, chưa có dữ liệu nào => skeleton
+    initialLoading: loading && loaded == null,
+
+    // Đang hiện dữ liệu của bộ lọc trước, chờ dữ liệu mới
+    stale: loaded != null && loaded.key !== requestKey,
+
+    // Công đoạn của dữ liệu đang hiển thị (đổi khi dữ liệu mới về)
+    loadedProcGrp: loaded?.procGrp ?? null,
+
+    summaryLoading,
     error,
     lastUpdated,
     handleRefresh,

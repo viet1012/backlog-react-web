@@ -10,7 +10,7 @@ interface ProcessGroupConfig {
     columns: readonly FacConfirmEditableField[]
 
     // Map field <-> tên process ở backend.
-    // Gồm cả field chỉ để xem (vd heatStart) để đọc dữ liệu đã xác nhận trước đây.
+    // Gồm cả field không sửa được (vd heatStart) để đọc dữ liệu đã xác nhận trước đây.
     backendProcessNames: Readonly<
         Partial<Record<FacConfirmEditableField, FacConfirmBackendProcessName>>
     >
@@ -31,7 +31,7 @@ export const FAC_CONFIRM_PROCESS_CONFIG: Record<
     },
 
     Heat: {
-        // Heat Start chỉ để xem, Heat chỉ xác nhận To CLG
+        // Heat chỉ xác nhận To CLG. Heat Start không hiển thị, chỉ dùng để validate
         columns: ['heatFinish'],
         backendProcessNames: {
             heatStart: 'Heat Start',

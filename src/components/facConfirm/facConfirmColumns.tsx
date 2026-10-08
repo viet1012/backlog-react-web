@@ -165,27 +165,8 @@ const facConfirmColumnDefinitions:
             renderEditCell:
                 renderDateTimeEditCell,
         },
-        {
-            field: 'heatStart',
-            headerName: 'Heat Start',
-            width: DATA_GRID_COLUMN_WIDTHS.date,
-
-            valueFormatter: (value) =>
-                formatFacConfirmDateTime(value),
-
-            renderCell: (params) => {
-                if (!params.value) {
-                    return ''
-                }
-
-                return formatFacConfirmDateTime(
-                    params.value,
-                )
-            },
-
-            renderEditCell:
-                renderDateTimeEditCell,
-        },
+        // Heat Start không hiển thị: field vẫn có trong row,
+        // chỉ dùng để validate To CLG.
         {
             field: 'heatFinish',
             headerName: 'To CLG',
