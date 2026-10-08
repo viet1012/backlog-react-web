@@ -410,6 +410,7 @@ export function FacConfirmDataTable({
     processRowUpdate,
     applyPendingChangesToRows,
     pendingChanges,
+    pendingProcesses,
     hasChanges,
     changeCount,
     getRestoreRows,
@@ -505,12 +506,31 @@ export function FacConfirmDataTable({
           return
         }
 
+        // Thay đổi chưa lưu không bị xóa khi đổi công đoạn
+        // => chỉ lưu khi mọi thay đổi được sửa ở công đoạn đang chọn.
+        if (
+          !highlightProcGrp
+          || pendingProcesses.some(
+            (process) => process !== highlightProcGrp,
+          )
+        ) {
+          setEditError(
+            'Có thay đổi chưa lưu của công đoạn khác. '
+            + 'Vui lòng chọn lại công đoạn đó để lưu, hoặc Cancel Changes.',
+          )
+
+          return
+        }
+
         try {
 
           setSaving(true)
 
           await saveFacConfirmProcessTimes({
             employeeId,
+
+            procGrp:
+              highlightProcGrp,
 
             changes:
               pendingChanges,
@@ -542,7 +562,9 @@ export function FacConfirmDataTable({
       [
         hasChanges,
         saving,
+        highlightProcGrp,
         pendingChanges,
+        pendingProcesses,
         clearChanges,
         onSaved,
       ],

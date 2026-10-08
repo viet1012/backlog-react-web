@@ -250,6 +250,10 @@ export interface FacConfirmProcessTimeChange {
 export interface FacConfirmProcessTimeRequest {
     employeeId: string
 
+    // Công đoạn đang chọn khi sửa.
+    // Backend kiểm tra quyền sửa field theo công đoạn này.
+    procGrp: FacConfirmProcessGroup
+
     changes: FacConfirmProcessTimeChange[]
 }
 
@@ -275,6 +279,10 @@ export interface FacConfirmConfirmedProcess {
     aufnr: string
 
     processGrp: FacConfirmBackendProcessName
+
+    // Công đoạn đã xác nhận ô này (vd To CLG từ Rough).
+    // Dữ liệu cũ không có => map theo processGrp.
+    ownerProcess?: FacConfirmProcessGroup | null
 
     confirmFnTime: string | null
 

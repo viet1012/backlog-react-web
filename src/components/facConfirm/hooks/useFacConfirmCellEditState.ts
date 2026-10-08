@@ -176,9 +176,17 @@ export function useFacConfirmCellEditState({
         item.processGrp,
       )
 
+      // Tô màu theo công đoạn đã xác nhận (ownerProcess),
+      // dữ liệu cũ không có thì theo processGrp.
+      const ownerProcess =
+        item.ownerProcess
+        && item.ownerProcess in FAC_CONFIRM_PROCESS_CONFIG
+          ? item.ownerProcess
+          : identity.processGroup
+
       cells.set(
         getConfirmedCellKey(item.aufnr, identity.field),
-        identity.processGroup,
+        ownerProcess,
       )
     })
 
@@ -397,6 +405,13 @@ export function useFacConfirmCellEditState({
     [pendingMap],
   )
 
+  // Công đoạn đã dùng để sửa các ô chưa lưu
+  // (editedCells và pendingMap luôn cùng key).
+  const pendingProcesses = useMemo(
+    () => [...new Set(editedCells.values())],
+    [editedCells],
+  )
+
   const applyPendingChangesToRows =
     useCallback(
       (
@@ -470,6 +485,7 @@ export function useFacConfirmCellEditState({
     processRowUpdate,
     applyPendingChangesToRows,
     pendingChanges,
+    pendingProcesses,
     hasChanges: pendingChanges.length > 0,
     changeCount: pendingChanges.length,
     getRestoreRows,
