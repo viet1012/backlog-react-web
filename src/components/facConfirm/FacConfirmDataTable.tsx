@@ -1126,8 +1126,9 @@ export function FacConfirmDataTable({
   // STYLES
   //
   // Dựng một lần theo coverage / công đoạn (không theo từng render).
-  // Thứ tự ưu tiên (thấp -> cao):
-  //   dải cột < ô trống cần nhập < ô đã sửa < ô bị quy tắc khóa (sọc)
+  // Chỉ tô: ô mà dòng đó sửa được (chưa xác nhận), ô đã sửa chưa lưu,
+  // ô bị quy tắc khóa (sọc). Không tô theo cả cột.
+  // Ô đã có giá trị (kể cả đã xác nhận) hiển thị như ô thường.
   // =======================================================
 
   const tableSx = useMemo(
@@ -1166,10 +1167,6 @@ export function FacConfirmDataTable({
       const headerStyles:
         Record<string, object> = {}
 
-      // Dải cột: mọi ô của cột cần xác nhận, kể cả ô đã có giá trị
-      const columnBandStyles:
-        Record<string, object> = {}
-
 
       if (
         highlightProcGrp
@@ -1205,20 +1202,6 @@ export function FacConfirmDataTable({
               // Viền dưới bằng shadow => không đổi chiều cao tiêu đề
               boxShadow:
                 `inset 0 -2px 0 ${activeColor}`,
-
-              transition:
-                colorTransition,
-            }
-
-            columnBandStyles[
-              `& .MuiDataGrid-cell[data-field="${field}"]`
-            ] = {
-
-              backgroundColor:
-                alpha(
-                  activeColor,
-                  isDark ? 0.07 : 0.04,
-                ),
 
               transition:
                 colorTransition,
@@ -1269,20 +1252,6 @@ export function FacConfirmDataTable({
                 textUnderlineOffset: '3px',
               },
             }
-
-            columnBandStyles[
-              `& .MuiDataGrid-cell[data-field="${field}"]`
-            ] = {
-
-              backgroundColor:
-                alpha(
-                  activeColor,
-                  isDark ? 0.05 : 0.025,
-                ),
-
-              transition:
-                colorTransition,
-            }
           },
         )
       }
@@ -1325,7 +1294,7 @@ export function FacConfirmDataTable({
         )
 
 
-      // Ô trống sửa được ở công đoạn đang chọn
+      // Ô mà dòng đó sửa được ở công đoạn đang chọn, chưa xác nhận
       // (canEditCell: gồm quy tắc + khóa Backlog): nền nhạt màu công đoạn.
       // Ô quy tắc khóa: sọc chéo (xem fac-confirm-rule-locked).
       //
@@ -1417,14 +1386,11 @@ export function FacConfirmDataTable({
           0,
 
 
-        // Dải cột đứng trước => các style ô bên dưới đè lên
-        ...columnBandStyles,
-
         ...editedCellStyles,
 
         ...editableCellStyles,
 
-        // Sọc chéo thấy được cả khi ô trống, đè lên dải cột
+        // Sọc chéo thấy được cả khi ô trống
         '& .MuiDataGrid-cell.fac-confirm-rule-locked': {
           backgroundImage:
             `repeating-linear-gradient(`

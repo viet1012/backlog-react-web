@@ -281,7 +281,7 @@ export interface FacConfirmConfirmedProcess {
     processGrp: FacConfirmBackendProcessName
 
     // Công đoạn đã xác nhận ô này (vd To CLG từ Rough).
-    // Dữ liệu cũ không có => map theo processGrp.
+    // Dữ liệu cũ có thể không có. Hiện FE không dùng để tô màu.
     ownerProcess?: FacConfirmProcessGroup | null
 
     confirmFnTime: string | null

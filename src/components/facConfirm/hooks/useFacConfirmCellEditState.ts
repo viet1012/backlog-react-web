@@ -17,7 +17,6 @@ import {
 import {
   getEditableFields,
   getMatchedEditRule,
-  getProcessEditableFields,
   getRuleLockedFields,
   isFieldEditableForRow,
 } from '../../../config/facConfirmEditRules'
@@ -62,31 +61,25 @@ type FacConfirmRestoreRow = {
   zglobalCode: string | null
 } & Partial<Pick<FacConfirmRow, FacConfirmEditableField>>
 
+// Ô đã sửa nhưng chưa lưu: nền theo công đoạn đã sửa.
+// Ô đã xác nhận (đã lưu) hiển thị như ô thường, không có class.
 const editedCellClasses: Record<FacConfirmProcessGroup, string> = {
   Rough: 'fac-confirm-edited-rough',
   Heat: 'fac-confirm-edited-heat',
   Fine: 'fac-confirm-edited-fine',
 }
 
-// Ô đã sửa nhưng chưa lưu (thêm cùng editedCellClasses)
+// Thêm cùng editedCellClasses => viền trái
 const PENDING_CELL_CLASS = 'fac-confirm-pending'
 
-// Ô còn trống mà người dùng sửa được ở công đoạn đang chọn
-const editableEmptyCellClasses: Record<FacConfirmProcessGroup, string> = {
+// Ô mà dòng đó sửa được ở công đoạn đang chọn (chưa sửa, chưa xác nhận)
+const editableCellClasses: Record<FacConfirmProcessGroup, string> = {
   Rough: 'fac-confirm-editable-rough',
   Heat: 'fac-confirm-editable-heat',
   Fine: 'fac-confirm-editable-fine',
 }
 
 const RULE_LOCKED_CELL_CLASS = 'fac-confirm-rule-locked'
-
-// Field mà ít nhất một công đoạn được sửa (gồm quy tắc).
-// Field không sửa được (vd heatStart) không tô màu dù có dữ liệu đã xác nhận cũ.
-const CONFIRMABLE_FIELDS = new Set<string>(
-  (
-    Object.keys(FAC_CONFIRM_PROCESS_CONFIG) as FacConfirmProcessGroup[]
-  ).flatMap(getProcessEditableFields),
-)
 
 function getCellKey(
   row: FacConfirmRow,
@@ -186,8 +179,9 @@ export function useFacConfirmCellEditState({
   )
 
 
+  // Ô đã xác nhận: chỉ dùng để cho sửa lại (canEditCell), không tô màu
   const confirmedCells = useMemo(() => {
-    const cells = new Map<string, FacConfirmProcessGroup>()
+    const cells = new Set<string>()
 
     confirmedProcesses.forEach((item) => {
       if (!item.confirmFnTime) {
@@ -198,21 +192,8 @@ export function useFacConfirmCellEditState({
         item.processGrp,
       )
 
-      if (!CONFIRMABLE_FIELDS.has(identity.field)) {
-        return
-      }
-
-      // Tô màu theo công đoạn đã xác nhận (ownerProcess),
-      // dữ liệu cũ không có thì theo processGrp.
-      const ownerProcess =
-        item.ownerProcess
-        && item.ownerProcess in FAC_CONFIRM_PROCESS_CONFIG
-          ? item.ownerProcess
-          : identity.processGroup
-
-      cells.set(
+      cells.add(
         getConfirmedCellKey(item.aufnr, identity.field),
-        ownerProcess,
       )
     })
 
@@ -306,12 +287,13 @@ export function useFacConfirmCellEditState({
         ].join(' ')
       }
 
-      const confirmedProcess = confirmedCells.get(
-        getConfirmedCellKey(params.row.aufnr, params.field),
-      )
-
-      if (confirmedProcess) {
-        return editedCellClasses[confirmedProcess]
+      // Ô đã xác nhận (đã lưu) => như ô thường
+      if (
+        confirmedCells.has(
+          getConfirmedCellKey(params.row.aufnr, params.field),
+        )
+      ) {
+        return ''
       }
 
       if (!activeProcess) {
@@ -326,15 +308,11 @@ export function useFacConfirmCellEditState({
         return RULE_LOCKED_CELL_CLASS
       }
 
-      // Ô trống sửa được (quy tắc + khóa Backlog qua canEditCell)
-      // => nền nhạt màu công đoạn
-      const value = params.row[params.field as keyof FacConfirmRow]
-
-      if (
-        (value == null || String(value).trim() === '')
-        && canEditCell(params.row, params.field)
-      ) {
-        return editableEmptyCellClasses[activeProcess]
+      // Dòng này thực sự sửa được ô này (quy tắc + khóa Backlog qua canEditCell)
+      // => nền nhạt màu công đoạn.
+      // Đã loại ô đang sửa và ô đã xác nhận ở trên => thực tế chỉ còn ô trống.
+      if (canEditCell(params.row, params.field)) {
+        return editableCellClasses[activeProcess]
       }
 
       return ''
