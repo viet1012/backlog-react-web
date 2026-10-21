@@ -290,3 +290,72 @@ export interface FacConfirmConfirmedProcess {
 
     updatedAt?: string | null
 }
+
+
+// =========================================================
+// DAILY SUMMARY
+//
+// need ĐÃ gồm done => còn chờ = max(0, need - done).
+// dateBy = CONFIRM: done có thể > need (không tính %).
+// =========================================================
+
+export type FacConfirmDailySaleType =
+    | 'ALL'
+    | 'SALE'
+    | 'STOCK'
+
+
+export type FacConfirmDailyDateBy =
+    | 'EXPORT'
+    | 'CONFIRM'
+
+
+export interface FacConfirmDailyCount {
+    needPo: number
+    needPcs: number
+
+    donePo: number
+    donePcs: number
+}
+
+
+export interface FacConfirmDailyStageCounts {
+    rough: FacConfirmDailyCount
+    heat: FacConfirmDailyCount
+    fine: FacConfirmDailyCount
+}
+
+
+export interface FacConfirmDailySummaryDay
+    extends FacConfirmDailyStageCounts {
+
+    // yyyy-MM-dd
+    date: string
+}
+
+
+export interface FacConfirmDailySummaryRequest {
+    division: string
+
+    // yyyy-MM-dd, tối đa 92 ngày
+    from: string
+    to: string
+
+    saleType: FacConfirmDailySaleType
+
+    heatType: FacConfirmHeatType
+
+    dateBy: FacConfirmDailyDateBy
+}
+
+
+export interface FacConfirmDailySummaryResponse {
+    from: string
+    to: string
+
+    dateBy: FacConfirmDailyDateBy
+
+    days: FacConfirmDailySummaryDay[]
+
+    total: FacConfirmDailyStageCounts
+}

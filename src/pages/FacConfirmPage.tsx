@@ -44,6 +44,10 @@ import {
 } from '../components/facConfirm/FacConfirmFilterBar'
 
 import {
+  FacConfirmDailyStats,
+} from '../components/facConfirm/FacConfirmDailyStats'
+
+import {
   GuideTour,
 } from '../components/facConfirm/guide/GuideTour'
 
@@ -304,6 +308,25 @@ export function FacConfirmPage({
 
     search,
   })
+
+
+  // Làm mới / lưu xong => panel thống kê theo ngày cũng tải lại (nếu đang mở)
+  const [
+    dailyStatsRefreshToken,
+    setDailyStatsRefreshToken,
+  ] =
+    useState(0)
+
+  const handleRefreshAll =
+    useCallback(() => {
+      handleRefresh()
+
+      setDailyStatsRefreshToken(
+        (current) => current + 1,
+      )
+    }, [
+      handleRefresh,
+    ])
 
 
   // Bảng tô màu / quyền sửa theo công đoạn của dữ liệu đang hiển thị.
@@ -912,7 +935,7 @@ export function FacConfirmPage({
                 }
 
                 onClick={
-                  handleRefresh
+                  handleRefreshAll
                 }
               />
             </Box>
@@ -959,6 +982,21 @@ export function FacConfirmPage({
           }
         />
       </Box>
+
+
+      <FacConfirmDailyStats
+        div={div}
+        expD={expD}
+        classify={apiClassify}
+        heatType={heatType}
+        procGrp={procGrp}
+        refreshToken={
+          dailyStatsRefreshToken
+        }
+        onSelectExportDate={
+          handleDateChange
+        }
+      />
 
 
       {/* Lỗi tải: dữ liệu cũ vẫn giữ trên bảng */}
@@ -1040,7 +1078,7 @@ export function FacConfirmPage({
           onColumnWidthChange={
             preferences.setColumnWidth
           }
-          onSaved={handleRefresh}
+          onSaved={handleRefreshAll}
         />
       </Box>
 

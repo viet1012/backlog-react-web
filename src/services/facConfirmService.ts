@@ -13,6 +13,8 @@ import type {
     FacConfirmConfirmedProcess,
     FacConfirmDataScope,
     FacConfirmExcelExportRequest,
+    FacConfirmDailySummaryRequest,
+    FacConfirmDailySummaryResponse,
 } from '../types/facConfirm'
 
 
@@ -349,6 +351,68 @@ export async function getFacConfirmConfirmedProcesses(
 
 
     return result as FacConfirmConfirmedProcess[]
+}
+
+
+// =========================================================
+// DAILY SUMMARY
+// =========================================================
+
+export async function getFacConfirmDailySummary(
+    request: FacConfirmDailySummaryRequest,
+    signal?: AbortSignal,
+): Promise<FacConfirmDailySummaryResponse> {
+
+    const query = new URLSearchParams({
+        division: request.division,
+        from: request.from,
+        to: request.to,
+        saleType: request.saleType,
+        heatType: request.heatType,
+        dateBy: request.dateBy,
+    })
+
+
+    const response = await fetch(
+        `${API_BASE_URL}/api/fac-confirm/daily-summary?${query.toString()}`,
+        {
+            method: 'GET',
+
+            headers: {
+                Accept: 'application/json',
+            },
+
+            signal,
+        },
+    )
+
+
+    if (!response.ok) {
+        const message =
+            await readErrorMessage(response)
+
+        throw new Error(
+            message
+            || `Fac Confirm daily summary API failed: ${response.status}`,
+        )
+    }
+
+
+    const result: FacConfirmDailySummaryResponse =
+        await response.json()
+
+
+    if (
+        !Array.isArray(result?.days)
+        || !result.total
+    ) {
+        throw new Error(
+            'Invalid Fac Confirm daily summary response',
+        )
+    }
+
+
+    return result
 }
 
 

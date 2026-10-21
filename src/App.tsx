@@ -13,6 +13,7 @@ import {
   Navigate,
   Route,
   Routes,
+  useLocation,
 } from 'react-router-dom'
 
 import { MainLayout } from './components/layout/MainLayout'
@@ -28,6 +29,7 @@ import { ExportListPage } from './pages/ExportListPage'
 import { FacConfirmPage } from './pages/FacConfirmPage'
 import { KpiPage } from './pages/KpiPage'
 import { LoginPage } from './pages/LoginPage'
+import { MachineLocatorPage } from './pages/MachineLocatorPage'
 import { UserHomePage } from './pages/UserHomePage'
 import { OdbfPage } from './pages/OdbfPage'
 import { OtPage } from './pages/OtPage'
@@ -60,6 +62,18 @@ import { getDefaultAuthRoute } from './services/authService'
 const DEFAULT_THEME_MODE:
   ThemeMode =
   'light'
+
+
+function MachineLocatorRedirect() {
+  const { hash } = useLocation()
+
+  return (
+    <Navigate
+      to={{ pathname: '/settings/machine-locator', hash }}
+      replace
+    />
+  )
+}
 
 
 function App() {
@@ -224,6 +238,26 @@ function App() {
                 <Route
                   path="ot"
                   element={<OtPage />}
+                />
+
+                {/* =========================
+                SETTING
+            ========================= */}
+
+                <Route
+                  path="settings/machine-locator"
+                  element={
+                    <MachineLocatorPage
+                      mode={mode}
+                      onToggleMode={toggleThemeMode}
+                    />
+                  }
+                />
+
+                {/* route cũ, giữ để link đã chia sẻ (kèm #mã máy) vẫn mở được */}
+                <Route
+                  path="machine-locator"
+                  element={<MachineLocatorRedirect />}
                 />
 
                 {/* =========================

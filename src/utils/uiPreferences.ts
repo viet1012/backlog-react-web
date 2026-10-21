@@ -166,3 +166,45 @@ export function saveFacConfirmPreferences(
         value,
     )
 }
+
+
+// =========================================================
+// FAC CONFIRM - THỐNG KÊ THEO NGÀY
+// =========================================================
+
+export type FacConfirmDailyStatsUnit = 'PO' | 'PCS'
+
+export type FacConfirmDailyStatsRange = 7 | 14 | 30
+
+export interface FacConfirmDailyStatsPreferences {
+    open: boolean
+    unit: FacConfirmDailyStatsUnit
+    range: FacConfirmDailyStatsRange
+    dateBy: 'EXPORT' | 'CONFIRM'
+    showTable: boolean
+}
+
+export function loadFacConfirmDailyStatsPreferences(): FacConfirmDailyStatsPreferences {
+    const stored = loadPreference('fac-confirm:daily-stats')
+    const value = isRecord(stored) ? stored : {}
+
+    return {
+        open: value.open === true,
+        unit: value.unit === 'PCS' ? 'PCS' : 'PO',
+        range:
+            value.range === 14 || value.range === 30
+                ? value.range
+                : 7,
+        dateBy: value.dateBy === 'CONFIRM' ? 'CONFIRM' : 'EXPORT',
+        showTable: value.showTable === true,
+    }
+}
+
+export function saveFacConfirmDailyStatsPreferences(
+    value: FacConfirmDailyStatsPreferences,
+): void {
+    savePreference(
+        'fac-confirm:daily-stats',
+        value,
+    )
+}

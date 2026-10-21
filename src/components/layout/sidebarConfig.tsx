@@ -21,6 +21,7 @@ import {
     SummarizeOutlined,
     PendingActionsOutlined,
     HomeOutlined,
+    MapOutlined,
 } from '@mui/icons-material'
 import type { UserRole } from '../../services/authService'
 
@@ -279,6 +280,28 @@ export const menuGroups:
                 },
             ],
         },
+
+        // =====================================================
+        // SETTING
+        // =====================================================
+
+        {
+            id: 'setting',
+            label: 'SETTING',
+
+            items: [
+                {
+                    label: 'Machine Locator',
+                    path: '/settings/machine-locator',
+                    status: 'ready',
+                    action: 'view',
+                    roles: ['ADMIN'],
+                    icon: (
+                        <MapOutlined />
+                    ),
+                },
+            ],
+        },
     ]
 
 
@@ -320,5 +343,16 @@ export const groupAccent:
 
         glow:
             'rgba(139,92,246,0.20)',
+    },
+
+    setting: {
+        light:
+            'rgba(16,185,129,0.09)',
+
+        dark:
+            'rgba(52,211,153,0.10)',
+
+        glow:
+            'rgba(16,185,129,0.20)',
     },
 }

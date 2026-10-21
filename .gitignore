@@ -23,3 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 .tmp/
+
+__pycache__/
+scripts/machine-locator/input/
+*.generated-review.csvsrc/data/machineLocator/*.bak
+src/data/machineLocator/*.tmp

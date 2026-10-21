@@ -113,7 +113,39 @@ export function LeftSidebar() {
     production: true,
     planning: true,
     management: true,
+    setting: true,
   })
+
+  // Vào trang thuộc group đang thu gọn thì tự mở group đó
+  const [
+    openedForPath,
+    setOpenedForPath,
+  ] = useState<string | null>(null)
+
+  if (openedForPath !== location.pathname) {
+    setOpenedForPath(location.pathname)
+
+    const activeGroup =
+      menuGroups.find(
+        (group) =>
+          group.items.some(
+            (item) =>
+              item.path === location.pathname,
+          ),
+      )
+
+    if (
+      activeGroup
+      && !openGroups[activeGroup.id]
+    ) {
+      setOpenGroups(
+        (current) => ({
+          ...current,
+          [activeGroup.id]: true,
+        }),
+      )
+    }
+  }
 
 
   function toggleGroup(
@@ -150,7 +182,6 @@ export function LeftSidebar() {
       {/* ===================================================
           HEADER
       =================================================== */}
-
       <Box
         sx={{
           position:
