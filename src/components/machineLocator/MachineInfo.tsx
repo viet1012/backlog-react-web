@@ -1,5 +1,7 @@
 import {
   Box,
+  FormControlLabel,
+  Switch,
   TextField,
   Typography,
 } from '@mui/material'
@@ -211,9 +213,39 @@ export function MachineInfo({ ml }: MachineInfoProps) {
         <div>
           {nb
             ? 'Kéo khung để di chuyển, kéo ô vuông ở cạnh để đổi kích thước. Phím mũi tên dịch 0,5 pt (Shift: 3 pt).'
+            + ' Giữ Alt khi thả chuột để không tự ôm; Ctrl+Z hoàn tác.'
             + (nb > 1 ? ` Đang chọn vị trí ${act + 1}/${nb}.` : '')
             : 'Máy chưa có khung. Bấm “Vẽ khung” rồi kéo trên bản vẽ.'}
         </div>
+
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.6, mt: 1 }}>
+          <FormControlLabel
+            sx={{
+              m: 0,
+              mr: 'auto',
+              '& .MuiFormControlLabel-label': { fontSize: 12.5 },
+            }}
+            control={(
+              <Switch
+                size="small"
+                checked={ml.autoFit}
+                onChange={(e) => ml.setAutoFit(e.target.checked)}
+              />
+            )}
+            label="Tự ôm khi chỉnh"
+          />
+
+          <PanelButton
+            disabled={!nb || ml.fitterState === 'error'}
+            loading={ml.fittingIdx !== null}
+            title={ml.fitterState === 'error'
+              ? 'Không tải được ảnh layout'
+              : ml.fitterState === 'loading' ? 'Đang chuẩn bị ảnh layout…' : 'Phím tắt F'}
+            onClick={ml.fitCurrent}
+          >
+            Ôm theo máy (F)
+          </PanelButton>
+        </Box>
 
         <Actions>
           <PanelButton onClick={() => ml.beginDraw(nb ? 'replace' : 'add')}>

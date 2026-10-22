@@ -153,12 +153,6 @@ function toPoint(
 }
 
 
-// Chiều cao cột sparkline: ở CONFIRM done có thể > need
-function stackOf(point: DailyPoint): number {
-  return point.done + point.pending
-}
-
-
 function toSaleType(
   classify: FacConfirmClassify | undefined,
 ): FacConfirmDailySaleType {
@@ -264,7 +258,8 @@ export function FacConfirmDailyStats({
     saleType: toSaleType(classify),
     heatType,
     dateBy: prefs.dateBy,
-    enabled: prefs.open && validDate,
+    // Gọi ngay khi đủ filter (song song với API 3 thẻ), dù mở hay thu gọn
+    enabled: validDate,
     refreshToken,
   })
 
@@ -334,43 +329,14 @@ export function FacConfirmDailyStats({
 
   if (summary.error) {
     body = (
-      <Box
-        role="alert"
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
-          minWidth: 0,
-          color: 'error.main',
-        }}
-      >
-        <ErrorOutlineRoundedIcon sx={{ fontSize: 18, flexShrink: 0 }} />
-
-        <Typography
-          variant="body2"
-          noWrap
-          title={summary.error}
-          sx={{ flex: 1, minWidth: 0 }}
-        >
-          {summary.error}
-        </Typography>
-
-        <Button
-          size="small"
-          color="inherit"
-          onClick={summary.retry}
-          sx={{ flexShrink: 0 }}
-        >
-          Thử lại
-        </Button>
-      </Box>
+      <ErrorLine
+        message={summary.error}
+        onRetry={summary.retry}
+      />
     )
   } else if (!data) {
     body = (
-      <Skeleton
-        variant="rounded"
-        height={TILE_HEIGHT}
-      />
+      <TilesSkeleton count={prefs.range} />
     )
   } else if (points.length === 0) {
     body = (
@@ -389,7 +355,7 @@ export function FacConfirmDailyStats({
     )
   } else if (prefs.showTable) {
     body = (
-      <Box sx={{ opacity: summary.stale ? 0.55 : 1 }}>
+      <Box sx={{ opacity: summary.stale ? 0.6 : 1 }}>
         <DailyTable
           points={points}
           unitLabel={unitLabel}
@@ -402,7 +368,7 @@ export function FacConfirmDailyStats({
     body = (
       <Box
         sx={{
-          opacity: summary.stale ? 0.55 : 1,
+          opacity: summary.stale ? 0.6 : 1,
           transition: 'opacity 150ms',
         }}
       >
@@ -602,7 +568,7 @@ export function FacConfirmDailyStats({
                       // Hết chỗ thì bỏ
                       display: { xs: 'none', xl: 'block' },
                       whiteSpace: 'nowrap',
-                      opacity: summary.stale ? 0.55 : 1,
+                      opacity: summary.stale ? 0.6 : 1,
                     }}
                   >
                     Tồn nhiều nhất{' '}
@@ -634,55 +600,46 @@ export function FacConfirmDailyStats({
               Bảng
             </ToggleButton>
           </>
+        ) : summary.error ? (
+          <ErrorLine
+            message={summary.error}
+            onRetry={summary.retry}
+          />
         ) : data ? (
+          // Thu gọn: dòng tổng của công đoạn đang chọn
           <Box
             sx={{
               display: 'flex',
               alignItems: 'center',
-              gap: 2,
+              gap: 1,
               minWidth: 0,
               overflow: 'hidden',
-              opacity: summary.stale ? 0.55 : 1,
             }}
           >
-            {STAGES.map((item) => {
-              const stageTotal = totalsByStage[item]
+            <Typography
+              variant="caption"
+              sx={{
+                fontWeight: 600,
+                color: 'text.secondary',
+                flexShrink: 0,
+              }}
+            >
+              {stage}
+            </Typography>
 
-              return (
-                <Box
-                  key={item}
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 0.75,
-                    flexShrink: 0,
-                  }}
-                >
-                  <Typography variant="caption" color="text.secondary">
-                    {item}
-                  </Typography>
-
-                  <Sparkline
-                    points={pointsByStage[item]}
-                    doneColor={colors.done}
-                  />
-
-                  <Typography
-                    variant="caption"
-                    sx={{ fontWeight: 600, minWidth: 30 }}
-                  >
-                    {stageTotal.pct == null
-                      ? `đã ${formatNumber(stageTotal.done)}`
-                      : `${stageTotal.pct}%`}
-                  </Typography>
-                </Box>
-              )
-            })}
+            <TotalSummary
+              total={total}
+              unitLabel={unitLabel}
+              colors={colors}
+              stale={summary.stale}
+            />
           </Box>
         ) : (
-          <Typography variant="caption" color="text.secondary" noWrap>
-            Bấm để xem số liệu xác nhận theo từng ngày
-          </Typography>
+          <Skeleton
+            variant="rounded"
+            width={320}
+            height={20}
+          />
         )}
       </Box>
 
@@ -771,7 +728,7 @@ function TotalSummary({
         rowGap: 0.25,
         fontSize: 12.5,
         color: 'text.secondary',
-        opacity: stale ? 0.55 : 1,
+        opacity: stale ? 0.6 : 1,
         '& strong': { fontWeight: 700 },
       }}
     >
@@ -1045,49 +1002,89 @@ function DayTile({
 
 
 // =========================================================
-// SPARKLINE (thu gọn)
+// SKELETON LẦN TẢI ĐẦU (đúng chiều cao hàng ô => không nhảy layout)
 // =========================================================
 
-function Sparkline({
-  points,
-  doneColor,
-}: {
-  points: DailyPoint[]
-  doneColor: string
-}) {
-  const max = Math.max(0, ...points.map(stackOf))
+function TilesSkeleton({ count }: { count: number }) {
+  return (
+    <Box aria-hidden>
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns:
+            `repeat(${count}, minmax(${TILE_MIN_WIDTH}px, 1fr))`,
+          gap: `${TILE_GAP}px`,
+          overflowX: 'hidden',
+        }}
+      >
+        {Array.from({ length: count }, (_, index) => (
+          <Skeleton
+            key={index}
+            variant="rounded"
+            height={TILE_HEIGHT}
+          />
+        ))}
+      </Box>
 
+      <Skeleton
+        variant="text"
+        width={360}
+        sx={{ mt: 0.5, fontSize: 11.5 }}
+      />
+    </Box>
+  )
+}
+
+
+// =========================================================
+// LỖI (1 dòng nhỏ, không ảnh hưởng thẻ / bảng chính)
+// =========================================================
+
+function ErrorLine({
+  message,
+  onRetry,
+}: {
+  message: string
+  onRetry: () => void
+}) {
   return (
     <Box
-      aria-hidden
+      role="alert"
+      title={message}
       sx={{
         display: 'flex',
-        alignItems: 'flex-end',
-        gap: '1px',
-        width: Math.min(90, Math.max(points.length, 1) * 8),
-        height: 16,
+        alignItems: 'center',
+        gap: 0.5,
+        minWidth: 0,
+        fontSize: 12,
+        color: 'error.main',
       }}
     >
-      {points.map((point) => (
-        <Box
-          key={point.date}
-          sx={{
-            flex: '1 1 0',
-            minHeight: 1,
-            height: max > 0
-              ? `${(stackOf(point) / max) * 100}%`
-              : 0,
-            display: 'flex',
-            flexDirection: 'column',
-            borderRadius: '1px',
-            overflow: 'hidden',
-            bgcolor: 'action.hover',
-          }}
-        >
-          <Box sx={{ flexGrow: point.pending, bgcolor: '#f59e0b' }} />
-          <Box sx={{ flexGrow: point.done, bgcolor: doneColor }} />
-        </Box>
-      ))}
+      <ErrorOutlineRoundedIcon sx={{ fontSize: 16, flexShrink: 0 }} />
+
+      <Box component="span" sx={{ whiteSpace: 'nowrap' }}>
+        Không tải được thống kê –
+      </Box>
+
+      <Button
+        size="small"
+        color="inherit"
+        onClick={(event) => {
+          // Không để click lan lên hàng đầu (đang thu gọn => mở panel)
+          event.stopPropagation()
+          onRetry()
+        }}
+        sx={{
+          minWidth: 0,
+          px: 0.5,
+          py: 0,
+          fontSize: 12,
+          textTransform: 'none',
+          textDecoration: 'underline',
+        }}
+      >
+        Thử lại
+      </Button>
     </Box>
   )
 }

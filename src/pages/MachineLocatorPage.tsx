@@ -27,6 +27,7 @@ import { GlassPanel } from '../components/common/GlassPanel'
 import { PageHeader } from '../components/common/PageHeader'
 import { PageShell } from '../components/common/PageShell'
 import { EditToolbar } from '../components/machineLocator/EditToolbar'
+import { FitToastBar } from '../components/machineLocator/FitToastBar'
 import { MachineDataFooter } from '../components/machineLocator/MachineDataFooter'
 import { MachineInfo } from '../components/machineLocator/MachineInfo'
 import {
@@ -241,7 +242,7 @@ function MachineLocatorView({
   const nLoc = codes.reduce((a, c) => a + ml.machines[c].boxes.length, 0)
   const nMan = codes.filter((c) => ml.machines[c].manual).length
 
-  const dirtyCode = ml.draft?.dirty ? ml.draft.code : null
+  const dirtyCode = ml.dirtyLabel
 
   useEffect(() => {
     onDirtyChange(dirtyCode)
@@ -270,6 +271,8 @@ function MachineLocatorView({
   const onActivate = useStableCallback(ml.setAct)
   const onBoxChange = useStableCallback(ml.updateBox)
   const onDrawComplete = useStableCallback(ml.completeDraw)
+  const onGestureStart = useStableCallback(ml.beginBoxGesture)
+  const onGestureEnd = useStableCallback(ml.endBoxGesture)
   const onSelectFromList = useStableCallback((c: string) => ml.select(c))
   const onStartNew = useStableCallback(ml.startNew)
 
@@ -318,7 +321,13 @@ function MachineLocatorView({
         onActivate={onActivate}
         onBoxChange={onBoxChange}
         onDrawComplete={onDrawComplete}
+        onGestureStart={onGestureStart}
+        onGestureEnd={onGestureEnd}
+        fittingIdx={ml.fittingIdx}
+        warnIdx={ml.warnIdx}
       />
+
+      <FitToastBar ml={ml} />
 
       <Box
         component="aside"

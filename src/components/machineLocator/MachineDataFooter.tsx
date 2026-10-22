@@ -5,6 +5,7 @@ import {
 import { useRef } from 'react'
 
 import type { MachineLocatorState } from '../../hooks/useMachineLocator'
+import { FitBatchPanel } from './FitBatchPanel'
 import { PanelButton } from './MachineInfo'
 
 interface MachineDataFooterProps {
@@ -53,6 +54,8 @@ export function MachineDataFooter({ ml }: MachineDataFooterProps) {
       >
         {note}
       </Typography>
+
+      {ml.canWrite && ml.editing && <FitBatchPanel ml={ml} />}
 
       {ml.canWrite && ml.browserEditCount > 0 && (
         <Box

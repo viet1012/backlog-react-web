@@ -19,19 +19,34 @@ import type {
   Bounds,
   Box,
   DrawMode,
+  FitBatch,
+  FitBatchRow,
+  FitToast,
   LayoutData,
   MachineDraft,
   MachineEdits,
   MachineLayoutConfig,
   PanelMode,
+  RawBox,
   StatusKind,
   StatusMessage,
 } from '../types/machineLocator'
+import {
+  FIT_REVIEW_SHIFT,
+  fitShift,
+  type FitResult,
+} from '../utils/machineLocatorFit'
+import {
+  MachineFitter,
+  type FitOutcome,
+  type FitterState,
+} from '../utils/machineLocatorFitClient'
 import {
   ALL_GROUPS_VISIBLE,
   boundsOf,
   buildBaseBoxes,
   buildEffectiveMachines,
+  compareCodes,
   editBody,
   sameBoxes,
   type GroupVisibility,
@@ -61,17 +76,55 @@ interface SelectOptions {
   keepView?: boolean
   // dùng khi vừa bật chế độ sửa trong cùng thao tác (state chưa cập nhật)
   editing?: boolean
+  // ép zoom tới máy (bỏ qua tuỳ chọn "Zoom tới máy khi chọn")
+  zoom?: boolean
+}
+
+// 1 bước hoàn tác: bản nháp ngay trước khi kéo / ôm / sửa
+interface UndoEntry {
+  id: number
+  code: string
+  boxes: Box[]
+  act: number
+  dirty: boolean
+}
+
+// yêu cầu ôm 1 khung của bản nháp; from = khung lúc yêu cầu (khung vừa thả)
+interface FitRequest {
+  code: string
+  i: number
+  from: Box
+  // bấm nút / phím F (không phải tự ôm sau khi thả)
+  manual: boolean
 }
 
 const PREF_ZOOM_ON_SELECT = 'machine-locator:zoomOnSelect'
 const PREF_DIM_BACKGROUND = 'machine-locator:dimBackground'
 const PREF_CAD_OUTLINE = 'machine-locator:cadOutline'
+const PREF_AUTO_FIT = 'machine-locator:autoFit'
+
+// chờ sau khi thả chuột rồi mới ôm (thả rồi kéo tiếp ngay thì không tính)
+const FIT_DEBOUNCE = 150
+const UNDO_LIMIT = 50
+// các lần dịch bằng phím mũi tên liền nhau gộp thành 1 bước hoàn tác
+const NUDGE_MERGE_MS = 800
 
 const EMPTY_STATUS: StatusMessage = { t: '', k: '' }
+const NO_INDEXES: number[] = []
 
 function cloneBoxes(boxes: Box[]): Box[] {
   return boxes.map((b) => ({ ...b }))
 }
+
+function toRawBox(b: Box): RawBox {
+  return [b.x, b.y, b.w, b.h]
+}
+
+function sameRect(a: Box, b: Box): boolean {
+  return a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h
+}
+
+const FIT_STATUS_ORDER: Record<FitBatchRow['status'], number> = { review: 0, miss: 1, fit: 2 }
 
 export function useMachineLocator(
   layout: MachineLayoutConfig,
@@ -105,9 +158,13 @@ export function useMachineLocator(
     () => loadPreference(PREF_DIM_BACKGROUND) !== false,
   )
 
+  // ôm hàng loạt: tiến độ, bảng kết quả, khung chờ lưu
+  const [batch, setBatch] = useState<FitBatch | null>(null)
+  const pending = batch?.pending
+
   const machines = useMemo(
-    () => buildEffectiveMachines(data, base, edits, draft),
-    [data, base, edits, draft],
+    () => buildEffectiveMachines(data, base, edits, draft, pending),
+    [data, base, edits, draft, pending],
   )
 
   function setStatus(t: string, k: StatusKind = '') {
@@ -152,11 +209,17 @@ export function useMachineLocator(
     return buildEffectiveMachines(state.data, buildBaseBoxes(state.data), state.edits, null)
   }
 
-  // Bản nháp sạch dựng từ dữ liệu đã lưu (không tính bản nháp hiện tại)
-  function freshDraft(code: string, state: MachineStoreState): MachineDraft {
+  // Bản nháp sạch dựng từ dữ liệu đã lưu (không tính bản nháp hiện tại);
+  // máy có kết quả ôm hàng loạt chờ lưu thì lấy khung đó
+  function freshDraft(
+    code: string,
+    state: MachineStoreState,
+    waiting: Record<string, Box[]> | undefined = pending,
+  ): MachineDraft {
     const m = savedMachines(state)[code]
+    const boxes = (m && waiting?.[code]) || m?.boxes
 
-    return { code, boxes: m ? cloneBoxes(m.boxes) : [], dirty: false, isNew: !m }
+    return { code, boxes: boxes ? cloneBoxes(boxes) : [], dirty: false, isNew: !m }
   }
 
   function setStore(state: MachineStoreState) {
@@ -165,14 +228,384 @@ export function useMachineLocator(
   }
 
   // Nhận trạng thái mới từ store; bản nháp chưa sửa thì dựng lại theo dữ liệu mới
-  function applyStore(state: MachineStoreState) {
+  function applyStore(
+    state: MachineStoreState,
+    waiting: Record<string, Box[]> | undefined = pending,
+  ) {
     setStore(state)
     setDraft((d) =>
       d && !d.dirty
-        ? (editing && cur === d.code ? freshDraft(d.code, state) : null)
+        ? (editing && cur === d.code ? freshDraft(d.code, state, waiting) : null)
         : d,
     )
   }
+
+  // Bỏ kết quả ôm hàng loạt chờ lưu của 1 máy; trả về phần còn lại
+  function dropPending(code: string): Record<string, Box[]> | undefined {
+    if (!pending?.[code]) return pending
+
+    const rest = { ...pending }
+
+    delete rest[code]
+    setBatch((b) => b && { ...b, pending: rest })
+
+    return rest
+  }
+
+  // =======================================================
+  // ÔM KHUNG THEO ẢNH (tính trong worker, không chặn UI)
+  // =======================================================
+
+  // Tự ôm sau khi thả chuột; mặc định bật
+  const [autoFit, setAutoFitState] = useState(
+    () => loadPreference(PREF_AUTO_FIT) !== false,
+  )
+  const fitter = useRef<MachineFitter | null>(null)
+  const [fitterState, setFitterState] = useState<FitterState>('loading')
+  // khung đang chờ kết quả ôm (viền nhấp nháy)
+  const [fitting, setFitting] = useState<{ code: string, i: number } | null>(null)
+  // khung đổi nhiều sau khi ôm (viền cam)
+  const [fitWarn, setFitWarn] = useState<{ code: string, idx: number[] }>({ code: '', idx: [] })
+  const [fitToast, setFitToast] = useState<FitToast | null>(null)
+
+  const fitTimer = useRef(0)
+  const fitSeq = useRef(0)
+  const toastSeq = useRef(0)
+  const batchStop = useRef(false)
+
+  // bản nháp / khung đang chọn mới nhất cho callback bất đồng bộ (kết quả worker)
+  const live = useRef({ draft, act })
+
+  useEffect(() => {
+    live.current = { draft, act }
+  })
+
+  // Ảnh + mặt nạ nét: tạo 1 lần cho layout này (view được dựng lại khi đổi tab xưởng)
+  useEffect(() => {
+    if (!canWrite) return
+
+    const f = new MachineFitter(layout.image)
+    const timer = fitTimer
+
+    fitter.current = f
+    f.ready.then(() => setFitterState('ready'), () => setFitterState('error'))
+
+    return () => {
+      batchStop.current = true
+      window.clearTimeout(timer.current)
+      f.dispose()
+      if (fitter.current === f) fitter.current = null
+    }
+  }, [layout.image, canWrite])
+
+  function setAutoFit(on: boolean) {
+    setAutoFitState(on)
+    savePreference(PREF_AUTO_FIT, on)
+  }
+
+  function showToast(text: string, kind: FitToast['kind'], undoId?: number) {
+    setFitToast({ id: ++toastSeq.current, text, kind, undoId })
+  }
+
+  function closeFitToast() {
+    setFitToast(null)
+  }
+
+  function markWarn(code: string, i: number, on: boolean) {
+    setFitWarn((w) => {
+      const idx = w.code === code ? w.idx.filter((k) => k !== i) : []
+
+      return { code, idx: on ? [...idx, i] : idx }
+    })
+  }
+
+  // Huỷ lần ôm đang chờ / đang chạy (người dùng kéo tiếp, hoàn tác…)
+  function cancelFit() {
+    window.clearTimeout(fitTimer.current)
+    fitSeq.current++
+    fitter.current?.cancel('single')
+    setFitting(null)
+  }
+
+  function requestFit(req: FitRequest, delay = FIT_DEBOUNCE) {
+    const f = fitter.current
+
+    cancelFit()
+
+    if (!f) return
+
+    if (f.status === 'error') {
+      showToast('Chưa tải được ảnh layout – không ôm được khung.', 'info')
+      return
+    }
+
+    const token = fitSeq.current
+    const { crop, ppp } = data
+
+    setFitting({ code: req.code, i: req.i })
+
+    fitTimer.current = window.setTimeout(() => {
+      f.fit('single', toRawBox(req.from), crop, ppp).then(
+        (o) => {
+          if (token !== fitSeq.current) return
+          setFitting(null)
+          if (!o.cancelled) applyFit(req, o.r)
+        },
+        (e: unknown) => {
+          if (token !== fitSeq.current) return
+          setFitting(null)
+          showToast(`Không ôm được khung: ${e instanceof Error ? e.message : e}`, 'info')
+        },
+      )
+    }, delay)
+  }
+
+  function applyFit(req: FitRequest, r: FitResult | null) {
+    const { draft: d, act: a } = live.current
+    const b = d && d.code === req.code ? d.boxes[req.i] : undefined
+
+    // khung đã đổi tiếp sau khi thả -> bỏ kết quả
+    if (!d || !b || !sameRect(b, req.from)) return
+
+    if (!r) {
+      // khung giữ như thả (kéo / vẽ đã đặt p = null)
+      showToast(
+        req.manual
+          ? 'Không nhận ra hình máy – giữ nguyên khung'
+          : 'Không nhận ra hình máy – giữ khung chữ nhật',
+        'info',
+      )
+      return
+    }
+
+    const shift = fitShift(toRawBox(req.from), r.b)
+    const big = shift > FIT_REVIEW_SHIFT
+    const undoId = pushUndo(d, a)
+    const boxes = d.boxes.slice()
+
+    boxes[req.i] = { x: r.b[0], y: r.b[1], w: r.b[2], h: r.b[3], p: r.p }
+    setDraft({ ...d, boxes, dirty: true })
+    markWarn(d.code, req.i, big)
+    showToast(
+      big ? `Khung đổi nhiều (${Math.round(shift)} pt) – kiểm tra lại` : 'Đã ôm theo máy',
+      big ? 'warning' : 'success',
+      undoId,
+    )
+  }
+
+  // Nút "Ôm theo máy" / phím F: ôm khung đang chọn ngay (dùng cả khi tắt tự ôm)
+  function fitCurrent() {
+    const b = draft?.boxes[act]
+
+    if (!draft || !b) return
+
+    requestFit({ code: draft.code, i: act, from: b, manual: true }, 0)
+  }
+
+  // =======================================================
+  // HOÀN TÁC (Ctrl+Z, chỉ trong phiên sửa)
+  // =======================================================
+
+  const undoStack = useRef<UndoEntry[]>([])
+  const undoSeq = useRef(0)
+  const lastNudge = useRef({ id: 0, t: 0 })
+
+  function pushUndo(d: MachineDraft, a: number): number {
+    const id = ++undoSeq.current
+    const s = undoStack.current
+
+    s.push({ id, code: d.code, boxes: cloneBoxes(d.boxes), act: a, dirty: d.dirty })
+    if (s.length > UNDO_LIMIT) s.shift()
+
+    return id
+  }
+
+  function clearUndo() {
+    undoStack.current = []
+  }
+
+  // id: chỉ hoàn tác khi bước trên cùng đúng là id (nút "Hoàn tác" của toast)
+  function undo(id?: number) {
+    const s = undoStack.current
+
+    // bỏ các bước của máy khác (đã chọn máy khác sau đó)
+    while (s.length && s[s.length - 1].code !== draft?.code) s.pop()
+
+    const top = s[s.length - 1]
+
+    if (!draft || !top || (id !== undefined && top.id !== id)) return
+
+    s.pop()
+    cancelFit()
+    setDraft({ ...draft, boxes: top.boxes, dirty: top.dirty })
+    setAct(Math.max(0, Math.min(top.act, top.boxes.length - 1)))
+    setFitWarn({ code: '', idx: [] })
+    setFitToast(null)
+  }
+
+  // MapCanvas: bắt đầu kéo / resize khung (trước lần updateBox đầu tiên)
+  function beginBoxGesture() {
+    cancelFit()
+    if (draft) pushUndo(draft, act)
+  }
+
+  // MapCanvas: thả chuột sau khi kéo / resize; alt: không tự ôm lần này
+  function endBoxGesture(i: number, box: Box, alt: boolean) {
+    if (autoFit && !alt && draft) requestFit({ code: draft.code, i, from: box, manual: false })
+  }
+
+  // =======================================================
+  // ÔM HÀNG LOẠT (khung chưa có đường bao)
+  // =======================================================
+
+  async function runFitBatch() {
+    const f = fitter.current
+
+    if (!f || batch?.running) return
+
+    if (draft && draft.dirty) {
+      setStatus(`Lưu hoặc hủy thay đổi của ${draft.code} trước khi ôm hàng loạt.`, 'err')
+      return
+    }
+
+    const src = buildEffectiveMachines(data, base, edits, null, pending)
+    const jobs: { code: string, i: number, b: Box }[] = []
+
+    for (const code of Object.keys(src).sort(compareCodes)) {
+      src[code].boxes.forEach((b, i) => {
+        if (!b.p) jobs.push({ code, i, b })
+      })
+    }
+
+    if (!jobs.length) {
+      setStatus('Mọi khung đều đã có đường bao.', 'ok')
+      return
+    }
+
+    const { crop, ppp } = data
+    const waiting: Record<string, Box[]> = { ...pending }
+    const rows: FitBatchRow[] = []
+
+    batchStop.current = false
+    cancelFit()
+    setBatch({ running: true, done: 0, total: jobs.length, rows: [], pending: waiting })
+    setStatus(`Đang ôm ${jobs.length} khung…`)
+
+    let error = ''
+
+    for (const job of jobs) {
+      if (batchStop.current) break
+
+      let o: FitOutcome
+
+      try {
+        o = await f.fit('batch', toRawBox(job.b), crop, ppp)
+      } catch (e) {
+        error = e instanceof Error ? e.message : String(e)
+        break
+      }
+
+      if (o.cancelled || batchStop.current) break
+
+      const n = src[job.code].boxes.length
+      const r = o.r
+
+      if (r) {
+        const shift = fitShift(toRawBox(job.b), r.b)
+        const boxes = (waiting[job.code] ?? src[job.code].boxes).slice()
+
+        boxes[job.i] = { x: r.b[0], y: r.b[1], w: r.b[2], h: r.b[3], p: r.p }
+        waiting[job.code] = boxes
+        rows.push({ code: job.code, i: job.i, n, shift, status: shift > FIT_REVIEW_SHIFT ? 'review' : 'fit' })
+
+        // máy đang chọn (bản nháp chưa sửa) hiện luôn kết quả
+        setDraft((d) => (d && !d.dirty && d.code === job.code ? { ...d, boxes: cloneBoxes(boxes) } : d))
+      } else {
+        rows.push({ code: job.code, i: job.i, n, shift: null, status: 'miss' })
+      }
+
+      const snapshot = rows.slice()
+      const done = rows.length
+      const fitted = r ? { [job.code]: waiting[job.code] } : {}
+
+      setBatch((b) => b && { ...b, done, rows: snapshot, pending: { ...b.pending, ...fitted } })
+    }
+
+    if (batchStop.current && !rows.length) return
+
+    rows.sort((a, b) =>
+      FIT_STATUS_ORDER[a.status] - FIT_STATUS_ORDER[b.status] || compareCodes(a.code, b.code) || a.i - b.i)
+
+    setBatch((b) => b && { ...b, running: false, rows })
+
+    const nFit = rows.filter((x) => x.status !== 'miss').length
+    const nReview = rows.filter((x) => x.status === 'review').length
+
+    if (error) {
+      setStatus(`Dừng ôm hàng loạt: ${error}`, 'err')
+    } else {
+      setStatus(
+        `Đã ôm ${nFit}/${rows.length} khung`
+        + (nReview ? `, ${nReview} khung cần soát` : '')
+        + (rows.length - nFit ? `, ${rows.length - nFit} không nhận ra` : '')
+        + '. Bấm “Lưu kết quả” để ghi.',
+        'ok',
+      )
+    }
+  }
+
+  function stopFitBatch() {
+    batchStop.current = true
+    fitter.current?.cancel('batch')
+    setBatch((b) => b && { ...b, running: false })
+  }
+
+  // Bỏ kết quả chờ lưu, đóng bảng kết quả
+  function discardFitBatch() {
+    stopFitBatch()
+    setBatch(null)
+    setDraft((d) => (d && !d.dirty ? freshDraft(d.code, current, undefined) : d))
+  }
+
+  async function saveFitBatch() {
+    if (!batch || batch.running) return
+
+    if (draft && draft.dirty) {
+      setStatus(`Lưu hoặc hủy thay đổi của ${draft.code} trước.`, 'err')
+      return
+    }
+
+    const entries = Object.entries(batch.pending)
+
+    if (!entries.length) return
+
+    const left = { ...batch.pending }
+    let next: MachineStoreState | null = null
+
+    setStatus(`Đang lưu ${entries.length} máy…`)
+
+    try {
+      for (const [c, boxes] of entries) {
+        next = await setMachineEdit(layout, c, { ...editBody(boxes), keepStatus: true })
+        delete left[c]
+      }
+
+      setStatus(`Đã lưu khung đã ôm của ${entries.length} máy.`, 'ok')
+    } catch (e) {
+      setStatus(machineStoreErrorMessage(e), 'err')
+    }
+
+    setBatch((b) => b && { ...b, pending: left })
+    if (next) applyStore(next, left)
+  }
+
+  const pendingFitCount = Object.keys(pending ?? {}).length
+
+  // số khung chưa có đường bao (nút ôm hàng loạt)
+  const unfittedCount = useMemo(
+    () => Object.values(machines).reduce((n, m) => n + m.boxes.filter((b) => !b.p).length, 0),
+    [machines],
+  )
 
   // =======================================================
   // LOAD
@@ -240,7 +673,7 @@ export function useMachineLocator(
       setReveal((r) => ({
         id: (r?.id ?? 0) + 1,
         bounds: boundsOf(m.boxes),
-        zoom: zoomOnSelect,
+        zoom: options.zoom ?? zoomOnSelect,
         pulse: !isEditing,
       }))
     }
@@ -291,6 +724,17 @@ export function useMachineLocator(
     if (!on && draft && draft.dirty) {
       setStatus(`Lưu hoặc hủy thay đổi của ${draft.code} trước khi thoát.`, 'err')
       return
+    }
+
+    if (!on && (batch?.running || pendingFitCount)) {
+      setStatus('Lưu hoặc bỏ kết quả ôm hàng loạt trước khi thoát.', 'err')
+      return
+    }
+
+    if (!on) {
+      cancelFit()
+      clearUndo()
+      setBatch(null)
     }
 
     setEditingState(on)
@@ -361,37 +805,48 @@ export function useMachineLocator(
 
       return { ...d, boxes, dirty: true }
     })
+    setFitWarn((w) => (w.idx.includes(i) ? { ...w, idx: w.idx.filter((k) => k !== i) } : w))
   }
 
-  function completeDraw(box: Box) {
+  // alt: không tự ôm lần này
+  function completeDraw(box: Box, alt = false) {
     if (!draft) return
+
+    cancelFit()
+    pushUndo(draft, act)
 
     const boxes = draft.boxes.slice()
     const drawn = { ...box, p: null }
+    const i = drawMode === 'replace' ? act : boxes.length
 
-    if (drawMode === 'replace') {
-      boxes[act] = drawn
-    } else {
-      boxes.push(drawn)
-      setAct(boxes.length - 1)
-    }
+    boxes[i] = drawn
+    if (i !== act) setAct(i)
 
     setDraft({ ...draft, boxes, dirty: true })
     setDrawMode(null)
+    setFitWarn((w) => (w.idx.includes(i) ? { ...w, idx: w.idx.filter((k) => k !== i) } : w))
+
+    if (autoFit && !alt) requestFit({ code: draft.code, i, from: drawn, manual: false })
   }
 
   function removeLocation() {
     if (!draft) return
 
+    cancelFit()
+    pushUndo(draft, act)
     setDraft({ ...draft, boxes: draft.boxes.filter((_, i) => i !== act), dirty: true })
     setAct(0)
+    setFitWarn({ code: '', idx: [] })
   }
 
   function revertAuto() {
     if (!draft || !cur || !base[cur]) return
 
+    cancelFit()
+    pushUndo(draft, act)
     setDraft({ ...draft, boxes: cloneBoxes(base[cur]), dirty: true, revert: true })
     setAct(0)
+    setFitWarn({ code: '', idx: [] })
   }
 
   function cancel() {
@@ -401,9 +856,15 @@ export function useMachineLocator(
     const m = buildEffectiveMachines(data, base, edits, null)[c]
 
     setDrawMode(null)
+    cancelFit()
+    clearUndo()
+    setFitWarn({ code: '', idx: [] })
+
+    // Hủy thay đổi của máy này cũng bỏ kết quả ôm hàng loạt chờ lưu của nó
+    const rest = dropPending(c)
 
     if (m) {
-      setDraft(freshDraft(c, current))
+      setDraft(freshDraft(c, current, rest))
     } else {
       setDraft(null)
       setCur(null)
@@ -431,6 +892,11 @@ export function useMachineLocator(
 
       setStore(next)
       setDraft((d) => (d && d.code === c ? { ...d, dirty: false, revert: false } : d))
+      dropPending(c)
+      // sau khi lưu, hoàn tác về bước cũ là thay đổi chưa lưu
+      undoStack.current.forEach((u) => {
+        u.dirty = true
+      })
       setStatus(`Đã lưu ${c}.`, 'ok')
     } catch (e) {
       setStatus(machineStoreErrorMessage(e), 'err')
@@ -571,6 +1037,11 @@ export function useMachineLocator(
       return false
     }
 
+    if (batch?.running || pendingFitCount) {
+      setStatus('Lưu hoặc bỏ kết quả ôm hàng loạt trước khi nhập.', 'err')
+      return false
+    }
+
     return true
   }
 
@@ -620,6 +1091,11 @@ export function useMachineLocator(
       return
     }
 
+    if (batch?.running || pendingFitCount) {
+      setStatus('Lưu hoặc bỏ kết quả ôm hàng loạt trước khi ghi.', 'err')
+      return
+    }
+
     setStatus('Đang ghi các chỉnh sửa trong trình duyệt vào file…')
 
     try {
@@ -652,7 +1128,23 @@ export function useMachineLocator(
         return
       }
 
-      if (!editing || !draft || !draft.boxes[act] || tag === 'INPUT' || tag === 'TEXTAREA') return
+      if (!editing || !draft || tag === 'INPUT' || tag === 'TEXTAREA') return
+
+      // Ctrl+Z: hoàn tác lần ôm / kéo gần nhất
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'z') {
+        e.preventDefault()
+        undo()
+        return
+      }
+
+      if (!draft.boxes[act]) return
+
+      // F: ôm khung đang chọn theo máy
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault()
+        fitCurrent()
+        return
+      }
 
       const st = e.shiftKey ? 3 : 0.5
       const delta = ({
@@ -665,6 +1157,15 @@ export function useMachineLocator(
       if (!delta) return
 
       e.preventDefault()
+      cancelFit()
+
+      // các lần dịch liền nhau = 1 bước hoàn tác
+      const now = Date.now()
+
+      if (undoStack.current.at(-1)?.id !== lastNudge.current.id || now - lastNudge.current.t > NUDGE_MERGE_MS) {
+        lastNudge.current.id = pushUndo(draft, act)
+      }
+      lastNudge.current.t = now
 
       const b = draft.boxes[act]
 
@@ -714,6 +1215,31 @@ export function useMachineLocator(
     zoomOnSelect,
     dimBackground,
     cadOutline,
+
+    // ôm khung theo ảnh
+    autoFit,
+    fitterState,
+    fittingIdx: fitting && draft && fitting.code === draft.code ? fitting.i : null,
+    warnIdx: draft && fitWarn.code === draft.code && fitWarn.idx.length ? fitWarn.idx : NO_INDEXES,
+    fitToast,
+    batch,
+    pendingFitCount,
+    unfittedCount,
+    // thay đổi chưa lưu (cho hộp hỏi khi chuyển tab xưởng)
+    dirtyLabel: draft?.dirty
+      ? draft.code
+      : pendingFitCount ? `${pendingFitCount} máy vừa ôm hàng loạt` : null,
+    setAutoFit,
+    fitCurrent,
+    undo,
+    closeFitToast,
+    beginBoxGesture,
+    endBoxGesture,
+    runFitBatch,
+    stopFitBatch,
+    discardFitBatch,
+    saveFitBatch,
+    focusMachine: (c: string) => select(c, { zoom: true }),
 
     setQuery,
     setReviewOnly,

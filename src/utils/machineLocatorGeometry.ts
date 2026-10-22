@@ -146,12 +146,13 @@ export function sameOutlines(a: Box[], b: Box[]): boolean {
     && a.every((x, i) => JSON.stringify(x.p ?? null) === JSON.stringify(b[i].p ?? null))
 }
 
-// Danh sách máy hiệu lực = khung tự động + chỉnh tay + bản nháp đang sửa
+// Danh sách máy hiệu lực = khung tự động + chỉnh tay + kết quả ôm hàng loạt chờ lưu + bản nháp đang sửa
 export function buildEffectiveMachines(
   data: LayoutData,
   base: Record<string, Box[]>,
   edits: MachineEdits,
   draft: MachineDraft | null,
+  pending?: Record<string, Box[]>,
 ): MachineMap {
   const out: MachineMap = {}
 
@@ -174,13 +175,20 @@ export function buildEffectiveMachines(
     }
 
     if (Array.isArray(e.boxes) && e.boxes.length) {
+      // keepStatus: khung chỉ được ôm lại theo ảnh, trạng thái máy giữ như dữ liệu gốc
+      const raw = e.keepStatus ? data.m[c] : undefined
+
       out[c] = {
         boxes: e.boxes.map((b) => ({ x: +b.x, y: +b.y, w: +b.w, h: +b.h, p: normalizeOutline(b.p) })),
-        manual: true,
-        u: false,
-        review: false,
+        manual: raw ? raw.src === 'manual' : true,
+        u: !!raw?.u,
+        review: !!raw?.r,
       }
     }
+  }
+
+  for (const c in pending) {
+    if (out[c] && pending[c].length) out[c] = { ...out[c], boxes: pending[c] }
   }
 
   // Bản nháp chưa lưu không làm mất trạng thái "cần soát"

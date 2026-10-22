@@ -124,7 +124,7 @@ export async function setMachineEdit(
       : fileRequest(fileUrl(layout.id, code), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ boxes: edit.boxes }),
+        body: JSON.stringify({ boxes: edit.boxes, ...(edit.keepStatus ? { keepStatus: true } : {}) }),
       })
   }
 

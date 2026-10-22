@@ -77,7 +77,16 @@ interface MapCanvasProps {
   onClearSelection: () => void
   onActivate: (i: number) => void
   onBoxChange: (i: number, box: MachineBox) => void
-  onDrawComplete: (box: MachineBox) => void
+  // alt: giữ Alt khi thả chuột -> không tự ôm lần này
+  onDrawComplete: (box: MachineBox, alt: boolean) => void
+  // bắt đầu kéo / resize khung (trước lần onBoxChange đầu tiên)
+  onGestureStart: () => void
+  // thả chuột sau khi kéo / resize, box = khung vừa thả
+  onGestureEnd: (i: number, box: MachineBox, alt: boolean) => void
+  // khung (index trong bản nháp) đang chờ kết quả ôm: viền nhấp nháy
+  fittingIdx: number | null
+  // khung đổi nhiều sau khi ôm: viền cam
+  warnIdx: number[]
 }
 
 interface Point {
@@ -112,8 +121,9 @@ type Op =
   | { t: 'press', start: Point, p0: Point, hit: Shape | null, moveIdx: number | null }
   | { t: 'pan', last: Point }
   | { t: 'draw', p0: Point }
-  | { t: 'move', i: number, p0: Point, b0: MachineBox }
-  | { t: 'resize', i: number, h: ResizeHandle, p0: Point, b0: MachineBox }
+  // last: khung sau lần di chuyển gần nhất (null = chưa di chuyển)
+  | { t: 'move', i: number, p0: Point, b0: MachineBox, last: MachineBox | null }
+  | { t: 'resize', i: number, h: ResizeHandle, p0: Point, b0: MachineBox, last: MachineBox | null }
 
 // px màn hình: đi quá ngưỡng này trước khi nhả chuột thì là kéo, không phải click
 const DRAG_THRESHOLD = 4
@@ -132,6 +142,12 @@ const pulse = keyframes`
   100% { stroke-width: 3.5; }
 `
 
+// đang chờ kết quả ôm khung
+const blink = keyframes`
+  0%, 100% { stroke-opacity: 1; }
+  50% { stroke-opacity: .3; }
+`
+
 const prefersReducedMotion = () =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -148,6 +164,8 @@ interface BoxLayerProps {
   pulseKey: number
   groups: GroupVisibility
   maskId: string
+  fittingIdx: number | null
+  warnIdx: number[]
 }
 
 const MachineBoxLayer = memo(function MachineBoxLayer({
@@ -159,11 +177,13 @@ const MachineBoxLayer = memo(function MachineBoxLayer({
   pulseKey,
   groups,
   maskId,
+  fittingIdx,
+  warnIdx,
 }: BoxLayerProps) {
   const others = shapes.filter((s) => s.c !== cur && groups[s.status])
   const selected = shapes.filter((s) => s.c === cur)
-  // khung đang chỉnh luôn hiện hình chữ nhật b (thứ đang kéo / resize)
-  const selD = (s: Shape) => (editing && s.i === act ? s.dRect : s.d)
+  // kéo / resize đặt p = null nên khung đang chỉnh hiện đúng hình chữ nhật b khi kéo;
+  // vừa ôm xong thì hiện đường bao, kèm hình chữ nhật b mờ (chỗ kéo / resize)
   const spotlight = !!selected.length && !editing
   const [CX, CY, CW, CH] = crop
 
@@ -174,7 +194,7 @@ const MachineBoxLayer = memo(function MachineBoxLayer({
           <mask id={maskId} maskUnits="userSpaceOnUse" x={CX} y={CY} width={CW} height={CH}>
             <rect x={CX} y={CY} width={CW} height={CH} fill="#fff" />
             {selected.map((s) => (
-              <path key={`${s.c}-${s.i}`} d={selD(s)} fill="#000" />
+              <path key={`${s.c}-${s.i}`} d={s.d} fill="#000" />
             ))}
           </mask>
         </defs>
@@ -200,7 +220,7 @@ const MachineBoxLayer = memo(function MachineBoxLayer({
 
       <g className="ml-halo">
         {selected.map((s) => (
-          <path key={`${s.c}-${s.i}`} className="on" d={selD(s)} />
+          <path key={`${s.c}-${s.i}`} className="on" d={s.d} />
         ))}
       </g>
 
@@ -210,12 +230,24 @@ const MachineBoxLayer = memo(function MachineBoxLayer({
             key={`${s.c}-${s.i}-${pulseKey}`}
             className={`ml-box s-${s.status} on`
               + (pulseKey ? ' pulse' : '')
-              + (editing && s.i === act ? ' act' : '')}
-            d={selD(s)}
+              + (editing && s.i === act ? ' act' : '')
+              + (editing && s.i === fittingIdx ? ' fitting' : '')
+              + (editing && warnIdx.includes(s.i) ? ' warn' : '')}
+            d={s.d}
             data-c={s.c}
           />
         ))}
       </g>
+
+      {editing && (
+        <g>
+          {selected
+            .filter((s) => s.i === act && s.d !== s.dRect)
+            .map((s) => (
+              <path key={`${s.c}-${s.i}`} className="ml-bbox" d={s.dRect} />
+            ))}
+        </g>
+      )}
     </>
   )
 })
@@ -249,6 +281,10 @@ export const MapCanvas = memo(function MapCanvas({
   onActivate,
   onBoxChange,
   onDrawComplete,
+  onGestureStart,
+  onGestureEnd,
+  fittingIdx,
+  warnIdx,
 }: MapCanvasProps) {
   const crop = layout.data.crop
   const [CX, CY, CW, CH] = crop
@@ -693,7 +729,7 @@ export const MapCanvas = memo(function MapCanvas({
       }
 
       if (handle && draftBoxes[act]) {
-        g.op = { t: 'resize', i: act, h: handle, p0: p, b0: { ...draftBoxes[act] } }
+        g.op = { t: 'resize', i: act, h: handle, p0: p, b0: { ...draftBoxes[act] }, last: null }
         return
       }
     }
@@ -737,7 +773,7 @@ export const MapCanvas = memo(function MapCanvas({
 
       if (op.moveIdx !== null && draftBoxes?.[op.moveIdx]) {
         onActivate(op.moveIdx)
-        op = { t: 'move', i: op.moveIdx, p0: op.p0, b0: { ...draftBoxes[op.moveIdx] } }
+        op = { t: 'move', i: op.moveIdx, p0: op.p0, b0: { ...draftBoxes[op.moveIdx] }, last: null }
       } else {
         op = { t: 'pan', last: op.start }
         startPanVisual()
@@ -772,12 +808,14 @@ export const MapCanvas = memo(function MapCanvas({
     const ddx = p.x - op.p0.x
     const ddy = p.y - op.p0.y
 
-    scheduleBox(
-      op.i,
-      op.t === 'move'
-        ? { ...op.b0, x: op.b0.x + ddx, y: op.b0.y + ddy }
-        : resizeBox(op.b0, op.h, ddx, ddy),
-    )
+    // lần di chuyển đầu: chụp bản nháp để hoàn tác, huỷ lần ôm đang chờ
+    if (!op.last) onGestureStart()
+
+    op.last = op.t === 'move'
+      ? { x: op.b0.x + ddx, y: op.b0.y + ddy, w: op.b0.w, h: op.b0.h }
+      : resizeBox(op.b0, op.h, ddx, ddy)
+
+    scheduleBox(op.i, op.last)
   }
 
   function onPointerUp(e: ReactPointerEvent<HTMLDivElement>) {
@@ -810,10 +848,11 @@ export const MapCanvas = memo(function MapCanvas({
       const h = Math.abs(p.y - op.p0.y)
 
       if (w > 1.5 && h > 1.5) {
-        onDrawComplete({ x: Math.min(op.p0.x, p.x), y: Math.min(op.p0.y, p.y), w, h })
+        onDrawComplete({ x: Math.min(op.p0.x, p.x), y: Math.min(op.p0.y, p.y), w, h }, e.altKey)
       }
     } else {
       flushBox()
+      if (op.last) onGestureEnd(op.i, op.last, e.altKey)
     }
 
     if (e.pointerType === 'mouse') scheduleHover(e.clientX, e.clientY)
@@ -926,6 +965,8 @@ export const MapCanvas = memo(function MapCanvas({
             pulseKey={pulseKey}
             groups={groups}
             maskId={maskId}
+            fittingIdx={fittingIdx}
+            warnIdx={warnIdx}
           />
 
           <g>
@@ -1214,6 +1255,23 @@ const svgSx = {
     strokeDasharray: 'none',
     strokeWidth: 2,
   },
+  // khung đổi nhiều sau khi ôm: cần kiểm tra lại
+  '&.editing .ml-box.on.warn': {
+    stroke: 'var(--ml-review)',
+    strokeWidth: 2.5,
+  },
+  '&.editing .ml-box.on.fitting': {
+    animation: `${blink} .9s ease-in-out infinite`,
+  },
+  '& .ml-bbox': {
+    fill: 'none',
+    stroke: mapColors.edit,
+    strokeWidth: 1,
+    strokeDasharray: '2 3',
+    strokeOpacity: 0.7,
+    vectorEffect: 'non-scaling-stroke',
+    pointerEvents: 'none',
+  },
   '& .ml-handle': {
     fill: mapColors.paper,
     stroke: mapColors.edit,
@@ -1229,6 +1287,7 @@ const svgSx = {
   },
   '@media (prefers-reduced-motion: reduce)': {
     '& .ml-box.on.pulse': { animation: 'none' },
+    '&.editing .ml-box.on.fitting': { animation: 'none', strokeOpacity: 0.5 },
   },
 } as const
 

@@ -14,7 +14,8 @@ import {
 // =========================================================
 // MACHINE LOCATOR – LƯU THẲNG VÀO FILE JSON KHI CHẠY DEV
 //   GET    /__machine-locator/:layoutId
-//   PUT    /__machine-locator/:layoutId/machines/:code   body {boxes:[{x,y,w,h}]}
+//   PUT    /__machine-locator/:layoutId/machines/:code   body {boxes:[{x,y,w,h,p?}], keepStatus?}
+//          keepStatus: chỉ ôm lại khung theo ảnh -> giữ u / src / r như cũ
 //   DELETE /__machine-locator/:layoutId/machines/:code
 // Chỉ đăng ký trong dev server (apply: 'serve'), không có trong bản build.
 // =========================================================
@@ -257,14 +258,18 @@ export function machineLocatorDevStore(): Plugin {
           if (!CODE_RE.test(code)) throw new HttpError(400, 'Mã cần dạng A-1234 hoặc L-123.')
 
           if (req.method === 'PUT') {
-            const { b, p } = parseBoxes(await readBody(req))
+            const body = await readBody(req)
+            const { b, p } = parseBoxes(body)
+            const keepStatus = (body as { keepStatus?: unknown }).keepStatus === true
 
             const data = await serialized(async () => {
               const d = await readLayout(file)
               const prev = d.m[code]
-              const next: RawMachine = { ...prev, b, u: false, src: 'manual' }
+              const next: RawMachine = prev && keepStatus
+                ? { ...prev, b }
+                : { ...prev, b, u: false, src: 'manual' }
 
-              delete next.r
+              if (!(prev && keepStatus)) delete next.r
               // p song song với b; không khung nào có đường bao thì bỏ hẳn trường p
               if (p.some(Boolean)) next.p = p
               else delete next.p

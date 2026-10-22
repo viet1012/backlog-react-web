@@ -189,7 +189,8 @@ export function loadFacConfirmDailyStatsPreferences(): FacConfirmDailyStatsPrefe
     const value = isRecord(stored) ? stored : {}
 
     return {
-        open: value.open === true,
+        // Chưa lưu lựa chọn => mặc định mở; đã tự thu gọn => giữ thu gọn
+        open: value.open !== false,
         unit: value.unit === 'PCS' ? 'PCS' : 'PO',
         range:
             value.range === 14 || value.range === 30

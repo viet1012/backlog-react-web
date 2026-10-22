@@ -92,6 +92,8 @@ export interface MachineEdit {
   renamedFrom?: string
   renamedTo?: string
   updatedAt?: string
+  // true: chỉ ôm lại khung theo ảnh (hàng loạt) -> giữ nguyên trạng thái máy (u / src / r)
+  keepStatus?: boolean
 }
 
 export type MachineEdits = Record<string, MachineEdit>
@@ -102,6 +104,41 @@ export interface MachineDraft {
   dirty: boolean
   isNew: boolean
   revert?: boolean
+}
+
+// =========================================================
+// ÔM KHUNG THEO ẢNH
+// =========================================================
+
+// fit: đã ôm, review: đã ôm nhưng khung đổi nhiều, miss: không nhận ra hình máy
+export type FitStatus = 'fit' | 'review' | 'miss'
+
+export interface FitBatchRow {
+  code: string
+  // vị trí trong danh sách khung của máy
+  i: number
+  // số khung của máy (hiện "vị trí i" khi > 1)
+  n: number
+  // độ dời/đổi lớn nhất của cạnh (pt); null khi không nhận ra
+  shift: number | null
+  status: FitStatus
+}
+
+export interface FitBatch {
+  running: boolean
+  done: number
+  total: number
+  rows: FitBatchRow[]
+  // kết quả chờ lưu: code -> toàn bộ khung của máy
+  pending: Record<string, Box[]>
+}
+
+export interface FitToast {
+  id: number
+  text: string
+  kind: 'success' | 'warning' | 'info'
+  // id mục hoàn tác (nút "Hoàn tác" của toast)
+  undoId?: number
 }
 
 export type DrawMode = 'add' | 'replace'
