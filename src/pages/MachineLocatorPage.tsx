@@ -273,6 +273,8 @@ function MachineLocatorView({
   const onDrawComplete = useStableCallback(ml.completeDraw)
   const onGestureStart = useStableCallback(ml.beginBoxGesture)
   const onGestureEnd = useStableCallback(ml.endBoxGesture)
+  const onPickFitMode = useStableCallback(ml.chooseFitMode)
+  const onRefine = useStableCallback(ml.refineFit)
   const onSelectFromList = useStableCallback((c: string) => ml.select(c))
   const onStartNew = useStableCallback(ml.startNew)
 
@@ -325,6 +327,10 @@ function MachineLocatorView({
         onGestureEnd={onGestureEnd}
         fittingIdx={ml.fittingIdx}
         warnIdx={ml.warnIdx}
+        fitPreviewIdx={ml.fitPreviewIdx}
+        activeFitMode={ml.activeFitMode}
+        onPickFitMode={onPickFitMode}
+        onRefine={onRefine}
       />
 
       <FitToastBar ml={ml} />

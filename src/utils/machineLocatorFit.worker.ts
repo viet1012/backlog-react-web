@@ -1,23 +1,34 @@
-import type { RawBox } from '../types/machineLocator'
+import type {
+  FitRecipe,
+  FitView,
+  RawBox,
+} from '../types/machineLocator'
 import {
-  fitBox,
+  fitView,
   writeInkMasks,
-  type FitResult,
   type InkMasks,
 } from './machineLocatorFit'
 
 // =========================================================
-// WORKER: giữ mặt nạ nét của 1 ảnh layout, ôm khung theo yêu cầu
+// WORKER: giữ mặt nạ nét của 1 ảnh layout, ôm khung theo công thức
 // =========================================================
+
+export interface FitJob {
+  recipe: FitRecipe
+  crop: number[]
+  ppp: number
+  // ô chữ mã máy quanh khung (pt)
+  labels: RawBox[]
+}
 
 export type FitWorkerRequest =
   | { t: 'init', bitmap: ImageBitmap }
-  | { t: 'fit', id: number, b: RawBox, crop: number[], ppp: number }
+  | ({ t: 'fit', id: number } & FitJob)
 
 export type FitWorkerResponse =
   | { t: 'ready', w: number, h: number }
   | { t: 'error', message: string }
-  | { t: 'fit', id: number, r: FitResult | null, ms: number, error?: string }
+  | { t: 'fit', id: number, view: FitView | null, ms: number, error?: string }
 
 // tsconfig chỉ có lib DOM: khai báo phần scope worker cần dùng
 const scope = self as unknown as {
@@ -68,21 +79,21 @@ scope.onmessage = (e) => {
   }
 
   if (!masks) {
-    scope.postMessage({ t: 'fit', id: m.id, r: null, ms: 0, error: 'Chưa có ảnh layout.' })
+    scope.postMessage({ t: 'fit', id: m.id, view: null, ms: 0, error: 'Chưa có ảnh layout.' })
     return
   }
 
   const t0 = performance.now()
 
   try {
-    const r = fitBox(masks, m.b, m.crop, m.ppp)
+    const view = fitView(masks, m.recipe, m.crop, m.ppp, m.labels)
 
-    scope.postMessage({ t: 'fit', id: m.id, r, ms: performance.now() - t0 })
+    scope.postMessage({ t: 'fit', id: m.id, view, ms: performance.now() - t0 })
   } catch (err) {
     scope.postMessage({
       t: 'fit',
       id: m.id,
-      r: null,
+      view: null,
       ms: performance.now() - t0,
       error: err instanceof Error ? err.message : String(err),
     })

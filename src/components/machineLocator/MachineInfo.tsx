@@ -3,6 +3,8 @@ import {
   FormControlLabel,
   Switch,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from '@mui/material'
 import {
@@ -11,6 +13,11 @@ import {
 } from 'react'
 
 import type { MachineLocatorState } from '../../hooks/useMachineLocator'
+import type { FitMode } from '../../types/machineLocator'
+import {
+  FIT_MODE_LABEL,
+  FIT_MODES,
+} from '../../utils/machineLocatorFit'
 import { normalizeCode } from '../../utils/machineLocatorGeometry'
 import {
   AppButton,
@@ -213,7 +220,10 @@ export function MachineInfo({ ml }: MachineInfoProps) {
         <div>
           {nb
             ? 'Kéo khung để di chuyển, kéo ô vuông ở cạnh để đổi kích thước. Phím mũi tên dịch 0,5 pt (Shift: 3 pt).'
-            + ' Giữ Alt khi thả chuột để không tự ôm; Ctrl+Z hoàn tác.'
+            + ' Khi thả chuột: giữ Alt = không tự ôm, giữ Shift = chỉ tìm trong khung. Ctrl+Z hoàn tác.'
+            + (draft?.boxes[act]?.fx
+              ? ' Click khối trên bản vẽ để thêm / bớt; Alt+click vào nét để cắt máy dính máy bên cạnh.'
+              : '')
             + (nb > 1 ? ` Đang chọn vị trí ${act + 1}/${nb}.` : '')
             : 'Máy chưa có khung. Bấm “Vẽ khung” rồi kéo trên bản vẽ.'}
         </div>
@@ -246,6 +256,36 @@ export function MachineInfo({ ml }: MachineInfoProps) {
             Ôm theo máy (F)
           </PanelButton>
         </Box>
+
+        {nb > 0 && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.75 }}>
+            <span>Kiểu ôm</span>
+
+            <ToggleButtonGroup
+              exclusive
+              size="small"
+              value={ml.activeFitMode}
+              onChange={(_, v: FitMode | null) => {
+                if (v) ml.chooseFitMode(v)
+              }}
+              aria-label="Kiểu ôm khung"
+              sx={{
+                '& .MuiToggleButton-root': {
+                  py: 0.25,
+                  px: 1,
+                  fontSize: 12,
+                  textTransform: 'none',
+                },
+              }}
+            >
+              {FIT_MODES.map((m) => (
+                <ToggleButton key={m} value={m}>
+                  {FIT_MODE_LABEL[m]}
+                </ToggleButton>
+              ))}
+            </ToggleButtonGroup>
+          </Box>
+        )}
 
         <Actions>
           <PanelButton onClick={() => ml.beginDraw(nb ? 'replace' : 'add')}>

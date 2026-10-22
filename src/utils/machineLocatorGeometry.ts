@@ -2,6 +2,7 @@ import type {
   Bounds,
   Box,
   EffectiveMachine,
+  FitMode,
   LayoutData,
   MachineDraft,
   MachineEdits,
@@ -89,7 +90,7 @@ export function buildBaseBoxes(
   const out: Record<string, Box[]> = {}
 
   for (const c in data.m) {
-    const p = data.m[c].p
+    const { p, fit } = data.m[c]
 
     out[c] = data.m[c].b.map((b, i) => ({
       x: b[0],
@@ -97,10 +98,15 @@ export function buildBaseBoxes(
       w: b[2],
       h: b[3],
       p: normalizeOutline(p?.[i]),
+      fit: normalizeFitMode(fit?.[i]),
     }))
   }
 
   return out
+}
+
+export function normalizeFitMode(value: unknown): FitMode | null {
+  return value === 'tight' || value === 'hull' || value === 'rect' ? value : null
 }
 
 // =========================================================
@@ -132,6 +138,19 @@ export function outlinePath(outline: Polygon[]): string {
   return outline
     .map((poly) => 'M' + poly.map(([x, y]) => `${x} ${y}`).join('L') + 'Z')
     .join('')
+}
+
+export function pointInPolygon(x: number, y: number, poly: Polygon): boolean {
+  let inside = false
+
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i]
+    const [xj, yj] = poly[j]
+
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside
+  }
+
+  return inside
 }
 
 export function rectPath(b: Box): string {
@@ -179,7 +198,14 @@ export function buildEffectiveMachines(
       const raw = e.keepStatus ? data.m[c] : undefined
 
       out[c] = {
-        boxes: e.boxes.map((b) => ({ x: +b.x, y: +b.y, w: +b.w, h: +b.h, p: normalizeOutline(b.p) })),
+        boxes: e.boxes.map((b) => ({
+          x: +b.x,
+          y: +b.y,
+          w: +b.w,
+          h: +b.h,
+          p: normalizeOutline(b.p),
+          fit: normalizeFitMode(b.fit),
+        })),
         manual: raw ? raw.src === 'manual' : true,
         u: !!raw?.u,
         review: !!raw?.r,
@@ -236,6 +262,7 @@ export function editBody(boxes: Box[]) {
       h: round1(b.h),
       // giữ đường bao nếu khung chưa bị sửa (sửa khung đã đặt p = null)
       ...(b.p ? { p: b.p } : {}),
+      ...(b.fit ? { fit: b.fit } : {}),
     })),
     deleted: false,
     updatedAt: new Date().toISOString(),

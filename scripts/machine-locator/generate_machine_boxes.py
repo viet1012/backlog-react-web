@@ -842,6 +842,10 @@ def main():
         v['out'] = v['proposed'] if v['applied'] else old[code]
         u = old_u.get(code, False) if args.mode == 'snap' else v['confidence'] != 'high'
         machines[code] = {'b': [rect_to_xywh(r) for r in v['out']], 'u': u}
+        # vị trí chữ mã máy: app bỏ khối trùng chữ khi tự ôm khung (snap không đọc chữ -> giữ cái cũ)
+        texts = [rect_to_xywh(r) for r in v.get('texts', [])] or current['m'].get(code, {}).get('t')
+        if texts:
+            machines[code]['t'] = texts
 
     write_layout_json(out_path, crop, current['page'], ppp, machines)
 
@@ -964,6 +968,7 @@ def run_label_mode(page, transform, crop_rect: Rect, old: dict[str, list[Rect]],
             'confidence': conf,
             'reasons': reasons,
             'labels': [a.label.center for a in items],
+            'texts': [a.label.rect for a in items],
             'proposed': boxes,
         }
 

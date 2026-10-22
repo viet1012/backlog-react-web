@@ -1,11 +1,19 @@
 import type {
+  FitCandidate,
+  FitMode,
+  FitRecipe,
+  FitResult,
+  FitView,
   Polygon,
   RawBox,
 } from '../types/machineLocator'
 
 // =========================================================
-// ÔM KHUNG SÁT MÁY THEO ẢNH LAYOUT
-// Port của scripts/machine-locator/fit_frames.py (giữ nguyên thuật toán), TS thuần, chạy trong worker.
+// ÔM KHUNG SÁT MÁY THEO ẢNH LAYOUT (chạy trong worker)
+// Gốc là scripts/machine-locator/fit_frames.py, thêm:
+// - 3 kiểu ôm: tight (sát), hull (bao lồi), rect (chỉ thu khung b)
+// - bỏ khối giống chữ / trùng chữ mã máy, làm trơn đường bao
+// - tinh chỉnh theo công thức: cắt khối dính, bật / tắt khối (tính lại từ đầu mỗi lần)
 // Toạ độ ảnh: px = (pt - crop[0..1]) * ppp
 // =========================================================
 
@@ -19,17 +27,36 @@ export interface InkMasks {
   ink215: Uint8Array
 }
 
-export interface FitResult {
-  // bbox mới (pt, 1 chữ số)
-  b: RawBox
-  // đường bao (pt)
-  p: Polygon[]
+export const FIT_MODES: FitMode[] = ['tight', 'hull', 'rect']
+
+export const FIT_MODE_LABEL: Record<FitMode, string> = {
+  tight: 'Sát',
+  hull: 'Gọn',
+  rect: 'Chữ nhật',
 }
 
 // khung đổi quá ngần này pt so với khung vừa thả -> cần soát
 export const FIT_REVIEW_SHIFT = 12
+// vùng tìm nới mỗi chiều (Shift khi thả: 0 = chỉ trong khung)
+export const FIT_EXPAND = 0.1
+
+// khối giống chữ: nét / diện tích bao < TEXT_FILL và cao < TEXT_MAX_H pt
+const TEXT_FILL = 0.35
+const TEXT_MAX_H = 4
+// khối trùng chữ mã máy: phần bao của khối nằm trong ô chữ >= tỉ lệ này
+const TEXT_OVERLAP = 0.6
+// làm trơn đường bao "Sát": close 9×9, Douglas–Peucker ε, bỏ chỗ lõm nông hơn DENT_PT pt
+const SMOOTH_R = 4
+const DP_EPS = 3
+const DENT_PT = 2
+// viền khối ứng viên (chỉ để hiển thị)
+const CAND_EPS = 1.5
+// click / Alt+click lệch khỏi khối tối đa ngần này px
+const PICK_R = 4
 
 type Pt = [number, number]
+
+const NO_VARIANTS: Record<FitMode, FitResult | null> = { tight: null, hull: null, rect: null }
 
 const round1 = (v: number) => Math.round(v * 10) / 10
 
@@ -266,14 +293,14 @@ function traceOuter(lab: Int32Array, w: number, h: number, id: number, start: nu
   }
 }
 
-function polygonArea(pts: Pt[]): number {
+function signedArea(pts: Pt[]): number {
   let a = 0
 
   for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
     a += pts[j][0] * pts[i][1] - pts[i][0] * pts[j][1]
   }
 
-  return Math.abs(a) / 2
+  return a / 2
 }
 
 function insidePolygon(p: Pt, poly: Pt[]): boolean {
@@ -362,17 +389,127 @@ function simplifyClosed(pts: Pt[], eps: number): Pt[] {
   return out
 }
 
+// Bỏ các đỉnh lõm nông hơn minDepth px (lặp tới khi hết)
+function dropDents(poly: Pt[], minDepth: number): Pt[] {
+  const out = poly.slice()
+  const orient = Math.sign(signedArea(out))
+  let changed = true
+
+  while (changed && out.length > 3) {
+    changed = false
+
+    for (let i = 0; i < out.length && out.length > 3; i++) {
+      const a = out[(i - 1 + out.length) % out.length]
+      const c = out[i]
+      const b = out[(i + 1) % out.length]
+      const cross = (c[0] - a[0]) * (b[1] - c[1]) - (c[1] - a[1]) * (b[0] - c[0])
+
+      if (cross && Math.sign(cross) !== orient && lineDist(c, a, b) < minDepth) {
+        out.splice(i, 1)
+        i--
+        changed = true
+      }
+    }
+  }
+
+  return out
+}
+
+// Bao lồi của các điểm ảnh (theo góc điểm ảnh) – monotone chain
+function convexHull(keep: Uint8Array, w: number, h: number): Pt[] {
+  const pts: Pt[] = []
+
+  for (let y = 0; y < h; y++) {
+    let x0 = -1
+    let x1 = -1
+
+    for (let x = 0; x < w; x++) {
+      if (!keep[y * w + x]) continue
+      if (x0 < 0) x0 = x
+      x1 = x
+    }
+
+    if (x0 >= 0) pts.push([x0, y], [x0, y + 1], [x1 + 1, y], [x1 + 1, y + 1])
+  }
+
+  pts.sort((a, b) => a[0] - b[0] || a[1] - b[1])
+
+  if (pts.length < 3) return pts
+
+  const cross = (o: Pt, a: Pt, b: Pt) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+  const lower: Pt[] = []
+  const upper: Pt[] = []
+
+  for (const p of pts) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop()
+    lower.push(p)
+  }
+  for (let i = pts.length - 1; i >= 0; i--) {
+    const p = pts[i]
+
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop()
+    upper.push(p)
+  }
+
+  return [...lower.slice(0, -1), ...upper.slice(0, -1)]
+}
+
+// Đường bao ngoài các khối của mask (như findContours RETR_EXTERNAL:
+// khối 8-liên thông, bỏ khối nằm trong lỗ của khối khác)
+function outerRings(mask: Uint8Array, w: number, h: number): Pt[][] {
+  const blobs = label(mask, w, h, N8)
+  const rings: Pt[][] = []
+
+  for (let k = 1; k <= blobs.n; k++) rings.push(traceOuter(blobs.lab, w, h, k, blobs.first[k]))
+
+  return rings.filter((ring, k) =>
+    !rings.some((o, j) => j !== k && o.length >= 3 && insidePolygon(ring[0], o)))
+}
+
 // =========================================================
-// FIT
+// VÙNG TÌM + KHỐI
 // =========================================================
 
-function fitWith(
-  masks: InkMasks,
-  ink: Uint8Array,
-  b: RawBox,
-  crop: readonly number[],
-  ppp: number,
-): FitResult | null {
+interface Roi {
+  a0: number
+  b0: number
+  w: number
+  h: number
+  // khung theo px ảnh
+  X0: number
+  Y0: number
+  X1: number
+  Y1: number
+  // diện tích khung (px²)
+  A: number
+  ink: Uint8Array
+}
+
+interface Comp {
+  area: number
+  x0: number
+  y0: number
+  x1: number
+  y1: number
+  // số điểm nằm trong khung
+  inside: number
+  // số điểm nét gốc thuộc khối
+  inkCnt: number
+  text: boolean
+}
+
+interface Analysis {
+  roi: Roi
+  lab: Int32Array
+  first: number[]
+  comps: Comp[]
+  // on[k]: khối k đang dùng
+  on: Uint8Array
+  // tự chọn được (tổng khối chọn >= 20% khung)
+  recognized: boolean
+}
+
+function makeRoi(masks: InkMasks, ink: Uint8Array, b: RawBox, crop: readonly number[], ppp: number, expand: number): Roi | null {
   const { w: W, h: H } = masks
   const [cx0, cy0] = crop
   const [x, y, bw, bh] = b
@@ -380,9 +517,9 @@ function fitWith(
   const Y0 = (y - cy0) * ppp
   const X1 = (x + bw - cx0) * ppp
   const Y1 = (y + bh - cy0) * ppp
-  // vùng tìm: nới 25% mỗi chiều, tối thiểu 12 px
-  const mx = Math.max(12, 0.25 * (X1 - X0))
-  const my = Math.max(12, 0.25 * (Y1 - Y0))
+  // vùng tìm: nới expand mỗi chiều (tối thiểu 12 px); expand = 0: đúng khung
+  const mx = expand > 0 ? Math.max(12, expand * (X1 - X0)) : 0
+  const my = expand > 0 ? Math.max(12, expand * (Y1 - Y0)) : 0
   const a0 = Math.trunc(Math.max(0, X0 - mx))
   const b0 = Math.trunc(Math.max(0, Y0 - my))
   const a1 = Math.trunc(Math.min(W, X1 + mx))
@@ -396,46 +533,181 @@ function fitWith(
 
   for (let r = 0; r < h; r++) roi.set(ink.subarray((b0 + r) * W + a0, (b0 + r) * W + a1), r * w)
 
+  return { a0, b0, w, h, X0, Y0, X1, Y1, A: (X1 - X0) * (Y1 - Y0), ink: roi }
+}
+
+// Điểm của mask gần (x, y) nhất trong bán kính PICK_R; -1 nếu không có
+function nearestOn(test: (i: number) => boolean, w: number, h: number, x: number, y: number): number {
+  let best = -1
+  let bd = Infinity
+  const cx = Math.round(x)
+  const cy = Math.round(y)
+
+  for (let yy = cy - PICK_R; yy <= cy + PICK_R; yy++) {
+    for (let xx = cx - PICK_R; xx <= cx + PICK_R; xx++) {
+      if (xx < 0 || yy < 0 || xx >= w || yy >= h || !test(yy * w + xx)) continue
+
+      const d = (xx - x) ** 2 + (yy - y) ** 2
+
+      if (d < bd) {
+        bd = d
+        best = yy * w + xx
+      }
+    }
+  }
+
+  return best
+}
+
+// Alt+click: cắt khối tại (x, y) theo dây cung ngắn nhất qua điểm đó (dày 3 px để tách hẳn)
+function cutAt(solid: Uint8Array, w: number, h: number, x: number, y: number): void {
+  const s = nearestOn((i) => solid[i] === 1, w, h, x, y)
+
+  if (s < 0) return
+
+  const sx = s % w
+  const sy = (s - sx) / w
+  const on = (px: number, py: number) => {
+    const xx = Math.round(px)
+    const yy = Math.round(py)
+
+    return xx >= 0 && yy >= 0 && xx < w && yy < h && solid[yy * w + xx] === 1
+  }
+  // đi theo hướng (dx, dy) tới khi ra khỏi khối
+  const walk = (dx: number, dy: number) => {
+    let t = 0
+
+    while (t < w + h && on(sx + dx * (t + 0.5), sy + dy * (t + 0.5))) t += 0.5
+
+    return t
+  }
+
+  let best = { len: Infinity, dx: 1, dy: 0, t0: 0, t1: 0 }
+
+  for (let deg = 0; deg < 180; deg += 3) {
+    const dx = Math.cos(deg * Math.PI / 180)
+    const dy = Math.sin(deg * Math.PI / 180)
+    const t1 = walk(dx, dy)
+    const t0 = walk(-dx, -dy)
+
+    if (t0 + t1 < best.len) best = { len: t0 + t1, dx, dy, t0, t1 }
+  }
+
+  for (let t = -best.t0 - 1.5; t <= best.t1 + 1.5; t += 0.5) {
+    const cx = Math.round(sx + best.dx * t)
+    const cy = Math.round(sy + best.dy * t)
+
+    for (let yy = cy - 1; yy <= cy + 1; yy++) {
+      for (let xx = cx - 1; xx <= cx + 1; xx++) {
+        if (xx >= 0 && yy >= 0 && xx < w && yy < h) solid[yy * w + xx] = 0
+      }
+    }
+  }
+}
+
+function analyse(
+  masks: InkMasks,
+  ink: Uint8Array,
+  recipe: FitRecipe,
+  crop: readonly number[],
+  ppp: number,
+  labels: readonly RawBox[],
+): Analysis | null {
+  const roi = makeRoi(masks, ink, recipe.b, crop, ppp, recipe.expand)
+
+  if (!roi) return null
+
+  const { w, h, a0, b0, A } = roi
+  const toPx = (p: readonly number[]): Pt => [(p[0] - crop[0]) * ppp - a0, (p[1] - crop[1]) * ppp - b0]
+
   // close 5×5 ×2 (= dilate 9×9 rồi erode 9×9) -> lấp lỗ -> open 7×7
-  let img = erode(dilate(roi, w, h, 4), w, h, 4)
+  let solid = erode(dilate(roi.ink, w, h, 4), w, h, 4)
 
-  img = fillHoles(img, w, h)
-  img = dilate(erode(img, w, h, 3), w, h, 3)
+  solid = fillHoles(solid, w, h)
+  solid = dilate(erode(solid, w, h, 3), w, h, 3)
 
-  const comps = label(img, w, h, N4)
+  for (const c of recipe.cuts) {
+    const [x, y] = toPx(c)
 
-  if (!comps.n) return null
+    cutAt(solid, w, h, x, y)
+  }
+
+  const { lab, n, area, first } = label(solid, w, h, N4)
+  const comps: Comp[] = [{ area: 0, x0: 0, y0: 0, x1: 0, y1: 0, inside: 0, inkCnt: 0, text: false }]
+
+  for (let k = 1; k <= n; k++) {
+    comps.push({ area: area[k], x0: w, y0: h, x1: -1, y1: -1, inside: 0, inkCnt: 0, text: false })
+  }
 
   // khung (theo vùng tìm), cắt như slice numpy
-  const bx0 = Math.max(0, Math.min(w, Math.trunc(X0) - a0))
-  const by0 = Math.max(0, Math.min(h, Math.trunc(Y0) - b0))
-  const bx1 = Math.min(w, Math.trunc(X1) - a0)
-  const by1 = Math.min(h, Math.trunc(Y1) - b0)
-  const inside = new Array<number>(comps.n + 1).fill(0)
+  const bx0 = Math.max(0, Math.min(w, Math.trunc(roi.X0) - a0))
+  const by0 = Math.max(0, Math.min(h, Math.trunc(roi.Y0) - b0))
+  const bx1 = Math.min(w, Math.trunc(roi.X1) - a0)
+  const by1 = Math.min(h, Math.trunc(roi.Y1) - b0)
 
-  for (let yy = by0; yy < by1; yy++) {
-    for (let xx = bx0; xx < bx1; xx++) {
-      const k = comps.lab[yy * w + xx]
+  for (let i = 0; i < lab.length; i++) {
+    const k = lab[i]
 
-      if (k) inside[k]++
-    }
+    if (!k) continue
+
+    const c = comps[k]
+    const x = i % w
+    const y = (i - x) / w
+
+    if (x < c.x0) c.x0 = x
+    if (x > c.x1) c.x1 = x
+    if (y < c.y0) c.y0 = y
+    if (y > c.y1) c.y1 = y
+    if (roi.ink[i]) c.inkCnt++
+    if (x >= bx0 && x < bx1 && y >= by0 && y < by1) c.inside++
   }
 
-  const A = (X1 - X0) * (Y1 - Y0)
-  const kept = new Uint8Array(comps.n + 1)
+  // ô chữ mã máy theo px vùng tìm
+  const textRects = labels.map((t) => {
+    const [x0, y0] = toPx([t[0] - 1, t[1] - 1])
+    const [x1, y1] = toPx([t[0] + t[2] + 1, t[1] + t[3] + 1])
+
+    return [x0, y0, x1, y1]
+  })
+
+  const on = new Uint8Array(n + 1)
   let keptArea = 0
 
-  for (let k = 1; k <= comps.n; k++) {
-    const area = comps.area[k]
+  for (let k = 1; k <= n; k++) {
+    const c = comps[k]
+    const bw = c.x1 - c.x0 + 1
+    const bh = c.y1 - c.y0 + 1
+    const boxArea = bw * bh
+    const overlapsText = textRects.some(([x0, y0, x1, y1]) => {
+      const ox = Math.min(x1, c.x1 + 1) - Math.max(x0, c.x0)
+      const oy = Math.min(y1, c.y1 + 1) - Math.max(y0, c.y0)
+
+      return ox > 0 && oy > 0 && ox * oy >= TEXT_OVERLAP * boxArea
+    })
+
+    // khối giống chữ: nét thưa trong bao và thấp, hoặc trùng chữ mã máy
+    c.text = (c.inkCnt / boxArea < TEXT_FILL && bh < TEXT_MAX_H * ppp) || overlapsText
 
     // khối thuộc máy: nằm phần lớn trong khung, hoặc là khối lớn phủ tâm khung
-    if (area >= 0.02 * A && (inside[k] >= 0.6 * area || (inside[k] >= 0.25 * A && area <= 2.5 * A))) {
-      kept[k] = 1
-      keptArea += area
+    if (!c.text && c.area >= 0.02 * A
+      && (c.inside >= 0.6 * c.area || (c.inside >= 0.25 * A && c.area <= 2.5 * A))) {
+      on[k] = 1
+      keptArea += c.area
     }
   }
 
-  if (keptArea < 0.2 * A) return null
+  return { roi, lab, first, comps, on, recognized: keptArea >= 0.2 * A }
+}
+
+// =========================================================
+// FIT
+// =========================================================
+
+function variantsOf(an: Analysis, crop: readonly number[], ppp: number): Record<FitMode, FitResult | null> {
+  const { roi, lab, on } = an
+  const { w, h, a0, b0, A } = roi
+  const toPt = (px: number, py: number): [number, number] =>
+    [round1((a0 + px) / ppp + crop[0]), round1((b0 + py) / ppp + crop[1])]
 
   const keep = new Uint8Array(w * h)
   let minX = w
@@ -444,53 +716,118 @@ function fitWith(
   let maxY = -1
 
   for (let i = 0; i < keep.length; i++) {
-    if (!kept[comps.lab[i]]) continue
+    if (!on[lab[i]]) continue
 
     keep[i] = 1
 
-    const xx = i % w
-    const yy = (i - xx) / w
+    const x = i % w
+    const y = (i - x) / w
 
-    if (xx < minX) minX = xx
-    if (xx > maxX) maxX = xx
-    if (yy < minY) minY = yy
-    if (yy > maxY) maxY = yy
+    if (x < minX) minX = x
+    if (x > maxX) maxX = x
+    if (y < minY) minY = y
+    if (y > maxY) maxY = y
   }
 
-  // đường bao ngoài (như findContours RETR_EXTERNAL: khối 8-liên thông, bỏ khối nằm trong lỗ của khối khác)
-  const blobs = label(keep, w, h, N8)
-  const rings: Pt[][] = []
+  if (maxX < 0) return NO_VARIANTS
 
-  for (let k = 1; k <= blobs.n; k++) rings.push(traceOuter(blobs.lab, w, h, k, blobs.first[k]))
+  const p0 = toPt(minX, minY)
+  const p1 = toPt(maxX + 1, maxY + 1)
+  const b: RawBox = [p0[0], p0[1], round1(p1[0] - p0[0]), round1(p1[1] - p0[1])]
 
-  const toPt = (px: number, py: number): [number, number] =>
-    [round1(px / ppp + cx0), round1(py / ppp + cy0)]
-  const polys: Polygon[] = []
+  // Sát: làm trơn (close 9×9, đệm mép để không dính mép vùng tìm) rồi lấy đường bao
+  const pad = SMOOTH_R + 1
+  const pw = w + pad * 2
+  const ph = h + pad * 2
+  const padded = new Uint8Array(pw * ph)
 
-  rings.forEach((ring, k) => {
-    if (rings.some((o, j) => j !== k && o.length >= 3 && insidePolygon(ring[0], o))) return
-    if (polygonArea(ring) < 0.02 * A) return
+  for (let y = 0; y < h; y++) padded.set(keep.subarray(y * w, y * w + w), (y + pad) * pw + pad)
 
-    const c = simplifyClosed(ring, 2)
+  const smooth = erode(dilate(padded, pw, ph, SMOOTH_R), pw, ph, SMOOTH_R)
+  const tight: Polygon[] = []
 
-    if (c.length >= 3) polys.push(c.map(([px, py]) => toPt(a0 + px, b0 + py)))
-  })
+  for (const ring of outerRings(smooth, pw, ph)) {
+    if (Math.abs(signedArea(ring)) < 0.02 * A) continue
 
-  if (!polys.length) return null
+    const c = dropDents(simplifyClosed(ring, DP_EPS), DENT_PT * ppp)
 
-  const p0 = toPt(a0 + minX, b0 + minY)
-  const p1 = toPt(a0 + maxX + 1, b0 + maxY + 1)
+    if (c.length >= 3) tight.push(c.map(([x, y]) => toPt(x - pad, y - pad)))
+  }
 
-  return { b: [p0[0], p0[1], round1(p1[0] - p0[0]), round1(p1[1] - p0[1])], p: polys }
+  // Gọn: bao lồi các khối đã chọn
+  const hull = convexHull(keep, w, h)
+
+  return {
+    tight: tight.length ? { b, p: tight } : null,
+    hull: hull.length >= 3 ? { b, p: [hull.map(([x, y]) => toPt(x, y))] } : null,
+    rect: { b, p: null },
+  }
 }
 
-// Ôm 1 khung (pt): thử ngưỡng 160, không được thì 215; không nhận ra hình máy -> null
-export function fitBox(
+function candidatesOf(an: Analysis, crop: readonly number[], ppp: number): FitCandidate[] {
+  const { roi, lab, first, comps, on } = an
+  const { w, h, a0, b0, A } = roi
+  const out: FitCandidate[] = []
+
+  for (let k = 1; k < comps.length; k++) {
+    // khối vụn không đáng hiện
+    if (!on[k] && comps[k].area < 0.02 * A) continue
+
+    const ring = simplifyClosed(traceOuter(lab, w, h, k, first[k]), CAND_EPS)
+
+    if (ring.length < 3) continue
+
+    out.push({
+      poly: ring.map(([x, y]) => [round1((a0 + x) / ppp + crop[0]), round1((b0 + y) / ppp + crop[1])]),
+      on: !!on[k],
+      text: comps[k].text,
+    })
+  }
+
+  return out
+}
+
+// Ôm theo công thức: thử ngưỡng 160, không nhận ra thì 215. Trả về khối ứng viên + 3 kiểu kết quả
+// (variants null hết = không nhận ra hình máy). labels: ô chữ mã máy quanh khung (pt)
+export function fitView(
   masks: InkMasks,
-  b: RawBox,
+  recipe: FitRecipe,
   crop: readonly number[],
   ppp: number,
-): FitResult | null {
-  return fitWith(masks, masks.ink160, b, crop, ppp)
-    ?? fitWith(masks, masks.ink215, b, crop, ppp)
+  labels: readonly RawBox[] = [],
+): FitView {
+  let an: Analysis | null = null
+
+  for (const ink of [masks.ink160, masks.ink215]) {
+    const a = analyse(masks, ink, recipe, crop, ppp, labels)
+
+    if (!a) return { candidates: [], variants: NO_VARIANTS }
+
+    // cả 2 ngưỡng đều không nhận ra: giữ kết quả ngưỡng 160 để người dùng tự chọn khối
+    an ??= a
+    if (a.recognized) {
+      an = a
+      break
+    }
+  }
+
+  if (!an) return { candidates: [], variants: NO_VARIANTS }
+
+  const { roi, lab, on } = an
+
+  // click bật / tắt khối chứa điểm
+  for (const t of recipe.toggles) {
+    const x = (t[0] - crop[0]) * ppp - roi.a0
+    const y = (t[1] - crop[1]) * ppp - roi.b0
+    const i = nearestOn((j) => lab[j] > 0, roi.w, roi.h, x, y)
+
+    if (i >= 0) on[lab[i]] ^= 1
+  }
+
+  const usable = an.recognized || recipe.toggles.length > 0
+
+  return {
+    candidates: candidatesOf(an, crop, ppp),
+    variants: usable ? variantsOf(an, crop, ppp) : NO_VARIANTS,
+  }
 }

@@ -1,6 +1,6 @@
-import type { RawBox } from '../types/machineLocator'
-import type { FitResult } from './machineLocatorFit'
+import type { FitView } from '../types/machineLocator'
 import type {
+  FitJob,
   FitWorkerRequest,
   FitWorkerResponse,
 } from './machineLocatorFit.worker'
@@ -16,15 +16,15 @@ export type FitterState = 'loading' | 'ready' | 'error'
 
 // cancelled: bị yêu cầu mới / cancel() thay thế
 export type FitOutcome =
-  | { cancelled: false, r: FitResult | null }
+  | { cancelled: false, view: FitView }
   | { cancelled: true }
+
+export type { FitJob }
 
 interface Job {
   id: number
   key: string
-  b: RawBox
-  crop: number[]
-  ppp: number
+  job: FitJob
   stale: boolean
   resolve: (o: FitOutcome) => void
   reject: (e: Error) => void
@@ -119,7 +119,7 @@ export class MachineFitter {
     if (!job) return
 
     this.inFlight = job
-    this.post({ t: 'fit', id: job.id, b: job.b, crop: job.crop, ppp: job.ppp })
+    this.post({ t: 'fit', id: job.id, ...job.job })
   }
 
   private onResult(m: Extract<FitWorkerResponse, { t: 'fit' }>) {
@@ -130,19 +130,19 @@ export class MachineFitter {
     this.inFlight = null
 
     if (job.stale) job.resolve({ cancelled: true })
-    else if (m.error) job.reject(new Error(m.error))
-    else job.resolve({ cancelled: false, r: m.r })
+    else if (m.error || !m.view) job.reject(new Error(m.error || 'Worker không trả kết quả.'))
+    else job.resolve({ cancelled: false, view: m.view })
 
     this.pump()
   }
 
-  fit(key: string, b: RawBox, crop: readonly number[], ppp: number): Promise<FitOutcome> {
+  fit(key: string, job: FitJob): Promise<FitOutcome> {
     if (this.state === 'error') return Promise.reject(new Error('Chưa tải được ảnh layout.'))
 
     this.cancel(key)
 
     return new Promise<FitOutcome>((resolve, reject) => {
-      this.queue.push({ id: ++this.seq, key, b, crop: [...crop], ppp, stale: false, resolve, reject })
+      this.queue.push({ id: ++this.seq, key, job, stale: false, resolve, reject })
       this.pump()
     })
   }

@@ -21,7 +21,15 @@ export interface RawMachine {
   src?: 'manual' | 'cad' | 'old'
   // true: khung cần người soát lại
   r?: boolean
+  // fit[i]: kiểu ôm của b[i] (cùng độ dài với b); thiếu = theo mặc định
+  fit?: (FitMode | null)[]
+  // vị trí chữ mã máy trên bản vẽ [x, y, w, h] (pt), do generate_machine_boxes.py ghi;
+  // khối nằm trùng chữ mã máy không tính là hình máy khi ôm
+  t?: RawBox[]
 }
+
+// Kiểu ôm: tight = sát theo nét, hull = bao lồi (trơn), rect = chỉ thu khung b, không đường bao
+export type FitMode = 'tight' | 'hull' | 'rect'
 
 export interface LayoutData {
   // [x, y, w, h] vùng cắt của trang PDF dùng làm ảnh nền (pt)
@@ -71,6 +79,10 @@ export interface Box {
   h: number
   // đường bao CAD; null / thiếu = hình chữ nhật. Sửa x/y/w/h thì phải đặt lại null
   p?: Outline
+  // kiểu ôm đã dùng / đã chọn cho khung này (lưu vào JSON)
+  fit?: FitMode | null
+  // phiên ôm gần nhất (chỉ trong bản nháp, không lưu): công thức + khối ứng viên + 3 kiểu kết quả
+  fx?: FitSession
 }
 
 export type Bounds = [number, number, number, number]
@@ -109,6 +121,44 @@ export interface MachineDraft {
 // =========================================================
 // ÔM KHUNG THEO ẢNH
 // =========================================================
+
+// Kết quả 1 kiểu ôm: bbox mới (pt, 1 chữ số) + đường bao (pt; null với kiểu rect)
+export interface FitResult {
+  b: RawBox
+  p: Polygon[] | null
+}
+
+// Công thức ôm: tính lại từ đầu trong worker nên hoàn tác / làm lại chỉ cần giữ công thức
+export interface FitRecipe {
+  // khung lúc ôm (khung vừa thả, pt) – vùng tìm tính theo khung này
+  b: RawBox
+  // nới vùng tìm mỗi chiều (0.1 = 10%; 0 = chỉ trong khung)
+  expand: number
+  // Alt+click: cắt khối dính tại các điểm này (pt), theo thứ tự
+  cuts: [number, number][]
+  // click: bật / tắt khối chứa điểm (pt), theo thứ tự
+  toggles: [number, number][]
+}
+
+export interface FitCandidate {
+  // viền khối (pt)
+  poly: Polygon
+  // đang dùng cho đường bao
+  on: boolean
+  // khối giống chữ (bị loại khi tự chọn)
+  text: boolean
+}
+
+export interface FitView {
+  candidates: FitCandidate[]
+  // null: không nhận ra hình máy
+  variants: Record<FitMode, FitResult | null>
+}
+
+export interface FitSession {
+  recipe: FitRecipe
+  view: FitView
+}
 
 // fit: đã ôm, review: đã ôm nhưng khung đổi nhiều, miss: không nhận ra hình máy
 export type FitStatus = 'fit' | 'review' | 'miss'

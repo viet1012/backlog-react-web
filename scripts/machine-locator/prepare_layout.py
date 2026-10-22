@@ -158,6 +158,8 @@ def main():
         m = {'b': v['b'], 'u': v['u'], 'src': 'cad'}
         if code in review:  # CSV chỉ chứa máy medium / low
             m['r'] = True
+        if v.get('t'):  # vị trí chữ mã máy (app bỏ khối trùng chữ khi tự ôm)
+            m['t'] = v['t']
         machines[code] = m
 
     write_layout_json(args.json, crop_list, page_size, args.ppp, machines)

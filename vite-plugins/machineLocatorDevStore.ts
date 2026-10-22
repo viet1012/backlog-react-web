@@ -14,7 +14,7 @@ import {
 // =========================================================
 // MACHINE LOCATOR – LƯU THẲNG VÀO FILE JSON KHI CHẠY DEV
 //   GET    /__machine-locator/:layoutId
-//   PUT    /__machine-locator/:layoutId/machines/:code   body {boxes:[{x,y,w,h,p?}], keepStatus?}
+//   PUT    /__machine-locator/:layoutId/machines/:code   body {boxes:[{x,y,w,h,p?,fit?}], keepStatus?}
 //          keepStatus: chỉ ôm lại khung theo ảnh -> giữ u / src / r như cũ
 //   DELETE /__machine-locator/:layoutId/machines/:code
 // Chỉ đăng ký trong dev server (apply: 'serve'), không có trong bản build.
@@ -125,7 +125,14 @@ function parseOutline(value: unknown, i: number): Outline {
   return value as number[][][]
 }
 
-function parseBoxes(body: unknown): { b: number[][], p: Outline[] } {
+type FitMode = 'tight' | 'hull' | 'rect'
+
+// kiểu ôm của 1 khung: tight / hull / rect; khác -> null (theo mặc định)
+function parseFit(value: unknown): FitMode | null {
+  return value === 'tight' || value === 'hull' || value === 'rect' ? value : null
+}
+
+function parseBoxes(body: unknown): { b: number[][], p: Outline[], fit: (FitMode | null)[] } {
   const boxes = (body as { boxes?: unknown } | null)?.boxes
 
   if (!Array.isArray(boxes) || boxes.length === 0) {
@@ -142,7 +149,11 @@ function parseBoxes(body: unknown): { b: number[][], p: Outline[] } {
     return v.map(round1)
   })
 
-  return { b, p: boxes.map((box, i) => parseOutline(box?.p, i)) }
+  return {
+    b,
+    p: boxes.map((box, i) => parseOutline(box?.p, i)),
+    fit: boxes.map((box) => parseFit(box?.fit)),
+  }
 }
 
 function readBody(req: IncomingMessage): Promise<unknown> {
@@ -259,7 +270,7 @@ export function machineLocatorDevStore(): Plugin {
 
           if (req.method === 'PUT') {
             const body = await readBody(req)
-            const { b, p } = parseBoxes(body)
+            const { b, p, fit } = parseBoxes(body)
             const keepStatus = (body as { keepStatus?: unknown }).keepStatus === true
 
             const data = await serialized(async () => {
@@ -273,6 +284,9 @@ export function machineLocatorDevStore(): Plugin {
               // p song song với b; không khung nào có đường bao thì bỏ hẳn trường p
               if (p.some(Boolean)) next.p = p
               else delete next.p
+              // fit song song với b, như p
+              if (fit.some(Boolean)) next.fit = fit
+              else delete next.fit
               d.m[code] = next
               await writeLayout(file, d)
 

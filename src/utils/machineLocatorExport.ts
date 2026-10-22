@@ -1,5 +1,6 @@
 import type {
   Box,
+  FitMode,
   MachineEdit,
   MachineEdits,
   MachineLayoutConfig,
@@ -10,6 +11,7 @@ import {
   compareCodes,
   editBody,
   normalizeCode,
+  normalizeFitMode,
   normalizeOutline,
   round1,
   sameBoxes,
@@ -76,7 +78,7 @@ interface ExportMachine {
   source: 'manual' | 'auto'
   code_uncertain: boolean
   // p: đường bao CAD của vị trí (chỉ có khi khác null)
-  locations: { x: number, y: number, w: number, h: number, cx: number, cy: number, p?: Polygon[] }[]
+  locations: { x: number, y: number, w: number, h: number, cx: number, cy: number, p?: Polygon[], fit?: FitMode }[]
 }
 
 export function buildMachinesJson(
@@ -97,6 +99,7 @@ export function buildMachinesJson(
         cx: round1(r.b.x + r.b.w / 2),
         cy: round1(r.b.y + r.b.h / 2),
         ...(r.b.p ? { p: r.b.p } : {}),
+        ...(r.b.fit ? { fit: r.b.fit } : {}),
       })
   })
 
@@ -201,6 +204,7 @@ export function planJsonImport(
         w: Number(l?.w),
         h: Number(l?.h),
         p: normalizeOutline(l?.p),
+        fit: normalizeFitMode(l?.fit),
       }))
       .filter((b) => [b.x, b.y, b.w, b.h].every(Number.isFinite))
 

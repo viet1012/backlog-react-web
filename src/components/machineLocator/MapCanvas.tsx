@@ -18,11 +18,16 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react'
 
-import type { RevealRequest } from '../../hooks/useMachineLocator'
+import type {
+  DropMods,
+  RevealRequest,
+} from '../../hooks/useMachineLocator'
 import type {
   Bounds,
   Box as MachineBox,
   DrawMode,
+  FitMode,
+  FitSession,
   MachineLayoutConfig,
   MachineMap,
   ResizeHandle,
@@ -36,12 +41,14 @@ import {
   handlePosition,
   machineStatus,
   outlinePath,
+  pointInPolygon,
   rectPath,
   resizeBox,
   type GroupVisibility,
   type MachineStatus,
 } from '../../utils/machineLocatorGeometry'
 import { AppButton } from '../common/AppButton'
+import { FitPreviews } from './FitPreviews'
 import {
   codeFontFamily,
   mapColors,
@@ -77,16 +84,23 @@ interface MapCanvasProps {
   onClearSelection: () => void
   onActivate: (i: number) => void
   onBoxChange: (i: number, box: MachineBox) => void
-  // alt: giữ Alt khi thả chuột -> không tự ôm lần này
-  onDrawComplete: (box: MachineBox, alt: boolean) => void
+  // mods: phím giữ khi thả chuột (Alt: không tự ôm; Shift: chỉ tìm trong khung)
+  onDrawComplete: (box: MachineBox, mods: DropMods) => void
   // bắt đầu kéo / resize khung (trước lần onBoxChange đầu tiên)
   onGestureStart: () => void
   // thả chuột sau khi kéo / resize, box = khung vừa thả
-  onGestureEnd: (i: number, box: MachineBox, alt: boolean) => void
+  onGestureEnd: (i: number, box: MachineBox, mods: DropMods) => void
   // khung (index trong bản nháp) đang chờ kết quả ôm: viền nhấp nháy
   fittingIdx: number | null
   // khung đổi nhiều sau khi ôm: viền cam
   warnIdx: number[]
+  // khung đang hiện 3 ảnh xem trước kiểu ôm
+  fitPreviewIdx: number | null
+  // kiểu ôm của khung đang chọn
+  activeFitMode: FitMode
+  onPickFitMode: (mode: FitMode) => void
+  // click khối ứng viên (cut = false) / Alt+click cắt khối dính (cut = true), pt theo pt PDF
+  onRefine: (pt: [number, number], cut: boolean) => void
 }
 
 interface Point {
@@ -285,6 +299,10 @@ export const MapCanvas = memo(function MapCanvas({
   onGestureEnd,
   fittingIdx,
   warnIdx,
+  fitPreviewIdx,
+  activeFitMode,
+  onPickFitMode,
+  onRefine,
 }: MapCanvasProps) {
   const crop = layout.data.crop
   const [CX, CY, CW, CH] = crop
@@ -342,6 +360,19 @@ export const MapCanvas = memo(function MapCanvas({
 
     return n
   }, [machines, canWrite])
+
+  // phiên ôm của khung đang chỉnh: hiện khối ứng viên, click để tinh chỉnh
+  const activeFx = editing && cur && !drawMode ? machines[cur]?.boxes[act]?.fx : undefined
+
+  // vùng tìm của phiên ôm (khung lúc ôm nới theo expand, tối thiểu 12 px ảnh như worker)
+  function inFitArea(fx: FitSession, p: Point): boolean {
+    const [x, y, w, h] = fx.recipe.b
+    const e = fx.recipe.expand
+    const mx = e > 0 ? Math.max(12 / layout.data.ppp, e * w) : 0
+    const my = e > 0 ? Math.max(12 / layout.data.ppp, e * h) : 0
+
+    return p.x >= x - mx && p.x <= x + w + mx && p.y >= y - my && p.y <= y + h + my
+  }
 
   function hitTest(p: Point): Shape | null {
     let best: Shape | null = null
@@ -833,9 +864,17 @@ export const MapCanvas = memo(function MapCanvas({
 
     if (!op) return
 
+    const mods: DropMods = { alt: e.altKey, shift: e.shiftKey }
+
     if (op.t === 'press') {
+      const fx = activeFx
+      const pt: [number, number] = [op.p0.x, op.p0.y]
+
+      // tinh chỉnh khung vừa ôm: Alt+click trong vùng tìm = cắt khối dính; click khối ứng viên = thêm / bớt
+      if (fx && e.altKey && inFitArea(fx, op.p0)) onRefine(pt, true)
+      else if (fx && fx.view.candidates.some((c) => pointInPolygon(op.p0.x, op.p0.y, c.poly))) onRefine(pt, false)
       // nhả khi chưa đi quá ngưỡng: là click; click nền thì bỏ chọn
-      if (op.moveIdx !== null) onActivate(op.moveIdx)
+      else if (op.moveIdx !== null) onActivate(op.moveIdx)
       else if (op.hit) onSelectBox(op.hit.c, editing)
       else onClearSelection()
     } else if (op.t === 'pan') {
@@ -848,11 +887,11 @@ export const MapCanvas = memo(function MapCanvas({
       const h = Math.abs(p.y - op.p0.y)
 
       if (w > 1.5 && h > 1.5) {
-        onDrawComplete({ x: Math.min(op.p0.x, p.x), y: Math.min(op.p0.y, p.y), w, h }, e.altKey)
+        onDrawComplete({ x: Math.min(op.p0.x, p.x), y: Math.min(op.p0.y, p.y), w, h }, mods)
       }
     } else {
       flushBox()
-      if (op.last) onGestureEnd(op.i, op.last, e.altKey)
+      if (op.last) onGestureEnd(op.i, op.last, mods)
     }
 
     if (e.pointerType === 'mouse') scheduleHover(e.clientX, e.clientY)
@@ -915,6 +954,7 @@ export const MapCanvas = memo(function MapCanvas({
   // =======================================================
 
   const pulseKey = reveal?.pulse ? reveal.id : 0
+  const previewBox = editing && cur && fitPreviewIdx !== null ? machines[cur]?.boxes[fitPreviewIdx] : undefined
   const handleBox = editing && cur && !drawMode ? machines[cur]?.boxes[act] : undefined
   const z = 9 / (scale * U)
   const legendGroups = canWrite ? GROUP_ORDER : GROUP_ORDER.filter((g) => g !== 'review')
@@ -969,6 +1009,15 @@ export const MapCanvas = memo(function MapCanvas({
             warnIdx={warnIdx}
           />
 
+          {/* khối ứng viên của phiên ôm: xanh = đang dùng, xám = bỏ; click để thêm / bớt */}
+          {activeFx && (
+            <g className="ml-cands">
+              {activeFx.view.candidates.map((c, k) => (
+                <path key={k} className={c.on ? 'on' : 'off'} d={outlinePath([c.poly])} />
+              ))}
+            </g>
+          )}
+
           <g>
             {handleBox && RESIZE_HANDLES.map((h) => {
               const [hx, hy] = handlePosition(handleBox, h)
@@ -1001,6 +1050,21 @@ export const MapCanvas = memo(function MapCanvas({
         {selChip && (
           <div className="ml-anchor" style={{ left: selChip.left, top: selChip.top }}>
             <span className="ml-chip-sel">{selChip.code}</span>
+          </div>
+        )}
+
+        {previewBox?.fx && (
+          <div
+            className="ml-anchor"
+            style={{ left: (previewBox.x - CX) * U, top: (previewBox.y + previewBox.h - CY) * U }}
+          >
+            <FitPreviews
+              fx={previewBox.fx}
+              image={layout.image}
+              crop={crop}
+              mode={activeFitMode}
+              onPick={onPickFitMode}
+            />
           </div>
         )}
       </Box>
@@ -1262,6 +1326,26 @@ const svgSx = {
   },
   '&.editing .ml-box.on.fitting': {
     animation: `${blink} .9s ease-in-out infinite`,
+  },
+  // khối ứng viên của phiên ôm (viền mờ): xanh = đang dùng, xám = bỏ
+  '& .ml-cands path': {
+    strokeWidth: 1,
+    strokeLinejoin: 'round',
+    vectorEffect: 'non-scaling-stroke',
+    pointerEvents: 'none',
+  },
+  '& .ml-cands .on': {
+    fill: mapColors.edit,
+    fillOpacity: 0.2,
+    stroke: mapColors.edit,
+    strokeOpacity: 0.6,
+  },
+  '& .ml-cands .off': {
+    fill: '#64748b',
+    fillOpacity: 0.16,
+    stroke: '#64748b',
+    strokeOpacity: 0.55,
+    strokeDasharray: '3 2',
   },
   '& .ml-bbox': {
     fill: 'none',
