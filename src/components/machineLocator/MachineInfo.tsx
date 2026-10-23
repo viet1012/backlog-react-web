@@ -220,9 +220,12 @@ export function MachineInfo({ ml }: MachineInfoProps) {
         <div>
           {nb
             ? 'Kéo khung để di chuyển, kéo ô vuông ở cạnh để đổi kích thước. Phím mũi tên dịch 0,5 pt (Shift: 3 pt).'
-            + ' Khi thả chuột: giữ Alt = không tự ôm, giữ Shift = chỉ tìm trong khung. Ctrl+Z hoàn tác.'
+            + ' Khi thả chuột: giữ Alt = không tự ôm, giữ Shift = chỉ tìm trong khung. Ctrl+Z / Ctrl+Y hoàn tác / làm lại.'
             + (draft?.boxes[act]?.fx
-              ? ' Click khối trên bản vẽ để thêm / bớt; Alt+click vào nét để cắt máy dính máy bên cạnh.'
+              ? ' Click khối để thêm / bớt; Alt+click nét để cắt máy dính; Alt + kéo = bút loại trừ, Shift + kéo = bút bổ sung.'
+              : '')
+            + (draft?.boxes[act]?.p && ml.cadOutline
+              ? ' Kéo đỉnh để sửa (giữ Ctrl: không bắt dính nét), nhấp đúp cạnh để thêm đỉnh, chọn đỉnh + Delete để xoá.'
               : '')
             + (nb > 1 ? ` Đang chọn vị trí ${act + 1}/${nb}.` : '')
             : 'Máy chưa có khung. Bấm “Vẽ khung” rồi kéo trên bản vẽ.'}
@@ -254,6 +257,16 @@ export function MachineInfo({ ml }: MachineInfoProps) {
             onClick={ml.fitCurrent}
           >
             Ôm theo máy (F)
+          </PanelButton>
+
+          <PanelButton
+            aria-pressed={ml.fitTool}
+            appearance={ml.fitTool ? 'action' : 'default'}
+            disabled={ml.fitterState === 'error'}
+            title="Click vào máy trên bản vẽ để ôm quanh điểm click (Esc để thoát)"
+            onClick={() => ml.setFitTool(!ml.fitTool)}
+          >
+            Chế độ fit
           </PanelButton>
         </Box>
 

@@ -125,11 +125,11 @@ function parseOutline(value: unknown, i: number): Outline {
   return value as number[][][]
 }
 
-type FitMode = 'tight' | 'hull' | 'rect'
+type FitMode = 'closed' | 'tight' | 'hull' | 'rect'
 
-// kiểu ôm của 1 khung: tight / hull / rect; khác -> null (theo mặc định)
+// kiểu ôm của 1 khung: closed / tight / hull / rect; khác -> null (theo mặc định)
 function parseFit(value: unknown): FitMode | null {
-  return value === 'tight' || value === 'hull' || value === 'rect' ? value : null
+  return value === 'closed' || value === 'tight' || value === 'hull' || value === 'rect' ? value : null
 }
 
 function parseBoxes(body: unknown): { b: number[][], p: Outline[], fit: (FitMode | null)[] } {

@@ -106,7 +106,7 @@ export function buildBaseBoxes(
 }
 
 export function normalizeFitMode(value: unknown): FitMode | null {
-  return value === 'tight' || value === 'hull' || value === 'rect' ? value : null
+  return value === 'closed' || value === 'tight' || value === 'hull' || value === 'rect' ? value : null
 }
 
 // =========================================================

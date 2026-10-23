@@ -5,12 +5,14 @@ import type {
 } from '../types/machineLocator'
 import {
   fitView,
-  writeInkMasks,
-  type InkMasks,
+  snapToInk,
+  writeGray,
+  type FitTiming,
+  type GrayImage,
 } from './machineLocatorFit'
 
 // =========================================================
-// WORKER: giữ mặt nạ nét của 1 ảnh layout, ôm khung theo công thức
+// WORKER: giữ ảnh xám (độ phân giải gốc) của 1 layout, ôm khung theo công thức
 // =========================================================
 
 export interface FitJob {
@@ -21,14 +23,25 @@ export interface FitJob {
   labels: RawBox[]
 }
 
+export interface SnapJob {
+  // điểm cần bắt dính (pt)
+  pt: [number, number]
+  crop: number[]
+  ppp: number
+}
+
+export type FitWorkerTask =
+  | ({ t: 'fit' } & FitJob)
+  | ({ t: 'snap' } & SnapJob)
+
 export type FitWorkerRequest =
   | { t: 'init', bitmap: ImageBitmap }
-  | ({ t: 'fit', id: number } & FitJob)
+  | (FitWorkerTask & { id: number })
 
 export type FitWorkerResponse =
   | { t: 'ready', w: number, h: number }
   | { t: 'error', message: string }
-  | { t: 'fit', id: number, view: FitView | null, ms: number, error?: string }
+  | { t: 'done', id: number, view?: FitView, pt?: [number, number] | null, ms: number, error?: string }
 
 // tsconfig chỉ có lib DOM: khai báo phần scope worker cần dùng
 const scope = self as unknown as {
@@ -39,9 +52,9 @@ const scope = self as unknown as {
 // đọc ảnh theo dải để không giữ cả ImageData RGBA của ảnh lớn
 const STRIP_ROWS = 256
 
-let masks: InkMasks | null = null
+let img: GrayImage | null = null
 
-function buildMasks(bitmap: ImageBitmap): InkMasks {
+function buildGray(bitmap: ImageBitmap): GrayImage {
   const { width: w, height: h } = bitmap
   const canvas = new OffscreenCanvas(w, h)
   const g = canvas.getContext('2d', { willReadFrequently: true })
@@ -54,12 +67,12 @@ function buildMasks(bitmap: ImageBitmap): InkMasks {
   g.drawImage(bitmap, 0, 0)
   bitmap.close()
 
-  const out: InkMasks = { w, h, ink160: new Uint8Array(w * h), ink215: new Uint8Array(w * h) }
+  const out: GrayImage = { w, h, gray: new Uint8Array(w * h) }
 
   for (let y = 0; y < h; y += STRIP_ROWS) {
     const rows = Math.min(STRIP_ROWS, h - y)
 
-    writeInkMasks(g.getImageData(0, y, w, rows).data, out, y * w)
+    writeGray(g.getImageData(0, y, w, rows).data, out, y * w)
   }
 
   return out
@@ -70,30 +83,41 @@ scope.onmessage = (e) => {
 
   if (m.t === 'init') {
     try {
-      masks = buildMasks(m.bitmap)
-      scope.postMessage({ t: 'ready', w: masks.w, h: masks.h })
+      img = buildGray(m.bitmap)
+      scope.postMessage({ t: 'ready', w: img.w, h: img.h })
     } catch (err) {
       scope.postMessage({ t: 'error', message: err instanceof Error ? err.message : String(err) })
     }
     return
   }
 
-  if (!masks) {
-    scope.postMessage({ t: 'fit', id: m.id, view: null, ms: 0, error: 'Chưa có ảnh layout.' })
+  if (!img) {
+    scope.postMessage({ t: 'done', id: m.id, ms: 0, error: 'Chưa có ảnh layout.' })
     return
   }
 
   const t0 = performance.now()
 
   try {
-    const view = fitView(masks, m.recipe, m.crop, m.ppp, m.labels)
+    if (m.t === 'fit') {
+      const timing = {} as FitTiming
+      const view = fitView(img, m.recipe, m.crop, m.ppp, m.labels, timing)
+      const f = (v: number | undefined) => (v ?? 0).toFixed(1)
 
-    scope.postMessage({ t: 'fit', id: m.id, view, ms: performance.now() - t0 })
+      // debug: thời gian từng bước (bật mức Verbose trong DevTools để xem)
+      console.debug(
+        `[machine-locator fit] ${f(timing.total)} ms · vùng ${timing.px ?? 0} px`
+        + `${timing.downscaled ? ' (viền kín trên ảnh 1/2)' : ''}`
+        + ` · nét ${f(timing.ink)} · sát/gọn ${f(timing.tight)} · viền kín ${f(timing.closed)}`,
+      )
+      scope.postMessage({ t: 'done', id: m.id, view, ms: performance.now() - t0 })
+    } else {
+      scope.postMessage({ t: 'done', id: m.id, pt: snapToInk(img, m.pt, m.crop, m.ppp), ms: performance.now() - t0 })
+    }
   } catch (err) {
     scope.postMessage({
-      t: 'fit',
+      t: 'done',
       id: m.id,
-      view: null,
       ms: performance.now() - t0,
       error: err instanceof Error ? err.message : String(err),
     })

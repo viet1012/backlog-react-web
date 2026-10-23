@@ -25,8 +25,10 @@ import type {
   FitRecipe,
   FitResult,
   FitSession,
+  FitStroke,
   FitToast,
   FitView,
+  Polygon,
   LayoutData,
   MachineDraft,
   MachineEdits,
@@ -38,7 +40,13 @@ import type {
 } from '../types/machineLocator'
 import {
   FIT_EXPAND,
+  FIT_GAP_DEFAULT,
+  FIT_GAP_MAX,
+  FIT_GAP_MIN,
+  FIT_POINT_REGION_PX,
   FIT_REVIEW_SHIFT,
+  FIT_TIGHTNESS_DEFAULT,
+  epsFromTightness,
   fitShift,
 } from '../utils/machineLocatorFit'
 import {
@@ -54,7 +62,9 @@ import {
   compareCodes,
   editBody,
   normalizeFitMode,
+  round1,
   sameBoxes,
+  sameOutlines,
   type GroupVisibility,
   type MachineStatus,
 } from '../utils/machineLocatorGeometry'
@@ -99,12 +109,34 @@ interface UndoEntry {
 interface FitRequest {
   code: string
   i: number
-  from: Box
+  // null: thêm khung mới ở vị trí i (ôm quanh điểm click khi máy chưa có khung)
+  from: Box | null
   recipe: FitRecipe
-  // fit: ôm mới (thả chuột / nút F); refine: tinh chỉnh khối (click / Alt+click)
-  kind: 'fit' | 'refine'
-  // bấm nút / phím F (không phải tự ôm sau khi thả)
+  // fit: ôm mới (thả chuột / nút F / click chế độ fit); refine: tinh chỉnh (click khối, bút, cắt);
+  // tune: đổi "Độ sát" / "Nắn vuông góc"
+  kind: 'fit' | 'refine' | 'tune'
+  // bấm nút / phím F / click (không phải tự ôm sau khi thả)
   manual: boolean
+  // chỉ xem trước (nét đứt), chưa đổi bản nháp – click chế độ fit ngoài khung đang chọn
+  ghost?: { append: boolean }
+}
+
+// Kết quả ôm quanh điểm click ngoài khung đang chọn: chỉ xem trước, Enter mới áp dụng
+// (thay khung i, hoặc thêm khung khi máy chưa có khung), Esc bỏ
+interface FitGhost {
+  code: string
+  i: number
+  append: boolean
+  session: FitSession
+  mode: FitMode
+}
+
+// Đang xem trước kết quả ôm của 1 khung (Enter = nhận, Esc = hủy về trước lần ôm)
+interface FitPreviewState {
+  code: string
+  i: number
+  // bước hoàn tác ngay trước lần ôm (Esc quay về đó)
+  undoId: number
 }
 
 // Phím giữ khi thả chuột: alt = không tự ôm, shift = chỉ tìm trong khung (không nới)
@@ -118,9 +150,14 @@ const PREF_DIM_BACKGROUND = 'machine-locator:dimBackground'
 const PREF_CAD_OUTLINE = 'machine-locator:cadOutline'
 const PREF_AUTO_FIT = 'machine-locator:autoFit'
 const PREF_FIT_MODE = 'machine-locator:fitMode'
+const PREF_FIT_TIGHTNESS = 'machine-locator:fitTightness'
+const PREF_FIT_ORTHO = 'machine-locator:fitOrtho'
+const PREF_FIT_GAP = 'machine-locator:fitGap'
 
 // chờ sau khi thả chuột rồi mới ôm (thả rồi kéo tiếp ngay thì không tính)
 const FIT_DEBOUNCE = 150
+// kéo thanh "Độ sát" / bật "Nắn vuông góc": tính lại xem trước sau ngần này ms
+const TUNE_DEBOUNCE = 120
 const UNDO_LIMIT = 50
 // các lần dịch bằng phím mũi tên liền nhau gộp thành 1 bước hoàn tác
 const NUDGE_MERGE_MS = 800
@@ -159,7 +196,24 @@ function labelsNear(all: RawBox[], b: RawBox): RawBox[] {
     t[0] < b[0] + b[2] + mx && t[0] + t[2] > b[0] - mx && t[1] < b[1] + b[3] + my && t[1] + t[3] > b[1] - my)
 }
 
-const FIT_STATUS_ORDER: Record<FitBatchRow['status'], number> = { review: 0, miss: 1, fit: 2 }
+// Polygon mới -> bbox (pt, 1 chữ số)
+function bboxOfOutline(p: Polygon[]): Pick<Box, 'x' | 'y' | 'w' | 'h'> {
+  let x0 = Infinity
+  let y0 = Infinity
+  let x1 = -Infinity
+  let y1 = -Infinity
+
+  for (const poly of p) {
+    for (const [x, y] of poly) {
+      x0 = Math.min(x0, x)
+      y0 = Math.min(y0, y)
+      x1 = Math.max(x1, x)
+      y1 = Math.max(y1, y)
+    }
+  }
+
+  return { x: round1(x0), y: round1(y0), w: round1(x1 - x0), h: round1(y1 - y0) }
+}
 
 export function useMachineLocator(
   layout: MachineLayoutConfig,
@@ -295,10 +349,26 @@ export function useMachineLocator(
   const [autoFit, setAutoFitState] = useState(
     () => loadPreference(PREF_AUTO_FIT) !== false,
   )
-  // kiểu ôm mặc định cho khung chưa chọn kiểu riêng; mặc định "Sát"
+  // kiểu ôm mặc định cho khung chưa chọn kiểu riêng; mặc định "Theo viền kín"
   const [fitMode, setFitModeState] = useState<FitMode>(
-    () => normalizeFitMode(loadPreference(PREF_FIT_MODE)) ?? 'tight',
+    () => normalizeFitMode(loadPreference(PREF_FIT_MODE)) ?? 'closed',
   )
+  // thanh "Độ sát" (1–10) và "Nắn vuông góc" cho các lần ôm mới
+  const [fitTightness, setFitTightnessState] = useState(() => {
+    const v = loadPreference(PREF_FIT_TIGHTNESS)
+
+    return typeof v === 'number' && v >= 1 && v <= 10 ? v : FIT_TIGHTNESS_DEFAULT
+  })
+  const [fitOrtho, setFitOrthoState] = useState(() => loadPreference(PREF_FIT_ORTHO) === true)
+  // thanh "Bịt hở" (px) cho "Theo viền kín"
+  const [fitGap, setFitGapState] = useState(() => {
+    const v = loadPreference(PREF_FIT_GAP)
+
+    return typeof v === 'number' && v >= FIT_GAP_MIN && v <= FIT_GAP_MAX ? v : FIT_GAP_DEFAULT
+  })
+  const [fitGhost, setFitGhost] = useState<FitGhost | null>(null)
+  // chế độ fit: click vào máy -> ôm quanh điểm click
+  const [fitTool, setFitTool] = useState(false)
   const fitter = useRef<MachineFitter | null>(null)
   const [fitterState, setFitterState] = useState<FitterState>('loading')
   // khung đang chờ kết quả ôm (viền nhấp nháy)
@@ -306,8 +376,8 @@ export function useMachineLocator(
   // khung đổi nhiều sau khi ôm (viền cam)
   const [fitWarn, setFitWarn] = useState<{ code: string, idx: number[] }>({ code: '', idx: [] })
   const [fitToast, setFitToast] = useState<FitToast | null>(null)
-  // khung đang hiện 3 ảnh xem trước kiểu ôm (Sát / Gọn / Chữ nhật)
-  const [fitPreview, setFitPreview] = useState<{ code: string, i: number } | null>(null)
+  // khung đang hiện hàng xem trước kiểu ôm
+  const [fitPreview, setFitPreview] = useState<FitPreviewState | null>(null)
 
   const fitTimer = useRef(0)
   const fitSeq = useRef(0)
@@ -374,9 +444,40 @@ export function useMachineLocator(
     setFitting(null)
   }
 
-  // shift: chỉ tìm trong khung (không nới vùng tìm)
-  function newRecipe(b: Box, shift: boolean): FitRecipe {
-    return { b: toRawBox(b), expand: shift ? 0 : FIT_EXPAND, cuts: [], toggles: [] }
+  // Công thức ôm theo khung b (shift: chỉ tìm trong khung, không nới); seed = tâm khung nếu không có
+  function newRecipe(b: Box, shift: boolean, seed: [number, number] | null = null): FitRecipe {
+    const raw = toRawBox(b)
+
+    return {
+      b: raw,
+      expand: shift ? 0 : FIT_EXPAND,
+      ref: raw,
+      seed,
+      eps: epsFromTightness(fitTightness),
+      ortho: fitOrtho,
+      gap: fitGap,
+      cuts: [],
+      toggles: [],
+      strokes: [],
+    }
+  }
+
+  // Công thức ôm quanh điểm click khi chưa có khung: vùng vuông FIT_POINT_REGION_PX px ảnh
+  function pointRecipe(pt: [number, number]): FitRecipe {
+    const s = FIT_POINT_REGION_PX / data.ppp
+
+    return {
+      b: [pt[0] - s / 2, pt[1] - s / 2, s, s],
+      expand: 0,
+      ref: null,
+      seed: pt,
+      eps: epsFromTightness(fitTightness),
+      ortho: fitOrtho,
+      gap: fitGap,
+      cuts: [],
+      toggles: [],
+      strokes: [],
+    }
   }
 
   function requestFit(req: FitRequest, delay = FIT_DEBOUNCE) {
@@ -420,18 +521,39 @@ export function useMachineLocator(
     const { draft: d, act: a, fitMode: defMode } = live.current
     const b = d && d.code === req.code ? d.boxes[req.i] : undefined
 
+    if (!d || d.code !== req.code) return
+
+    // click ngoài khung: chỉ xem trước, chưa đổi bản nháp
+    if (req.ghost) {
+      const ghost = req.ghost
+      const any = Object.values(view.variants).some(Boolean)
+
+      setFitGhost((g) => ({
+        code: req.code,
+        i: req.i,
+        append: ghost.append,
+        session: { recipe: req.recipe, view },
+        // chỉnh thanh trượt giữ kiểu đang chọn của bản xem trước
+        mode: req.kind === 'tune' && g && g.code === req.code ? g.mode : defMode,
+      }))
+      if (!any) showToast('Không nhận ra hình máy quanh điểm click', 'info')
+      return
+    }
+
+    // thêm khung mới: số khung phải còn như lúc yêu cầu
+    if (!req.from && d.boxes.length !== req.i) return
     // khung đã đổi tiếp sau khi thả -> bỏ kết quả
-    if (!d || !b || !sameRect(b, req.from)) return
+    if (req.from && (!b || !sameRect(b, req.from))) return
 
     const fx: FitSession = { recipe: req.recipe, view }
-    const mode = b.fit ?? defMode
+    const mode = b?.fit ?? defMode
     const r = view.variants[mode]
     const boxes = d.boxes.slice()
 
     if (!r) {
-      if (req.kind === 'refine') {
-        // đã tắt hết khối: về khung lúc ôm, không đường bao
-        const [x, y, w, h] = req.recipe.b
+      if (b && req.kind !== 'fit') {
+        // đã tắt / xoá hết khối: về khung lúc ôm, không đường bao
+        const [x, y, w, h] = req.recipe.ref ?? req.recipe.b
 
         pushUndo(d, a)
         boxes[req.i] = { x, y, w, h, p: null, fit: b.fit, fx }
@@ -440,31 +562,39 @@ export function useMachineLocator(
         return
       }
 
-      // giữ khung như thả (kéo / vẽ đã đặt p = null); nhớ phiên ôm để tự chọn khối
-      boxes[req.i] = { ...b, fx }
-      setDraft({ ...d, boxes })
+      // giữ khung như thả (kéo / vẽ đã đặt p = null); nhớ phiên ôm để tự chọn khối / tô bút
+      if (b) {
+        boxes[req.i] = { ...b, fx }
+        setDraft({ ...d, boxes })
+      }
       showToast(
-        req.manual
-          ? 'Không nhận ra hình máy – giữ nguyên khung'
-          : 'Không nhận ra hình máy – giữ khung chữ nhật',
+        !b
+          ? 'Không nhận ra hình máy quanh điểm click'
+          : req.manual
+            ? 'Không nhận ra hình máy – giữ nguyên khung'
+            : 'Không nhận ra hình máy – giữ khung chữ nhật',
         'info',
       )
       return
     }
 
-    const shift = fitShift(req.recipe.b, r.b)
+    // ôm quanh điểm click (không có khung gốc) thì không so độ dời
+    const shift = req.recipe.ref ? fitShift(req.recipe.ref, r.b) : 0
     const big = shift > FIT_REVIEW_SHIFT
     const undoId = pushUndo(d, a)
 
     boxes[req.i] = fittedBox(r, mode, fx)
+    if (!b) setAct(req.i)
     setDraft({ ...d, boxes, dirty: true })
     markWarn(d.code, req.i, big)
 
     if (req.kind === 'fit') {
-      setFitPreview({ code: d.code, i: req.i })
+      setFitPreview({ code: d.code, i: req.i, undoId })
       showToast(
-        big ? `Khung đổi nhiều (${Math.round(shift)} pt) – kiểm tra lại` : 'Đã ôm theo máy',
-        big ? 'warning' : 'success',
+        big
+          ? `Khung đổi nhiều (${Math.round(shift)} pt) – kiểm tra lại · tin cậy ${r.score}`
+          : `Đã ôm theo máy · tin cậy ${r.score}` + (r.fallback ? ' (không thấy viền kín, dùng “Sát”)' : ''),
+        big || r.score < 50 ? 'warning' : 'success',
         undoId,
       )
     }
@@ -479,27 +609,202 @@ export function useMachineLocator(
     requestFit({ code: draft.code, i: act, from: b, recipe: newRecipe(b, false), kind: 'fit', manual: true }, 0)
   }
 
-  // Tinh chỉnh khung đang chọn (đã có phiên ôm): click khối = thêm / bớt, Alt+click = cắt khối dính
-  function refineFit(pt: [number, number], cut: boolean) {
+  // Chế độ fit: click vào máy -> ôm quanh điểm click.
+  // Trong khung đang chọn (nới 15%): ôm lại khung đó, hạt giống = điểm click;
+  // ngoài khung / máy chưa có khung: vùng vuông 300 px quanh điểm, CHỈ xem trước (nét đứt) –
+  // Enter thay khung đang chọn (hoặc thêm khung khi máy chưa có), Esc bỏ
+  function fitAtPoint(pt: [number, number]) {
+    if (!editing || !draft) return
+
+    const b = draft.boxes[act]
+    const inside = b && pt[0] >= b.x - b.w * FIT_EXPAND && pt[0] <= b.x + b.w * (1 + FIT_EXPAND)
+      && pt[1] >= b.y - b.h * FIT_EXPAND && pt[1] <= b.y + b.h * (1 + FIT_EXPAND)
+
+    setFitPreview(null)
+    setFitGhost(null)
+
+    if (inside) {
+      requestFit({ code: draft.code, i: act, from: b, recipe: newRecipe(b, false, pt), kind: 'fit', manual: true }, 0)
+      return
+    }
+
+    const append = !draft.boxes.length
+
+    requestFit({
+      code: draft.code,
+      i: append ? 0 : act,
+      from: null,
+      recipe: pointRecipe(pt),
+      kind: 'fit',
+      manual: true,
+      ghost: { append },
+    }, 0)
+  }
+
+  // Bản xem trước (click ngoài khung) còn đúng máy đang sửa
+  const ghostView = editing && fitGhost && draft && fitGhost.code === draft.code ? fitGhost : null
+
+  // Enter với bản xem trước: thay khung đang chọn / thêm khung theo kiểu đang chọn
+  function applyGhost() {
+    const g = ghostView
+
+    setFitGhost(null)
+
+    if (!g || !draft) return
+
+    const r = g.session.view.variants[g.mode]
+
+    if (!r) {
+      showToast('Kiểu ôm này không có kết quả – chọn kiểu khác trước khi nhận', 'info')
+      setFitGhost(g)
+      return
+    }
+
+    if (!g.append && !draft.boxes[g.i]) return
+
+    const i = g.append ? draft.boxes.length : g.i
+    const undoId = pushUndo(draft, act)
+    const boxes = draft.boxes.slice()
+
+    boxes[i] = { ...fittedBox(r, g.mode, g.session), fx: undefined }
+    setDraft({ ...draft, boxes, dirty: true })
+    setAct(i)
+    markWarn(draft.code, i, false)
+    showToast(`Đã áp dụng khung · tin cậy ${r.score}`, r.score < 50 ? 'warning' : 'success', undoId)
+  }
+
+  // Công thức đang dùng của khung đang chọn (lần tinh chỉnh trước còn chờ kết quả thì cộng dồn lên nó)
+  function currentRecipe(): FitRecipe | null {
     const b = draft?.boxes[act]
 
-    if (!draft || !b?.fx) return
+    if (!draft || !b?.fx) return null
 
     const prev = pendingFit.current
-    // đang chờ kết quả click trước của cùng khung: cộng dồn lên công thức đó
-    const r = prev && prev.code === draft.code && prev.i === act ? prev.recipe : b.fx.recipe
+
+    return prev && prev.code === draft.code && prev.i === act ? prev.recipe : b.fx.recipe
+  }
+
+  // Tinh chỉnh khung đang chọn (đã có phiên ôm): click khối = thêm / bớt, Alt+click = cắt khối dính
+  function refineFit(pt: [number, number], cut: boolean) {
+    const r = currentRecipe()
+
+    if (!draft || !r) return
+
     const recipe = cut
       ? { ...r, cuts: [...r.cuts, pt] }
       : { ...r, toggles: [...r.toggles, pt] }
 
-    requestFit({ code: draft.code, i: act, from: b, recipe, kind: 'refine', manual: true }, 0)
+    requestFit({ code: draft.code, i: act, from: draft.boxes[act], recipe, kind: 'refine', manual: true }, 0)
+  }
+
+  // Bút trên vùng tìm: erase = loại trừ (Alt + kéo), add = bổ sung (Shift + kéo)
+  function strokeFit(stroke: FitStroke) {
+    const r = currentRecipe()
+
+    if (!draft || !r || stroke.pts.length < 1) return
+
+    requestFit({
+      code: draft.code,
+      i: act,
+      from: draft.boxes[act],
+      recipe: { ...r, strokes: [...r.strokes, stroke] },
+      kind: 'refine',
+      manual: true,
+    }, 0)
+  }
+
+  // Thanh "Độ sát" / "Bịt hở" / công tắc "Nắn vuông góc": nhớ cho lần sau + tính lại xem trước (debounce)
+  function tuneFit(opts: { tightness?: number, ortho?: boolean, gap?: number }) {
+    const tightness = opts.tightness ?? fitTightness
+    const ortho = opts.ortho ?? fitOrtho
+    const gap = opts.gap ?? fitGap
+
+    setFitTightnessState(tightness)
+    setFitOrthoState(ortho)
+    setFitGapState(gap)
+    savePreference(PREF_FIT_TIGHTNESS, tightness)
+    savePreference(PREF_FIT_ORTHO, ortho)
+    savePreference(PREF_FIT_GAP, gap)
+
+    const tune = (r: FitRecipe): FitRecipe => ({ ...r, eps: epsFromTightness(tightness), ortho, gap })
+    const g = ghostView
+
+    if (g && draft) {
+      // bản xem trước click ngoài khung (lần chỉnh trước còn chờ thì cộng dồn lên nó)
+      const prev = pendingFit.current
+      const r = prev?.ghost && prev.code === g.code ? prev.recipe : g.session.recipe
+
+      requestFit({
+        code: g.code,
+        i: g.i,
+        from: null,
+        recipe: tune(r),
+        kind: 'tune',
+        manual: true,
+        ghost: { append: g.append },
+      }, TUNE_DEBOUNCE)
+      return
+    }
+
+    const r = currentRecipe()
+
+    if (!draft || !r) return
+
+    requestFit({
+      code: draft.code,
+      i: act,
+      from: draft.boxes[act],
+      recipe: tune(r),
+      kind: 'tune',
+      manual: true,
+    }, TUNE_DEBOUNCE)
+  }
+
+  // Sửa đỉnh đường bao (kéo / thêm / xoá đỉnh): khung b theo bao ngoài đường bao mới
+  function updateOutline(i: number, p: Polygon[]) {
+    setDraft((d) => {
+      if (!d || !d.boxes[i]) return d
+
+      const boxes = d.boxes.slice()
+
+      boxes[i] = { ...d.boxes[i], ...bboxOfOutline(p), p, fx: undefined }
+
+      return { ...d, boxes, dirty: true }
+    })
+    setFitPreview(null)
+  }
+
+  // Thả đỉnh (không giữ Ctrl): bắt dính vào nét mực gần nhất (<= 4 px) nếu đỉnh chưa bị đổi tiếp
+  function snapVertex(i: number, pi: number, vi: number, pt: [number, number]) {
+    const f = fitter.current
+
+    if (!f || f.status !== 'ready') return
+
+    const code = draft?.code
+
+    f.snap({ pt, crop: data.crop, ppp: data.ppp }).then((s) => {
+      const d = live.current.draft
+      const poly = d && d.code === code ? d.boxes[i]?.p?.[pi] : undefined
+      const v = poly?.[vi]
+
+      if (!s || !d || !poly || !v || v[0] !== pt[0] || v[1] !== pt[1]) return
+
+      const p = d.boxes[i].p!.map((q, k) => (k === pi ? q.map((u, j) => (j === vi ? s : u)) : q))
+
+      updateOutline(i, p)
+    }, () => undefined)
   }
 
   // Chọn kiểu ôm (thẻ máy / ảnh xem trước): đổi khung đang chọn + nhớ làm mặc định
   function chooseFitMode(mode: FitMode) {
     setFitModeState(mode)
     savePreference(PREF_FIT_MODE, mode)
-    setFitPreview(null)
+
+    // bản xem trước click ngoài khung: chỉ đổi kiểu đang xem
+    if (ghostView) {
+      setFitGhost({ ...ghostView, mode })
+      return
+    }
 
     const b = draft?.boxes[act]
 
@@ -536,9 +841,39 @@ export function useMachineLocator(
     }
   }
 
-  // Enter / bấm ra ngoài: giữ kiểu đang chọn, ẩn ảnh xem trước
-  function closeFitPreview() {
+  // Enter: nhận kết quả ôm (giữ kiểu đang chọn), ẩn xem trước và khối ứng viên
+  function acceptFit() {
+    const p = fitPreview
+
     setFitPreview(null)
+    cancelFit()
+
+    if (ghostView) {
+      applyGhost()
+      return
+    }
+
+    if (!p || !draft || draft.code !== p.code || !draft.boxes[p.i]?.fx) return
+
+    const boxes = draft.boxes.slice()
+
+    boxes[p.i] = { ...boxes[p.i], fx: undefined }
+    setDraft({ ...draft, boxes })
+  }
+
+  // Esc: hủy lần ôm, về khung trước khi ôm (bản xem trước click ngoài khung: chỉ bỏ)
+  function rejectFit() {
+    const p = fitPreview
+
+    setFitPreview(null)
+    cancelFit()
+
+    if (ghostView) {
+      setFitGhost(null)
+      return
+    }
+
+    if (p) undo(p.undoId)
   }
 
   // =======================================================
@@ -546,24 +881,42 @@ export function useMachineLocator(
   // =======================================================
 
   const undoStack = useRef<UndoEntry[]>([])
+  // Ctrl+Y / Ctrl+Shift+Z: làm lại các bước vừa hoàn tác (thao tác mới thì xoá)
+  const redoStack = useRef<UndoEntry[]>([])
   const undoSeq = useRef(0)
   const lastNudge = useRef({ id: 0, t: 0 })
 
+  function snapshot(d: MachineDraft, a: number): UndoEntry {
+    return { id: ++undoSeq.current, code: d.code, boxes: cloneBoxes(d.boxes), act: a, dirty: d.dirty }
+  }
+
   function pushUndo(d: MachineDraft, a: number): number {
-    const id = ++undoSeq.current
+    const e = snapshot(d, a)
     const s = undoStack.current
 
-    s.push({ id, code: d.code, boxes: cloneBoxes(d.boxes), act: a, dirty: d.dirty })
+    s.push(e)
     if (s.length > UNDO_LIMIT) s.shift()
+    redoStack.current = []
 
-    return id
+    return e.id
   }
 
   function clearUndo() {
     undoStack.current = []
+    redoStack.current = []
   }
 
-  // id: chỉ hoàn tác khi bước trên cùng đúng là id (nút "Hoàn tác" của toast)
+  function restore(d: MachineDraft, e: UndoEntry) {
+    cancelFit()
+    setDraft({ ...d, boxes: e.boxes, dirty: e.dirty })
+    setAct(Math.max(0, Math.min(e.act, e.boxes.length - 1)))
+    setFitWarn({ code: '', idx: [] })
+    setFitToast(null)
+    setFitPreview(null)
+    setFitGhost(null)
+  }
+
+  // id: chỉ hoàn tác khi bước trên cùng đúng là id (nút "Hoàn tác" của toast / Esc khi xem trước)
   function undo(id?: number) {
     const s = undoStack.current
 
@@ -575,18 +928,28 @@ export function useMachineLocator(
     if (!draft || !top || (id !== undefined && top.id !== id)) return
 
     s.pop()
-    cancelFit()
-    setDraft({ ...draft, boxes: top.boxes, dirty: top.dirty })
-    setAct(Math.max(0, Math.min(top.act, top.boxes.length - 1)))
-    setFitWarn({ code: '', idx: [] })
-    setFitToast(null)
-    setFitPreview(null)
+    redoStack.current.push(snapshot(draft, act))
+    restore(draft, top)
   }
 
-  // MapCanvas: bắt đầu kéo / resize khung (trước lần updateBox đầu tiên)
+  function redo() {
+    const r = redoStack.current
+
+    while (r.length && r[r.length - 1].code !== draft?.code) r.pop()
+
+    const top = r.pop()
+
+    if (!draft || !top) return
+
+    undoStack.current.push(snapshot(draft, act))
+    restore(draft, top)
+  }
+
+  // MapCanvas: bắt đầu kéo / resize khung / sửa đỉnh (trước lần thay đổi đầu tiên)
   function beginBoxGesture() {
     cancelFit()
     setFitPreview(null)
+    setFitGhost(null)
     if (draft) pushUndo(draft, act)
   }
 
@@ -627,11 +990,14 @@ export function useMachineLocator(
 
     const { crop, ppp } = data
     const waiting: Record<string, Box[]> = { ...pending }
+    const orig: Record<string, Box[]> = { ...batch?.orig }
     const rows: FitBatchRow[] = []
+
+    for (const job of jobs) orig[job.code] ??= src[job.code].boxes
 
     batchStop.current = false
     cancelFit()
-    setBatch({ running: true, done: 0, total: jobs.length, rows: [], pending: waiting })
+    setBatch({ running: true, done: 0, total: jobs.length, rows: [], pending: waiting, orig, reviewIdx: null })
     setStatus(`Đang ôm ${jobs.length} khung…`)
 
     let error = ''
@@ -661,12 +1027,19 @@ export function useMachineLocator(
 
         boxes[job.i] = { x: r.b[0], y: r.b[1], w: r.b[2], h: r.b[3], p: r.p, fit: mode }
         waiting[job.code] = boxes
-        rows.push({ code: job.code, i: job.i, n, shift, status: shift > FIT_REVIEW_SHIFT ? 'review' : 'fit' })
+        rows.push({
+          code: job.code,
+          i: job.i,
+          n,
+          shift,
+          score: r.score,
+          status: shift > FIT_REVIEW_SHIFT ? 'review' : 'fit',
+        })
 
         // máy đang chọn (bản nháp chưa sửa) hiện luôn kết quả
         setDraft((d) => (d && !d.dirty && d.code === job.code ? { ...d, boxes: cloneBoxes(boxes) } : d))
       } else {
-        rows.push({ code: job.code, i: job.i, n, shift: null, status: 'miss' })
+        rows.push({ code: job.code, i: job.i, n, shift: null, score: null, status: 'miss' })
       }
 
       const snapshot = rows.slice()
@@ -678,8 +1051,8 @@ export function useMachineLocator(
 
     if (batchStop.current && !rows.length) return
 
-    rows.sort((a, b) =>
-      FIT_STATUS_ORDER[a.status] - FIT_STATUS_ORDER[b.status] || compareCodes(a.code, b.code) || a.i - b.i)
+    // điểm tin cậy tăng dần: khung kém nhất (và không nhận ra) lên đầu để soát trước
+    rows.sort((a, b) => (a.score ?? -1) - (b.score ?? -1) || compareCodes(a.code, b.code) || a.i - b.i)
 
     setBatch((b) => b && { ...b, running: false, rows })
 
@@ -693,7 +1066,7 @@ export function useMachineLocator(
         `Đã ôm ${nFit}/${rows.length} khung`
         + (nReview ? `, ${nReview} khung cần soát` : '')
         + (rows.length - nFit ? `, ${rows.length - nFit} không nhận ra` : '')
-        + '. Bấm “Lưu kết quả” để ghi.',
+        + '. Bấm “Soát lần lượt” (Enter nhận, S bỏ qua) rồi “Lưu kết quả”.',
         'ok',
       )
     }
@@ -710,6 +1083,56 @@ export function useMachineLocator(
     stopFitBatch()
     setBatch(null)
     setDraft((d) => (d && !d.dirty ? freshDraft(d.code, current, undefined) : d))
+  }
+
+  // Soát lần lượt (điểm tin cậy tăng dần): zoom tới dòng idx; hết dòng thì kết thúc
+  function reviewFitBatch(idx = 0) {
+    if (!batch || batch.running) return
+
+    if (idx >= batch.rows.length) {
+      setBatch((b) => b && { ...b, reviewIdx: null })
+      setStatus(`Đã soát hết ${batch.rows.length} khung. Bấm “Lưu kết quả” để ghi.`, 'ok')
+      return
+    }
+
+    const row = batch.rows[idx]
+
+    if (draft && draft.dirty && draft.code !== row.code) {
+      setStatus(`Lưu hoặc hủy thay đổi của ${draft.code} trước khi soát tiếp.`, 'err')
+      return
+    }
+
+    setBatch((b) => b && { ...b, reviewIdx: idx })
+    select(row.code, { zoom: true })
+    setAct(row.i)
+  }
+
+  // Enter: nhận kết quả dòng đang soát; S: bỏ qua (giữ khung cũ) – rồi sang dòng kế
+  function decideFitReview(decision: 'accept' | 'skip') {
+    if (!batch || batch.reviewIdx === null) return
+
+    const idx = batch.reviewIdx
+    const row = batch.rows[idx]
+    let waiting = batch.pending
+
+    if (decision === 'skip' && waiting[row.code]) {
+      const orig = batch.orig[row.code]
+      const boxes = waiting[row.code].slice()
+
+      if (orig?.[row.i]) boxes[row.i] = orig[row.i]
+
+      waiting = { ...waiting }
+      // mọi khung đã về như cũ -> máy không còn gì chờ lưu
+      if (orig && sameBoxes(boxes, orig) && sameOutlines(boxes, orig)) delete waiting[row.code]
+      else waiting[row.code] = boxes
+
+      const next = waiting
+
+      setDraft((d) => (d && !d.dirty && d.code === row.code ? freshDraft(row.code, current, next) : d))
+    }
+
+    setBatch({ ...batch, pending: waiting, rows: batch.rows.map((r, k) => (k === idx ? { ...r, decision } : r)) })
+    reviewFitBatch(idx + 1)
   }
 
   async function saveFitBatch() {
@@ -887,6 +1310,8 @@ export function useMachineLocator(
       clearUndo()
       setBatch(null)
       setFitPreview(null)
+      setFitGhost(null)
+      setFitTool(false)
     }
 
     setEditingState(on)
@@ -1279,28 +1704,53 @@ export function useMachineLocator(
         return
       }
 
-      const tag = (document.activeElement as HTMLElement | null)?.tagName
+      const el = document.activeElement as HTMLInputElement | null
+      const tag = el?.tagName
+      // đang gõ chữ (thanh trượt / công tắc không tính)
+      const typing = tag === 'TEXTAREA' || (tag === 'INPUT' && el?.type !== 'range' && el?.type !== 'checkbox')
 
-      // Enter / Esc khi đang hiện ảnh xem trước kiểu ôm: giữ kiểu đang chọn, ẩn xem trước
-      if ((e.key === 'Enter' || e.key === 'Escape') && fitPreviewIdx !== null
-        && tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'BUTTON') {
+      // Xem trước kết quả ôm: Enter = nhận, Esc = hủy về trước lần ôm
+      if ((e.key === 'Enter' || e.key === 'Escape') && (fitPreviewIdx !== null || ghostView)
+        && !typing && tag !== 'BUTTON') {
         e.preventDefault()
-        setFitPreview(null)
+        if (e.key === 'Enter') acceptFit()
+        else rejectFit()
+        return
+      }
+
+      // Soát lần lượt kết quả hàng loạt: Enter = nhận, S = bỏ qua, rồi sang máy kế
+      if (editing && batch?.reviewIdx != null && !typing && tag !== 'BUTTON' && !e.ctrlKey && !e.metaKey && !e.altKey
+        && (e.key === 'Enter' || e.key.toLowerCase() === 's')) {
+        e.preventDefault()
+        decideFitReview(e.key === 'Enter' ? 'accept' : 'skip')
+        return
+      }
+
+      // Esc: thoát chế độ fit, rồi mới bỏ chọn máy
+      if (e.key === 'Escape' && fitTool && !typing) {
+        setFitTool(false)
         return
       }
 
       // Esc ngoài ô nhập: bỏ chọn máy
-      if (e.key === 'Escape' && cur && tag !== 'INPUT' && tag !== 'TEXTAREA') {
+      if (e.key === 'Escape' && cur && !typing) {
         clearSelection()
         return
       }
 
-      if (!editing || !draft || tag === 'INPUT' || tag === 'TEXTAREA') return
+      if (!editing || !draft || typing) return
 
-      // Ctrl+Z: hoàn tác lần ôm / kéo gần nhất
-      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'z') {
+      // Ctrl+Z: hoàn tác; Ctrl+Y / Ctrl+Shift+Z: làm lại (mọi thao tác chỉnh khung)
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'z') {
         e.preventDefault()
-        undo()
+        if (e.shiftKey) redo()
+        else undo()
+        return
+      }
+
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'y') {
+        e.preventDefault()
+        redo()
         return
       }
 
@@ -1312,6 +1762,9 @@ export function useMachineLocator(
         fitCurrent()
         return
       }
+
+      // mũi tên trên thanh "Độ sát" thuộc về thanh trượt
+      if (tag === 'INPUT') return
 
       const st = e.shiftKey ? 3 : 0.5
       const delta = ({
@@ -1352,7 +1805,9 @@ export function useMachineLocator(
     ? drawMode === 'replace'
       ? `Kéo trên bản vẽ để vẽ lại khung ${cur}. Esc để hủy.`
       : `Kéo trên bản vẽ để vẽ khung cho ${cur}. Esc để hủy.`
-    : ''
+    : editing && fitTool && cur
+      ? `Chế độ fit: click vào máy để ôm khung ${cur} quanh điểm click. Esc để thoát.`
+      : ''
 
   return {
     canWrite,
@@ -1400,10 +1855,27 @@ export function useMachineLocator(
     dirtyLabel: draft?.dirty
       ? draft.code
       : pendingFitCount ? `${pendingFitCount} máy vừa ôm hàng loạt` : null,
+    fitTool,
+    fitTightness,
+    fitOrtho,
+    fitGap,
+    // bản xem trước (nét đứt) khi click chế độ fit ngoài khung đang chọn
+    // (giữ nguyên object state để MapCanvas memo không render lại thừa)
+    fitGhost: ghostView,
     setAutoFit,
+    setFitTool,
     chooseFitMode,
-    closeFitPreview,
+    acceptFit,
+    rejectFit,
+    tuneFit,
     refineFit,
+    strokeFit,
+    fitAtPoint,
+    updateOutline,
+    snapVertex,
+    redo,
+    reviewFitBatch,
+    decideFitReview,
     fitCurrent,
     undo,
     closeFitToast,

@@ -275,6 +275,13 @@ function MachineLocatorView({
   const onGestureEnd = useStableCallback(ml.endBoxGesture)
   const onPickFitMode = useStableCallback(ml.chooseFitMode)
   const onRefine = useStableCallback(ml.refineFit)
+  const onFitClick = useStableCallback(ml.fitAtPoint)
+  const onStroke = useStableCallback(ml.strokeFit)
+  const onOutlineChange = useStableCallback(ml.updateOutline)
+  const onVertexDrop = useStableCallback(ml.snapVertex)
+  const onTuneFit = useStableCallback(ml.tuneFit)
+  const onAcceptFit = useStableCallback(ml.acceptFit)
+  const onRejectFit = useStableCallback(ml.rejectFit)
   const onSelectFromList = useStableCallback((c: string) => ml.select(c))
   const onStartNew = useStableCallback(ml.startNew)
 
@@ -331,6 +338,18 @@ function MachineLocatorView({
         activeFitMode={ml.activeFitMode}
         onPickFitMode={onPickFitMode}
         onRefine={onRefine}
+        fitTool={ml.fitTool}
+        onFitClick={onFitClick}
+        onStroke={onStroke}
+        onOutlineChange={onOutlineChange}
+        onVertexDrop={onVertexDrop}
+        fitTightness={ml.fitTightness}
+        fitOrtho={ml.fitOrtho}
+        fitGap={ml.fitGap}
+        fitGhost={ml.fitGhost}
+        onTuneFit={onTuneFit}
+        onAcceptFit={onAcceptFit}
+        onRejectFit={onRejectFit}
       />
 
       <FitToastBar ml={ml} />

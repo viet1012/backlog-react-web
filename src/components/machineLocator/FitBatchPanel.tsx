@@ -87,30 +87,42 @@ export function FitBatchPanel({ ml }: FitBatchPanelProps) {
         >
           <Box role="row" sx={rowSx(false)}>
             <span role="columnheader">Mã</span>
+            <span role="columnheader">Tin cậy</span>
             <span role="columnheader">Dời/đổi (pt)</span>
             <span role="columnheader">Trạng thái</span>
           </Box>
 
-          {batch.rows.map((r) => (
+          {batch.rows.map((r, k) => (
             <Box
               key={`${r.code}-${r.i}`}
               role="row"
               tabIndex={0}
-              title="Zoom tới máy"
-              onClick={() => ml.focusMachine(r.code)}
+              aria-current={batch.reviewIdx === k}
+              title="Zoom tới máy và soát từ dòng này"
+              onClick={() => (batch.running ? ml.focusMachine(r.code) : ml.reviewFitBatch(k))}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') ml.focusMachine(r.code)
+                if (e.key === ' ') {
+                  e.preventDefault()
+                  ml.reviewFitBatch(k)
+                }
               }}
-              sx={rowSx(true)}
+              sx={[rowSx(true), batch.reviewIdx === k && { bgcolor: 'action.selected' }]}
             >
               <Box component="span" role="cell" sx={{ fontFamily: codeFontFamily, fontWeight: 600 }}>
                 {r.code}{r.n > 1 ? ` (${r.i + 1})` : ''}
               </Box>
+              <Box component="span" role="cell" sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+                {r.score ?? '–'}
+              </Box>
               <Box component="span" role="cell" sx={{ fontVariantNumeric: 'tabular-nums' }}>
                 {r.shift === null ? '–' : r.shift.toFixed(1)}
               </Box>
-              <Box component="span" role="cell" sx={{ color: STATUS_COLOR[r.status], fontWeight: 600 }}>
-                {STATUS_LABEL[r.status]}
+              <Box
+                component="span"
+                role="cell"
+                sx={{ color: r.decision ? 'text.secondary' : STATUS_COLOR[r.status], fontWeight: 600 }}
+              >
+                {r.decision === 'accept' ? 'đã nhận' : r.decision === 'skip' ? 'bỏ qua' : STATUS_LABEL[r.status]}
               </Box>
             </Box>
           ))}
@@ -126,6 +138,25 @@ export function FitBatchPanel({ ml }: FitBatchPanelProps) {
           )
           : (
             <>
+              {batch.rows.length > 0 && (
+                batch.reviewIdx === null
+                  ? (
+                    <PanelButton onClick={() => ml.reviewFitBatch(0)} title="Enter = nhận, S = bỏ qua">
+                      Soát lần lượt
+                    </PanelButton>
+                  )
+                  : (
+                    <>
+                      <PanelButton appearance="success" onClick={() => ml.decideFitReview('accept')}>
+                        Nhận (Enter)
+                      </PanelButton>
+                      <PanelButton onClick={() => ml.decideFitReview('skip')}>
+                        Bỏ qua (S)
+                      </PanelButton>
+                    </>
+                  )
+              )}
+
               <PanelButton
                 appearance="action"
                 disabled={!ml.pendingFitCount}
@@ -147,7 +178,7 @@ export function FitBatchPanel({ ml }: FitBatchPanelProps) {
 function rowSx(body: boolean) {
   return {
     display: 'grid',
-    gridTemplateColumns: '1.3fr 1fr 1.1fr',
+    gridTemplateColumns: '1.3fr 0.8fr 1fr 1.1fr',
     gap: 0.75,
     px: 0.75,
     py: 0.35,

@@ -3,11 +3,13 @@ import type {
   FitJob,
   FitWorkerRequest,
   FitWorkerResponse,
+  FitWorkerTask,
+  SnapJob,
 } from './machineLocatorFit.worker'
 
 // =========================================================
 // CLIENT CỦA WORKER ÔM KHUNG
-// - 1 worker / 1 ảnh layout: ảnh + mặt nạ chỉ tạo 1 lần khi mở tab xưởng
+// - 1 worker / 1 ảnh layout: ảnh xám chỉ tạo 1 lần khi mở tab xưởng
 // - mỗi lúc chỉ gửi 1 yêu cầu; yêu cầu mới cùng key thay yêu cầu cũ đang chờ
 //   (và bỏ kết quả của yêu cầu cũ đang chạy) -> kéo tiếp thì huỷ lần ôm trước
 // =========================================================
@@ -19,14 +21,17 @@ export type FitOutcome =
   | { cancelled: false, view: FitView }
   | { cancelled: true }
 
-export type { FitJob }
+export type { FitJob, SnapJob }
+
+type Done = Extract<FitWorkerResponse, { t: 'done' }>
 
 interface Job {
   id: number
   key: string
-  job: FitJob
+  task: FitWorkerTask
   stale: boolean
-  resolve: (o: FitOutcome) => void
+  // null = bị huỷ
+  resolve: (m: Done | null) => void
   reject: (e: Error) => void
 }
 
@@ -119,32 +124,48 @@ export class MachineFitter {
     if (!job) return
 
     this.inFlight = job
-    this.post({ t: 'fit', id: job.id, ...job.job })
+    this.post({ ...job.task, id: job.id })
   }
 
-  private onResult(m: Extract<FitWorkerResponse, { t: 'fit' }>) {
+  private onResult(m: Done) {
     const job = this.inFlight
 
     if (!job || job.id !== m.id) return
 
     this.inFlight = null
 
-    if (job.stale) job.resolve({ cancelled: true })
-    else if (m.error || !m.view) job.reject(new Error(m.error || 'Worker không trả kết quả.'))
-    else job.resolve({ cancelled: false, view: m.view })
+    if (job.stale) job.resolve(null)
+    else if (m.error) job.reject(new Error(m.error))
+    else job.resolve(m)
 
     this.pump()
   }
 
-  fit(key: string, job: FitJob): Promise<FitOutcome> {
+  private enqueue(key: string, task: FitWorkerTask): Promise<Done | null> {
     if (this.state === 'error') return Promise.reject(new Error('Chưa tải được ảnh layout.'))
 
     this.cancel(key)
 
-    return new Promise<FitOutcome>((resolve, reject) => {
-      this.queue.push({ id: ++this.seq, key, job, stale: false, resolve, reject })
+    return new Promise<Done | null>((resolve, reject) => {
+      this.queue.push({ id: ++this.seq, key, task, stale: false, resolve, reject })
       this.pump()
     })
+  }
+
+  async fit(key: string, job: FitJob): Promise<FitOutcome> {
+    const m = await this.enqueue(key, { t: 'fit', ...job })
+
+    if (!m) return { cancelled: true }
+    if (!m.view) throw new Error('Worker không trả kết quả.')
+
+    return { cancelled: false, view: m.view }
+  }
+
+  // Bắt dính điểm vào nét mực gần nhất; null khi không có nét gần / bị huỷ
+  async snap(job: SnapJob): Promise<[number, number] | null> {
+    const m = await this.enqueue('snap', { t: 'snap', ...job })
+
+    return m?.pt ?? null
   }
 
   // Huỷ mọi yêu cầu của key (đang chờ: bỏ luôn; đang chạy: bỏ kết quả)
@@ -152,7 +173,7 @@ export class MachineFitter {
     this.queue = this.queue.filter((j) => {
       if (j.key !== key) return true
 
-      j.resolve({ cancelled: true })
+      j.resolve(null)
       return false
     })
 
@@ -162,8 +183,8 @@ export class MachineFitter {
   dispose() {
     this.disposed = true
 
-    for (const j of this.queue) j.resolve({ cancelled: true })
-    this.inFlight?.resolve({ cancelled: true })
+    for (const j of this.queue) j.resolve(null)
+    this.inFlight?.resolve(null)
     this.queue = []
     this.inFlight = null
     this.worker.terminate()

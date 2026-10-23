@@ -28,8 +28,10 @@ import type {
   DrawMode,
   FitMode,
   FitSession,
+  FitStroke,
   MachineLayoutConfig,
   MachineMap,
+  Polygon,
   ResizeHandle,
 } from '../../types/machineLocator'
 import {
@@ -101,6 +103,25 @@ interface MapCanvasProps {
   onPickFitMode: (mode: FitMode) => void
   // click khối ứng viên (cut = false) / Alt+click cắt khối dính (cut = true), pt theo pt PDF
   onRefine: (pt: [number, number], cut: boolean) => void
+  // chế độ fit: click vào máy -> ôm quanh điểm click
+  fitTool: boolean
+  onFitClick: (pt: [number, number]) => void
+  // bút trên vùng tìm: Alt + kéo = loại trừ, Shift + kéo = bổ sung
+  onStroke: (stroke: FitStroke) => void
+  // sửa đỉnh đường bao của khung đang chọn
+  onOutlineChange: (i: number, p: Polygon[]) => void
+  // thả đỉnh vừa kéo (không giữ Ctrl): bắt dính vào nét mực
+  onVertexDrop: (i: number, pi: number, vi: number, pt: [number, number]) => void
+  // thanh "Độ sát" / "Nắn vuông góc" trong hàng xem trước
+  fitTightness: number
+  fitOrtho: boolean
+  // thanh "Bịt hở" (px) cho "Theo viền kín"
+  fitGap: number
+  onTuneFit: (opts: { tightness?: number, ortho?: boolean, gap?: number }) => void
+  onAcceptFit: () => void
+  onRejectFit: () => void
+  // bản xem trước khi click chế độ fit ngoài khung đang chọn (nét đứt, chưa đổi khung)
+  fitGhost: { session: FitSession, mode: FitMode } | null
 }
 
 interface Point {
@@ -131,8 +152,11 @@ interface Label {
 }
 
 type Op =
-  // đã nhấn, chưa rõ là click hay kéo (chưa đi quá DRAG_THRESHOLD)
-  | { t: 'press', start: Point, p0: Point, hit: Shape | null, moveIdx: number | null }
+  // đã nhấn, chưa rõ là click hay kéo (chưa đi quá DRAG_THRESHOLD); pen: kéo sẽ là nét bút
+  | { t: 'press', start: Point, p0: Point, hit: Shape | null, moveIdx: number | null, pen: FitStroke['mode'] | null }
+  | { t: 'pen', mode: FitStroke['mode'], pts: Point[] }
+  // kéo đỉnh pi:vi của khung i; orig = đường bao lúc bắt đầu
+  | { t: 'vertex', i: number, pi: number, vi: number, p0: Point, orig: Polygon[], last: [number, number] | null }
   | { t: 'pan', last: Point }
   | { t: 'draw', p0: Point }
   // last: khung sau lần di chuyển gần nhất (null = chưa di chuyển)
@@ -148,6 +172,10 @@ const SCALE_COMMIT_DELAY = 120
 const LABEL_MIN_BOX_PX = 40
 const LABEL_H = 16
 const LABEL_CHAR_W = 6.6
+// bán kính bút loại trừ / bổ sung (px màn hình)
+const PEN_PX = 6
+// nhấp đúp cách cạnh đường bao <= ngần này px màn hình thì thêm đỉnh
+const EDGE_HIT_PX = 8
 
 const GROUP_ORDER: MachineStatus[] = ['auto', 'manual', 'review']
 
@@ -303,6 +331,18 @@ export const MapCanvas = memo(function MapCanvas({
   activeFitMode,
   onPickFitMode,
   onRefine,
+  fitTool,
+  onFitClick,
+  onStroke,
+  onOutlineChange,
+  onVertexDrop,
+  fitTightness,
+  fitOrtho,
+  fitGap,
+  onTuneFit,
+  onAcceptFit,
+  onRejectFit,
+  fitGhost,
 }: MapCanvasProps) {
   const crop = layout.data.crop
   const [CX, CY, CW, CH] = crop
@@ -363,6 +403,70 @@ export const MapCanvas = memo(function MapCanvas({
 
   // phiên ôm của khung đang chỉnh: hiện khối ứng viên, click để tinh chỉnh
   const activeFx = editing && cur && !drawMode ? machines[cur]?.boxes[act]?.fx : undefined
+  // đường bao khung đang chỉnh: hiện đỉnh để kéo / thêm / xoá (khi đang vẽ theo hình CAD)
+  const editOutline = editing && cur && !drawMode && !fitTool && cadOutline
+    ? machines[cur]?.boxes[act]?.p ?? null
+    : null
+  // đỉnh đang chọn (Delete để xoá)
+  const [selV, setSelV] = useState<{ i: number, pi: number, vi: number } | null>(null)
+  const selVertex = selV && selV.i === act && editOutline?.[selV.pi]?.[selV.vi] ? selV : null
+  const penRef = useRef<SVGPathElement>(null)
+
+  // Delete / Backspace: xoá đỉnh đang chọn (đa giác giữ tối thiểu 3 đỉnh)
+  const onDeleteKey = useEffectEvent((e: KeyboardEvent) => {
+    const tag = (document.activeElement as HTMLElement | null)?.tagName
+
+    if ((e.key !== 'Delete' && e.key !== 'Backspace') || !selVertex || !editOutline
+      || tag === 'INPUT' || tag === 'TEXTAREA') return
+
+    const poly = editOutline[selVertex.pi]
+
+    if (poly.length <= 3) return
+
+    e.preventDefault()
+    onGestureStart()
+    onOutlineChange(act, editOutline.map((q, k) => (k === selVertex.pi ? q.filter((_, j) => j !== selVertex.vi) : q)))
+    setSelV(null)
+  })
+
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => onDeleteKey(e)
+
+    document.addEventListener('keydown', h)
+
+    return () => document.removeEventListener('keydown', h)
+  }, [])
+
+  // Nhấp đúp gần cạnh đường bao: thêm đỉnh tại điểm chiếu lên cạnh
+  function onDoubleClick(e: { clientX: number, clientY: number }) {
+    if (!editOutline) return
+
+    const p = toPt(e.clientX, e.clientY)
+    const k = view.current.s * U
+    let best: { pi: number, vi: number, q: [number, number], d: number } | null = null
+
+    editOutline.forEach((poly, pi) => {
+      poly.forEach((a, vi) => {
+        const b = poly[(vi + 1) % poly.length]
+        const dx = b[0] - a[0]
+        const dy = b[1] - a[1]
+        const len2 = dx * dx + dy * dy || 1
+        const t = Math.max(0, Math.min(1, ((p.x - a[0]) * dx + (p.y - a[1]) * dy) / len2))
+        const q: [number, number] = [a[0] + t * dx, a[1] + t * dy]
+        const d = Math.hypot(p.x - q[0], p.y - q[1]) * k
+
+        if (d <= EDGE_HIT_PX && (!best || d < best.d)) best = { pi, vi, q, d }
+      })
+    })
+
+    if (!best) return
+
+    const { pi, vi, q } = best as { pi: number, vi: number, q: [number, number] }
+
+    onGestureStart()
+    onOutlineChange(act, editOutline.map((poly, k2) => (k2 === pi ? [...poly.slice(0, vi + 1), q, ...poly.slice(vi + 1)] : poly)))
+    setSelV({ i: act, pi, vi: vi + 1 })
+  }
 
   // vùng tìm của phiên ôm (khung lúc ôm nới theo expand, tối thiểu 12 px ảnh như worker)
   function inFitArea(fx: FitSession, p: Point): boolean {
@@ -763,6 +867,17 @@ export const MapCanvas = memo(function MapCanvas({
         g.op = { t: 'resize', i: act, h: handle, p0: p, b0: { ...draftBoxes[act] }, last: null }
         return
       }
+
+      // đỉnh đường bao: data-v="pi:vi"
+      const v = (e.target as SVGElement).dataset?.v
+
+      if (v && editOutline) {
+        const [pi, vi] = v.split(':').map(Number)
+
+        setSelV({ i: act, pi, vi })
+        g.op = { t: 'vertex', i: act, pi, vi, p0: p, orig: editOutline.map((q) => q.slice()), last: null }
+        return
+      }
     }
 
     const hit = hitTest(p)
@@ -770,8 +885,17 @@ export const MapCanvas = memo(function MapCanvas({
     const moveIdx = editing && cur && draftBoxes && hit && hit.c === cur && draftBoxes[hit.i]
       ? hit.i
       : null
+    // Alt / Shift + kéo trong vùng tìm của phiên ôm = bút loại trừ / bổ sung
+    const pen = activeFx && !fitTool && (e.altKey || e.shiftKey) && inFitArea(activeFx, p)
+      ? (e.altKey ? 'erase' : 'add')
+      : null
 
-    g.op = { t: 'press', start: { x: e.clientX, y: e.clientY }, p0: p, hit, moveIdx }
+    setSelV(null)
+    g.op = { t: 'press', start: { x: e.clientX, y: e.clientY }, p0: p, hit, moveIdx, pen }
+  }
+
+  function penPath(pts: Point[]) {
+    return pts.map((q, k) => `${k ? 'L' : 'M'}${q.x} ${q.y}`).join('')
   }
 
   function onPointerMove(e: ReactPointerEvent<HTMLDivElement>) {
@@ -802,7 +926,17 @@ export const MapCanvas = memo(function MapCanvas({
     if (op.t === 'press') {
       if (Math.hypot(e.clientX - op.start.x, e.clientY - op.start.y) <= DRAG_THRESHOLD) return
 
-      if (op.moveIdx !== null && draftBoxes?.[op.moveIdx]) {
+      if (op.pen) {
+        op = { t: 'pen', mode: op.pen, pts: [op.p0] }
+
+        const el = penRef.current
+
+        if (el) {
+          el.setAttribute('class', `ml-pen ${op.mode}`)
+          el.style.strokeWidth = String(PEN_PX * 2)
+          el.setAttribute('visibility', 'visible')
+        }
+      } else if (op.moveIdx !== null && draftBoxes?.[op.moveIdx]) {
         onActivate(op.moveIdx)
         op = { t: 'move', i: op.moveIdx, p0: op.p0, b0: { ...draftBoxes[op.moveIdx] }, last: null }
       } else {
@@ -822,6 +956,24 @@ export const MapCanvas = memo(function MapCanvas({
     }
 
     const p = toPt(e.clientX, e.clientY)
+
+    if (op.t === 'pen') {
+      op.pts.push(p)
+      penRef.current?.setAttribute('d', penPath(op.pts))
+      return
+    }
+
+    if (op.t === 'vertex') {
+      // lần di chuyển đầu: chụp bản nháp để hoàn tác
+      if (!op.last) onGestureStart()
+
+      const { pi, vi } = op
+      const q: [number, number] = [op.orig[pi][vi][0] + p.x - op.p0.x, op.orig[pi][vi][1] + p.y - op.p0.y]
+
+      op.last = q
+      onOutlineChange(op.i, op.orig.map((poly, k) => (k === pi ? poly.map((u, j) => (j === vi ? q : u)) : poly)))
+      return
+    }
 
     if (op.t === 'draw') {
       const el = draftRef.current
@@ -866,12 +1018,24 @@ export const MapCanvas = memo(function MapCanvas({
 
     const mods: DropMods = { alt: e.altKey, shift: e.shiftKey }
 
-    if (op.t === 'press') {
+    if (op.t === 'pen') {
+      penRef.current?.setAttribute('visibility', 'hidden')
+      onStroke({
+        mode: op.mode,
+        r: PEN_PX / (view.current.s * U),
+        pts: op.pts.map((q) => [q.x, q.y] as [number, number]),
+      })
+    } else if (op.t === 'vertex') {
+      // thả đỉnh: bắt dính vào nét mực gần nhất, giữ Ctrl để tắt
+      if (op.last && !e.ctrlKey && !e.metaKey) onVertexDrop(op.i, op.pi, op.vi, op.last)
+    } else if (op.t === 'press') {
       const fx = activeFx
       const pt: [number, number] = [op.p0.x, op.p0.y]
 
+      // chế độ fit: click = ôm quanh điểm click
+      if (fitTool && editing && cur) onFitClick(pt)
       // tinh chỉnh khung vừa ôm: Alt+click trong vùng tìm = cắt khối dính; click khối ứng viên = thêm / bớt
-      if (fx && e.altKey && inFitArea(fx, op.p0)) onRefine(pt, true)
+      else if (fx && e.altKey && inFitArea(fx, op.p0)) onRefine(pt, true)
       else if (fx && fx.view.candidates.some((c) => pointInPolygon(op.p0.x, op.p0.y, c.poly))) onRefine(pt, false)
       // nhả khi chưa đi quá ngưỡng: là click; click nền thì bỏ chọn
       else if (op.moveIdx !== null) onActivate(op.moveIdx)
@@ -906,6 +1070,7 @@ export const MapCanvas = memo(function MapCanvas({
     if (pts.current.size === 0) {
       gesture.current.op = null
       draftRef.current?.setAttribute('visibility', 'hidden')
+      penRef.current?.setAttribute('visibility', 'hidden')
       if (op?.t === 'pan') endPanVisual()
       if (op?.t === 'move' || op?.t === 'resize') flushBox()
     }
@@ -955,6 +1120,21 @@ export const MapCanvas = memo(function MapCanvas({
 
   const pulseKey = reveal?.pulse ? reveal.id : 0
   const previewBox = editing && cur && fitPreviewIdx !== null ? machines[cur]?.boxes[fitPreviewIdx] : undefined
+  // bản xem trước click ngoài khung: kiểu đang chọn (không có kết quả thì kiểu đầu tiên có)
+  const ghostResult = fitGhost
+    ? fitGhost.session.view.variants[fitGhost.mode]
+      ?? Object.values(fitGhost.session.view.variants).find(Boolean) ?? null
+    : null
+  // hàng xem trước: neo dưới bản xem trước nét đứt, hoặc dưới khung vừa ôm
+  const previewAt = fitGhost
+    ? {
+      fx: fitGhost.session,
+      mode: fitGhost.mode,
+      b: ghostResult?.b ?? fitGhost.session.recipe.b,
+    }
+    : previewBox?.fx
+      ? { fx: previewBox.fx, mode: activeFitMode, b: [previewBox.x, previewBox.y, previewBox.w, previewBox.h] }
+      : null
   const handleBox = editing && cur && !drawMode ? machines[cur]?.boxes[act] : undefined
   const z = 9 / (scale * U)
   const legendGroups = canWrite ? GROUP_ORDER : GROUP_ORDER.filter((g) => g !== 'review')
@@ -966,11 +1146,12 @@ export const MapCanvas = memo(function MapCanvas({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
+      onDoubleClick={onDoubleClick}
       onPointerLeave={() => {
         if (!pts.current.size) hideHover()
       }}
       sx={mapRootSx}
-      style={{ cursor: hint ? 'crosshair' : undefined }}
+      style={{ cursor: hint || fitTool ? 'crosshair' : undefined }}
     >
       {/* STAGE: ảnh bản vẽ + SVG overlay + nhãn, cùng hệ toạ độ crop */}
       <Box
@@ -1037,6 +1218,34 @@ export const MapCanvas = memo(function MapCanvas({
             })}
           </g>
 
+          {/* đỉnh đường bao: kéo để sửa, nhấp đúp cạnh để thêm, chọn + Delete để xoá */}
+          {editOutline && (
+            <g>
+              {editOutline.map((poly, pi) => poly.map(([x, y], vi) => (
+                <circle
+                  key={`${pi}:${vi}`}
+                  className={'ml-vertex' + (selVertex?.pi === pi && selVertex.vi === vi ? ' sel' : '')}
+                  cx={x}
+                  cy={y}
+                  r={z * 0.45}
+                  data-v={`${pi}:${vi}`}
+                />
+              )))}
+            </g>
+          )}
+
+          {/* bản xem trước click ngoài khung: nét đứt, chưa đổi khung (Enter áp dụng, Esc bỏ) */}
+          {ghostResult && (
+            <path
+              className="ml-ghost"
+              d={ghostResult.p
+                ? outlinePath(ghostResult.p)
+                : rectPath({ x: ghostResult.b[0], y: ghostResult.b[1], w: ghostResult.b[2], h: ghostResult.b[3] })}
+            />
+          )}
+
+          <path ref={penRef} className="ml-pen" visibility="hidden" />
+
           <rect ref={draftRef} className="ml-draft" visibility="hidden" />
         </Box>
 
@@ -1053,17 +1262,24 @@ export const MapCanvas = memo(function MapCanvas({
           </div>
         )}
 
-        {previewBox?.fx && (
+        {previewAt && (
           <div
             className="ml-anchor"
-            style={{ left: (previewBox.x - CX) * U, top: (previewBox.y + previewBox.h - CY) * U }}
+            style={{ left: (previewAt.b[0] - CX) * U, top: (previewAt.b[1] + previewAt.b[3] - CY) * U }}
           >
             <FitPreviews
-              fx={previewBox.fx}
+              fx={previewAt.fx}
               image={layout.image}
               crop={crop}
-              mode={activeFitMode}
+              mode={previewAt.mode}
+              tightness={fitTightness}
+              ortho={fitOrtho}
+              gap={fitGap}
+              ghost={!!fitGhost}
               onPick={onPickFitMode}
+              onTune={onTuneFit}
+              onAccept={onAcceptFit}
+              onReject={onRejectFit}
             />
           </div>
         )}
@@ -1327,6 +1543,35 @@ const svgSx = {
   '&.editing .ml-box.on.fitting': {
     animation: `${blink} .9s ease-in-out infinite`,
   },
+  '& .ml-ghost': {
+    fill: mapColors.edit,
+    fillOpacity: 0.08,
+    stroke: mapColors.edit,
+    strokeWidth: 2,
+    strokeDasharray: '6 4',
+    strokeLinejoin: 'round',
+    vectorEffect: 'non-scaling-stroke',
+    pointerEvents: 'none',
+  },
+  '& .ml-vertex': {
+    fill: mapColors.paper,
+    stroke: mapColors.edit,
+    strokeWidth: 1.5,
+    vectorEffect: 'non-scaling-stroke',
+    cursor: 'move',
+  },
+  '& .ml-vertex.sel': { fill: mapColors.edit },
+  // nét bút: đỏ = loại trừ, xanh lá = bổ sung (độ dày đặt theo px màn hình)
+  '& .ml-pen': {
+    fill: 'none',
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+    strokeOpacity: 0.4,
+    vectorEffect: 'non-scaling-stroke',
+    pointerEvents: 'none',
+  },
+  '& .ml-pen.erase': { stroke: '#dc2626' },
+  '& .ml-pen.add': { stroke: '#16a34a' },
   // khối ứng viên của phiên ôm (viền mờ): xanh = đang dùng, xám = bỏ
   '& .ml-cands path': {
     strokeWidth: 1,

@@ -28,8 +28,9 @@ export interface RawMachine {
   t?: RawBox[]
 }
 
-// Kiểu ôm: tight = sát theo nét, hull = bao lồi (trơn), rect = chỉ thu khung b, không đường bao
-export type FitMode = 'tight' | 'hull' | 'rect'
+// Kiểu ôm: closed = theo viền kín chứa điểm hạt giống, tight = sát theo nét, hull = bao lồi (trơn),
+// rect = chỉ thu khung b, không đường bao
+export type FitMode = 'closed' | 'tight' | 'hull' | 'rect'
 
 export interface LayoutData {
   // [x, y, w, h] vùng cắt của trang PDF dùng làm ảnh nền (pt)
@@ -126,18 +127,41 @@ export interface MachineDraft {
 export interface FitResult {
   b: RawBox
   p: Polygon[] | null
+  // điểm tin cậy 0–100: chu vi trùng nét mực + chênh diện tích so với khung gốc
+  score: number
+  // "Theo viền kín" không tìm được viền kín -> dùng kết quả "Sát"
+  fallback?: boolean
+}
+
+// Nét bút trên vùng tìm: erase = loại trừ (Alt + kéo), add = bổ sung (Shift + kéo)
+export interface FitStroke {
+  mode: 'add' | 'erase'
+  // bán kính bút (pt)
+  r: number
+  pts: [number, number][]
 }
 
 // Công thức ôm: tính lại từ đầu trong worker nên hoàn tác / làm lại chỉ cần giữ công thức
 export interface FitRecipe {
-  // khung lúc ôm (khung vừa thả, pt) – vùng tìm tính theo khung này
+  // vùng gốc (pt): khung vừa thả / khung đang chọn, hoặc vùng vuông quanh điểm click
   b: RawBox
-  // nới vùng tìm mỗi chiều (0.1 = 10%; 0 = chỉ trong khung)
+  // nới vùng tìm mỗi chiều (0.15 = 15%; 0 = đúng vùng b)
   expand: number
+  // khung gốc để so độ dời / diện tích; null: ôm quanh điểm click khi chưa có khung
+  ref: RawBox | null
+  // điểm hạt giống cho "Theo viền kín" (pt); null = tâm vùng b
+  seed: [number, number] | null
+  // Douglas–Peucker epsilon (px ảnh), theo thanh "Độ sát"
+  eps: number
+  // nắn cạnh gần ngang / dọc cho vuông góc
+  ortho: boolean
+  // "Bịt hở" (px ảnh, 1–5): khe hở lớn nhất của viền được bịt kín trước khi tìm viền kín
+  gap: number
   // Alt+click: cắt khối dính tại các điểm này (pt), theo thứ tự
   cuts: [number, number][]
   // click: bật / tắt khối chứa điểm (pt), theo thứ tự
   toggles: [number, number][]
+  strokes: FitStroke[]
 }
 
 export interface FitCandidate {
@@ -171,16 +195,25 @@ export interface FitBatchRow {
   n: number
   // độ dời/đổi lớn nhất của cạnh (pt); null khi không nhận ra
   shift: number | null
+  // điểm tin cậy 0–100; null khi không nhận ra
+  score: number | null
   status: FitStatus
+  // soát lần lượt: accept = nhận (Enter), skip = bỏ qua, giữ khung cũ (S)
+  decision?: 'accept' | 'skip'
 }
 
 export interface FitBatch {
   running: boolean
   done: number
   total: number
+  // sắp theo điểm tin cậy tăng dần (khung kém nhất lên đầu)
   rows: FitBatchRow[]
   // kết quả chờ lưu: code -> toàn bộ khung của máy
   pending: Record<string, Box[]>
+  // khung trước khi ôm của các máy trong pending (để bỏ qua từng khung)
+  orig: Record<string, Box[]>
+  // đang soát lần lượt: index dòng đang xem; null = không soát
+  reviewIdx: number | null
 }
 
 export interface FitToast {
