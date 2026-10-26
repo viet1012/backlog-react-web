@@ -5,6 +5,7 @@ import type {
   FitResult,
   FitStroke,
   FitView,
+  Polygon,
   RawBox,
 } from '../types/machineLocator'
 
@@ -15,6 +16,8 @@ import type {
 // - 4 kiểu: closed (theo viền kín chứa điểm hạt giống), tight (sát), hull (bao lồi), rect
 // - hậu xử lý: Douglas–Peucker theo "Độ sát", tuỳ chọn nắn vuông góc; điểm tin cậy 0–100
 // - tinh chỉnh theo công thức: bút loại trừ / bổ sung, cắt khối dính, bật / tắt khối
+// - "Giới hạn trong khung": cắt kết quả theo khung gốc nới boxOverflowPx
+// - "Làm gọn": rút gọn đường bao hiện tại (không ôm lại)
 // Toạ độ ảnh: px = (pt - crop[0..1]) * ppp
 // =========================================================
 
@@ -50,7 +53,31 @@ export const FIT_CONFIG = {
   snapPx: 4,
   // điểm tin cậy: điểm trên chu vi cách nét mực <= ngần này px coi là trùng nét
   scoreTolPx: 2,
+  // "Giới hạn trong khung": kết quả không vượt khung gốc quá ngần này px ảnh
+  boxOverflowPx: 6,
 }
+
+// "Làm gọn" đường bao hiện tại (px ảnh)
+export const TIDY_CONFIG = {
+  // cạnh lệch <= ngần này độ so với ngang / dọc thì nắn thẳng
+  orthoDeg: 8,
+  // cạnh song song cách nhau <= ngần này px: về cùng toạ độ
+  alignPx: 4,
+  // bậc thang (cạnh nối 2 cạnh vuông góc cùng chiều) ngắn hơn ngần này px: bỏ
+  stepPx: 6,
+  // bắt dính cạnh / đỉnh vào nét mực trong ngần này px
+  snapPx: 4,
+  // cạnh ngang / dọc chỉ bắt dính khi >= tỉ lệ này điểm trên cạnh trùng nét
+  snapCover: 0.5,
+}
+
+// Thanh "Mức gọn" 1–5 <-> epsilon Douglas–Peucker (px)
+export const TIDY_LEVEL_DEFAULT = 3
+export const TIDY_LEVEL_MIN = 1
+export const TIDY_LEVEL_MAX = 5
+const TIDY_EPS = [0.75, 1.5, 2.5, 3.5, 5]
+export const epsFromTidyLevel = (v: number) =>
+  TIDY_EPS[Math.min(TIDY_LEVEL_MAX, Math.max(TIDY_LEVEL_MIN, Math.round(v))) - 1]
 
 export const FIT_MODES: FitMode[] = ['closed', 'tight', 'hull', 'rect']
 
@@ -660,6 +687,105 @@ export function orthogonalize(poly: Pt[], deg = FIT_CONFIG.orthoDeg): Pt[] {
   }
 
   return out.length >= 3 ? out : poly
+}
+
+// Bỏ đỉnh trùng / thẳng hàng / mũi nhọn bẹt (lệch < tol px), lặp tới khi hết
+function dropRedundant(poly: Pt[], tol = 0.25): Pt[] {
+  const out = poly.slice()
+
+  for (let changed = true; changed && out.length > 3;) {
+    changed = false
+
+    for (let i = 0; i < out.length && out.length > 3; i++) {
+      const a = out[(i - 1 + out.length) % out.length]
+      const c = out[i]
+      const b = out[(i + 1) % out.length]
+
+      if (Math.hypot(c[0] - a[0], c[1] - a[1]) < tol || Math.hypot(b[0] - a[0], b[1] - a[1]) < tol
+        || lineDist(c, a, b) < tol) {
+        out.splice(i, 1)
+        i--
+        changed = true
+      }
+    }
+  }
+
+  return out
+}
+
+// Cắt đa giác theo hình chữ nhật [x0, x1] × [y0, y1] (Sutherland–Hodgman)
+function clipToRect(poly: Pt[], x0: number, y0: number, x1: number, y1: number): Pt[] {
+  const sides: [(p: Pt) => boolean, (a: Pt, b: Pt) => Pt][] = [
+    [(p) => p[0] >= x0, (a, b) => [x0, a[1] + (b[1] - a[1]) * (x0 - a[0]) / (b[0] - a[0])]],
+    [(p) => p[0] <= x1, (a, b) => [x1, a[1] + (b[1] - a[1]) * (x1 - a[0]) / (b[0] - a[0])]],
+    [(p) => p[1] >= y0, (a, b) => [a[0] + (b[0] - a[0]) * (y0 - a[1]) / (b[1] - a[1]), y0]],
+    [(p) => p[1] <= y1, (a, b) => [a[0] + (b[0] - a[0]) * (y1 - a[1]) / (b[1] - a[1]), y1]],
+  ]
+  let out = poly
+
+  for (const [inside, cut] of sides) {
+    const src = out
+
+    out = []
+
+    for (let i = 0; i < src.length; i++) {
+      const a = src[(i - 1 + src.length) % src.length]
+      const b = src[i]
+
+      if (inside(b)) {
+        if (!inside(a)) out.push(cut(a, b))
+        out.push(b)
+      } else if (inside(a)) {
+        out.push(cut(a, b))
+      }
+    }
+
+    if (!out.length) break
+  }
+
+  return out
+}
+
+// Đa giác tự cắt: 2 cạnh không kề nhau cắt / chạm nhau
+function selfIntersects(poly: Pt[]): boolean {
+  const n = poly.length
+  const orient = (a: Pt, b: Pt, c: Pt) => {
+    const v = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+
+    return Math.abs(v) < 1e-9 ? 0 : Math.sign(v)
+  }
+  const onSeg = (a: Pt, b: Pt, p: Pt) =>
+    Math.min(a[0], b[0]) - 1e-9 <= p[0] && p[0] <= Math.max(a[0], b[0]) + 1e-9
+    && Math.min(a[1], b[1]) - 1e-9 <= p[1] && p[1] <= Math.max(a[1], b[1]) + 1e-9
+
+  for (let i = 0; i < n; i++) {
+    const a = poly[i]
+    const b = poly[(i + 1) % n]
+
+    for (let j = i + 2; j < n; j++) {
+      // cạnh đầu và cạnh cuối kề nhau
+      if (i === 0 && j === n - 1) continue
+
+      const c = poly[j]
+      const d = poly[(j + 1) % n]
+      const o1 = orient(a, b, c)
+      const o2 = orient(a, b, d)
+      const o3 = orient(c, d, a)
+      const o4 = orient(c, d, b)
+
+      if (o1 * o2 < 0 && o3 * o4 < 0) return true
+      if ((!o1 && onSeg(a, b, c)) || (!o2 && onSeg(a, b, d)) || (!o3 && onSeg(c, d, a)) || (!o4 && onSeg(c, d, b))) {
+        return true
+      }
+    }
+  }
+
+  return false
+}
+
+// Cạnh đã nắn thẳng: ngang (cùng y) / dọc (cùng x) / xiên
+function axisOf(a: Pt, b: Pt): 'h' | 'v' | 'o' {
+  return Math.abs(b[1] - a[1]) < 1e-6 ? 'h' : Math.abs(b[0] - a[0]) < 1e-6 ? 'v' : 'o'
 }
 
 // Bao lồi của các điểm ảnh (theo góc điểm ảnh) – monotone chain
@@ -1379,6 +1505,57 @@ function candidatesOf(an: Analysis): FitCandidate[] {
   return out
 }
 
+// "Giới hạn trong khung": cắt kết quả theo khung gốc nới boxOverflowPx, bỏ đỉnh thừa,
+// nắn vuông góc (nếu bật) rồi tính lại bbox + điểm tin cậy. Nằm gọn trong khung thì giữ nguyên
+function clipVariant(r: FitResult | null, roi: Roi, recipe: FitRecipe, inkNear: Uint8Array): FitResult | null {
+  const ref = recipe.ref
+
+  if (!r || !ref) return r
+
+  const o = FIT_CONFIG.boxOverflowPx
+  const [rx0, ry0] = roi.toPx(ref)
+  const [rx1, ry1] = roi.toPx([ref[0] + ref[2], ref[1] + ref[3]])
+  const x0 = rx0 - o
+  const y0 = ry0 - o
+  const x1 = rx1 + o
+  const y1 = ry1 + o
+  // kết quả đã làm tròn 0.1 pt: lệch ra ngoài < 0.5 px coi như trong khung
+  const inside = ([x, y]: Pt) => x >= x0 - 0.5 && x <= x1 + 0.5 && y >= y0 - 0.5 && y <= y1 + 0.5
+
+  if (!r.p) {
+    const [bx0, by0] = roi.toPx(r.b)
+    const [bx1, by1] = roi.toPx([r.b[0] + r.b[2], r.b[1] + r.b[3]])
+
+    if (inside([bx0, by0]) && inside([bx1, by1])) return r
+
+    const cx0 = Math.max(bx0, x0)
+    const cy0 = Math.max(by0, y0)
+    const cx1 = Math.min(bx1, x1)
+    const cy1 = Math.min(by1, y1)
+
+    if (cx1 - cx0 < 1 || cy1 - cy0 < 1) return null
+
+    const rect: Pt[] = [[cx0, cy0], [cx1, cy0], [cx1, cy1], [cx0, cy1]]
+
+    return { ...resultOfPolys([rect], roi, inkNear, true), p: null, fallback: r.fallback }
+  }
+
+  const polys = r.p.map((poly) => poly.map((p) => roi.toPx(p)))
+
+  if (polys.every((poly) => poly.every(inside))) return r
+
+  const clipped: Pt[][] = []
+
+  for (const poly of polys) {
+    let c = dropRedundant(clipToRect(poly, x0, y0, x1, y1))
+
+    if (recipe.ortho && c.length >= 3) c = orthogonalize(c)
+    if (c.length >= 3 && Math.abs(signedArea(c)) >= 1) clipped.push(c)
+  }
+
+  return clipped.length ? { ...resultOfPolys(clipped, roi, inkNear, true), fallback: r.fallback } : null
+}
+
 // Thời gian từng bước của 1 lần tính (ms) – worker ghi ra console.debug
 export interface FitTiming {
   px: number
@@ -1427,16 +1604,19 @@ export function fitView(
     })
   }
 
-  return {
-    candidates: candidatesOf(an),
-    variants: {
-      // không có viền kín -> dùng "Sát"
-      closed: closed ?? (t?.tight ? { ...t.tight, fallback: true } : null),
-      tight: t?.tight ?? null,
-      hull: t?.hull ?? null,
-      rect: t?.rect ?? (closed ? { b: closed.b, p: null, score: closed.score } : null),
-    },
+  const variants: Record<FitMode, FitResult | null> = {
+    // không có viền kín -> dùng "Sát"
+    closed: closed ?? (t?.tight ? { ...t.tight, fallback: true } : null),
+    tight: t?.tight ?? null,
+    hull: t?.hull ?? null,
+    rect: t?.rect ?? (closed ? { b: closed.b, p: null, score: closed.score } : null),
   }
+
+  if (recipe.clip && recipe.ref) {
+    for (const m of FIT_MODES) variants[m] = clipVariant(variants[m], roi, recipe, inkNear)
+  }
+
+  return { candidates: candidatesOf(an), variants }
 }
 
 // Bắt dính điểm (pt) vào nét mực gần nhất trong r px; null nếu không có nét gần
@@ -1467,4 +1647,239 @@ export function snapToInk(
 
   // tâm điểm ảnh nét
   return [round1((a0 + x + 0.5) / ppp + crop[0]), round1((b0 + y + 0.5) / ppp + crop[1])]
+}
+
+// =========================================================
+// "LÀM GỌN" ĐƯỜNG BAO HIỆN TẠI (không ôm lại)
+// =========================================================
+
+// Gom cạnh ngang (cùng y) / dọc (cùng x) cách nhau <= tol px về cùng toạ độ (trung bình theo độ dài).
+// Mỗi nhóm nằm gọn trong tol để không trượt dây chuyền
+function alignParallel(polys: Pt[][], tol: number): Pt[][] {
+  const out = polys.map((poly) => poly.map(([x, y]) => [x, y] as Pt))
+
+  for (const ca of [1, 0] as const) {
+    const kind = ca === 1 ? 'h' : 'v'
+    const edges: { k: number, i: number, v: number, len: number }[] = []
+
+    out.forEach((poly, k) => poly.forEach((a, i) => {
+      const b = poly[(i + 1) % poly.length]
+
+      if (axisOf(a, b) === kind) edges.push({ k, i, v: a[ca], len: Math.abs(b[1 - ca] - a[1 - ca]) })
+    }))
+
+    edges.sort((a, b) => a.v - b.v)
+
+    for (let s = 0; s < edges.length;) {
+      let e = s + 1
+
+      while (e < edges.length && edges[e].v - edges[s].v <= tol) e++
+
+      if (e - s > 1) {
+        const group = edges.slice(s, e)
+        const total = group.reduce((n, g) => n + g.len, 0) || 1
+        const v = group.reduce((n, g) => n + g.v * g.len, 0) / total
+
+        for (const g of group) {
+          const poly = out[g.k]
+
+          poly[g.i][ca] = v
+          poly[(g.i + 1) % poly.length][ca] = v
+        }
+      }
+
+      s = e
+    }
+  }
+
+  return out
+}
+
+// Bỏ bậc thang: cạnh ngang / dọc ngắn hơn minPx nối 2 cạnh vuông góc đi cùng chiều (hình chữ Z).
+// Dời cạnh kề ngắn hơn về toạ độ cạnh kề dài hơn rồi bỏ đỉnh thừa (khấc / gờ hình chữ U giữ nguyên)
+function dropSteps(poly: Pt[], minPx: number): Pt[] {
+  let pts = poly.map(([x, y]) => [x, y] as Pt)
+
+  for (let changed = true, guard = 0; changed && pts.length > 4 && guard < 200; guard++) {
+    changed = false
+
+    const n = pts.length
+
+    for (let i = 0; i < n; i++) {
+      const p0 = pts[(i - 1 + n) % n]
+      const a = pts[i]
+      const b = pts[(i + 1) % n]
+      const p3 = pts[(i + 2) % n]
+      const k = axisOf(a, b)
+
+      if (k === 'o' || Math.hypot(b[0] - a[0], b[1] - a[1]) >= minPx) continue
+
+      const other = k === 'h' ? 'v' : 'h'
+
+      if (axisOf(p0, a) !== other || axisOf(b, p3) !== other) continue
+
+      // toạ độ chạy dọc 2 cạnh kề / toạ độ không đổi trên 2 cạnh kề
+      const along = other === 'h' ? 0 : 1
+      const ca = 1 - along
+      const d1 = a[along] - p0[along]
+      const d2 = p3[along] - b[along]
+
+      if (d1 * d2 <= 0) continue
+
+      if (Math.abs(d1) >= Math.abs(d2)) {
+        b[ca] = a[ca]
+        p3[ca] = a[ca]
+      } else {
+        a[ca] = b[ca]
+        p0[ca] = b[ca]
+      }
+
+      pts = dropRedundant(pts)
+      changed = true
+      break
+    }
+  }
+
+  return pts
+}
+
+interface InkPatch {
+  ink: Uint8Array
+  a0: number
+  b0: number
+  w: number
+  h: number
+}
+
+// Mặt nạ nét quanh các đa giác (px ảnh), nới pad px
+function inkPatch(img: GrayImage, polys: Pt[][], pad: number): InkPatch | null {
+  let x0 = Infinity
+  let y0 = Infinity
+  let x1 = -Infinity
+  let y1 = -Infinity
+
+  for (const poly of polys) {
+    for (const [x, y] of poly) {
+      x0 = Math.min(x0, x)
+      y0 = Math.min(y0, y)
+      x1 = Math.max(x1, x)
+      y1 = Math.max(y1, y)
+    }
+  }
+
+  const a0 = Math.max(0, Math.floor(x0 - pad))
+  const b0 = Math.max(0, Math.floor(y0 - pad))
+  const a1 = Math.min(img.w, Math.ceil(x1 + pad + 1))
+  const b1 = Math.min(img.h, Math.ceil(y1 + pad + 1))
+
+  if (a1 <= a0 || b1 <= b0) return null
+
+  return { ink: adaptiveInk(img, a0, b0, a1 - a0, b1 - b0), a0, b0, w: a1 - a0, h: b1 - b0 }
+}
+
+// Bắt dính vào nét: cạnh ngang / dọc dời vuông góc (<= r px) tới hàng / cột điểm ảnh trùng nét nhiều nhất;
+// đỉnh giữa 2 cạnh xiên bắt vào điểm nét gần nhất (như snapToInk). Toạ độ = tâm điểm ảnh nét
+function snapEdges(poly: Pt[], patch: InkPatch, r: number, cover: number): Pt[] {
+  const { ink, a0, b0, w, h } = patch
+  const at = (x: number, y: number) => {
+    const xx = x - a0
+    const yy = y - b0
+
+    return xx >= 0 && yy >= 0 && xx < w && yy < h && ink[yy * w + xx] === 1
+  }
+  const out = poly.map(([x, y]) => [x, y] as Pt)
+  const n = out.length
+  const onAxis = new Uint8Array(n)
+
+  for (let i = 0; i < n; i++) {
+    const a = out[i]
+    const b = out[(i + 1) % n]
+    const k = axisOf(a, b)
+
+    if (k === 'o') continue
+
+    onAxis[i] = 1
+    onAxis[(i + 1) % n] = 1
+
+    const along = k === 'h' ? 0 : 1
+    const ca = 1 - along
+    const lo = Math.ceil(Math.min(a[along], b[along]))
+    const hi = Math.floor(Math.max(a[along], b[along]))
+    const c0 = Math.floor(a[ca])
+    let best = 0
+    let bestHit = -1
+    let total = 0
+
+    for (let d = -r; d <= r; d++) {
+      let hit = 0
+
+      total = 0
+
+      for (let s = lo; s < hi; s++) {
+        total++
+        if (k === 'h' ? at(s, c0 + d) : at(c0 + d, s)) hit++
+      }
+
+      if (hit > bestHit || (hit === bestHit && Math.abs(d) < Math.abs(best))) {
+        bestHit = hit
+        best = d
+      }
+    }
+
+    if (!total || bestHit < cover * total) continue
+
+    const v = c0 + best + 0.5
+
+    a[ca] = v
+    b[ca] = v
+  }
+
+  for (let i = 0; i < n; i++) {
+    if (onAxis[i]) continue
+
+    const j = nearestOn((q) => ink[q] === 1, w, h, out[i][0] - a0, out[i][1] - b0, r)
+
+    if (j >= 0) out[i] = [a0 + (j % w) + 0.5, b0 + Math.floor(j / w) + 0.5]
+  }
+
+  return out
+}
+
+// Làm gọn đường bao (pt) theo "Mức gọn": Douglas–Peucker -> nắn ngang / dọc (<= orthoDeg) ->
+// gom cạnh song song gần nhau -> bỏ bậc thang nhỏ -> bắt dính cạnh vào nét. Bước nào làm đa giác
+// tự cắt (hoặc suy biến) thì bỏ bước đó cho đa giác ấy
+export function tidyOutline(
+  img: GrayImage,
+  polys: readonly Polygon[],
+  crop: readonly number[],
+  ppp: number,
+  level: number,
+): Polygon[] {
+  const { orthoDeg, alignPx, stepPx, snapPx, snapCover } = TIDY_CONFIG
+  const eps = epsFromTidyLevel(level)
+  const ok = (q: Pt[], p: Pt[]) =>
+    q.length >= 3 && Math.abs(signedArea(q)) >= 1 && (!selfIntersects(q) || selfIntersects(p))
+  const stage = (src: Pt[][], f: (p: Pt[], k: number) => Pt[]) => src.map((p, k) => {
+    const q = dropRedundant(f(p, k))
+
+    return ok(q, p) ? q : p
+  })
+
+  let cur: Pt[][] = polys
+    .map((poly) => poly.map(([x, y]) => [(x - crop[0]) * ppp, (y - crop[1]) * ppp] as Pt))
+    .filter((poly) => poly.length >= 3)
+
+  cur = stage(cur, (p) => simplifyClosed(p, eps))
+  cur = stage(cur, (p) => orthogonalize(p, orthoDeg))
+
+  const aligned = alignParallel(cur, alignPx)
+
+  cur = stage(cur, (_, k) => aligned[k])
+  cur = stage(cur, (p) => dropSteps(p, stepPx))
+
+  const patch = inkPatch(img, cur, snapPx + 2)
+
+  if (patch) cur = stage(cur, (p) => snapEdges(p, patch, snapPx, snapCover))
+
+  return cur.map((poly) => poly.map(([x, y]) => [round1(x / ppp + crop[0]), round1(y / ppp + crop[1])] as [number, number]))
 }

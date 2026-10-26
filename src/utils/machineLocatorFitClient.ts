@@ -1,10 +1,14 @@
-import type { FitView } from '../types/machineLocator'
+import type {
+  FitView,
+  Polygon,
+} from '../types/machineLocator'
 import type {
   FitJob,
   FitWorkerRequest,
   FitWorkerResponse,
   FitWorkerTask,
   SnapJob,
+  TidyJob,
 } from './machineLocatorFit.worker'
 
 // =========================================================
@@ -21,7 +25,7 @@ export type FitOutcome =
   | { cancelled: false, view: FitView }
   | { cancelled: true }
 
-export type { FitJob, SnapJob }
+export type { FitJob, SnapJob, TidyJob }
 
 type Done = Extract<FitWorkerResponse, { t: 'done' }>
 
@@ -166,6 +170,16 @@ export class MachineFitter {
     const m = await this.enqueue('snap', { t: 'snap', ...job })
 
     return m?.pt ?? null
+  }
+
+  // "Làm gọn" đường bao; null khi bị huỷ (yêu cầu mới thay thế)
+  async tidy(job: TidyJob): Promise<Polygon[] | null> {
+    const m = await this.enqueue('tidy', { t: 'tidy', ...job })
+
+    if (!m) return null
+    if (!m.polys) throw new Error('Worker không trả kết quả.')
+
+    return m.polys
   }
 
   // Huỷ mọi yêu cầu của key (đang chờ: bỏ luôn; đang chạy: bỏ kết quả)

@@ -282,6 +282,9 @@ function MachineLocatorView({
   const onTuneFit = useStableCallback(ml.tuneFit)
   const onAcceptFit = useStableCallback(ml.acceptFit)
   const onRejectFit = useStableCallback(ml.rejectFit)
+  const onTidyLevel = useStableCallback(ml.setTidyLevel)
+  const onAcceptTidy = useStableCallback(ml.acceptTidy)
+  const onRejectTidy = useStableCallback(ml.rejectTidy)
   const onSelectFromList = useStableCallback((c: string) => ml.select(c))
   const onStartNew = useStableCallback(ml.startNew)
 
@@ -350,6 +353,11 @@ function MachineLocatorView({
         onTuneFit={onTuneFit}
         onAcceptFit={onAcceptFit}
         onRejectFit={onRejectFit}
+        tidyPreview={ml.tidyPreview}
+        tidyLevel={ml.tidyLevel}
+        onTidyLevel={onTidyLevel}
+        onAcceptTidy={onAcceptTidy}
+        onRejectTidy={onRejectTidy}
       />
 
       <FitToastBar ml={ml} />

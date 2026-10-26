@@ -29,6 +29,7 @@ import type {
   FitMode,
   FitSession,
   FitStroke,
+  FitTune,
   MachineLayoutConfig,
   MachineMap,
   Polygon,
@@ -50,7 +51,10 @@ import {
   type MachineStatus,
 } from '../../utils/machineLocatorGeometry'
 import { AppButton } from '../common/AppButton'
-import { FitPreviews } from './FitPreviews'
+import {
+  FitPreviews,
+  TidyPreview,
+} from './FitPreviews'
 import {
   codeFontFamily,
   mapColors,
@@ -110,14 +114,20 @@ interface MapCanvasProps {
   onStroke: (stroke: FitStroke) => void
   // sửa đỉnh đường bao của khung đang chọn
   onOutlineChange: (i: number, p: Polygon[]) => void
-  // thả đỉnh vừa kéo (không giữ Ctrl): bắt dính vào nét mực
+  // thả đỉnh vừa kéo (không giữ Ctrl, không hút theo đỉnh khác): bắt dính vào nét mực
   onVertexDrop: (i: number, pi: number, vi: number, pt: [number, number]) => void
   // thanh "Độ sát" / "Nắn vuông góc" trong hàng xem trước
   fitTightness: number
   fitOrtho: boolean
   // thanh "Bịt hở" (px) cho "Theo viền kín"
   fitGap: number
-  onTuneFit: (opts: { tightness?: number, ortho?: boolean, gap?: number }) => void
+  onTuneFit: (opts: FitTune) => void
+  // xem trước "Làm gọn" khung đang chọn: đường bao cũ (mờ) / mới (nét đứt; null = đang tính)
+  tidyPreview: { from: Polygon[], polys: Polygon[] | null } | null
+  tidyLevel: number
+  onTidyLevel: (level: number) => void
+  onAcceptTidy: () => void
+  onRejectTidy: () => void
   onAcceptFit: () => void
   onRejectFit: () => void
   // bản xem trước khi click chế độ fit ngoài khung đang chọn (nét đứt, chưa đổi khung)
@@ -155,8 +165,17 @@ type Op =
   // đã nhấn, chưa rõ là click hay kéo (chưa đi quá DRAG_THRESHOLD); pen: kéo sẽ là nét bút
   | { t: 'press', start: Point, p0: Point, hit: Shape | null, moveIdx: number | null, pen: FitStroke['mode'] | null }
   | { t: 'pen', mode: FitStroke['mode'], pts: Point[] }
-  // kéo đỉnh pi:vi của khung i; orig = đường bao lúc bắt đầu
-  | { t: 'vertex', i: number, pi: number, vi: number, p0: Point, orig: Polygon[], last: [number, number] | null }
+  // kéo đỉnh pi:vi của khung i; orig = đường bao lúc bắt đầu; guided = đang hút theo đỉnh khác
+  | {
+    t: 'vertex'
+    i: number
+    pi: number
+    vi: number
+    p0: Point
+    orig: Polygon[]
+    last: [number, number] | null
+    guided: boolean
+  }
   | { t: 'pan', last: Point }
   | { t: 'draw', p0: Point }
   // last: khung sau lần di chuyển gần nhất (null = chưa di chuyển)
@@ -176,6 +195,15 @@ const LABEL_CHAR_W = 6.6
 const PEN_PX = 6
 // nhấp đúp cách cạnh đường bao <= ngần này px màn hình thì thêm đỉnh
 const EDGE_HIT_PX = 8
+// kéo đỉnh: x / y lệch <= ngần này px màn hình so với đỉnh khác cùng khung thì hút + hiện đường gióng
+const GUIDE_PX = 3
+
+// đường gióng khi kéo đỉnh: q = đỉnh đang kéo, x / y = đỉnh khác cùng x / cùng y
+interface VertexGuide {
+  q: [number, number]
+  x: [number, number] | null
+  y: [number, number] | null
+}
 
 const GROUP_ORDER: MachineStatus[] = ['auto', 'manual', 'review']
 
@@ -208,6 +236,8 @@ interface BoxLayerProps {
   maskId: string
   fittingIdx: number | null
   warnIdx: number[]
+  // khung đang xem trước "Làm gọn": vẽ mờ
+  fadedIdx: number | null
 }
 
 const MachineBoxLayer = memo(function MachineBoxLayer({
@@ -221,6 +251,7 @@ const MachineBoxLayer = memo(function MachineBoxLayer({
   maskId,
   fittingIdx,
   warnIdx,
+  fadedIdx,
 }: BoxLayerProps) {
   const others = shapes.filter((s) => s.c !== cur && groups[s.status])
   const selected = shapes.filter((s) => s.c === cur)
@@ -274,7 +305,8 @@ const MachineBoxLayer = memo(function MachineBoxLayer({
               + (pulseKey ? ' pulse' : '')
               + (editing && s.i === act ? ' act' : '')
               + (editing && s.i === fittingIdx ? ' fitting' : '')
-              + (editing && warnIdx.includes(s.i) ? ' warn' : '')}
+              + (editing && warnIdx.includes(s.i) ? ' warn' : '')
+              + (editing && s.i === fadedIdx ? ' faded' : '')}
             d={s.d}
             data-c={s.c}
           />
@@ -343,6 +375,11 @@ export const MapCanvas = memo(function MapCanvas({
   onAcceptFit,
   onRejectFit,
   fitGhost,
+  tidyPreview,
+  tidyLevel,
+  onTidyLevel,
+  onAcceptTidy,
+  onRejectTidy,
 }: MapCanvasProps) {
   const crop = layout.data.crop
   const [CX, CY, CW, CH] = crop
@@ -403,10 +440,12 @@ export const MapCanvas = memo(function MapCanvas({
 
   // phiên ôm của khung đang chỉnh: hiện khối ứng viên, click để tinh chỉnh
   const activeFx = editing && cur && !drawMode ? machines[cur]?.boxes[act]?.fx : undefined
-  // đường bao khung đang chỉnh: hiện đỉnh để kéo / thêm / xoá (khi đang vẽ theo hình CAD)
-  const editOutline = editing && cur && !drawMode && !fitTool && cadOutline
+  // đường bao khung đang chỉnh: hiện đỉnh để kéo / thêm / xoá (khi đang vẽ theo hình CAD, không xem trước "Làm gọn")
+  const editOutline = editing && cur && !drawMode && !fitTool && cadOutline && !tidyPreview
     ? machines[cur]?.boxes[act]?.p ?? null
     : null
+  // đường gióng khi kéo đỉnh
+  const [guide, setGuide] = useState<VertexGuide | null>(null)
   // đỉnh đang chọn (Delete để xoá)
   const [selV, setSelV] = useState<{ i: number, pi: number, vi: number } | null>(null)
   const selVertex = selV && selV.i === act && editOutline?.[selV.pi]?.[selV.vi] ? selV : null
@@ -875,7 +914,7 @@ export const MapCanvas = memo(function MapCanvas({
         const [pi, vi] = v.split(':').map(Number)
 
         setSelV({ i: act, pi, vi })
-        g.op = { t: 'vertex', i: act, pi, vi, p0: p, orig: editOutline.map((q) => q.slice()), last: null }
+        g.op = { t: 'vertex', i: act, pi, vi, p0: p, orig: editOutline.map((q) => q.slice()), last: null, guided: false }
         return
       }
     }
@@ -969,7 +1008,40 @@ export const MapCanvas = memo(function MapCanvas({
 
       const { pi, vi } = op
       const q: [number, number] = [op.orig[pi][vi][0] + p.x - op.p0.x, op.orig[pi][vi][1] + p.y - op.p0.y]
+      // hút x / y theo đỉnh khác cùng khung (lệch <= GUIDE_PX px màn hình); giữ Ctrl để tắt
+      let gx: [number, number] | null = null
+      let gy: [number, number] | null = null
 
+      if (!e.ctrlKey && !e.metaKey) {
+        const tol = GUIDE_PX / (view.current.s * U)
+        let dx = tol
+        let dy = tol
+
+        for (let k = 0; k < op.orig.length; k++) {
+          for (let j = 0; j < op.orig[k].length; j++) {
+            if (k === pi && j === vi) continue
+
+            const u = op.orig[k][j]
+            const ex = Math.abs(u[0] - q[0])
+            const ey = Math.abs(u[1] - q[1])
+
+            if (ex <= dx) {
+              dx = ex
+              gx = u
+            }
+            if (ey <= dy) {
+              dy = ey
+              gy = u
+            }
+          }
+        }
+
+        if (gx) q[0] = gx[0]
+        if (gy) q[1] = gy[1]
+      }
+
+      op.guided = !!(gx || gy)
+      setGuide(op.guided ? { q, x: gx, y: gy } : null)
       op.last = q
       onOutlineChange(op.i, op.orig.map((poly, k) => (k === pi ? poly.map((u, j) => (j === vi ? q : u)) : poly)))
       return
@@ -1026,8 +1098,9 @@ export const MapCanvas = memo(function MapCanvas({
         pts: op.pts.map((q) => [q.x, q.y] as [number, number]),
       })
     } else if (op.t === 'vertex') {
-      // thả đỉnh: bắt dính vào nét mực gần nhất, giữ Ctrl để tắt
-      if (op.last && !e.ctrlKey && !e.metaKey) onVertexDrop(op.i, op.pi, op.vi, op.last)
+      setGuide(null)
+      // thả đỉnh: bắt dính vào nét mực gần nhất, giữ Ctrl để tắt; đang hút theo đỉnh khác thì giữ thẳng hàng
+      if (op.last && !op.guided && !e.ctrlKey && !e.metaKey) onVertexDrop(op.i, op.pi, op.vi, op.last)
     } else if (op.t === 'press') {
       const fx = activeFx
       const pt: [number, number] = [op.p0.x, op.p0.y]
@@ -1073,6 +1146,7 @@ export const MapCanvas = memo(function MapCanvas({
       penRef.current?.setAttribute('visibility', 'hidden')
       if (op?.t === 'pan') endPanVisual()
       if (op?.t === 'move' || op?.t === 'resize') flushBox()
+      if (op?.t === 'vertex') setGuide(null)
     }
   }
 
@@ -1125,17 +1199,22 @@ export const MapCanvas = memo(function MapCanvas({
     ? fitGhost.session.view.variants[fitGhost.mode]
       ?? Object.values(fitGhost.session.view.variants).find(Boolean) ?? null
     : null
-  // hàng xem trước: neo dưới bản xem trước nét đứt, hoặc dưới khung vừa ôm
-  const previewAt = fitGhost
-    ? {
-      fx: fitGhost.session,
-      mode: fitGhost.mode,
-      b: ghostResult?.b ?? fitGhost.session.recipe.b,
-    }
-    : previewBox?.fx
-      ? { fx: previewBox.fx, mode: activeFitMode, b: [previewBox.x, previewBox.y, previewBox.w, previewBox.h] }
-      : null
+  // hàng xem trước: neo dưới bản xem trước nét đứt, hoặc dưới khung vừa ôm (không hiện khi xem trước "Làm gọn")
+  const previewAt = tidyPreview
+    ? null
+    : fitGhost
+      ? {
+        fx: fitGhost.session,
+        mode: fitGhost.mode,
+        b: ghostResult?.b ?? fitGhost.session.recipe.b,
+      }
+      : previewBox?.fx
+        ? { fx: previewBox.fx, mode: activeFitMode, b: [previewBox.x, previewBox.y, previewBox.w, previewBox.h] }
+        : null
   const handleBox = editing && cur && !drawMode ? machines[cur]?.boxes[act] : undefined
+  // "Làm gọn": thanh neo dưới khung đang chọn
+  const tidyBox = tidyPreview && handleBox ? handleBox : undefined
+  const vertexCount = (p: Polygon[]) => p.reduce((n, q) => n + q.length, 0)
   const z = 9 / (scale * U)
   const legendGroups = canWrite ? GROUP_ORDER : GROUP_ORDER.filter((g) => g !== 'review')
 
@@ -1188,6 +1267,7 @@ export const MapCanvas = memo(function MapCanvas({
             maskId={maskId}
             fittingIdx={fittingIdx}
             warnIdx={warnIdx}
+            fadedIdx={tidyPreview ? act : null}
           />
 
           {/* khối ứng viên của phiên ôm: xanh = đang dùng, xám = bỏ; click để thêm / bớt */}
@@ -1244,6 +1324,19 @@ export const MapCanvas = memo(function MapCanvas({
             />
           )}
 
+          {/* xem trước "Làm gọn": đường bao mới nét đứt (đường bao cũ vẽ mờ ở lớp khung) */}
+          {tidyPreview?.polys && (
+            <path className="ml-ghost" d={outlinePath(tidyPreview.polys)} />
+          )}
+
+          {/* đường gióng khi kéo đỉnh: thẳng hàng x / y với đỉnh khác cùng khung */}
+          {guide && (
+            <g className="ml-guide">
+              {guide.x && <line x1={guide.x[0]} y1={guide.x[1]} x2={guide.q[0]} y2={guide.q[1]} />}
+              {guide.y && <line x1={guide.y[0]} y1={guide.y[1]} x2={guide.q[0]} y2={guide.q[1]} />}
+            </g>
+          )}
+
           <path ref={penRef} className="ml-pen" visibility="hidden" />
 
           <rect ref={draftRef} className="ml-draft" visibility="hidden" />
@@ -1280,6 +1373,22 @@ export const MapCanvas = memo(function MapCanvas({
               onTune={onTuneFit}
               onAccept={onAcceptFit}
               onReject={onRejectFit}
+            />
+          </div>
+        )}
+
+        {tidyPreview && tidyBox && (
+          <div
+            className="ml-anchor"
+            style={{ left: (tidyBox.x - CX) * U, top: (tidyBox.y + tidyBox.h - CY) * U }}
+          >
+            <TidyPreview
+              before={vertexCount(tidyPreview.from)}
+              after={tidyPreview.polys ? vertexCount(tidyPreview.polys) : null}
+              level={tidyLevel}
+              onLevel={onTidyLevel}
+              onAccept={onAcceptTidy}
+              onReject={onRejectTidy}
             />
           </div>
         )}
@@ -1542,6 +1651,18 @@ const svgSx = {
   },
   '&.editing .ml-box.on.fitting': {
     animation: `${blink} .9s ease-in-out infinite`,
+  },
+  // đang xem trước "Làm gọn": đường bao cũ mờ
+  '&.editing .ml-box.on.faded': {
+    strokeOpacity: 0.35,
+    fillOpacity: 0.05,
+  },
+  '& .ml-guide line': {
+    stroke: '#d946ef',
+    strokeWidth: 1,
+    strokeDasharray: '4 3',
+    vectorEffect: 'non-scaling-stroke',
+    pointerEvents: 'none',
   },
   '& .ml-ghost': {
     fill: mapColors.edit,

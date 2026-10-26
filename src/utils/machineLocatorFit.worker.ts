@@ -1,11 +1,13 @@
 import type {
   FitRecipe,
   FitView,
+  Polygon,
   RawBox,
 } from '../types/machineLocator'
 import {
   fitView,
   snapToInk,
+  tidyOutline,
   writeGray,
   type FitTiming,
   type GrayImage,
@@ -30,9 +32,19 @@ export interface SnapJob {
   ppp: number
 }
 
+export interface TidyJob {
+  // đường bao hiện tại (pt)
+  polys: Polygon[]
+  crop: number[]
+  ppp: number
+  // "Mức gọn" 1–5
+  level: number
+}
+
 export type FitWorkerTask =
   | ({ t: 'fit' } & FitJob)
   | ({ t: 'snap' } & SnapJob)
+  | ({ t: 'tidy' } & TidyJob)
 
 export type FitWorkerRequest =
   | { t: 'init', bitmap: ImageBitmap }
@@ -41,7 +53,15 @@ export type FitWorkerRequest =
 export type FitWorkerResponse =
   | { t: 'ready', w: number, h: number }
   | { t: 'error', message: string }
-  | { t: 'done', id: number, view?: FitView, pt?: [number, number] | null, ms: number, error?: string }
+  | {
+    t: 'done'
+    id: number
+    view?: FitView
+    pt?: [number, number] | null
+    polys?: Polygon[]
+    ms: number
+    error?: string
+  }
 
 // tsconfig chỉ có lib DOM: khai báo phần scope worker cần dùng
 const scope = self as unknown as {
@@ -111,6 +131,10 @@ scope.onmessage = (e) => {
         + ` · nét ${f(timing.ink)} · sát/gọn ${f(timing.tight)} · viền kín ${f(timing.closed)}`,
       )
       scope.postMessage({ t: 'done', id: m.id, view, ms: performance.now() - t0 })
+    } else if (m.t === 'tidy') {
+      const polys = tidyOutline(img, m.polys, m.crop, m.ppp, m.level)
+
+      scope.postMessage({ t: 'done', id: m.id, polys, ms: performance.now() - t0 })
     } else {
       scope.postMessage({ t: 'done', id: m.id, pt: snapToInk(img, m.pt, m.crop, m.ppp), ms: performance.now() - t0 })
     }

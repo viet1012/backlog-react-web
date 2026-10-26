@@ -12,12 +12,16 @@ import type {
 import type {
   FitMode,
   FitSession,
+  FitTune,
 } from '../../types/machineLocator'
 import {
+  FIT_CONFIG,
   FIT_GAP_MAX,
   FIT_GAP_MIN,
   FIT_MODE_LABEL,
   FIT_MODES,
+  TIDY_LEVEL_MAX,
+  TIDY_LEVEL_MIN,
 } from '../../utils/machineLocatorFit'
 import {
   outlinePath,
@@ -39,7 +43,7 @@ interface FitPreviewsProps {
   // bản xem trước click ngoài khung (Enter mới áp dụng)
   ghost: boolean
   onPick: (mode: FitMode) => void
-  onTune: (opts: { tightness?: number, ortho?: boolean, gap?: number }) => void
+  onTune: (opts: FitTune) => void
   onAccept: () => void
   onReject: () => void
 }
@@ -55,7 +59,23 @@ function scoreColor(s: number): string {
   return s < 50 ? '#dc2626' : s < 75 ? mapColors.review : '#15903f'
 }
 
-// Hàng xem trước dưới khung vừa ôm: 4 kiểu (kèm điểm tin cậy), "Độ sát", "Nắn vuông góc".
+const switchLabelSx = { m: 0, '& .MuiFormControlLabel-label': { fontSize: 11, whiteSpace: 'nowrap' } } as const
+
+const panelSx = {
+  position: 'absolute',
+  left: 0,
+  top: 6,
+  p: '4px',
+  borderRadius: '8px',
+  bgcolor: 'background.paper',
+  boxShadow: '0 2px 10px rgba(0,0,0,.25)',
+  pointerEvents: 'auto',
+  cursor: 'default',
+  fontSize: 11,
+  color: 'text.primary',
+} as const
+
+// Hàng xem trước dưới khung vừa ôm: 4 kiểu (kèm điểm tin cậy), "Độ sát", "Nắn vuông góc", "Giới hạn trong khung".
 // Bấm ô để chọn kiểu; Enter = nhận, Esc = hủy. Đặt trong .ml-anchor nên giữ cỡ cố định khi zoom
 export function FitPreviews({
   fx,
@@ -101,6 +121,9 @@ export function FitPreviews({
 
   const vx = (x0 + x1 - vw) / 2
   const vy = (y0 + y1 - vh) / 2
+  // công tắc hiện theo công thức của phiên ôm (Shift+F đảo riêng lần đó); không có khung gốc thì không áp dụng
+  const hasRef = !!fx.recipe.ref
+  const clip = hasRef && !!fx.recipe.clip
 
   return (
     <Box
@@ -110,19 +133,7 @@ export function FitPreviews({
       onPointerUp={stop}
       onPointerMove={stop}
       onDoubleClick={stop}
-      sx={{
-        position: 'absolute',
-        left: 0,
-        top: 6,
-        p: '4px',
-        borderRadius: '8px',
-        bgcolor: 'background.paper',
-        boxShadow: '0 2px 10px rgba(0,0,0,.25)',
-        pointerEvents: 'auto',
-        cursor: 'default',
-        fontSize: 11,
-        color: 'text.primary',
-      }}
+      sx={panelSx}
     >
       <Box sx={{ display: 'flex', gap: '4px' }}>
         {FIT_MODES.map((m) => {
@@ -211,11 +222,22 @@ export function FitPreviews({
           sx={{ flex: 1, minWidth: 48 }}
         />
         <FormControlLabel
-          sx={{ m: 0, '& .MuiFormControlLabel-label': { fontSize: 11, whiteSpace: 'nowrap' } }}
+          sx={switchLabelSx}
           control={(
             <Switch size="small" checked={ortho} onChange={(e) => onTune({ ortho: e.target.checked })} />
           )}
           label="Nắn vuông góc"
+        />
+        <FormControlLabel
+          sx={switchLabelSx}
+          title={hasRef
+            ? `Không cho kết quả vượt khung gốc quá ${FIT_CONFIG.boxOverflowPx} px (Shift+F: đảo riêng lần ôm đó)`
+            : 'Ôm quanh điểm click không có khung gốc'}
+          disabled={!hasRef}
+          control={(
+            <Switch size="small" checked={clip} onChange={(e) => onTune({ clip: e.target.checked })} />
+          )}
+          label="Giới hạn trong khung"
         />
       </Box>
 
@@ -228,6 +250,68 @@ export function FitPreviews({
         <PanelButton onClick={onReject} title="Esc">{ghost ? 'Bỏ (Esc)' : 'Hủy (Esc)'}</PanelButton>
         <PanelButton appearance="action" onClick={onAccept} title="Enter">
           {ghost ? 'Áp dụng (Enter)' : 'Nhận (Enter)'}
+        </PanelButton>
+      </Box>
+    </Box>
+  )
+}
+
+interface TidyPreviewProps {
+  // số đỉnh trước / sau (after null: đang tính)
+  before: number
+  after: number | null
+  // thanh "Mức gọn" 1–5
+  level: number
+  onLevel: (level: number) => void
+  onAccept: () => void
+  onReject: () => void
+}
+
+// Thanh dưới khung khi xem trước "Làm gọn": "Mức gọn", số đỉnh, Áp dụng (Enter) / Bỏ (Esc)
+export function TidyPreview({
+  before,
+  after,
+  level,
+  onLevel,
+  onAccept,
+  onReject,
+}: TidyPreviewProps) {
+  return (
+    <Box
+      role="group"
+      aria-label="Làm gọn đường bao"
+      onPointerDown={stop}
+      onPointerUp={stop}
+      onPointerMove={stop}
+      onDoubleClick={stop}
+      sx={panelSx}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 0.5, minWidth: 240 }}>
+        <span style={{ whiteSpace: 'nowrap' }}>Mức gọn</span>
+        <Slider
+          size="small"
+          min={TIDY_LEVEL_MIN}
+          max={TIDY_LEVEL_MAX}
+          step={1}
+          marks
+          value={level}
+          valueLabelDisplay="auto"
+          onChange={(_, v) => onLevel(v as number)}
+          aria-label="Mức gọn"
+          sx={{ flex: 1, minWidth: 80 }}
+        />
+        <Box component="span" sx={{ whiteSpace: 'nowrap', color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>
+          {before} → {after ?? '…'} đỉnh
+        </Box>
+      </Box>
+
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5, mt: 0.5 }}>
+        <Box component="span" sx={{ mr: 'auto', px: 0.5, color: 'text.secondary' }}>
+          Xem trước – chưa đổi khung
+        </Box>
+        <PanelButton onClick={onReject} title="Esc">Bỏ (Esc)</PanelButton>
+        <PanelButton appearance="action" disabled={after === null} onClick={onAccept} title="Enter">
+          Áp dụng (Enter)
         </PanelButton>
       </Box>
     </Box>

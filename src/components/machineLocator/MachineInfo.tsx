@@ -220,12 +220,17 @@ export function MachineInfo({ ml }: MachineInfoProps) {
         <div>
           {nb
             ? 'Kéo khung để di chuyển, kéo ô vuông ở cạnh để đổi kích thước. Phím mũi tên dịch 0,5 pt (Shift: 3 pt).'
-            + ' Khi thả chuột: giữ Alt = không tự ôm, giữ Shift = chỉ tìm trong khung. Ctrl+Z / Ctrl+Y hoàn tác / làm lại.'
+            + ' Khi thả chuột: giữ Alt = không tự ôm, giữ Shift = chỉ tìm trong khung.'
+            + ' F: ôm theo máy (Shift+F: đảo “Giới hạn trong khung” lần này). Ctrl+Z / Ctrl+Y hoàn tác / làm lại.'
             + (draft?.boxes[act]?.fx
               ? ' Click khối để thêm / bớt; Alt+click nét để cắt máy dính; Alt + kéo = bút loại trừ, Shift + kéo = bút bổ sung.'
               : '')
+            + (draft?.boxes[act]?.p
+              ? ' G: làm gọn đường bao (Enter áp dụng, Esc bỏ).'
+              : '')
             + (draft?.boxes[act]?.p && ml.cadOutline
-              ? ' Kéo đỉnh để sửa (giữ Ctrl: không bắt dính nét), nhấp đúp cạnh để thêm đỉnh, chọn đỉnh + Delete để xoá.'
+              ? ' Kéo đỉnh để sửa: tự hút thẳng hàng với đỉnh khác (giữ Ctrl: tắt hút và bắt dính nét),'
+              + ' nhấp đúp cạnh để thêm đỉnh, chọn đỉnh + Delete để xoá.'
               : '')
             + (nb > 1 ? ` Đang chọn vị trí ${act + 1}/${nb}.` : '')
             : 'Máy chưa có khung. Bấm “Vẽ khung” rồi kéo trên bản vẽ.'}
@@ -253,10 +258,21 @@ export function MachineInfo({ ml }: MachineInfoProps) {
             loading={ml.fittingIdx !== null}
             title={ml.fitterState === 'error'
               ? 'Không tải được ảnh layout'
-              : ml.fitterState === 'loading' ? 'Đang chuẩn bị ảnh layout…' : 'Phím tắt F'}
-            onClick={ml.fitCurrent}
+              : ml.fitterState === 'loading' ? 'Đang chuẩn bị ảnh layout…' : 'Phím tắt F (Shift: đảo “Giới hạn trong khung”)'}
+            onClick={(e) => ml.fitCurrent(e.shiftKey)}
           >
             Ôm theo máy (F)
+          </PanelButton>
+
+          <PanelButton
+            disabled={!draft?.boxes[act]?.p?.length || ml.fitterState !== 'ready'}
+            aria-pressed={!!ml.tidyPreview}
+            title={!draft?.boxes[act]?.p?.length
+              ? 'Khung chưa có đường bao'
+              : 'Rút gọn đường bao hiện tại, không ôm lại (phím tắt G)'}
+            onClick={ml.tidyCurrent}
+          >
+            Làm gọn (G)
           </PanelButton>
 
           <PanelButton

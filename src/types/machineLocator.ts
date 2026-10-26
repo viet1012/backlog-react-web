@@ -157,6 +157,8 @@ export interface FitRecipe {
   ortho: boolean
   // "Bịt hở" (px ảnh, 1–5): khe hở lớn nhất của viền được bịt kín trước khi tìm viền kín
   gap: number
+  // "Giới hạn trong khung": cắt kết quả theo khung gốc nới FIT_CONFIG.boxOverflowPx (chỉ khi có ref)
+  clip?: boolean
   // Alt+click: cắt khối dính tại các điểm này (pt), theo thứ tự
   cuts: [number, number][]
   // click: bật / tắt khối chứa điểm (pt), theo thứ tự
@@ -182,6 +184,14 @@ export interface FitView {
 export interface FitSession {
   recipe: FitRecipe
   view: FitView
+}
+
+// Chỉnh thông số ôm trong hàng xem trước: "Độ sát", "Nắn vuông góc", "Bịt hở", "Giới hạn trong khung"
+export interface FitTune {
+  tightness?: number
+  ortho?: boolean
+  gap?: number
+  clip?: boolean
 }
 
 // fit: đã ôm, review: đã ôm nhưng khung đổi nhiều, miss: không nhận ra hình máy

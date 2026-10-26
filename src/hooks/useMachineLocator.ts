@@ -27,6 +27,7 @@ import type {
   FitSession,
   FitStroke,
   FitToast,
+  FitTune,
   FitView,
   Polygon,
   LayoutData,
@@ -46,6 +47,9 @@ import {
   FIT_POINT_REGION_PX,
   FIT_REVIEW_SHIFT,
   FIT_TIGHTNESS_DEFAULT,
+  TIDY_LEVEL_DEFAULT,
+  TIDY_LEVEL_MAX,
+  TIDY_LEVEL_MIN,
   epsFromTightness,
   fitShift,
 } from '../utils/machineLocatorFit'
@@ -139,6 +143,16 @@ interface FitPreviewState {
   undoId: number
 }
 
+// Đang xem trước "Làm gọn" đường bao khung i (Enter = áp dụng, Esc = bỏ).
+// from: đường bao lúc bấm – khung đổi đường bao (kéo đỉnh, ôm lại, hoàn tác…) thì bản xem trước hết hiệu lực
+interface TidyPreviewState {
+  code: string
+  i: number
+  from: Polygon[]
+  // null: đang tính lần đầu
+  polys: Polygon[] | null
+}
+
 // Phím giữ khi thả chuột: alt = không tự ôm, shift = chỉ tìm trong khung (không nới)
 export interface DropMods {
   alt: boolean
@@ -153,6 +167,8 @@ const PREF_FIT_MODE = 'machine-locator:fitMode'
 const PREF_FIT_TIGHTNESS = 'machine-locator:fitTightness'
 const PREF_FIT_ORTHO = 'machine-locator:fitOrtho'
 const PREF_FIT_GAP = 'machine-locator:fitGap'
+const PREF_FIT_CLIP = 'machine-locator:fitClip'
+const PREF_TIDY_LEVEL = 'machine-locator:tidyLevel'
 
 // chờ sau khi thả chuột rồi mới ôm (thả rồi kéo tiếp ngay thì không tính)
 const FIT_DEBOUNCE = 150
@@ -366,6 +382,17 @@ export function useMachineLocator(
 
     return typeof v === 'number' && v >= FIT_GAP_MIN && v <= FIT_GAP_MAX ? v : FIT_GAP_DEFAULT
   })
+  // "Giới hạn trong khung" (khi có khung gốc); mặc định bật
+  const [fitClip, setFitClipState] = useState(() => loadPreference(PREF_FIT_CLIP) !== false)
+  // thanh "Mức gọn" (1–5) của "Làm gọn"
+  const [tidyLevel, setTidyLevelState] = useState(() => {
+    const v = loadPreference(PREF_TIDY_LEVEL)
+
+    return typeof v === 'number' && v >= TIDY_LEVEL_MIN && v <= TIDY_LEVEL_MAX ? v : TIDY_LEVEL_DEFAULT
+  })
+  const [tidy, setTidy] = useState<TidyPreviewState | null>(null)
+  const tidyTimer = useRef(0)
+  const tidySeq = useRef(0)
   const [fitGhost, setFitGhost] = useState<FitGhost | null>(null)
   // chế độ fit: click vào máy -> ôm quanh điểm click
   const [fitTool, setFitTool] = useState(false)
@@ -402,6 +429,7 @@ export function useMachineLocator(
 
     const f = new MachineFitter(layout.image)
     const timer = fitTimer
+    const tTimer = tidyTimer
 
     fitter.current = f
     f.ready.then(() => setFitterState('ready'), () => setFitterState('error'))
@@ -409,6 +437,7 @@ export function useMachineLocator(
     return () => {
       batchStop.current = true
       window.clearTimeout(timer.current)
+      window.clearTimeout(tTimer.current)
       f.dispose()
       if (fitter.current === f) fitter.current = null
     }
@@ -444,8 +473,9 @@ export function useMachineLocator(
     setFitting(null)
   }
 
-  // Công thức ôm theo khung b (shift: chỉ tìm trong khung, không nới); seed = tâm khung nếu không có
-  function newRecipe(b: Box, shift: boolean, seed: [number, number] | null = null): FitRecipe {
+  // Công thức ôm theo khung b (shift: chỉ tìm trong khung, không nới); seed = tâm khung nếu không có;
+  // clip: "Giới hạn trong khung" (mặc định theo công tắc)
+  function newRecipe(b: Box, shift: boolean, seed: [number, number] | null = null, clip = fitClip): FitRecipe {
     const raw = toRawBox(b)
 
     return {
@@ -456,6 +486,7 @@ export function useMachineLocator(
       eps: epsFromTightness(fitTightness),
       ortho: fitOrtho,
       gap: fitGap,
+      clip,
       cuts: [],
       toggles: [],
       strokes: [],
@@ -474,6 +505,8 @@ export function useMachineLocator(
       eps: epsFromTightness(fitTightness),
       ortho: fitOrtho,
       gap: fitGap,
+      // không có khung gốc: không giới hạn
+      clip: fitClip,
       cuts: [],
       toggles: [],
       strokes: [],
@@ -484,6 +517,7 @@ export function useMachineLocator(
     const f = fitter.current
 
     cancelFit()
+    cancelTidy()
 
     if (!f) return
 
@@ -600,13 +634,16 @@ export function useMachineLocator(
     }
   }
 
-  // Nút "Ôm theo máy" / phím F: ôm khung đang chọn ngay (dùng cả khi tắt tự ôm)
-  function fitCurrent() {
+  // Nút "Ôm theo máy" / phím F: ôm khung đang chọn ngay (dùng cả khi tắt tự ôm).
+  // flipClip (giữ Shift): đảo "Giới hạn trong khung" cho riêng lần này
+  function fitCurrent(flipClip = false) {
     const b = draft?.boxes[act]
 
     if (!draft || !b) return
 
-    requestFit({ code: draft.code, i: act, from: b, recipe: newRecipe(b, false), kind: 'fit', manual: true }, 0)
+    const recipe = newRecipe(b, false, null, flipClip ? !fitClip : fitClip)
+
+    requestFit({ code: draft.code, i: act, from: b, recipe, kind: 'fit', manual: true }, 0)
   }
 
   // Chế độ fit: click vào máy -> ôm quanh điểm click.
@@ -713,8 +750,9 @@ export function useMachineLocator(
     }, 0)
   }
 
-  // Thanh "Độ sát" / "Bịt hở" / công tắc "Nắn vuông góc": nhớ cho lần sau + tính lại xem trước (debounce)
-  function tuneFit(opts: { tightness?: number, ortho?: boolean, gap?: number }) {
+  // Thanh "Độ sát" / "Bịt hở" / công tắc "Nắn vuông góc" / "Giới hạn trong khung":
+  // nhớ cho lần sau + tính lại xem trước (debounce; bật / tắt công tắc tính ngay)
+  function tuneFit(opts: FitTune) {
     const tightness = opts.tightness ?? fitTightness
     const ortho = opts.ortho ?? fitOrtho
     const gap = opts.gap ?? fitGap
@@ -726,7 +764,15 @@ export function useMachineLocator(
     savePreference(PREF_FIT_ORTHO, ortho)
     savePreference(PREF_FIT_GAP, gap)
 
-    const tune = (r: FitRecipe): FitRecipe => ({ ...r, eps: epsFromTightness(tightness), ortho, gap })
+    if (opts.clip !== undefined) {
+      setFitClipState(opts.clip)
+      savePreference(PREF_FIT_CLIP, opts.clip)
+    }
+
+    // giữ "Giới hạn trong khung" của công thức (Shift+F đảo riêng lần đó) trừ khi bấm công tắc
+    const tune = (r: FitRecipe): FitRecipe =>
+      ({ ...r, eps: epsFromTightness(tightness), ortho, gap, clip: opts.clip ?? r.clip })
+    const delay = opts.clip !== undefined ? 0 : TUNE_DEBOUNCE
     const g = ghostView
 
     if (g && draft) {
@@ -742,7 +788,7 @@ export function useMachineLocator(
         kind: 'tune',
         manual: true,
         ghost: { append: g.append },
-      }, TUNE_DEBOUNCE)
+      }, delay)
       return
     }
 
@@ -757,7 +803,103 @@ export function useMachineLocator(
       recipe: tune(r),
       kind: 'tune',
       manual: true,
-    }, TUNE_DEBOUNCE)
+    }, delay)
+  }
+
+  // =======================================================
+  // LÀM GỌN ĐƯỜNG BAO (không ôm lại; tính trong worker vì cần bắt dính theo nét)
+  // =======================================================
+
+  // Bản xem trước còn đúng khung đang chọn và đường bao chưa đổi
+  const tidyView = editing && tidy && draft && tidy.code === draft.code && tidy.i === act
+    && draft.boxes[tidy.i]?.p === tidy.from
+    ? tidy
+    : null
+
+  function cancelTidy() {
+    window.clearTimeout(tidyTimer.current)
+    tidySeq.current++
+    fitter.current?.cancel('tidy')
+    setTidy(null)
+  }
+
+  function requestTidy(t: TidyPreviewState, level: number, delay: number) {
+    const f = fitter.current
+
+    window.clearTimeout(tidyTimer.current)
+
+    const token = ++tidySeq.current
+    const { crop, ppp } = data
+
+    tidyTimer.current = window.setTimeout(() => {
+      if (!f) return
+
+      f.tidy({ polys: t.from, crop, ppp, level }).then(
+        (polys) => {
+          if (token !== tidySeq.current || !polys) return
+          setTidy((cur) => (cur && cur.code === t.code && cur.i === t.i && cur.from === t.from ? { ...cur, polys } : cur))
+        },
+        (e: unknown) => {
+          if (token !== tidySeq.current) return
+          setTidy(null)
+          showToast(`Không làm gọn được: ${e instanceof Error ? e.message : e}`, 'info')
+        },
+      )
+    }, delay)
+  }
+
+  // Nút "Làm gọn" / phím G: xem trước đường bao gọn của khung đang chọn (cũ mờ, mới nét đứt)
+  function tidyCurrent() {
+    const b = draft?.boxes[act]
+
+    if (!editing || !draft || !b) return
+
+    if (!b.p?.length) {
+      showToast('Khung chưa có đường bao – ôm theo máy (F) trước', 'info')
+      return
+    }
+
+    if (fitter.current?.status !== 'ready') {
+      showToast(fitterState === 'error' ? 'Chưa tải được ảnh layout – không làm gọn được.' : 'Đang chuẩn bị ảnh layout…', 'info')
+      return
+    }
+
+    cancelFit()
+    setFitPreview(null)
+    setFitGhost(null)
+
+    const t: TidyPreviewState = { code: draft.code, i: act, from: b.p, polys: null }
+
+    setTidy(t)
+    requestTidy(t, tidyLevel, 0)
+  }
+
+  // Thanh "Mức gọn": nhớ cho lần sau + tính lại bản xem trước (debounce)
+  function setTidyLevel(level: number) {
+    setTidyLevelState(level)
+    savePreference(PREF_TIDY_LEVEL, level)
+
+    if (tidyView) requestTidy(tidyView, level, TUNE_DEBOUNCE)
+  }
+
+  // Enter: áp dụng đường bao gọn (1 bước hoàn tác)
+  function acceptTidy() {
+    const t = tidyView
+
+    // chưa tính xong: chờ
+    if (!t?.polys || !draft) return
+
+    cancelTidy()
+
+    const polys = t.polys
+    const count = (p: Polygon[]) => p.reduce((n, q) => n + q.length, 0)
+    const undoId = pushUndo(draft, act)
+    const boxes = draft.boxes.slice()
+
+    boxes[t.i] = { ...boxes[t.i], ...bboxOfOutline(polys), p: polys, fx: undefined }
+    setDraft({ ...draft, boxes, dirty: true })
+    markWarn(draft.code, t.i, false)
+    showToast(`Đã làm gọn · ${count(t.from)} → ${count(polys)} đỉnh`, 'success', undoId)
   }
 
   // Sửa đỉnh đường bao (kéo / thêm / xoá đỉnh): khung b theo bao ngoài đường bao mới
@@ -908,6 +1050,7 @@ export function useMachineLocator(
 
   function restore(d: MachineDraft, e: UndoEntry) {
     cancelFit()
+    cancelTidy()
     setDraft({ ...d, boxes: e.boxes, dirty: e.dirty })
     setAct(Math.max(0, Math.min(e.act, e.boxes.length - 1)))
     setFitWarn({ code: '', idx: [] })
@@ -948,6 +1091,7 @@ export function useMachineLocator(
   // MapCanvas: bắt đầu kéo / resize khung / sửa đỉnh (trước lần thay đổi đầu tiên)
   function beginBoxGesture() {
     cancelFit()
+    cancelTidy()
     setFitPreview(null)
     setFitGhost(null)
     if (draft) pushUndo(draft, act)
@@ -1307,6 +1451,7 @@ export function useMachineLocator(
 
     if (!on) {
       cancelFit()
+      cancelTidy()
       clearUndo()
       setBatch(null)
       setFitPreview(null)
@@ -1709,6 +1854,14 @@ export function useMachineLocator(
       // đang gõ chữ (thanh trượt / công tắc không tính)
       const typing = tag === 'TEXTAREA' || (tag === 'INPUT' && el?.type !== 'range' && el?.type !== 'checkbox')
 
+      // Xem trước "Làm gọn": Enter = áp dụng, Esc = bỏ
+      if ((e.key === 'Enter' || e.key === 'Escape') && tidyView && !typing && tag !== 'BUTTON') {
+        e.preventDefault()
+        if (e.key === 'Enter') acceptTidy()
+        else cancelTidy()
+        return
+      }
+
       // Xem trước kết quả ôm: Enter = nhận, Esc = hủy về trước lần ôm
       if ((e.key === 'Enter' || e.key === 'Escape') && (fitPreviewIdx !== null || ghostView)
         && !typing && tag !== 'BUTTON') {
@@ -1756,10 +1909,17 @@ export function useMachineLocator(
 
       if (!draft.boxes[act]) return
 
-      // F: ôm khung đang chọn theo máy
+      // F: ôm khung đang chọn theo máy (Shift+F: đảo "Giới hạn trong khung" lần này)
       if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === 'f') {
         e.preventDefault()
-        fitCurrent()
+        fitCurrent(e.shiftKey)
+        return
+      }
+
+      // G: làm gọn đường bao khung đang chọn
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'g') {
+        e.preventDefault()
+        tidyCurrent()
         return
       }
 
@@ -1859,6 +2019,14 @@ export function useMachineLocator(
     fitTightness,
     fitOrtho,
     fitGap,
+    fitClip,
+    // "Làm gọn": bản xem trước của khung đang chọn + thanh "Mức gọn"
+    tidyPreview: tidyView,
+    tidyLevel,
+    tidyCurrent,
+    setTidyLevel,
+    acceptTidy,
+    rejectTidy: cancelTidy,
     // bản xem trước (nét đứt) khi click chế độ fit ngoài khung đang chọn
     // (giữ nguyên object state để MapCanvas memo không render lại thừa)
     fitGhost: ghostView,
