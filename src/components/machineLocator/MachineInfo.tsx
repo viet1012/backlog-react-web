@@ -142,8 +142,6 @@ export function MachineInfo({ ml }: MachineInfoProps) {
     panelMode,
     canWrite,
     machines,
-    base,
-    edits,
   } = ml
 
   const invalidCode = () =>
@@ -218,22 +216,9 @@ export function MachineInfo({ ml }: MachineInfoProps) {
         <MachineCode code={cur} />
 
         <div>
-          {nb
-            ? 'Kéo khung để di chuyển, kéo ô vuông ở cạnh để đổi kích thước. Phím mũi tên dịch 0,5 pt (Shift: 3 pt).'
-            + ' Khi thả chuột: giữ Alt = không tự ôm, giữ Shift = chỉ tìm trong khung.'
-            + ' F: ôm theo máy (Shift+F: đảo “Giới hạn trong khung” lần này). Ctrl+Z / Ctrl+Y hoàn tác / làm lại.'
-            + (draft?.boxes[act]?.fx
-              ? ' Click khối để thêm / bớt; Alt+click nét để cắt máy dính; Alt + kéo = bút loại trừ, Shift + kéo = bút bổ sung.'
-              : '')
-            + (draft?.boxes[act]?.p
-              ? ' G: làm gọn đường bao (Enter áp dụng, Esc bỏ).'
-              : '')
-            + (draft?.boxes[act]?.p && ml.cadOutline
-              ? ' Kéo đỉnh để sửa: tự hút thẳng hàng với đỉnh khác (giữ Ctrl: tắt hút và bắt dính nét),'
-              + ' nhấp đúp cạnh để thêm đỉnh, chọn đỉnh + Delete để xoá.'
-              : '')
-            + (nb > 1 ? ` Đang chọn vị trí ${act + 1}/${nb}.` : '')
-            : 'Máy chưa có khung. Bấm “Vẽ khung” rồi kéo trên bản vẽ.'}
+          {(nb ? '' : 'Máy chưa có khung. Bấm “Vẽ khung” rồi kéo trên bản vẽ. ')
+            + 'Nhấn ? để xem hướng dẫn.'
+            + (nb > 1 ? ` Đang chọn vị trí ${act + 1}/${nb}.` : '')}
         </div>
 
         <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.6, mt: 1 }}>
@@ -337,8 +322,8 @@ export function MachineInfo({ ml }: MachineInfoProps) {
             Đổi mã
           </PanelButton>
 
-          {ml.canRevert && base[cur] && (edits[cur] || dirty) && (
-            <PanelButton onClick={ml.revertAuto}>
+          {ml.canRevert && (
+            <PanelButton disabled={ml.saving} onClick={() => void ml.revertAuto()}>
               Về khung tự động
             </PanelButton>
           )}
@@ -363,7 +348,7 @@ export function MachineInfo({ ml }: MachineInfoProps) {
               Xóa {cur} khỏi danh sách?
             </Box>
 
-            <PanelButton appearance="destructive" onClick={ml.deleteMachine}>
+            <PanelButton appearance="destructive" disabled={ml.saving} onClick={ml.deleteMachine}>
               Xóa
             </PanelButton>
 
@@ -377,7 +362,7 @@ export function MachineInfo({ ml }: MachineInfoProps) {
           {needsReview && (
             <PanelButton
               appearance="success"
-              disabled={dirty || !nb}
+              disabled={dirty || !nb || ml.saving}
               onClick={ml.confirmReview}
             >
               Đúng rồi
@@ -386,7 +371,8 @@ export function MachineInfo({ ml }: MachineInfoProps) {
 
           <PanelButton
             appearance="action"
-            disabled={!(dirty && nb)}
+            disabled={!(dirty && nb) || ml.saving}
+            loading={ml.saving}
             onClick={ml.save}
           >
             Lưu

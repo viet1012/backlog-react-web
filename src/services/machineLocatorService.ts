@@ -1,194 +1,232 @@
+import { API_BASE_URL } from '../config/api'
 import type {
+  FloorDto,
   LayoutData,
+  MachineBulkOp,
   MachineEdit,
-  MachineEdits,
   MachineLayoutConfig,
 } from '../types/machineLocator'
+import { getCurrentEmployeeId } from './authService'
 
 // =========================================================
-// MACHINE STORE
-// - dev  ('file') : ghi thẳng vào file JSON gốc qua Vite plugin (vite-plugins/machineLocatorDevStore.ts);
-//                  file chính là dữ liệu gốc nên EDITS luôn rỗng.
-// - build('local'): dữ liệu gốc đóng gói sẵn + EDITS trong localStorage.
-// Khi có API backlog-be chỉ cần thay phần thân các hàm dưới,
-// UI chỉ dùng loadMachineStore / setMachineEdit / deleteMachineEdit.
+// MACHINE STORE – API backlog-be (/api/machine-locator)
+// Mỗi lệnh ghi gửi ifVersion = version floor đang giữ; server trả 409 khi
+// floor đã bị người khác sửa. Lệnh ghi trả về cả floor (kèm version mới).
 // =========================================================
 
-export type MachineStoreMode = 'file' | 'local'
-
-export const machineStoreMode: MachineStoreMode =
-  import.meta.env.DEV ? 'file' : 'local'
+const API_URL = `${API_BASE_URL.replace(/\/$/, '')}/api/machine-locator`
 
 export interface MachineStoreState {
   data: LayoutData
-  edits: MachineEdits
+  version: number
 }
 
 export type MachineStoreErrorCode =
-  | 'local_fail'
-  | 'file_fail'
+  | 'conflict'
+  | 'auth'
+  | 'api_fail'
 
 export class MachineStoreError extends Error {
   readonly code: MachineStoreErrorCode
+  readonly status?: number
 
-  constructor(code: MachineStoreErrorCode, message?: string) {
+  constructor(code: MachineStoreErrorCode, message?: string, status?: number) {
     super(message ?? code)
 
     this.name = 'MachineStoreError'
     this.code = code
+    this.status = status
   }
 }
 
 // =========================================================
-// LOCAL STORAGE
+// HTTP
 // =========================================================
 
-const STORAGE_PREFIX = 'production-control:machine-locator'
-
-function storageKey(layoutId: string) {
-  return `${STORAGE_PREFIX}:${layoutId}:edits.v1`
+function floorUrl(floorId: string, path = '') {
+  return `${API_URL}/floors/${encodeURIComponent(floorId)}${path}`
 }
 
-function readEdits(layoutId: string): MachineEdits {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(storageKey(layoutId)) || '{}')
-
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-      ? parsed as MachineEdits
-      : {}
-  } catch {
-    return {}
-  }
+function machineUrl(floorId: string, code: string, path = '') {
+  return floorUrl(floorId, `/machines/${encodeURIComponent(code)}${path}`)
 }
 
-function writeEdits(layoutId: string, edits: MachineEdits) {
-  try {
-    localStorage.setItem(storageKey(layoutId), JSON.stringify(edits))
-  } catch {
-    throw new MachineStoreError('local_fail')
-  }
-}
-
-// =========================================================
-// FILE (dev)
-// =========================================================
-
-function fileUrl(layoutId: string, code?: string) {
-  const base = `/__machine-locator/${encodeURIComponent(layoutId)}`
-
-  return code ? `${base}/machines/${encodeURIComponent(code)}` : base
-}
-
-async function fileRequest(
+async function request<T>(
   url: string,
-  init?: RequestInit,
-): Promise<MachineStoreState> {
+  init: RequestInit = {},
+  write = false,
+): Promise<T> {
+  const headers: Record<string, string> = { Accept: 'application/json' }
+
+  if (init.body) headers['Content-Type'] = 'application/json'
+
+  if (write) {
+    const employeeId = getCurrentEmployeeId()
+
+    if (!employeeId) throw new MachineStoreError('auth', 'Chưa đăng nhập.')
+
+    headers['X-Employee-Id'] = employeeId
+  }
+
   let res: Response
 
   try {
-    res = await fetch(url, { cache: 'no-store', ...init })
+    res = await fetch(url, { cache: 'no-store', ...init, headers })
   } catch (e) {
-    throw new MachineStoreError('file_fail', e instanceof Error ? e.message : 'mất kết nối dev server')
+    throw new MachineStoreError('api_fail', e instanceof Error ? e.message : 'mất kết nối server')
   }
 
-  const body = await res.json().catch(() => null) as (LayoutData & { message?: string }) | null
+  const body = await res.json().catch(() => null) as (T & { message?: string }) | null
 
-  if (!res.ok || !body || !body.m) {
-    throw new MachineStoreError('file_fail', body?.message || `HTTP ${res.status}`)
+  if (!res.ok) {
+    throw new MachineStoreError(
+      res.status === 409 ? 'conflict' : res.status === 401 || res.status === 403 ? 'auth' : 'api_fail',
+      body?.message || `HTTP ${res.status}`,
+      res.status,
+    )
   }
 
-  return { data: body, edits: {} }
+  if (!body) throw new MachineStoreError('api_fail', 'Response rỗng hoặc không phải JSON.')
+
+  return body
+}
+
+// Ảnh layout nằm trong public/assets: imageUrl tương đối thì gắn BASE_URL của app
+function resolveImageUrl(url: string): string {
+  return /^(https?:)?\/\//.test(url)
+    ? url
+    : `${import.meta.env.BASE_URL}${url.replace(/^\/+/, '')}`
+}
+
+function toLayoutConfig(f: FloorDto): MachineLayoutConfig {
+  const image = resolveImageUrl(f.imageUrl)
+  const title = f.drawingTitle || f.name
+
+  return {
+    id: f.id,
+    name: f.name,
+    drawingTitle: title,
+    image,
+    imageAlt: `Layout ${title}`,
+    exportMeta: {
+      factory: f.exportMeta?.factory ?? f.name,
+      floor: f.exportMeta?.floor ?? '',
+      sourcePdf: f.exportMeta?.sourcePdf ?? '',
+      imageFile: f.exportMeta?.imageFile ?? (image.split('/').pop() || `${f.id}.png`),
+      filePrefix: f.exportMeta?.filePrefix ?? f.id,
+    },
+  }
+}
+
+function toState(f: FloorDto): MachineStoreState {
+  if (!f.m || !f.crop || !f.page || !f.ppp || typeof f.version !== 'number') {
+    throw new MachineStoreError('api_fail', `Dữ liệu floor ${f.id ?? ''} thiếu crop / page / ppp / version / m.`)
+  }
+
+  return { data: { crop: f.crop, page: f.page, ppp: f.ppp, m: f.m }, version: f.version }
+}
+
+function write(
+  url: string,
+  method: 'PUT' | 'POST' | 'DELETE',
+  body?: object,
+): Promise<MachineStoreState> {
+  return request<FloorDto>(url, { method, body: body && JSON.stringify(body) }, true).then(toState)
 }
 
 // =========================================================
 // API
 // =========================================================
 
+// Danh sách tab layout (thứ tự theo server)
+export async function listFloors(): Promise<MachineLayoutConfig[]> {
+  const floors = await request<FloorDto[]>(`${API_URL}/floors`)
+
+  if (!Array.isArray(floors)) throw new MachineStoreError('api_fail', 'Danh sách floor không hợp lệ.')
+
+  return floors.map(toLayoutConfig)
+}
+
 export async function loadMachineStore(
   layout: MachineLayoutConfig,
 ): Promise<MachineStoreState> {
-  if (machineStoreMode === 'file') return fileRequest(fileUrl(layout.id))
-
-  return { data: layout.data, edits: readEdits(layout.id) }
+  return toState(await request<FloorDto>(floorUrl(layout.id)))
 }
 
-// Ghi chỉnh sửa của 1 máy; edit.deleted = xoá máy. Trả về trạng thái mới để UI cập nhật
-export async function setMachineEdit(
+// Ghi khung của 1 máy (tạo mới nếu chưa có)
+export function setMachineEdit(
   layout: MachineLayoutConfig,
   code: string,
   edit: MachineEdit,
+  version: number,
 ): Promise<MachineStoreState> {
-  if (machineStoreMode === 'file') {
-    return edit.deleted
-      ? fileRequest(fileUrl(layout.id, code), { method: 'DELETE' })
-      : fileRequest(fileUrl(layout.id, code), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ boxes: edit.boxes, ...(edit.keepStatus ? { keepStatus: true } : {}) }),
-      })
-  }
-
-  const edits = readEdits(layout.id)
-
-  edits[code] = edit
-  writeEdits(layout.id, edits)
-
-  return { data: layout.data, edits }
+  return write(machineUrl(layout.id, code), 'PUT', {
+    boxes: edit.boxes,
+    ...(edit.keepStatus ? { keepStatus: true } : {}),
+    ifVersion: version,
+  })
 }
 
-// Bỏ chỉnh sửa của 1 máy (về dữ liệu gốc). Ở chế độ file không có EDITS nên chỉ đọc lại file
-export async function deleteMachineEdit(
+export function removeMachine(
   layout: MachineLayoutConfig,
   code: string,
+  version: number,
 ): Promise<MachineStoreState> {
-  if (machineStoreMode === 'file') return fileRequest(fileUrl(layout.id))
-
-  const edits = readEdits(layout.id)
-
-  delete edits[code]
-  writeEdits(layout.id, edits)
-
-  return { data: layout.data, edits }
+  return write(`${machineUrl(layout.id, code)}?ifVersion=${version}`, 'DELETE')
 }
 
-// =========================================================
-// CHUYỂN EDITS CŨ TRONG TRÌNH DUYỆT -> FILE (dev)
-// =========================================================
-
-export function getBrowserEdits(layoutId: string): MachineEdits {
-  return readEdits(layoutId)
-}
-
-export async function migrateBrowserEdits(
+export function renameMachine(
   layout: MachineLayoutConfig,
-): Promise<{ state: MachineStoreState, count: number }> {
-  const edits = readEdits(layout.id)
-  let state = await loadMachineStore(layout)
-  let count = 0
+  code: string,
+  to: string,
+  version: number,
+): Promise<MachineStoreState> {
+  return write(machineUrl(layout.id, code, '/rename'), 'POST', { to, ifVersion: version })
+}
 
-  for (const [code, edit] of Object.entries(edits)) {
-    if (!edit.deleted && !(Array.isArray(edit.boxes) && edit.boxes.length)) continue
+// "Đúng rồi": bỏ cờ cần soát, giữ nguyên khung
+export function confirmMachine(
+  layout: MachineLayoutConfig,
+  code: string,
+  version: number,
+): Promise<MachineStoreState> {
+  return write(machineUrl(layout.id, code, '/confirm'), 'POST', { ifVersion: version })
+}
 
-    state = await setMachineEdit(layout, code, edit)
-    count++
-  }
+// Về khung tự động (CAD) do server giữ
+export function revertMachine(
+  layout: MachineLayoutConfig,
+  code: string,
+  version: number,
+): Promise<MachineStoreState> {
+  return write(machineUrl(layout.id, code, '/revert'), 'POST', { ifVersion: version })
+}
 
-  try {
-    localStorage.removeItem(storageKey(layout.id))
-  } catch {
-    // không xoá được key thì lần sau ghi lại cũng cho cùng kết quả
-  }
+// Nhiều thao tác trong 1 lần ghi (ôm hàng loạt, nhập JSON)
+export function bulkMachineEdits(
+  layout: MachineLayoutConfig,
+  ops: MachineBulkOp[],
+  version: number,
+  keepStatus = false,
+): Promise<MachineStoreState> {
+  return write(floorUrl(layout.id, '/bulk'), 'POST', {
+    ops,
+    ...(keepStatus ? { keepStatus: true } : {}),
+    ifVersion: version,
+  })
+}
 
-  return { state, count }
+export function isStoreConflict(error: unknown): boolean {
+  return error instanceof MachineStoreError && error.code === 'conflict'
 }
 
 export function machineStoreErrorMessage(error: unknown): string {
-  if (error instanceof MachineStoreError && error.code === 'local_fail') {
-    return 'Trình duyệt không cho lưu dữ liệu. Dùng Xuất JSON để giữ lại thay đổi.'
+  if (isStoreConflict(error)) {
+    return 'Dữ liệu đã bị người khác sửa. Đã tải lại dữ liệu mới nhất – kiểm tra rồi lưu lại.'
   }
 
-  if (error instanceof MachineStoreError && error.code === 'file_fail') {
-    return 'Không ghi được file: ' + error.message
+  if (error instanceof MachineStoreError && error.code === 'auth') {
+    return 'Không có quyền ghi: ' + error.message
   }
 
   return 'Không lưu được: '

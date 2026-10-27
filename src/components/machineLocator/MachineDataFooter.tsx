@@ -16,13 +16,16 @@ interface MachineDataFooterProps {
 export function MachineDataFooter({ ml }: MachineDataFooterProps) {
   const fileRef = useRef<HTMLInputElement>(null)
 
+  const error = ml.status.k === 'err'
   const note = !ml.loaded
-    ? 'Đang tải dữ liệu chỉnh sửa…'
+    ? 'Đang tải dữ liệu từ server…'
     : !ml.canWrite
       ? 'Bạn đang xem ở chế độ chỉ đọc.'
-      : ml.storeMode === 'file'
-        ? `Đang lưu vào file ${ml.dataFileName} (chế độ dev).`
-        : 'Đang lưu trong trình duyệt. Dùng Xuất JSON để sao lưu, Nhập JSON để nạp lại.'
+      : ml.saving
+        ? 'Đang ghi lên server…'
+        : error
+          ? ml.status.t
+          : 'Đang lưu vào server.'
 
   function openImport() {
     if (!ml.canStartImport() || !fileRef.current) return
@@ -48,8 +51,8 @@ export function MachineDataFooter({ ml }: MachineDataFooterProps) {
         sx={{
           width: '100%',
           fontSize: 11.5,
-          color: ml.canWrite && ml.storeMode === 'file' ? 'primary.main' : 'text.secondary',
-          fontWeight: ml.canWrite && ml.storeMode === 'file' ? 600 : 400,
+          color: ml.canWrite && error ? 'error.main' : ml.canWrite ? 'primary.main' : 'text.secondary',
+          fontWeight: ml.canWrite ? 600 : 400,
         }}
       >
         {note}
@@ -57,37 +60,12 @@ export function MachineDataFooter({ ml }: MachineDataFooterProps) {
 
       {ml.canWrite && ml.editing && <FitBatchPanel ml={ml} />}
 
-      {ml.canWrite && ml.browserEditCount > 0 && (
-        <Box
-          sx={{
-            width: '100%',
-            mb: 0.5,
-            p: 1,
-            fontSize: 12,
-            color: 'text.primary',
-            border: '1px solid',
-            borderColor: 'warning.main',
-            borderRadius: '8px',
-          }}
-        >
-          Trình duyệt còn {ml.browserEditCount} chỉnh sửa cũ (lưu trong localStorage) chưa có trong file.
-
-          <PanelButton
-            appearance="action"
-            onClick={() => void ml.migrateBrowserData()}
-            sx={{ mt: 0.75, display: 'flex' }}
-          >
-            Ghi các chỉnh sửa trong trình duyệt vào file
-          </PanelButton>
-        </Box>
-      )}
-
       {ml.canWrite && (
         <>
           <PanelButton onClick={ml.exportCsv}>Xuất CSV</PanelButton>
           <PanelButton onClick={ml.exportJson}>Xuất JSON</PanelButton>
           <PanelButton onClick={ml.exportPng}>Ảnh layout</PanelButton>
-          <PanelButton onClick={openImport}>Nhập JSON</PanelButton>
+          <PanelButton disabled={ml.saving} onClick={openImport}>Nhập JSON</PanelButton>
 
           <input
             ref={fileRef}

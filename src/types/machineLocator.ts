@@ -1,5 +1,5 @@
 // =========================================================
-// RAW LAYOUT DATA (src/data/machineLocator/*.json)
+// RAW LAYOUT DATA (GET /api/machine-locator/floors/{id})
 // =========================================================
 
 // [x, y, w, h] theo pt của trang PDF, gốc toạ độ góc trên-trái
@@ -55,6 +55,7 @@ export interface MachineLayoutExportMeta {
   filePrefix: string
 }
 
+// Thông tin 1 tab layout (GET /floors); dữ liệu máy tải riêng theo floor
 export interface MachineLayoutConfig {
   id: string
   name: string
@@ -62,11 +63,18 @@ export interface MachineLayoutConfig {
   drawingTitle: string
   image: string
   imageAlt: string
-  // dữ liệu gốc đóng gói sẵn (bản build); khi dev được thay bằng bản đọc từ file
-  data: LayoutData
-  // đường dẫn file JSON gốc (tính từ thư mục gốc dự án)
-  dataFile: string
   exportMeta: MachineLayoutExportMeta
+}
+
+// Response của GET /floors (mỗi phần tử) và GET /floors/{id} (có thêm m)
+export interface FloorDto extends Partial<Omit<LayoutData, 'm'>> {
+  id: string
+  name: string
+  drawingTitle?: string
+  imageUrl: string
+  exportMeta?: Partial<MachineLayoutExportMeta>
+  version?: number
+  m?: Record<string, RawMachine>
 }
 
 // =========================================================
@@ -92,31 +100,29 @@ export interface EffectiveMachine {
   boxes: Box[]
   manual: boolean
   u: boolean
-  // cần soát: r = true trong dữ liệu gốc và chưa có EDITS
+  // cần soát: r = true trên server
   review: boolean
 }
 
 export type MachineMap = Record<string, EffectiveMachine>
 
-// Phần chỉnh tay lưu lại (cùng format bản demo): code -> { boxes, deleted? }
+// Body PUT /floors/{id}/machines/{code}
 export interface MachineEdit {
   boxes: Box[]
-  deleted?: boolean
-  renamedFrom?: string
-  renamedTo?: string
-  updatedAt?: string
   // true: chỉ ôm lại khung theo ảnh (hàng loạt) -> giữ nguyên trạng thái máy (u / src / r)
   keepStatus?: boolean
 }
 
-export type MachineEdits = Record<string, MachineEdit>
+// 1 thao tác của POST /floors/{id}/bulk
+export type MachineBulkOp =
+  | { type: 'set', code: string, boxes: Box[] }
+  | { type: 'del', code: string }
 
 export interface MachineDraft {
   code: string
   boxes: Box[]
   dirty: boolean
   isNew: boolean
-  revert?: boolean
 }
 
 // =========================================================

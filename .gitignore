@@ -26,5 +26,6 @@ dist-ssr
 
 __pycache__/
 scripts/machine-locator/input/
-*.generated-review.csvsrc/data/machineLocator/*.bak
+*.generated-review.csv
+src/data/machineLocator/*.bak
 src/data/machineLocator/*.tmp

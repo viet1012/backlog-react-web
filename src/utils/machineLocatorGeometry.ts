@@ -5,7 +5,6 @@ import type {
   FitMode,
   LayoutData,
   MachineDraft,
-  MachineEdits,
   MachineMap,
   Outline,
   Polygon,
@@ -165,11 +164,10 @@ export function sameOutlines(a: Box[], b: Box[]): boolean {
     && a.every((x, i) => JSON.stringify(x.p ?? null) === JSON.stringify(b[i].p ?? null))
 }
 
-// Danh sách máy hiệu lực = khung tự động + chỉnh tay + kết quả ôm hàng loạt chờ lưu + bản nháp đang sửa
+// Danh sách máy hiệu lực = dữ liệu server + kết quả ôm hàng loạt chờ lưu + bản nháp đang sửa
 export function buildEffectiveMachines(
   data: LayoutData,
   base: Record<string, Box[]>,
-  edits: MachineEdits,
   draft: MachineDraft | null,
   pending?: Record<string, Box[]>,
 ): MachineMap {
@@ -178,38 +176,10 @@ export function buildEffectiveMachines(
   for (const c in base) {
     out[c] = {
       boxes: base[c],
-      // src = manual: khung đã chỉnh tay và ghi thẳng vào dữ liệu gốc
+      // src = manual: khung đã chỉnh tay
       manual: data.m[c].src === 'manual',
       u: !!data.m[c].u,
       review: !!data.m[c].r,
-    }
-  }
-
-  for (const c in edits) {
-    const e = edits[c]
-
-    if (e.deleted) {
-      delete out[c]
-      continue
-    }
-
-    if (Array.isArray(e.boxes) && e.boxes.length) {
-      // keepStatus: khung chỉ được ôm lại theo ảnh, trạng thái máy giữ như dữ liệu gốc
-      const raw = e.keepStatus ? data.m[c] : undefined
-
-      out[c] = {
-        boxes: e.boxes.map((b) => ({
-          x: +b.x,
-          y: +b.y,
-          w: +b.w,
-          h: +b.h,
-          p: normalizeOutline(b.p),
-          fit: normalizeFitMode(b.fit),
-        })),
-        manual: raw ? raw.src === 'manual' : true,
-        u: !!raw?.u,
-        review: !!raw?.r,
-      }
     }
   }
 
@@ -223,7 +193,7 @@ export function buildEffectiveMachines(
       boxes: draft.boxes,
       manual: true,
       u: false,
-      review: !edits[draft.code] && !!data.m[draft.code]?.r,
+      review: !!data.m[draft.code]?.r,
     }
   }
 
@@ -253,20 +223,17 @@ export function sameBoxes(a: Box[], b: Box[]): boolean {
     )
 }
 
-export function editBody(boxes: Box[]) {
-  return {
-    boxes: boxes.map((b) => ({
-      x: round1(b.x),
-      y: round1(b.y),
-      w: round1(b.w),
-      h: round1(b.h),
-      // giữ đường bao nếu khung chưa bị sửa (sửa khung đã đặt p = null)
-      ...(b.p ? { p: b.p } : {}),
-      ...(b.fit ? { fit: b.fit } : {}),
-    })),
-    deleted: false,
-    updatedAt: new Date().toISOString(),
-  }
+// Khung gửi lên server (bỏ phiên ôm fx, làm tròn x/y/w/h)
+export function editBoxes(boxes: Box[]): Box[] {
+  return boxes.map((b) => ({
+    x: round1(b.x),
+    y: round1(b.y),
+    w: round1(b.w),
+    h: round1(b.h),
+    // giữ đường bao nếu khung chưa bị sửa (sửa khung đã đặt p = null)
+    ...(b.p ? { p: b.p } : {}),
+    ...(b.fit ? { fit: b.fit } : {}),
+  }))
 }
 
 // =========================================================

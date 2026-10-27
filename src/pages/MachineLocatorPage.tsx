@@ -1,3 +1,4 @@
+import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded'
 import {
   Box,
   Checkbox,
@@ -9,6 +10,7 @@ import {
   Tab,
   Tabs,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import type { PaletteMode } from '@mui/material'
@@ -29,7 +31,11 @@ import { PageShell } from '../components/common/PageShell'
 import { EditToolbar } from '../components/machineLocator/EditToolbar'
 import { FitToastBar } from '../components/machineLocator/FitToastBar'
 import { MachineDataFooter } from '../components/machineLocator/MachineDataFooter'
-import { MachineInfo } from '../components/machineLocator/MachineInfo'
+import {
+  MachineInfo,
+  PanelButton,
+} from '../components/machineLocator/MachineInfo'
+import { MachineLocatorHelp } from '../components/machineLocator/MachineLocatorHelp'
 import {
   MachineList,
   type ElsewhereMatch,
@@ -39,19 +45,16 @@ import {
   codeFontFamily,
   mapColors,
 } from '../components/machineLocator/machineLocatorColors'
-import {
-  DEFAULT_MACHINE_LAYOUT_ID,
-  machineLayouts,
-} from '../config/machineLocatorLayouts'
 import { useMachineLocator } from '../hooks/useMachineLocator'
 import { useStableCallback } from '../hooks/useStableCallback'
 import { hasAnyRole } from '../services/authService'
-import { loadMachineStore } from '../services/machineLocatorService'
+import {
+  listFloors,
+  loadMachineStore,
+} from '../services/machineLocatorService'
 import { uiTokens } from '../theme/uiTokens'
 import type { MachineLayoutConfig } from '../types/machineLocator'
 import {
-  buildBaseBoxes,
-  buildEffectiveMachines,
   compareCodes,
   matchesMachineFilter,
   matchesQuery,
@@ -67,15 +70,14 @@ interface MachineLocatorPageProps {
 }
 
 const PREF_LAYOUT = 'machine-locator:layout'
+// đã tự mở hướng dẫn lần đầu
+const PREF_HELP_SEEN = 'machine-locator:helpSeen'
+const DEFAULT_MACHINE_LAYOUT_ID = 'factory-b-f1'
 
 interface OtherLayoutCodes {
   id: string
   name: string
   codes: string[]
-}
-
-function findLayout(id: unknown): MachineLayoutConfig | undefined {
-  return machineLayouts.find((l) => l.id === id)
 }
 
 export function MachineLocatorPage({
@@ -85,30 +87,58 @@ export function MachineLocatorPage({
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
 
+  // Tab layout lấy từ server (GET /floors); null = đang tải
+  const [layouts, setLayouts] = useState<MachineLayoutConfig[] | null>(null)
+  const [layoutsError, setLayoutsError] = useState('')
+  const [layoutsSeq, setLayoutsSeq] = useState(0)
+
+  useEffect(() => {
+    let alive = true
+
+    listFloors().then(
+      (ls) => {
+        if (!alive) return
+        setLayouts(ls)
+        setLayoutsError('')
+      },
+      (e: unknown) => {
+        if (alive) setLayoutsError(e instanceof Error ? e.message : String(e))
+      },
+    )
+
+    return () => {
+      alive = false
+    }
+  }, [layoutsSeq])
+
+  const findLayout = (id: unknown): MachineLayoutConfig | undefined =>
+    layouts?.find((l) => l.id === id)
+
   // ?layout=… > tab mở gần nhất > Fac B
   const layout =
     findLayout(searchParams.get('layout'))
     ?? findLayout(loadPreference(PREF_LAYOUT))
     ?? findLayout(DEFAULT_MACHINE_LAYOUT_ID)
-    ?? machineLayouts[0]
+    ?? layouts?.[0]
+  const layoutId = layout?.id
 
   useEffect(() => {
-    savePreference(PREF_LAYOUT, layout.id)
-  }, [layout.id])
+    if (layoutId) savePreference(PREF_LAYOUT, layoutId)
+  }, [layoutId])
 
-  // Mã máy của mọi layout (bản đã lưu mới nhất) để gợi ý khi tìm mã không có ở layout đang mở
+  // Mã máy của các layout khác (bản mới nhất trên server) để gợi ý khi tìm mã không có ở layout đang mở
   const [allCodes, setAllCodes] = useState<Record<string, string[]>>({})
 
   useEffect(() => {
+    if (!layouts || !layoutId) return
+
     let alive = true
 
-    Promise.all(machineLayouts.map(async (l): Promise<[string, string[]]> => {
+    Promise.all(layouts.filter((l) => l.id !== layoutId).map(async (l): Promise<[string, string[]]> => {
       try {
-        const s = await loadMachineStore(l)
-
-        return [l.id, Object.keys(buildEffectiveMachines(s.data, buildBaseBoxes(s.data), s.edits, null))]
+        return [l.id, Object.keys((await loadMachineStore(l)).data.m)]
       } catch {
-        return [l.id, Object.keys(l.data.m)]
+        return [l.id, []]
       }
     })).then((entries) => {
       if (alive) setAllCodes(Object.fromEntries(entries))
@@ -117,10 +147,10 @@ export function MachineLocatorPage({
     return () => {
       alive = false
     }
-  }, [layout.id])
+  }, [layouts, layoutId])
 
-  const otherLayouts: OtherLayoutCodes[] = machineLayouts
-    .filter((l) => l.id !== layout.id)
+  const otherLayouts: OtherLayoutCodes[] = (layouts ?? [])
+    .filter((l) => l.id !== layoutId)
     .map((l) => ({ id: l.id, name: l.name, codes: allCodes[l.id] ?? [] }))
 
   // Thay đổi chưa lưu của layout đang mở (view báo lên) -> hỏi trước khi chuyển tab
@@ -131,24 +161,45 @@ export function MachineLocatorPage({
     dirtyCode.current = code
   })
 
-  function switchLayout(layoutId: string, code?: string) {
+  function switchLayout(id: string, code?: string) {
     // đổi search (và hash nếu mở kèm máy) trong cùng trang, không reload
     navigate(
-      { search: `?layout=${encodeURIComponent(layoutId)}`, hash: code ? `#${code}` : '' },
+      { search: `?layout=${encodeURIComponent(id)}`, hash: code ? `#${code}` : '' },
       { replace: true },
     )
   }
 
-  const requestSwitch = useStableCallback((layoutId: string, code?: string) => {
-    if (layoutId === layout.id) return
+  const requestSwitch = useStableCallback((id: string, code?: string) => {
+    if (id === layoutId) return
 
     if (dirtyCode.current) {
-      setPending({ layoutId, code, dirty: dirtyCode.current })
+      setPending({ layoutId: id, code, dirty: dirtyCode.current })
       return
     }
 
-    switchLayout(layoutId, code)
+    switchLayout(id, code)
   })
+
+  if (!layout) {
+    return (
+      <PageShell>
+        <PageHeader
+          title="Machine Locator"
+          subtitle="Vị trí máy"
+          mode={mode}
+          onToggleMode={onToggleMode}
+        />
+
+        <LoadState
+          text={layoutsError
+            ? `Không tải được danh sách layout: ${layoutsError}`
+            : layouts ? 'Chưa có layout nào trên server.' : 'Đang tải danh sách layout…'}
+          error={!!layoutsError}
+          onRetry={layoutsError ? () => setLayoutsSeq((s) => s + 1) : undefined}
+        />
+      </PageShell>
+    )
+  }
 
   return (
     <PageShell>
@@ -173,7 +224,7 @@ export function MachineLocatorPage({
               },
             }}
           >
-            {machineLayouts.map((l) => (
+            {(layouts ?? []).map((l) => (
               <Tab key={l.id} value={l.id} label={l.name} />
             ))}
           </Tabs>
@@ -220,6 +271,42 @@ export function MachineLocatorPage({
         </DialogActions>
       </Dialog>
     </PageShell>
+  )
+}
+
+// Đang tải / lỗi tải dữ liệu từ server (thay cho bản đồ)
+function LoadState({
+  text,
+  error,
+  onRetry,
+}: {
+  text: string
+  error: boolean
+  onRetry?: () => void
+}) {
+  return (
+    <GlassPanel
+      sx={{
+        flex: 1,
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 1.5,
+        p: 3,
+      }}
+    >
+      <Typography role="status" sx={{ fontSize: 13, color: error ? 'error.main' : 'text.secondary' }}>
+        {text}
+      </Typography>
+
+      {onRetry && (
+        <AppButton onClick={onRetry}>
+          Thử lại
+        </AppButton>
+      )}
+    </GlassPanel>
   )
 }
 
@@ -292,6 +379,43 @@ function MachineLocatorView({
   const [listHover, setListHover] = useState<string | null>(null)
   const onListHover = useStableCallback(setListHover)
 
+  // Hướng dẫn: nút "?" / phím ?; lần đầu mở trang (chưa có cờ) tự mở 1 lần
+  const [helpOpen, setHelpOpen] = useState(() => loadPreference(PREF_HELP_SEEN) !== true)
+
+  useEffect(() => {
+    if (helpOpen) savePreference(PREF_HELP_SEEN, true)
+  }, [helpOpen])
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== '?' || e.ctrlKey || e.metaKey || e.altKey) return
+
+      const el = document.activeElement as HTMLInputElement | null
+      const tag = el?.tagName
+
+      // đang gõ chữ (thanh trượt / công tắc không tính)
+      if (tag === 'TEXTAREA' || el?.isContentEditable
+        || (tag === 'INPUT' && el?.type !== 'range' && el?.type !== 'checkbox')) return
+
+      e.preventDefault()
+      setHelpOpen(true)
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  if (!ml.ready) {
+    return (
+      <LoadState
+        text={ml.loaded ? ml.status.t : 'Đang tải dữ liệu từ server…'}
+        error={ml.loaded}
+        onRetry={ml.loaded ? ml.reloadFloor : undefined}
+      />
+    )
+  }
+
   return (
     <GlassPanel
       sx={{
@@ -310,6 +434,7 @@ function MachineLocatorView({
     >
       <MapCanvas
         layout={layout}
+        data={ml.data}
         machines={ml.machines}
         canWrite={ml.canWrite}
         cur={ml.cur}
@@ -384,7 +509,18 @@ function MachineLocatorView({
               Vị trí máy
             </Typography>
 
-            <EditToolbar ml={ml} />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
+              <EditToolbar ml={ml} />
+
+              <Tooltip title="Hướng dẫn (?)">
+                <PanelButton
+                  compact
+                  aria-label="Hướng dẫn"
+                  icon={<HelpOutlineRoundedIcon sx={{ fontSize: 18 }} />}
+                  onClick={() => setHelpOpen(true)}
+                />
+              </Tooltip>
+            </Box>
           </Box>
 
           <Typography sx={{ mt: 0.25, fontSize: 12, color: 'text.secondary' }}>
@@ -461,6 +597,8 @@ function MachineLocatorView({
 
         <MachineDataFooter ml={ml} />
       </Box>
+
+      <MachineLocatorHelp open={helpOpen} canWrite={ml.canWrite} onClose={() => setHelpOpen(false)} />
     </GlassPanel>
   )
 }

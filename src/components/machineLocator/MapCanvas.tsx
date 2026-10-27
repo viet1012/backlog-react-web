@@ -30,6 +30,7 @@ import type {
   FitSession,
   FitStroke,
   FitTune,
+  LayoutData,
   MachineLayoutConfig,
   MachineMap,
   Polygon,
@@ -58,6 +59,8 @@ import {
 import {
   codeFontFamily,
   mapColors,
+  vertexColors,
+  vertexSize,
 } from './machineLocatorColors'
 
 // =========================================================
@@ -66,6 +69,8 @@ import {
 
 interface MapCanvasProps {
   layout: MachineLayoutConfig
+  // dữ liệu floor đã tải từ server (crop / ppp)
+  data: LayoutData
   machines: MachineMap
   canWrite: boolean
   cur: string | null
@@ -195,6 +200,8 @@ const LABEL_CHAR_W = 6.6
 const PEN_PX = 6
 // nhấp đúp cách cạnh đường bao <= ngần này px màn hình thì thêm đỉnh
 const EDGE_HIT_PX = 8
+// nửa cạnh ô đỉnh (pt ở tỉ lệ zoom 1; CSS nhân thêm var(--ml-inv))
+const VERTEX_HALF = vertexSize.px / 2 / U
 // kéo đỉnh: x / y lệch <= ngần này px màn hình so với đỉnh khác cùng khung thì hút + hiện đường gióng
 const GUIDE_PX = 3
 
@@ -332,6 +339,7 @@ const MachineBoxLayer = memo(function MachineBoxLayer({
 
 export const MapCanvas = memo(function MapCanvas({
   layout,
+  data,
   machines,
   canWrite,
   cur,
@@ -381,7 +389,7 @@ export const MapCanvas = memo(function MapCanvas({
   onAcceptTidy,
   onRejectTidy,
 }: MapCanvasProps) {
-  const crop = layout.data.crop
+  const crop = data.crop
   const [CX, CY, CW, CH] = crop
   const SW = CW * U
   const SH = CH * U
@@ -446,26 +454,32 @@ export const MapCanvas = memo(function MapCanvas({
     : null
   // đường gióng khi kéo đỉnh
   const [guide, setGuide] = useState<VertexGuide | null>(null)
+  // đỉnh đang kéo (tô xanh lá)
+  const [dragV, setDragV] = useState<{ pi: number, vi: number } | null>(null)
   // đỉnh đang chọn (Delete để xoá)
   const [selV, setSelV] = useState<{ i: number, pi: number, vi: number } | null>(null)
   const selVertex = selV && selV.i === act && editOutline?.[selV.pi]?.[selV.vi] ? selV : null
   const penRef = useRef<SVGPathElement>(null)
 
-  // Delete / Backspace: xoá đỉnh đang chọn (đa giác giữ tối thiểu 3 đỉnh)
+  // Xoá đỉnh pi:vi (1 bước hoàn tác); đa giác giữ tối thiểu 3 đỉnh. false = không xoá
+  function deleteVertex(pi: number, vi: number): boolean {
+    if (!editOutline || !editOutline[pi] || editOutline[pi].length <= 3) return false
+
+    onGestureStart()
+    onOutlineChange(act, editOutline.map((q, k) => (k === pi ? q.filter((_, j) => j !== vi) : q)))
+    setSelV(null)
+
+    return true
+  }
+
+  // Delete / Backspace: xoá đỉnh đang chọn
   const onDeleteKey = useEffectEvent((e: KeyboardEvent) => {
     const tag = (document.activeElement as HTMLElement | null)?.tagName
 
-    if ((e.key !== 'Delete' && e.key !== 'Backspace') || !selVertex || !editOutline
+    if ((e.key !== 'Delete' && e.key !== 'Backspace') || !selVertex
       || tag === 'INPUT' || tag === 'TEXTAREA') return
 
-    const poly = editOutline[selVertex.pi]
-
-    if (poly.length <= 3) return
-
-    e.preventDefault()
-    onGestureStart()
-    onOutlineChange(act, editOutline.map((q, k) => (k === selVertex.pi ? q.filter((_, j) => j !== selVertex.vi) : q)))
-    setSelV(null)
+    if (deleteVertex(selVertex.pi, selVertex.vi)) e.preventDefault()
   })
 
   useEffect(() => {
@@ -511,8 +525,8 @@ export const MapCanvas = memo(function MapCanvas({
   function inFitArea(fx: FitSession, p: Point): boolean {
     const [x, y, w, h] = fx.recipe.b
     const e = fx.recipe.expand
-    const mx = e > 0 ? Math.max(12 / layout.data.ppp, e * w) : 0
-    const my = e > 0 ? Math.max(12 / layout.data.ppp, e * h) : 0
+    const mx = e > 0 ? Math.max(12 / data.ppp, e * w) : 0
+    const my = e > 0 ? Math.max(12 / data.ppp, e * h) : 0
 
     return p.x >= x - mx && p.x <= x + w + mx && p.y >= y - my && p.y <= y + h + my
   }
@@ -867,6 +881,17 @@ export const MapCanvas = memo(function MapCanvas({
   }
 
   function onPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
+    // Alt+click / chuột phải vào đỉnh đường bao: xoá ngay
+    const hitV = editOutline ? (e.target as SVGElement).dataset?.v : undefined
+
+    if (hitV && (e.button === 2 || (e.button === 0 && e.altKey))) {
+      const [pi, vi] = hitV.split(':').map(Number)
+
+      e.preventDefault()
+      deleteVertex(pi, vi)
+      return
+    }
+
     if (e.pointerType === 'mouse' && e.button !== 0) return
 
     const g = gesture.current
@@ -1003,10 +1028,14 @@ export const MapCanvas = memo(function MapCanvas({
     }
 
     if (op.t === 'vertex') {
-      // lần di chuyển đầu: chụp bản nháp để hoàn tác
-      if (!op.last) onGestureStart()
-
       const { pi, vi } = op
+
+      // lần di chuyển đầu: chụp bản nháp để hoàn tác
+      if (!op.last) {
+        onGestureStart()
+        setDragV({ pi, vi })
+      }
+
       const q: [number, number] = [op.orig[pi][vi][0] + p.x - op.p0.x, op.orig[pi][vi][1] + p.y - op.p0.y]
       // hút x / y theo đỉnh khác cùng khung (lệch <= GUIDE_PX px màn hình); giữ Ctrl để tắt
       let gx: [number, number] | null = null
@@ -1099,6 +1128,7 @@ export const MapCanvas = memo(function MapCanvas({
       })
     } else if (op.t === 'vertex') {
       setGuide(null)
+      setDragV(null)
       // thả đỉnh: bắt dính vào nét mực gần nhất, giữ Ctrl để tắt; đang hút theo đỉnh khác thì giữ thẳng hàng
       if (op.last && !op.guided && !e.ctrlKey && !e.metaKey) onVertexDrop(op.i, op.pi, op.vi, op.last)
     } else if (op.t === 'press') {
@@ -1146,7 +1176,10 @@ export const MapCanvas = memo(function MapCanvas({
       penRef.current?.setAttribute('visibility', 'hidden')
       if (op?.t === 'pan') endPanVisual()
       if (op?.t === 'move' || op?.t === 'resize') flushBox()
-      if (op?.t === 'vertex') setGuide(null)
+      if (op?.t === 'vertex') {
+        setGuide(null)
+        setDragV(null)
+      }
     }
   }
 
@@ -1226,6 +1259,10 @@ export const MapCanvas = memo(function MapCanvas({
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
       onDoubleClick={onDoubleClick}
+      onContextMenu={(e) => {
+        // chuột phải vào đỉnh = xoá đỉnh, không mở menu trình duyệt
+        if ((e.target as SVGElement).dataset?.v) e.preventDefault()
+      }}
       onPointerLeave={() => {
         if (!pts.current.size) hideHover()
       }}
@@ -1299,18 +1336,36 @@ export const MapCanvas = memo(function MapCanvas({
           </g>
 
           {/* đỉnh đường bao: kéo để sửa, nhấp đúp cạnh để thêm, chọn + Delete để xoá */}
+          {/* hình vuông VERTEX_HALF·2 pt ở tỉ lệ 1, .ml-vscale nhân var(--ml-inv) -> cỡ cố định px màn hình kể cả lúc đang zoom */}
           {editOutline && (
             <g>
-              {editOutline.map((poly, pi) => poly.map(([x, y], vi) => (
-                <circle
-                  key={`${pi}:${vi}`}
-                  className={'ml-vertex' + (selVertex?.pi === pi && selVertex.vi === vi ? ' sel' : '')}
-                  cx={x}
-                  cy={y}
-                  r={z * 0.45}
-                  data-v={`${pi}:${vi}`}
-                />
-              )))}
+              {editOutline.map((poly, pi) => poly.map(([x, y], vi) => {
+                const state = dragV?.pi === pi && dragV.vi === vi
+                  ? ' drag'
+                  : selVertex?.pi === pi && selVertex.vi === vi ? ' sel' : ''
+
+                return (
+                  <g key={`${pi}:${vi}`} transform={`translate(${x} ${y})`}>
+                    <g className="ml-vscale">
+                      <rect
+                        className="ml-vhalo"
+                        x={-VERTEX_HALF}
+                        y={-VERTEX_HALF}
+                        width={VERTEX_HALF * 2}
+                        height={VERTEX_HALF * 2}
+                      />
+                      <rect
+                        className={'ml-vertex' + state}
+                        x={-VERTEX_HALF}
+                        y={-VERTEX_HALF}
+                        width={VERTEX_HALF * 2}
+                        height={VERTEX_HALF * 2}
+                        data-v={`${pi}:${vi}`}
+                      />
+                    </g>
+                  </g>
+                )
+              }))}
             </g>
           )}
 
@@ -1658,7 +1713,7 @@ const svgSx = {
     fillOpacity: 0.05,
   },
   '& .ml-guide line': {
-    stroke: '#d946ef',
+    stroke: vertexColors.drag,
     strokeWidth: 1,
     strokeDasharray: '4 3',
     vectorEffect: 'non-scaling-stroke',
@@ -1674,14 +1729,33 @@ const svgSx = {
     vectorEffect: 'non-scaling-stroke',
     pointerEvents: 'none',
   },
+  // đỉnh đường bao: cỡ theo px màn hình (scale ngược theo zoom), phóng to khi rê chuột
+  '& .ml-vscale': {
+    transformBox: 'fill-box',
+    transformOrigin: 'center',
+    transform: 'scale(var(--ml-inv))',
+  },
+  '& .ml-vscale:hover': {
+    transform: `scale(calc(var(--ml-inv) * ${vertexSize.hoverPx / vertexSize.px}))`,
+  },
+  // Trong .ml-vscale 1 đơn vị = U px màn hình ở mọi mức zoom, nên độ dày viền / filter tính theo 1 / U.
+  // Không dùng non-scaling-stroke: nó không bù scale của stage (HTML) -> zoom to viền phình che kín nền
+  // viền ngoài 1 px: trắng mờ (ngoài viền cam) + bóng tối mờ
+  '& .ml-vhalo': {
+    fill: 'none',
+    stroke: vertexColors.halo,
+    strokeWidth: (vertexSize.strokePx + 2) / U,
+    filter: `drop-shadow(0 0 ${1 / U}px ${vertexColors.shadow})`,
+    pointerEvents: 'none',
+  },
   '& .ml-vertex': {
-    fill: mapColors.paper,
-    stroke: mapColors.edit,
-    strokeWidth: 1.5,
-    vectorEffect: 'non-scaling-stroke',
+    fill: vertexColors.fill,
+    stroke: vertexColors.stroke,
+    strokeWidth: vertexSize.strokePx / U,
     cursor: 'move',
   },
-  '& .ml-vertex.sel': { fill: mapColors.edit },
+  '& .ml-vertex.sel': { fill: vertexColors.selFill, stroke: vertexColors.selStroke },
+  '& .ml-vertex.drag': { fill: vertexColors.drag, stroke: vertexColors.selStroke },
   // nét bút: đỏ = loại trừ, xanh lá = bổ sung (độ dày đặt theo px màn hình)
   '& .ml-pen': {
     fill: 'none',

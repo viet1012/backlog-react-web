@@ -1,15 +1,15 @@
 import type {
   Box,
   FitMode,
-  MachineEdit,
-  MachineEdits,
+  LayoutData,
+  MachineBulkOp,
   MachineLayoutConfig,
   MachineMap,
   Polygon,
 } from '../types/machineLocator'
 import {
   compareCodes,
-  editBody,
+  editBoxes,
   normalizeCode,
   normalizeFitMode,
   normalizeOutline,
@@ -46,10 +46,10 @@ function exportRows(machines: MachineMap): ExportRow[] {
 }
 
 export function buildMachinesCsv(
-  layout: MachineLayoutConfig,
+  data: LayoutData,
   machines: MachineMap,
 ): string {
-  const P = layout.data.page
+  const P = data.page
   const header = [
     'machine_code', 'location_no', 'x_pt', 'y_pt', 'w_pt', 'h_pt',
     'center_x_pt', 'center_y_pt', 'x_rel', 'y_rel', 'w_rel', 'h_rel', 'source', 'note',
@@ -83,9 +83,10 @@ interface ExportMachine {
 
 export function buildMachinesJson(
   layout: MachineLayoutConfig,
+  data: LayoutData,
   machines: MachineMap,
 ): string {
-  const { crop, page, ppp } = layout.data
+  const { crop, page, ppp } = data
   const meta = layout.exportMeta
   const ms: Record<string, ExportMachine> = {}
 
@@ -157,20 +158,14 @@ export function downloadFile(name: string, data: string | Blob) {
 // IMPORT
 // =========================================================
 
-export type ImportOp =
-  | ['set', string, MachineEdit]
-  | ['del', string]
-
 export type ImportPlan =
-  | { ok: true, ops: ImportOp[] }
+  | { ok: true, ops: MachineBulkOp[] }
   | { ok: false, error: string }
 
-// So sánh file JSON (định dạng Xuất JSON) với dữ liệu hiện tại,
-// trả về danh sách thao tác cần ghi vào store
+// So sánh file JSON (định dạng Xuất JSON) với dữ liệu đã lưu,
+// trả về danh sách thao tác cho POST /bulk (máy không có trong file -> xoá)
 export function planJsonImport(
   text: string,
-  base: Record<string, Box[]>,
-  edits: MachineEdits,
   current: MachineMap,
 ): ImportPlan {
   let parsed: unknown
@@ -188,7 +183,7 @@ export function planJsonImport(
   }
 
   const seen = new Set<string>()
-  const ops: ImportOp[] = []
+  const ops: MachineBulkOp[] = []
 
   for (const m of machines as { code?: string, locations?: unknown }[]) {
     const c = normalizeCode(m?.code)
@@ -211,22 +206,15 @@ export function planJsonImport(
     if (!boxes.length) continue
 
     const now = current[c]
+
     // giống cả khung lẫn đường bao CAD mới coi là không đổi
-    const same = (other: Box[]) => sameBoxes(boxes, other) && sameOutlines(boxes, other)
+    if (now && sameBoxes(boxes, now.boxes) && sameOutlines(boxes, now.boxes)) continue
 
-    if (now && same(now.boxes)) continue
-
-    if (base[c] && same(base[c])) {
-      if (edits[c]) ops.push(['del', c])
-    } else {
-      ops.push(['set', c, editBody(boxes)])
-    }
+    ops.push({ type: 'set', code: c, boxes: editBoxes(boxes) })
   }
 
   for (const c in current) {
-    if (!seen.has(c)) {
-      ops.push(['set', c, { boxes: [], deleted: true, updatedAt: new Date().toISOString() }])
-    }
+    if (!seen.has(c)) ops.push({ type: 'del', code: c })
   }
 
   return { ok: true, ops }

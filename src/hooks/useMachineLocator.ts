@@ -6,12 +6,14 @@ import {
 } from 'react'
 
 import {
-  deleteMachineEdit,
-  getBrowserEdits,
+  bulkMachineEdits,
+  confirmMachine,
+  isStoreConflict,
   loadMachineStore,
   machineStoreErrorMessage,
-  machineStoreMode,
-  migrateBrowserEdits,
+  removeMachine,
+  renameMachine,
+  revertMachine,
   setMachineEdit,
   type MachineStoreState,
 } from '../services/machineLocatorService'
@@ -31,8 +33,8 @@ import type {
   FitView,
   Polygon,
   LayoutData,
+  MachineBulkOp,
   MachineDraft,
-  MachineEdits,
   MachineLayoutConfig,
   PanelMode,
   RawBox,
@@ -64,7 +66,7 @@ import {
   buildBaseBoxes,
   buildEffectiveMachines,
   compareCodes,
-  editBody,
+  editBoxes,
   normalizeFitMode,
   round1,
   sameBoxes,
@@ -180,6 +182,8 @@ const NUDGE_MERGE_MS = 800
 
 const EMPTY_STATUS: StatusMessage = { t: '', k: '' }
 const NO_INDEXES: number[] = []
+// trước khi tải xong floor (view chỉ hiện bản đồ khi đã tải được)
+const EMPTY_DATA: LayoutData = { crop: [0, 0, 1, 1], page: [1, 1], ppp: 1, m: {} }
 
 function cloneBoxes(boxes: Box[]): Box[] {
   return boxes.map((b) => ({ ...b }))
@@ -235,14 +239,17 @@ export function useMachineLocator(
   layout: MachineLayoutConfig,
   canWrite: boolean,
 ) {
-  // dữ liệu gốc: bản đóng gói sẵn, dev thì thay bằng bản đọc từ file khi tải xong
-  const [data, setData] = useState<LayoutData>(layout.data)
+  // dữ liệu floor đã lưu trên server + version để gửi ifVersion khi ghi
+  const [data, setData] = useState<LayoutData>(EMPTY_DATA)
+  const [version, setVersion] = useState(0)
   const base = useMemo(() => buildBaseBoxes(data), [data])
 
-  const [edits, setEdits] = useState<MachineEdits>({})
   const [loaded, setLoaded] = useState(false)
-  // dev: số chỉnh sửa cũ còn trong localStorage chưa ghi vào file
-  const [browserEditCount, setBrowserEditCount] = useState(0)
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [loadSeq, setLoadSeq] = useState(0)
+  // đang chờ server trả lời lệnh ghi
+  const [saving, setSaving] = useState(false)
+  const busy = useRef(false)
   const [cur, setCur] = useState<string | null>(null)
   const [act, setAct] = useState(0)
   const [draft, setDraft] = useState<MachineDraft | null>(null)
@@ -268,8 +275,8 @@ export function useMachineLocator(
   const pending = batch?.pending
 
   const machines = useMemo(
-    () => buildEffectiveMachines(data, base, edits, draft, pending),
-    [data, base, edits, draft, pending],
+    () => buildEffectiveMachines(data, base, draft, pending),
+    [data, base, draft, pending],
   )
 
   function setStatus(t: string, k: StatusKind = '') {
@@ -307,11 +314,11 @@ export function useMachineLocator(
     savePreference(PREF_CAD_OUTLINE, on)
   }
 
-  const current: MachineStoreState = { data, edits }
+  const current: MachineStoreState = { data, version }
 
   // Máy đã lưu (không tính bản nháp) theo một trạng thái store
   function savedMachines(state: MachineStoreState) {
-    return buildEffectiveMachines(state.data, buildBaseBoxes(state.data), state.edits, null)
+    return buildEffectiveMachines(state.data, buildBaseBoxes(state.data), null)
   }
 
   // Bản nháp sạch dựng từ dữ liệu đã lưu (không tính bản nháp hiện tại);
@@ -329,7 +336,7 @@ export function useMachineLocator(
 
   function setStore(state: MachineStoreState) {
     setData(state.data)
-    setEdits(state.edits)
+    setVersion(state.version)
   }
 
   // Nhận trạng thái mới từ store; bản nháp chưa sửa thì dựng lại theo dữ liệu mới
@@ -343,6 +350,38 @@ export function useMachineLocator(
         ? (editing && cur === d.code ? freshDraft(d.code, state, waiting) : null)
         : d,
     )
+  }
+
+  // 1 lệnh ghi lên server (không chạy chồng lệnh); lỗi thì báo, 409 thì tải lại floor
+  // (bản nháp đang sửa được giữ). Trả về null khi không ghi được
+  async function runWrite(
+    label: string,
+    task: () => Promise<MachineStoreState>,
+  ): Promise<MachineStoreState | null> {
+    if (busy.current) return null
+
+    busy.current = true
+    setSaving(true)
+    setStatus(label)
+
+    try {
+      return await task()
+    } catch (e) {
+      setStatus(machineStoreErrorMessage(e), 'err')
+
+      if (isStoreConflict(e)) {
+        try {
+          applyStore(await loadMachineStore(layout))
+        } catch {
+          // giữ thông báo xung đột; người dùng tải lại trang
+        }
+      }
+
+      return null
+    } finally {
+      busy.current = false
+      setSaving(false)
+    }
   }
 
   // Bỏ kết quả ôm hàng loạt chờ lưu của 1 máy; trả về phần còn lại
@@ -1118,7 +1157,7 @@ export function useMachineLocator(
       return
     }
 
-    const src = buildEffectiveMachines(data, base, edits, null, pending)
+    const src = buildEffectiveMachines(data, base, null, pending)
     const jobs: { code: string, i: number, b: Box }[] = []
 
     for (const code of Object.keys(src).sort(compareCodes)) {
@@ -1291,24 +1330,15 @@ export function useMachineLocator(
 
     if (!entries.length) return
 
-    const left = { ...batch.pending }
-    let next: MachineStoreState | null = null
+    const ops: MachineBulkOp[] = entries.map(([code, boxes]) => ({ type: 'set', code, boxes: editBoxes(boxes) }))
+    // ôm lại theo ảnh: giữ nguyên trạng thái máy (u / src / r)
+    const next = await runWrite(`Đang lưu ${entries.length} máy…`, () => bulkMachineEdits(layout, ops, version, true))
 
-    setStatus(`Đang lưu ${entries.length} máy…`)
+    if (!next) return
 
-    try {
-      for (const [c, boxes] of entries) {
-        next = await setMachineEdit(layout, c, { ...editBody(boxes), keepStatus: true })
-        delete left[c]
-      }
-
-      setStatus(`Đã lưu khung đã ôm của ${entries.length} máy.`, 'ok')
-    } catch (e) {
-      setStatus(machineStoreErrorMessage(e), 'err')
-    }
-
-    setBatch((b) => b && { ...b, pending: left })
-    if (next) applyStore(next, left)
+    setBatch((b) => b && { ...b, pending: {} })
+    applyStore(next, {})
+    setStatus(`Đã lưu khung đã ôm của ${entries.length} máy.`, 'ok')
   }
 
   const pendingFitCount = Object.keys(pending ?? {}).length
@@ -1338,22 +1368,22 @@ export function useMachineLocator(
       .then((state) => {
         if (!alive) return
         setData(state.data)
-        setEdits(state.edits)
-        setBrowserEditCount(
-          machineStoreMode === 'file' ? Object.keys(getBrowserEdits(layout.id)).length : 0,
-        )
+        setVersion(state.version)
+        setLoadFailed(false)
+        setStatusMessage(EMPTY_STATUS)
         setLoaded(true)
       })
-      .catch((e) => {
+      .catch((e: unknown) => {
         if (!alive) return
-        setStatusMessage({ t: machineStoreErrorMessage(e), k: 'err' })
+        setStatusMessage({ t: `Không tải được dữ liệu: ${e instanceof Error ? e.message : e}`, k: 'err' })
+        setLoadFailed(true)
         setLoaded(true)
       })
 
     return () => {
       alive = false
     }
-  }, [layout])
+  }, [layout, loadSeq])
 
   // Mở trang kèm #A-1443 thì chọn sẵn máy đó
   useEffect(() => {
@@ -1566,22 +1596,45 @@ export function useMachineLocator(
     setFitWarn({ code: '', idx: [] })
   }
 
-  function revertAuto() {
-    if (!draft || !cur || !base[cur]) return
+  // Về khung tự động (CAD) do server giữ: ghi ngay, bỏ thay đổi chưa lưu của máy này
+  async function revertAuto() {
+    const c = cur
+
+    if (!c || !data.m[c]) return
+
+    if (draft?.dirty && !window.confirm(`Bỏ thay đổi chưa lưu của ${c} và về khung tự động?`)) return
 
     cancelFit()
+    cancelTidy()
     setFitPreview(null)
-    pushUndo(draft, act)
-    setDraft({ ...draft, boxes: cloneBoxes(base[cur]), dirty: true, revert: true })
+    setFitGhost(null)
+
+    const next = await runWrite('Đang về khung tự động…', () => revertMachine(layout, c, version))
+
+    if (!next) return
+
+    const rest = dropPending(c)
+
+    clearUndo()
+    setStore(next)
     setAct(0)
     setFitWarn({ code: '', idx: [] })
+
+    if (next.data.m[c]) {
+      setDraft(editing ? freshDraft(c, next, rest) : null)
+    } else {
+      setDraft(null)
+      setCur(null)
+    }
+
+    setStatus(`Đã đưa ${c} về khung tự động.`, 'ok')
   }
 
   function cancel() {
     if (!draft) return
 
     const c = draft.code
-    const m = buildEffectiveMachines(data, base, edits, null)[c]
+    const m = buildEffectiveMachines(data, base, null)[c]
 
     setDrawMode(null)
     cancelFit()
@@ -1610,45 +1663,34 @@ export function useMachineLocator(
     if (!draft) return
 
     const c = draft.code
-    const boxes = draft.boxes
+    const boxes = editBoxes(draft.boxes)
+    const next = await runWrite('Đang lưu…', () => setMachineEdit(layout, c, { boxes }, version))
 
-    setStatus('Đang lưu…')
+    if (!next) return
 
-    try {
-      const next = draft.revert && base[c] && sameBoxes(boxes, base[c])
-        ? await deleteMachineEdit(layout, c)
-        : await setMachineEdit(layout, c, editBody(boxes))
-
-      setStore(next)
-      setDraft((d) => (d && d.code === c ? { ...d, dirty: false, revert: false } : d))
-      dropPending(c)
-      // sau khi lưu, hoàn tác về bước cũ là thay đổi chưa lưu
-      undoStack.current.forEach((u) => {
-        u.dirty = true
-      })
-      setStatus(`Đã lưu ${c}.`, 'ok')
-    } catch (e) {
-      setStatus(machineStoreErrorMessage(e), 'err')
-    }
+    setStore(next)
+    setDraft((d) => (d && d.code === c ? { ...d, dirty: false } : d))
+    dropPending(c)
+    // sau khi lưu, hoàn tác về bước cũ là thay đổi chưa lưu
+    undoStack.current.forEach((u) => {
+      u.dirty = true
+    })
+    setStatus(`Đã lưu ${c}.`, 'ok')
   }
 
-  // "Đúng rồi": lưu nguyên khung hiện tại thành EDITS để đánh dấu đã soát
+  // "Đúng rồi": bỏ cờ cần soát, giữ nguyên khung
   async function confirmReview() {
     const c = cur
     const m = c ? machines[c] : null
 
     if (!c || !m || !m.review || draft?.dirty) return
 
-    setStatus('Đang lưu…')
+    const next = await runWrite('Đang lưu…', () => confirmMachine(layout, c, version))
 
-    try {
-      const next = await setMachineEdit(layout, c, editBody(m.boxes))
+    if (!next) return
 
-      applyStore(next)
-      setStatus(`Đã đánh dấu ${c} là đã soát.`, 'ok')
-    } catch (e) {
-      setStatus(machineStoreErrorMessage(e), 'err')
-    }
+    applyStore(next)
+    setStatus(`Đã đánh dấu ${c} là đã soát.`, 'ok')
   }
 
   async function renameTo(n: string) {
@@ -1666,10 +1708,8 @@ export function useMachineLocator(
       return
     }
 
-    const boxes = draft && draft.boxes.length ? draft.boxes : machines[o]?.boxes
-
-    // Máy mới chưa vẽ khung: chỉ đổi mã trên bản nháp
-    if (!boxes || !boxes.length) {
+    // Máy chưa lưu lên server: chỉ đổi mã trên bản nháp
+    if (!data.m[o]) {
       if (draft) setDraft({ ...draft, code: n })
       setCur(n)
       setPanelMode(null)
@@ -1677,28 +1717,20 @@ export function useMachineLocator(
       return
     }
 
-    setStatus('Đang đổi mã…')
+    const next = await runWrite('Đang đổi mã…', () => renameMachine(layout, o, n, version))
 
-    try {
-      await setMachineEdit(layout, n, { ...editBody(boxes), renamedFrom: o })
+    if (!next) return
 
-      const next = base[o]
-        ? await setMachineEdit(layout, o, {
-          boxes: [],
-          deleted: true,
-          renamedTo: n,
-          updatedAt: new Date().toISOString(),
-        })
-        : await deleteMachineEdit(layout, o)
-
-      setStore(next)
-      setPanelMode(null)
-      setCur(n)
-      setDraft(freshDraft(n, next))
-      setStatus(`Đã đổi ${o} thành ${n}.`, 'ok')
-    } catch (e) {
-      setStatus(machineStoreErrorMessage(e), 'err')
-    }
+    // bước hoàn tác của mã cũ đi theo mã mới
+    undoStack.current.forEach((u) => {
+      if (u.code === o) u.code = n
+    })
+    setStore(next)
+    setPanelMode(null)
+    setCur(n)
+    // đang sửa dở thì giữ bản nháp (đổi mã), lưu sau
+    setDraft(draft && draft.dirty ? { ...draft, code: n } : freshDraft(n, next))
+    setStatus(`Đã đổi ${o} thành ${n}.`, 'ok')
   }
 
   async function deleteMachine() {
@@ -1706,26 +1738,20 @@ export function useMachineLocator(
 
     if (!c) return
 
-    setStatus('Đang xóa…')
+    // máy chưa lưu lên server: chỉ bỏ bản nháp
+    const next = data.m[c]
+      ? await runWrite('Đang xóa…', () => removeMachine(layout, c, version))
+      : current
 
-    try {
-      const next = base[c]
-        ? await setMachineEdit(layout, c, {
-          boxes: [],
-          deleted: true,
-          updatedAt: new Date().toISOString(),
-        })
-        : await deleteMachineEdit(layout, c)
+    if (!next) return
 
-      setStore(next)
-      setDraft(null)
-      setDrawMode(null)
-      setPanelMode(null)
-      setCur(null)
-      setStatus(`Đã xóa ${c}.`, 'ok')
-    } catch (e) {
-      setStatus(machineStoreErrorMessage(e), 'err')
-    }
+    dropPending(c)
+    setStore(next)
+    setDraft(null)
+    setDrawMode(null)
+    setPanelMode(null)
+    setCur(null)
+    setStatus(`Đã xóa ${c}.`, 'ok')
   }
 
   // =======================================================
@@ -1740,11 +1766,11 @@ export function useMachineLocator(
   }
 
   function exportCsv() {
-    exportFile(`${prefix}-machines_${dateStamp()}.csv`, buildMachinesCsv(layout, machines))
+    exportFile(`${prefix}-machines_${dateStamp()}.csv`, buildMachinesCsv(data, machines))
   }
 
   function exportJson() {
-    exportFile(`${prefix}-machines_${dateStamp()}.json`, buildMachinesJson(layout, machines))
+    exportFile(`${prefix}-machines_${dateStamp()}.json`, buildMachinesJson(layout, data, machines))
   }
 
   async function exportPng() {
@@ -1775,12 +1801,7 @@ export function useMachineLocator(
   }
 
   async function importJson(file: File) {
-    const plan = planJsonImport(
-      await file.text(),
-      base,
-      edits,
-      buildEffectiveMachines(data, base, edits, null),
-    )
+    const plan = planJsonImport(await file.text(), buildEffectiveMachines(data, base, null))
 
     if (!plan.ok) {
       setStatus(plan.error, 'err')
@@ -1794,48 +1815,23 @@ export function useMachineLocator(
       return
     }
 
-    setStatus(`Đang nhập ${ops.length} thay đổi…`)
+    // máy có trên server nhưng không có trong file sẽ bị xoá: hỏi trước
+    const dels = ops.filter((op) => op.type === 'del').map((op) => op.code).sort(compareCodes)
 
-    let next: MachineStoreState | null = null
-
-    try {
-      for (const op of ops) {
-        next = op[0] === 'set'
-          ? await setMachineEdit(layout, op[1], op[2])
-          : await deleteMachineEdit(layout, op[1])
-      }
-
-      setStatus(`Đã nhập ${ops.length} thay đổi từ ${file.name}.`, 'ok')
-    } catch (e) {
-      setStatus(machineStoreErrorMessage(e), 'err')
-    }
-
-    if (next) applyStore(next)
-  }
-
-  // dev: ghi EDITS cũ còn trong localStorage vào file rồi xoá khỏi trình duyệt
-  async function migrateBrowserData() {
-    if (draft && draft.dirty) {
-      setStatus(`Lưu hoặc hủy thay đổi của ${draft.code} trước khi ghi.`, 'err')
+    if (dels.length && !window.confirm(
+      `File ${file.name} không có ${dels.length} máy đang có trên layout này. `
+      + `Nhập sẽ XOÁ ${dels.length} máy:\n${dels.slice(0, 20).join(', ')}${dels.length > 20 ? ', …' : ''}\n\nTiếp tục?`,
+    )) {
+      setStatus('Đã hủy nhập JSON.')
       return
     }
 
-    if (batch?.running || pendingFitCount) {
-      setStatus('Lưu hoặc bỏ kết quả ôm hàng loạt trước khi ghi.', 'err')
-      return
-    }
+    const next = await runWrite(`Đang nhập ${ops.length} thay đổi…`, () => bulkMachineEdits(layout, ops, version))
 
-    setStatus('Đang ghi các chỉnh sửa trong trình duyệt vào file…')
+    if (!next) return
 
-    try {
-      const { state, count } = await migrateBrowserEdits(layout)
-
-      applyStore(state)
-      setBrowserEditCount(0)
-      setStatus(`Đã ghi ${count} chỉnh sửa từ trình duyệt vào file.`, 'ok')
-    } catch (e) {
-      setStatus(machineStoreErrorMessage(e), 'err')
-    }
+    applyStore(next)
+    setStatus(`Đã nhập ${ops.length} thay đổi từ ${file.name}.`, 'ok')
   }
 
   // =======================================================
@@ -1972,14 +1968,14 @@ export function useMachineLocator(
   return {
     canWrite,
     loaded,
-    storeMode: machineStoreMode,
-    dataFileName: layout.dataFile.split('/').pop() ?? layout.dataFile,
-    // dev: file là dữ liệu gốc nên không có "khung tự động" để quay về
-    canRevert: machineStoreMode === 'local',
-    browserEditCount,
-    migrateBrowserData,
+    // đã tải được floor từ server (mới vẽ bản đồ)
+    ready: loaded && !loadFailed,
+    reloadFloor: () => setLoadSeq((s) => s + 1),
+    saving,
+    data,
+    // máy đã chỉnh tay (đã lưu) thì có thể về khung tự động do server giữ
+    canRevert: !!cur && data.m[cur]?.src === 'manual',
     base,
-    edits,
     machines,
     cur,
     act,
