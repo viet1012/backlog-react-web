@@ -113,6 +113,7 @@ export function LeftSidebar() {
     production: true,
     planning: true,
     management: true,
+    monitoring: true,
     setting: true,
   })
 

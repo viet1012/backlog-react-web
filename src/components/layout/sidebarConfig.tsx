@@ -22,6 +22,7 @@ import {
     PendingActionsOutlined,
     HomeOutlined,
     MapOutlined,
+    MonitorHeartOutlined,
 } from '@mui/icons-material'
 import type { UserRole } from '../../services/authService'
 
@@ -282,6 +283,27 @@ export const menuGroups:
         },
 
         // =====================================================
+        // MONITORING
+        // =====================================================
+
+        {
+            id: 'monitoring',
+            label: 'MONITORING',
+
+            items: [
+                {
+                    label: 'Machine',
+                    path: '/monitoring/machine',
+                    status: 'ready',
+                    action: 'view',
+                    icon: (
+                        <MonitorHeartOutlined />
+                    ),
+                },
+            ],
+        },
+
+        // =====================================================
         // SETTING
         // =====================================================
 
@@ -343,6 +365,17 @@ export const groupAccent:
 
         glow:
             'rgba(139,92,246,0.20)',
+    },
+
+    monitoring: {
+        light:
+            'rgba(245,158,11,0.10)',
+
+        dark:
+            'rgba(251,191,36,0.10)',
+
+        glow:
+            'rgba(245,158,11,0.22)',
     },
 
     setting: {

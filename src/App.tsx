@@ -30,6 +30,7 @@ import { FacConfirmPage } from './pages/FacConfirmPage'
 import { KpiPage } from './pages/KpiPage'
 import { LoginPage } from './pages/LoginPage'
 import { MachineLocatorPage } from './pages/MachineLocatorPage'
+import { MachineMonitorPage } from './pages/MachineMonitorPage'
 import { UserHomePage } from './pages/UserHomePage'
 import { OdbfPage } from './pages/OdbfPage'
 import { OtPage } from './pages/OtPage'
@@ -70,6 +71,18 @@ function MachineLocatorRedirect() {
   return (
     <Navigate
       to={{ pathname: '/settings/machine-locator', hash }}
+      replace
+    />
+  )
+}
+
+
+function MachineMonitorRedirect() {
+  const { search, hash } = useLocation()
+
+  return (
+    <Navigate
+      to={{ pathname: '/monitoring/machine', search, hash }}
       replace
     />
   )
@@ -238,6 +251,26 @@ function App() {
                 <Route
                   path="ot"
                   element={<OtPage />}
+                />
+
+                {/* =========================
+                MONITORING
+            ========================= */}
+
+                <Route
+                  path="monitoring/machine"
+                  element={
+                    <MachineMonitorPage
+                      mode={mode}
+                      onToggleMode={toggleThemeMode}
+                    />
+                  }
+                />
+
+                {/* route cũ, giữ để link đã chia sẻ (kèm ?tab=&layout=) vẫn mở được */}
+                <Route
+                  path="machine-monitor"
+                  element={<MachineMonitorRedirect />}
                 />
 
                 {/* =========================
