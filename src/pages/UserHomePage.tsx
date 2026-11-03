@@ -4,6 +4,7 @@ import type { PaletteMode } from '@mui/material/styles'
 import factoryBackground from '../assets/login-factory-bg.png'
 import { PageHeader } from '../components/common/PageHeader'
 import { PageShell } from '../components/common/PageShell'
+import { UserHomeFactoryScene } from '../components/userHome/UserHomeFactoryScene'
 import {
   createUserHomeHeroSx,
   userHomeAmbientSx,
@@ -173,6 +174,10 @@ export function UserHomePage({ mode, onToggleMode }: UserHomePageProps) {
           <Typography sx={{ mt: 0.9, fontSize: 13.5, color: 'rgba(215, 232, 246, 0.62)' }}>
             Your Production Control workspace
           </Typography>
+
+          <Box sx={{ mt: 2.6 }}>
+            <UserHomeFactoryScene mode={mode} />
+          </Box>
 
           <Box
             sx={{
