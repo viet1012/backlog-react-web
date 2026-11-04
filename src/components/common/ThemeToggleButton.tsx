@@ -6,19 +6,16 @@ import {
   type TransitionEvent,
 } from 'react'
 
-import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded'
-import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded'
 import {
   Box,
   Portal,
   Tooltip,
 } from '@mui/material'
-import {
-  alpha,
-  type PaletteMode,
+import type {
+  PaletteMode,
+  SxProps,
+  Theme,
 } from '@mui/material/styles'
-
-import { AppButton } from './AppButton'
 
 interface ThemeToggleButtonProps {
   mode: PaletteMode
@@ -43,6 +40,144 @@ interface RevealState {
 const coverDuration = 250
 const revealDuration = 190
 const postSwitchHold = 70
+
+const starPath = 'M 0 10 C 10 10,10 10 ,0 10 C 10 10 , 10 10 , 10 20 C 10 10 , 10 10 , 20 10 C 10 10 , 10 10 , 10 0 C 10 10,10 10 ,0 10 Z'
+
+// Sun/moon switch, adapted from Uiverse.io by RiccardoRapelli.
+// Checked state is driven by aria-checked so every instance stays in sync with `mode`.
+const switchSx: SxProps<Theme> = {
+  position: 'relative',
+  display: 'inline-block',
+  flexShrink: 0,
+  width: 60,
+  height: 34,
+  p: 0,
+  border: 0,
+  borderRadius: '34px',
+  bgcolor: 'transparent',
+  cursor: 'pointer',
+
+  '&:disabled': { cursor: 'default' },
+  '&:focus-visible': {
+    outline: '2px solid #2196f3',
+    outlineOffset: 2,
+  },
+
+  '& span': { display: 'block' },
+
+  '& .slider': {
+    position: 'absolute',
+    inset: 0,
+    zIndex: 0,
+    overflow: 'hidden',
+    borderRadius: '34px',
+    bgcolor: '#2196f3',
+    transition: '0.4s',
+  },
+
+  '& .sun-moon': {
+    position: 'absolute',
+    left: 4,
+    bottom: 4,
+    width: 26,
+    height: 26,
+    borderRadius: '50%',
+    bgcolor: 'yellow',
+    transition: '0.4s',
+  },
+
+  '& .moon-dot': {
+    position: 'absolute',
+    zIndex: 4,
+    opacity: 0,
+    fill: 'gray',
+    transition: '0.4s',
+  },
+  '& .moon-dot-1': { left: 10, top: 3, width: 6, height: 6 },
+  '& .moon-dot-2': { left: 2, top: 10, width: 10, height: 10 },
+  '& .moon-dot-3': { left: 16, top: 18, width: 3, height: 3 },
+
+  '& .light-ray': {
+    position: 'absolute',
+    zIndex: -1,
+    fill: 'white',
+    opacity: 0.1,
+  },
+  '& .light-ray-1': { left: -8, top: -8, width: 43, height: 43 },
+  '& .light-ray-2': { left: '-50%', top: '-50%', width: 55, height: 55 },
+  '& .light-ray-3': { left: -18, top: -18, width: 60, height: 60 },
+
+  '& .cloud-light, & .cloud-dark': {
+    position: 'absolute',
+    animation: 'themeSwitchCloudMove 6s infinite',
+  },
+  '& .cloud-light': { fill: '#eee' },
+  '& .cloud-dark': { fill: '#ccc', animationDelay: '1s' },
+  '& .cloud-1': { left: 30, top: 15, width: 40 },
+  '& .cloud-2': { left: 44, top: 10, width: 20 },
+  '& .cloud-3': { left: 18, top: 24, width: 30 },
+  '& .cloud-4': { left: 36, top: 18, width: 40 },
+  '& .cloud-5': { left: 48, top: 14, width: 20 },
+  '& .cloud-6': { left: 22, top: 26, width: 30 },
+
+  '& .stars': {
+    transform: 'translateY(-32px)',
+    opacity: 0,
+    transition: '0.4s',
+  },
+  '& .star': {
+    position: 'absolute',
+    fill: 'white',
+    transition: '0.4s',
+    animation: 'themeSwitchStarTwinkle 2s infinite',
+  },
+  '& .star-1': { width: 20, top: 2, left: 3, animationDelay: '0.3s' },
+  '& .star-2': { width: 6, top: 16, left: 3 },
+  '& .star-3': { width: 12, top: 20, left: 10, animationDelay: '0.6s' },
+  '& .star-4': { width: 18, top: 0, left: 18, animationDelay: '1.3s' },
+
+  '&[aria-checked="true"]': {
+    '& .slider': { bgcolor: 'black' },
+    '& .sun-moon': {
+      bgcolor: 'white',
+      transform: 'translateX(26px) rotate(360deg)',
+      transition: '0.6s ease-in-out',
+    },
+    '& .moon-dot': { opacity: 1 },
+    '& .stars': {
+      transform: 'translateY(0)',
+      opacity: 1,
+    },
+  },
+
+  '@keyframes themeSwitchCloudMove': {
+    '0%': { transform: 'translateX(0px)' },
+    '40%': { transform: 'translateX(4px)' },
+    '80%': { transform: 'translateX(-4px)' },
+    '100%': { transform: 'translateX(0px)' },
+  },
+  '@keyframes themeSwitchStarTwinkle': {
+    '0%': { transform: 'scale(1)' },
+    '40%': { transform: 'scale(1.2)' },
+    '80%': { transform: 'scale(0.8)' },
+    '100%': { transform: 'scale(1)' },
+  },
+
+  '@media (prefers-reduced-motion: reduce)': {
+    '& *': {
+      transition: 'none !important',
+      animation: 'none !important',
+    },
+  },
+}
+
+function Circle({ className }: { className: string }) {
+  return (
+    <svg className={className} viewBox="0 0 100 100" aria-hidden>
+      <circle cx="50" cy="50" r="50" />
+    </svg>
+  )
+}
 
 export function ThemeToggleButton({
   mode,
@@ -179,7 +314,7 @@ export function ThemeToggleButton({
     transitioningRef.current = false
   }, [])
 
-  const handleToggle = (event: MouseEvent<HTMLButtonElement>) => {
+  const handleToggle = (event: MouseEvent<HTMLElement>) => {
     if (transitioningRef.current) return
 
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -228,63 +363,47 @@ export function ThemeToggleButton({
   return (
     <>
       <Tooltip title={label}>
-        <span>
-          <AppButton
-            compact
+        <Box component="span" sx={{ display: 'inline-flex' }}>
+          <Box
+            component="button"
+            type="button"
+            role="switch"
             aria-label={label}
-            aria-pressed={!isLight}
+            aria-checked={!isLight}
             disabled={phase !== 'idle'}
             onClick={handleToggle}
-            icon={(
-              <Box
-                sx={{
-                  position: 'relative',
-                  width: 18,
-                  height: 18,
-                  '& svg': {
-                    position: 'absolute',
-                    inset: 0,
-                    fontSize: 18,
-                    transition:
-                      'opacity 220ms ease, transform 240ms ease',
-                  },
-                  '@media (prefers-reduced-motion: reduce)': {
-                    '& svg': { transition: 'none' },
-                  },
-                }}
-              >
-                <LightModeRoundedIcon
-                  sx={{
-                    color: '#f59e0b',
-                    opacity: isLight ? 1 : 0,
-                    transform: isLight
-                      ? 'rotate(0deg) scale(1)'
-                      : 'rotate(75deg) scale(0.72)',
-                  }}
-                />
-                <DarkModeRoundedIcon
-                  sx={{
-                    color: '#60a5fa',
-                    opacity: isLight ? 0 : 1,
-                    transform: isLight
-                      ? 'rotate(-75deg) scale(0.72)'
-                      : 'rotate(0deg) scale(1)',
-                  }}
-                />
-              </Box>
-            )}
-            sx={(theme) => ({
-              borderColor: alpha(
-                isLight ? '#f59e0b' : '#60a5fa',
-                theme.palette.mode === 'dark' ? 0.34 : 0.28,
-              ),
-              bgcolor: alpha(
-                isLight ? '#f59e0b' : '#60a5fa',
-                theme.palette.mode === 'dark' ? 0.07 : 0.045,
-              ),
-            })}
-          />
-        </span>
+            sx={switchSx}
+          >
+            <span className="slider">
+              <span className="sun-moon">
+                <Circle className="moon-dot moon-dot-1" />
+                <Circle className="moon-dot moon-dot-2" />
+                <Circle className="moon-dot moon-dot-3" />
+                <Circle className="light-ray light-ray-1" />
+                <Circle className="light-ray light-ray-2" />
+                <Circle className="light-ray light-ray-3" />
+                <Circle className="cloud-dark cloud-1" />
+                <Circle className="cloud-dark cloud-2" />
+                <Circle className="cloud-dark cloud-3" />
+                <Circle className="cloud-light cloud-4" />
+                <Circle className="cloud-light cloud-5" />
+                <Circle className="cloud-light cloud-6" />
+              </span>
+              <span className="stars">
+                {[1, 2, 3, 4].map((index) => (
+                  <svg
+                    key={index}
+                    className={`star star-${index}`}
+                    viewBox="0 0 20 20"
+                    aria-hidden
+                  >
+                    <path d={starPath} />
+                  </svg>
+                ))}
+              </span>
+            </span>
+          </Box>
+        </Box>
       </Tooltip>
 
       {reveal && (
