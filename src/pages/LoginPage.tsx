@@ -22,12 +22,14 @@ import {
 } from '../components/auth/loginStyles'
 import {
   AuthApiError,
+  getAuthenticatedUsername,
   getDefaultAuthRoute,
   isAuthenticated,
   login,
   register,
 } from '../services/authService'
 import { useIsDaytime } from '../hooks/useIsDaytime'
+import { CLOCK_IN_COVER_MS, startClockIn } from '../components/shift/clockInStore'
 
 type AuthMode = 'login' | 'register'
 
@@ -79,7 +81,17 @@ export function LoginPage() {
 
     try {
       const session = await login(employeeId.trim(), password, remember)
-      navigate(getDefaultAuthRoute(session), { replace: true })
+      const target = getDefaultAuthRoute(session)
+
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        navigate(target, { replace: true })
+        return
+      }
+
+      // Clock-in overlay (App root) covers the screen first, then we navigate
+      // underneath it. Loading stays on so no re-render redirects early.
+      startClockIn(getAuthenticatedUsername() ?? employeeId.trim())
+      window.setTimeout(() => navigate(target, { replace: true }), CLOCK_IN_COVER_MS)
     } catch (requestError) {
       setError(
         requestError instanceof AuthApiError && requestError.status === 401
@@ -88,7 +100,6 @@ export function LoginPage() {
             ? requestError.message
             : 'Invalid Employee ID or password.',
       )
-    } finally {
       setLoading(false)
     }
   }

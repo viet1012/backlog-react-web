@@ -19,6 +19,7 @@ import {
 import { MainLayout } from './components/layout/MainLayout'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
 import { RoleRoute } from './components/auth/RoleRoute'
+import { ClockInOverlay } from './components/shift/ClockInOverlay'
 
 import { BacklogPage } from './pages/BacklogPage'
 import { AsakaiPage } from './pages/AsakaiPage'
@@ -127,6 +128,8 @@ function App() {
       >
 
         <CssBaseline />
+
+        <ClockInOverlay />
 
         <BrowserRouter>
 
