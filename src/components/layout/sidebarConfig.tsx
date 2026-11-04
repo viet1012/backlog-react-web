@@ -109,7 +109,8 @@ export const menuGroups:
                 {
                     label: 'Cost Monitoring',
                     path: '/cost-monitoring',
-                    status: 'todo',
+                    status: 'ready',
+                    action: 'view',
                     icon: (
                         <TrendingUpOutlined />
                     ),

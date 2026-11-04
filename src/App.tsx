@@ -176,7 +176,12 @@ function App() {
 
                 <Route
                   path="cost-monitoring"
-                  element={<CostMonitoringPage />}
+                  element={
+                    <CostMonitoringPage
+                      mode={mode}
+                      onToggleMode={toggleThemeMode}
+                    />
+                  }
                 />
 
                 <Route
