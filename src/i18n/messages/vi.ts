@@ -72,9 +72,6 @@ export const vi: Messages = {
         title: 'Đăng xuất?',
         description: 'Bạn sẽ cần đăng nhập lại để tiếp tục.',
         signOut: 'Đăng xuất',
-        andonRunning: 'Đèn Andon: đang chạy',
-        andonWarning: 'Đèn Andon: cảnh báo',
-        andonStopped: 'Đèn Andon: dừng',
         checkOut: (time) => `Ra ca ${time}`,
     },
 

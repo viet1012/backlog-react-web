@@ -15,9 +15,15 @@ export function formatClock(date: Date) {
     return `${hh}:${mm}`
 }
 
-export function isNightShift(date: Date) {
+export type DayPeriod = 'morning' | 'noon' | 'afternoon' | 'night'
+
+export function getDayPeriod(date: Date): DayPeriod {
     const hour = date.getHours()
-    return hour >= 18 || hour < 6
+
+    if (hour >= 5 && hour < 10) return 'morning'
+    if (hour >= 10 && hour < 14) return 'noon'
+    if (hour >= 14 && hour < 18) return 'afternoon'
+    return 'night'
 }
 
 // =========================================================
@@ -181,13 +187,42 @@ export function ShiftOverlayRoot({
 // SCENE (factory skyline at dusk / night)
 // =========================================================
 
-const skylinePath = 'M0 160 L0 90 L80 90 L80 60 L120 90 L160 60 L200 90 L240 60 L280 90 L280 100 L340 100 L340 40 L355 40 L355 100 L420 100 L420 70 L520 70 L520 100 L600 100 L600 55 L640 80 L680 55 L720 80 L760 55 L800 80 L800 95 L880 95 L880 30 L894 30 L894 95 L960 95 L960 75 L1080 75 L1080 90 L1200 90 L1200 160 Z'
+export const skylinePath = 'M0 160 L0 90 L80 90 L80 60 L120 90 L160 60 L200 90 L240 60 L280 90 L280 100 L340 100 L340 40 L355 40 L355 100 L420 100 L420 70 L520 70 L520 100 L600 100 L600 55 L640 80 L680 55 L720 80 L760 55 L800 80 L800 95 L880 95 L880 30 L894 30 L894 95 L960 95 L960 75 L1080 75 L1080 90 L1200 90 L1200 160 Z'
 
-const scenePalettes = {
-    dusk: {
+// orbLeft / orbLift: sun or moon position (lift = height above the skyline).
+export const scenePalettes: Record<DayPeriod, {
+    sky: string
+    orb: string
+    orbSize: number
+    orbLeft: string
+    orbLift: string
+    skyline: string
+    ground: string
+}> = {
+    morning: {
+        sky: 'linear-gradient(to bottom, #93c5fd 0%, #c7d2fe 38%, #fbcfe8 72%, #fed7aa 100%)',
+        orb: '#fff4d6',
+        orbSize: 80,
+        orbLeft: '18%',
+        orbLift: '2vh',
+        skyline: '#475569',
+        ground: '#57534e',
+    },
+    noon: {
+        sky: 'linear-gradient(to bottom, #0ea5e9 0%, #38bdf8 40%, #bae6fd 85%, #e0f2fe 100%)',
+        orb: '#fffbeb',
+        orbSize: 72,
+        orbLeft: '50%',
+        orbLift: '40vh',
+        skyline: '#334155',
+        ground: '#4b5563',
+    },
+    afternoon: {
         sky: 'linear-gradient(to bottom, #fde68a 0%, #fdba74 35%, #f97316 72%, #c2410c 100%)',
         orb: '#fff7ed',
         orbSize: 96,
+        orbLeft: 'calc(68% + 48px)',
+        orbLift: '10px',
         skyline: '#5b2a12',
         ground: '#44403c',
     },
@@ -195,13 +230,15 @@ const scenePalettes = {
         sky: 'linear-gradient(to bottom, #0b1330 0%, #1b2547 55%, #3a3560 100%)',
         orb: '#e2e8f0',
         orbSize: 44,
+        orbLeft: 'calc(68% + 22px)',
+        orbLift: '30vh',
         skyline: '#0a0f1f',
         ground: '#1f2937',
     },
 }
 
-export function ShiftScene({ night }: { night: boolean }) {
-    const palette = night ? scenePalettes.night : scenePalettes.dusk
+export function ShiftScene({ period }: { period: DayPeriod }) {
+    const palette = scenePalettes[period]
 
     return (
         <Box
@@ -217,8 +254,9 @@ export function ShiftScene({ night }: { night: boolean }) {
             <Box
                 sx={{
                     position: 'absolute',
-                    left: '68%',
-                    bottom: 'calc(22vh + 10px)',
+                    left: palette.orbLeft,
+                    bottom: `calc(22vh + ${palette.orbLift})`,
+                    transform: 'translateX(-50%)',
                     width: palette.orbSize,
                     height: palette.orbSize,
                     borderRadius: '50%',
@@ -287,11 +325,15 @@ export function Worker({
     walks,
     wave,
     gaitCycle = 440,
+    height = 'clamp(64px, 11vh, 112px)',
+    bottom = 14,
 }: {
     startX: string
     walks: WorkerWalk[]
-    wave?: { start: number; duration: number }
+    wave?: { start: number; duration: number; iterations?: number | 'infinite' }
     gaitCycle?: number
+    height?: number | string
+    bottom?: number
 }) {
     const gait = (name: typeof limbSwing, period: number, easing = 'linear') =>
         walks.length
@@ -359,8 +401,8 @@ export function Worker({
             sx={{
                 position: 'absolute',
                 left: startX,
-                bottom: 14,
-                height: 'clamp(64px, 11vh, 112px)',
+                bottom,
+                height,
                 aspectRatio: '40 / 76',
                 willChange: 'transform',
                 animation: `${sceneFade} 200ms ease-out both`,
@@ -375,7 +417,7 @@ export function Worker({
                 },
                 '& .worker-wave': {
                     animation: wave
-                        ? `${armWave} ${wave.duration}ms ease-in-out ${wave.start}ms`
+                        ? `${armWave} ${wave.duration}ms ease-in-out ${wave.start}ms ${wave.iterations ?? 1}`
                         : 'none',
                 },
                 '& .worker-arm-back': { animation: gait(limbSwing, gaitCycle) },
@@ -395,9 +437,11 @@ export function Worker({
 
 export function ShutterPanel({
     animation,
+    railHeight = 22,
     children,
 }: {
     animation: string
+    railHeight?: number
     children?: ReactNode
 }) {
     return (
@@ -431,7 +475,7 @@ export function ShutterPanel({
                         left: 0,
                         right: 0,
                         bottom: 0,
-                        height: 22,
+                        height: railHeight,
                         backgroundImage: `repeating-linear-gradient(-45deg, #f59e0b 0 14px, ${isDark ? '#111827' : '#374151'} 14px 28px)`,
                         borderTop: '3px solid',
                         borderColor: isDark ? '#0b0f14' : '#4b535d',

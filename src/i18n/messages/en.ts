@@ -100,9 +100,6 @@ export const en = {
         title: 'Sign out?',
         description: 'You will need to sign in again to continue.',
         signOut: 'Sign out',
-        andonRunning: 'Andon light: running',
-        andonWarning: 'Andon light: warning',
-        andonStopped: 'Andon light: stopped',
         checkOut: (time: string) => `Check-out ${time}`,
     },
 
