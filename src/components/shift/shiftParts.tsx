@@ -489,64 +489,220 @@ export function ShutterPanel({
     )
 }
 
+// Signboard bolted to the shutter: it swings in from its top edge,
+// then the label is stamped, then the greeting and time card follow.
+const signSwing = keyframes`
+    0% { opacity: 0; transform: translateY(-18px) rotate(-7deg); }
+    35% { opacity: 1; transform: translateY(0) rotate(4deg); }
+    60% { transform: rotate(-2deg); }
+    80% { transform: rotate(1deg); }
+    100% { opacity: 1; transform: rotate(0deg); }
+`
+
+const labelStamp = keyframes`
+    0% { opacity: 0; transform: scale(1.7); }
+    70% { opacity: 1; transform: scale(0.94); }
+    100% { opacity: 1; transform: scale(1); }
+`
+
+const lampPulse = keyframes`
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+`
+
+const signTones = {
+    green: { main: '#22c55e', glow: 'rgba(34,197,94,0.55)' },
+    amber: { main: '#f59e0b', glow: 'rgba(245,158,11,0.55)' },
+} as const
+
 export function ShutterMessage({
+    tone,
+    label,
     title,
     subtitle,
-    detail,
-    animation,
+    timeLabel,
+    time,
+    delay,
 }: {
+    tone: keyof typeof signTones
+    label: string
     title: string
     subtitle: string
-    detail?: string
-    animation: string
+    timeLabel?: string
+    time?: string
+    delay: number
 }) {
+    const color = signTones[tone]
+    const rivet = 'radial-gradient(circle, #cbd5e1 0 2px, #64748b 2.5px, transparent 3.5px)'
+
     return (
         <Box
-            sx={(theme) => ({
-                px: 2,
+            sx={{
+                position: 'relative',
+                mx: 2,
+                px: { xs: 3, sm: 5 },
+                pt: 2.5,
+                pb: 2.25,
+                minWidth: { sm: 420 },
                 textAlign: 'center',
-                color: theme.palette.mode === 'dark' ? '#e5e7eb' : '#1f2937',
-                textShadow: theme.palette.mode === 'dark'
-                    ? '0 1px 0 rgba(0,0,0,0.7)'
-                    : '0 1px 0 rgba(255,255,255,0.6)',
-                animation,
-            })}
+                color: '#f8fafc',
+                bgcolor: '#0f172a',
+                border: '3px solid',
+                borderColor: color.main,
+                borderRadius: 2,
+                backgroundImage: [rivet, rivet, rivet, rivet].join(', '),
+                backgroundPosition: '8px 8px, calc(100% - 8px) 8px, 8px calc(100% - 8px), calc(100% - 8px) calc(100% - 8px)',
+                backgroundSize: '8px 8px',
+                backgroundRepeat: 'no-repeat',
+                boxShadow: `0 14px 30px rgba(0,0,0,0.45), 0 0 26px ${color.glow}, inset 0 0 0 2px rgba(255,255,255,0.06)`,
+                transformOrigin: '50% -40px',
+                animation: `${signSwing} 900ms ease-out ${delay}ms both`,
+                '@media (prefers-reduced-motion: reduce)': {
+                    '&, & *': { animation: 'none !important' },
+                },
+            }}
         >
-            <Typography
-                component="p"
+            {/* Hanging brackets up to the shutter slats */}
+            {['18%', '82%'].map((left) => (
+                <Box
+                    key={left}
+                    aria-hidden
+                    sx={{
+                        position: 'absolute',
+                        left,
+                        top: -22,
+                        width: 4,
+                        height: 22,
+                        bgcolor: '#475569',
+                        borderRadius: 1,
+                    }}
+                />
+            ))}
+
+            <Box
                 sx={{
-                    fontSize: 'clamp(24px, 4.2vw, 46px)',
-                    fontWeight: 900,
-                    letterSpacing: '0.28em',
-                    lineHeight: 1.2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 1.5,
+                    animation: `${labelStamp} 380ms cubic-bezier(.3,1.6,.5,1) ${delay + 220}ms both`,
+                }}
+            >
+                <Box
+                    aria-hidden
+                    sx={{
+                        width: 14,
+                        height: 14,
+                        flexShrink: 0,
+                        borderRadius: '50%',
+                        bgcolor: color.main,
+                        boxShadow: `0 0 12px ${color.main}`,
+                        animation: `${lampPulse} 700ms ease-in-out ${delay + 600}ms infinite`,
+                    }}
+                />
+                <Typography
+                    component="p"
+                    sx={{
+                        fontSize: 'clamp(30px, 5vw, 58px)',
+                        fontWeight: 900,
+                        letterSpacing: '0.22em',
+                        lineHeight: 1.1,
+                        mr: '-0.22em',
+                        color: color.main,
+                        textShadow: `0 0 18px ${color.glow}`,
+                    }}
+                >
+                    {label}
+                </Typography>
+            </Box>
+
+            <Box
+                aria-hidden
+                sx={{
+                    my: 1.5,
+                    height: 0,
+                    borderTop: '2px dashed',
+                    borderColor: alpha(color.main, 0.45),
+                }}
+            />
+
+            <Typography
+                sx={{
+                    fontSize: 'clamp(15px, 1.9vw, 22px)',
+                    fontWeight: 800,
+                    letterSpacing: '0.22em',
+                    animation: `${fadeUp} 320ms ease-out ${delay + 420}ms both`,
                 }}
             >
                 {title}
             </Typography>
-            <Typography
+
+            <Box
                 sx={{
-                    mt: 1,
-                    fontSize: 14,
-                    fontWeight: 700,
-                    letterSpacing: '0.16em',
-                    opacity: 0.8,
+                    mt: 1.5,
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 1.5,
+                    animation: `${fadeUp} 320ms ease-out ${delay + 540}ms both`,
                 }}
             >
-                {subtitle}
-            </Typography>
-            {detail && (
                 <Typography
                     sx={{
-                        mt: 0.75,
-                        fontFamily: monoFont,
                         fontSize: 13,
-                        letterSpacing: '0.1em',
-                        opacity: 0.75,
+                        fontWeight: 700,
+                        letterSpacing: '0.16em',
+                        color: '#cbd5e1',
                     }}
                 >
-                    {detail}
+                    {subtitle}
                 </Typography>
-            )}
+
+                {time && (
+                    <Box
+                        sx={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 1,
+                            px: 1.25,
+                            py: 0.25,
+                            borderRadius: 1,
+                            bgcolor: '#020617',
+                            border: '1px solid',
+                            borderColor: alpha(color.main, 0.5),
+                            fontFamily: monoFont,
+                        }}
+                    >
+                        {timeLabel && (
+                            <Typography
+                                component="span"
+                                sx={{
+                                    fontFamily: 'inherit',
+                                    fontSize: 11,
+                                    letterSpacing: '0.12em',
+                                    color: '#94a3b8',
+                                }}
+                            >
+                                {timeLabel}
+                            </Typography>
+                        )}
+                        <Typography
+                            component="span"
+                            sx={{
+                                fontFamily: 'inherit',
+                                fontSize: 18,
+                                fontWeight: 700,
+                                letterSpacing: '0.12em',
+                                color: color.main,
+                                textShadow: `0 0 8px ${color.glow}`,
+                            }}
+                        >
+                            {time}
+                        </Typography>
+                    </Box>
+                )}
+            </Box>
         </Box>
     )
 }

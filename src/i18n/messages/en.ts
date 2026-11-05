@@ -100,17 +100,27 @@ export const en = {
         title: 'Sign out?',
         description: 'You will need to sign in again to continue.',
         signOut: 'Sign out',
-        checkOut: (time: string) => `Check-out ${time}`,
+        checkOut: (time: string) => `Signed out at ${time}`,
     },
 
     shift: {
         skip: 'Click to skip',
-        clockOutTitle: 'SHIFT OVER — SEE YOU SOON',
-        clockInTitle: (greeting: string) => `CLOCK IN — ${greeting}`,
-        checkIn: (time: string) => `Check-in ${time}`,
-        goodMorning: 'GOOD MORNING',
-        goodAfternoon: 'GOOD AFTERNOON',
-        goodEvening: 'GOOD EVENING',
+        signedIn: 'SIGNED IN',
+        signedOut: 'SIGNED OUT',
+        timeAt: 'AT',
+        // Keyed by DayPeriod (shiftParts.getDayPeriod)
+        greeting: {
+            morning: 'GOOD MORNING',
+            noon: 'GOOD DAY',
+            afternoon: 'GOOD AFTERNOON',
+            night: 'GOOD EVENING',
+        },
+        farewell: {
+            morning: 'HAVE A GREAT DAY',
+            noon: 'ENJOY YOUR LUNCH',
+            afternoon: 'SEE YOU SOON',
+            night: 'HAVE A GOOD NIGHT',
+        },
     },
 
     auth: {

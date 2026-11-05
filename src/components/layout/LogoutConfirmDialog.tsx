@@ -19,7 +19,6 @@ import { useI18n } from '../../i18n/useI18n'
 import {
     Beacon,
     DustBurst,
-    fadeUp,
     formatClock,
     getDayPeriod,
     monoFont,
@@ -680,9 +679,11 @@ function TimeClockSlot({
 
 function ShutterOverlay({
     username,
+    checkoutTime,
     onSkip,
 }: {
     username: string
+    checkoutTime: string | null
     onSkip: () => void
 }) {
     const { t } = useI18n()
@@ -694,9 +695,13 @@ function ShutterOverlay({
 
             <ShutterPanel animation={`${shutterDrop} ${dropDuration}ms ${dropDelay}ms both`}>
                 <ShutterMessage
-                    title={t.shift.clockOutTitle}
+                    tone="amber"
+                    label={t.shift.signedOut}
+                    title={t.shift.farewell[period]}
                     subtitle={username}
-                    animation={`${fadeUp} ${messageFade}ms ease-out ${messageAt}ms both`}
+                    timeLabel={t.shift.timeAt}
+                    time={checkoutTime ?? undefined}
+                    delay={messageAt}
                 />
             </ShutterPanel>
 
@@ -1051,7 +1056,11 @@ export function LogoutConfirmDialog({
             </Dialog>
 
             {shutterOn && (
-                <ShutterOverlay username={username} onSkip={handleSkip} />
+                <ShutterOverlay
+                    username={username}
+                    checkoutTime={checkoutTime}
+                    onSkip={handleSkip}
+                />
             )}
         </>
     )

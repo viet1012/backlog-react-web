@@ -72,17 +72,26 @@ export const vi: Messages = {
         title: 'Đăng xuất?',
         description: 'Bạn sẽ cần đăng nhập lại để tiếp tục.',
         signOut: 'Đăng xuất',
-        checkOut: (time) => `Ra ca ${time}`,
+        checkOut: (time) => `Đăng xuất lúc ${time}`,
     },
 
     shift: {
         skip: 'Nhấn để bỏ qua',
-        clockOutTitle: 'TAN CA — HẸN GẶP LẠI',
-        clockInTitle: (greeting) => `VÀO CA — ${greeting}`,
-        checkIn: (time) => `Vào ca ${time}`,
-        goodMorning: 'CHÀO BUỔI SÁNG',
-        goodAfternoon: 'CHÀO BUỔI CHIỀU',
-        goodEvening: 'CHÀO BUỔI TỐI',
+        signedIn: 'ĐÃ ĐĂNG NHẬP',
+        signedOut: 'ĐÃ ĐĂNG XUẤT',
+        timeAt: 'LÚC',
+        greeting: {
+            morning: 'CHÀO BUỔI SÁNG',
+            noon: 'CHÀO BUỔI TRƯA',
+            afternoon: 'CHÀO BUỔI CHIỀU',
+            night: 'CHÀO BUỔI TỐI',
+        },
+        farewell: {
+            morning: 'CHÚC MỘT NGÀY TỐT LÀNH',
+            noon: 'CHÚC BỮA TRƯA NGON MIỆNG',
+            afternoon: 'HẸN GẶP LẠI',
+            night: 'CHÚC BUỔI TỐI VUI VẺ',
+        },
     },
 
     auth: {

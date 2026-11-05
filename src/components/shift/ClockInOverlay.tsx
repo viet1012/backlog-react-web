@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 
-import type { Messages } from '../../i18n/messages/en'
 import { useI18n } from '../../i18n/useI18n'
 
 import {
@@ -11,8 +10,8 @@ import {
 import {
     Beacon,
     DustBurst,
-    fadeUp,
     formatClock,
+    getDayPeriod,
     ShiftOverlayRoot,
     ShutterMessage,
     ShutterPanel,
@@ -28,7 +27,6 @@ import {
 
 const gaitCycle = 440
 const messageAt = 350
-const messageFade = 450
 const walkInStart = 250
 const walkInDuration = gaitCycle * 2
 const waveStart = walkInStart + walkInDuration
@@ -39,14 +37,6 @@ const walkOnStart = riseAt + 100
 const walkOnDuration = gaitCycle * 2
 const fadeOutAt = riseAt + riseDuration - 100
 const endAt = fadeOutAt + 300
-
-function greeting(date: Date, shift: Messages['shift']) {
-    const hour = date.getHours()
-
-    if (hour >= 5 && hour < 11) return shift.goodMorning
-    if (hour >= 11 && hour < 18) return shift.goodAfternoon
-    return shift.goodEvening
-}
 
 function ClockInSequence({ run }: { run: ClockInRun }) {
     const { t } = useI18n()
@@ -65,10 +55,13 @@ function ClockInSequence({ run }: { run: ClockInRun }) {
         >
             <ShutterPanel animation={`${shutterRise} ${riseDuration}ms ${riseAt}ms forwards`}>
                 <ShutterMessage
-                    title={t.shift.clockInTitle(greeting(run.startedAt, t.shift))}
+                    tone="green"
+                    label={t.shift.signedIn}
+                    title={t.shift.greeting[getDayPeriod(run.startedAt)]}
                     subtitle={run.username}
-                    detail={t.shift.checkIn(formatClock(run.startedAt))}
-                    animation={`${fadeUp} ${messageFade}ms ease-out ${messageAt}ms both`}
+                    timeLabel={t.shift.timeAt}
+                    time={formatClock(run.startedAt)}
+                    delay={messageAt}
                 />
             </ShutterPanel>
 
