@@ -1,6 +1,6 @@
 import type { CostChart } from '../../types/costMonitoring'
 import { buildRows, getCostStatus, type CostChartRow } from './costChartUtils'
-import { EXAMPLE_DEMO, type ExampleValues } from './costMonitoringGuide'
+import { EXAMPLE_DATA, type ExampleValues } from './costMonitoringGuide'
 
 export type DemoRow = CostChartRow & { plMtd: number }
 
@@ -9,7 +9,7 @@ export type DemoRow = CostChartRow & { plMtd: number }
 //   PL MTD(x)   = PL × x / n
 //   Estimate(x) = Actual(d) + PL × (x − d) / n, với x > d; d = n thì không có Estimate
 export function buildExampleDemo(day: number) {
-  const { actual, pl, fc, fluct, bp, month, daysInMonth: n } = EXAMPLE_DEMO
+  const { actual, pl, fc, fluct, bp, month, daysInMonth: n } = EXAMPLE_DATA
   const act = actual[day - 1]
   const plMtdAt = (x: number) => (pl * x) / n
   const estEnd = day < n ? act + (pl * (n - day)) / n : null

@@ -23,7 +23,7 @@ import { CostChartLegend } from '../components/costMonitoring/CostChartLegend'
 import { CostMonitoringGrid } from '../components/costMonitoring/CostMonitoringGrid'
 import { CostMonitoringGuideDrawer } from '../components/costMonitoring/CostMonitoringGuideDrawer'
 import { SIMU_WEEK_OPTIONS } from '../components/costMonitoring/costChartConfig'
-import { SIMU_WEEK_HINT, type GuideTabId } from '../components/costMonitoring/costMonitoringGuide'
+import type { GuideTabId } from '../components/costMonitoring/costMonitoringGuide'
 import { useCostMonitoring } from '../hooks/useCostMonitoring'
 import { toApiMonth } from '../services/costMonitoringService'
 import type { CostSimuWeek } from '../types/costMonitoring'
@@ -148,7 +148,7 @@ export function CostMonitoringPage({
                   </Select>
                 </FormControl>
 
-                <Tooltip title={SIMU_WEEK_HINT} arrow placement="bottom" enterTouchDelay={0}>
+                <Tooltip title={t.costGuide.hints.simuWeek} arrow placement="bottom" enterTouchDelay={0}>
                   <FormControl size="small" sx={{ width: 175, flexShrink: 0 }}>
                     {/* Mới nhất = '' → cần shrink/notched để nhãn không đè lên chữ của option */}
                     <InputLabel shrink>{t.cost.plTgtBy}</InputLabel>

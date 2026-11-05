@@ -370,6 +370,259 @@ export const vi: Messages = {
         chartLoadFailed: 'Không tải được biểu đồ Cost Monitoring',
     },
 
+    costGuide: {
+        title: 'Hướng dẫn Cost Monitoring',
+        tabs: {
+            quick: 'Bắt đầu nhanh',
+            read: 'Cách đọc chart',
+            glossary: 'Thuật ngữ',
+            example: 'Ví dụ thực tế',
+            faq: 'Câu hỏi thường gặp',
+        },
+        diagramAria: 'Chart mẫu có chú thích các thành phần',
+
+        quick: {
+            intro: 'Màn hình gồm 9 chart: 3 bộ phận (PRESS, MOLD, GUIDE) × 3 loại chi phí (OT, T&SL, RM). Đơn vị: nghìn USD (K$).',
+            steps: {
+                month: {
+                    title: 'Chọn tháng',
+                    body: 'Chọn tháng ở góc phải trên. "PL TGT theo" để mặc định "Mới nhất (tự động)".',
+                },
+                badge: {
+                    title: 'Nhìn màu badge',
+                    body: 'Badge ở góc phải mỗi chart cho biết chart nào cần chú ý:',
+                },
+                open: {
+                    title: 'Xem chart cần quan tâm',
+                    body: 'Đọc chart theo tab "Cách đọc chart".',
+                },
+            },
+            badgeRanges: {
+                ok: '≤100%',
+                watch: '100–105%',
+                over: '>105%',
+            },
+        },
+
+        read: {
+            annotations: [
+                {
+                    title: 'Hàng số liệu',
+                    body: 'Các con số chính của chart: FC, PL, Actual, Estimate, Fluct. Chấm màu bên cạnh khớp với màu đường trên chart.',
+                },
+                {
+                    title: 'Badge trạng thái',
+                    body: 'So giá trị cuối tháng với target. Xanh = trong ngân sách, vàng = cần theo dõi, đỏ = có nguy cơ vượt.',
+                },
+                {
+                    title: 'Đường Actual',
+                    body: 'Chi phí thực tế cộng dồn từ đầu tháng. Mũi tên đánh dấu ngày có số liệu mới nhất.',
+                },
+                {
+                    title: 'Đường Estimate',
+                    body: 'Nối tiếp từ mũi tên đến cuối tháng: dự phóng chi phí nếu phần còn lại đi đúng kế hoạch.',
+                },
+                {
+                    title: 'Tag giá trị bên phải',
+                    body: 'Giá trị của các đường ngang (FC, PL, Fluct), cùng màu với đường, để khỏi phải dò trục Y.',
+                },
+            ],
+            quickRead: {
+                title: 'Đọc trong 10 giây',
+                lines: [
+                    'Nhìn điểm cuối đường xanh (Actual, hoặc Estimate nếu tháng chưa hết) rồi so với đường target.',
+                    'Nằm DƯỚI target → đang tiết kiệm. Nằm TRÊN target → có nguy cơ vượt ngân sách.',
+                ],
+            },
+            note: {
+                title: 'Lưu ý',
+                body: 'Đầu tháng mới có vài ngày số liệu nên Estimate chủ yếu là kế hoạch kéo dài; kết luận chắc chắn hơn từ giữa tháng.',
+            },
+        },
+
+        glossary: {
+            searchPlaceholder: 'Tìm thuật ngữ, ví dụ: FC, tồn kho, MTD...',
+            noResult: 'Không tìm thấy thuật ngữ phù hợp.',
+            columns: {
+                term: 'Thuật ngữ',
+                meaning: 'Nghĩa dễ hiểu',
+                onChart: 'Trên chart',
+            },
+            groups: {
+                lines: 'Các đường trên chart',
+                source: 'Dữ liệu gốc',
+                costTypes: 'Loại chi phí',
+            },
+            terms: {
+                fcTgt: {
+                    term: 'FC TGT (Forecast)',
+                    meaning: 'Dự báo chi phí của tháng, cập nhật theo tình hình thực tế. Là mốc chính để đánh giá.',
+                },
+                plTgt: {
+                    term: 'PL TGT (Plan)',
+                    meaning: 'Kế hoạch đã tính lại gần nhất (bản Simulation mới nhất).',
+                },
+                actMtd: {
+                    term: 'Actual (MTD)',
+                    meaning: 'Chi phí thực tế đã phát sinh, cộng dồn từ đầu tháng.',
+                },
+                estMtd: {
+                    term: 'Estimate (MTD)',
+                    meaning: 'Dự phóng cuối tháng = Actual hiện tại + phần kế hoạch còn lại.',
+                },
+                fluctTgt: {
+                    term: 'Fluctuating TGT',
+                    meaning: 'Target co giãn theo sản lượng: FC × (1 + mức chênh sales & tồn kho so với dự báo). Làm nhiều hàng hơn thì được phép tiêu nhiều hơn.',
+                },
+                bp: { term: 'BP (Budget Plan)', meaning: 'Ngân sách gốc lập từ đầu năm.' },
+                simu: { term: 'Simu W1–W5', meaning: 'Bản tính lại target theo từng tuần trong tháng.' },
+                mtd: { term: 'MTD (Month-To-Date)', meaning: 'Lũy kế từ ngày 1 đến ngày đang xem.' },
+                kusd: { term: 'K$', meaning: 'Nghìn đô la Mỹ.' },
+                ot: { term: 'OT (Over Time)', meaning: 'Chi phí làm thêm giờ.' },
+                tsl: { term: 'T&SL (Tools & Supplies)', meaning: 'Dụng cụ, dao cụ, vật tư tiêu hao.' },
+                rm: { term: 'RM (Raw Material)', meaning: 'Nguyên vật liệu.' },
+            },
+            lineNotes: {
+                fcTgt: 'Đường xám nét đứt',
+                plTgt: 'Đường xanh lá',
+                actMtd: 'Đường xanh dương liền, mũi tên ở cuối',
+                estMtd: 'Đường xanh dương nét đứt',
+                fluctTgt: 'Đường đỏ',
+            },
+        },
+
+        hints: {
+            series: {
+                fcTgt: 'FC TGT – dự báo chi phí của tháng, mốc chính để đánh giá.',
+                plTgt: 'PL TGT – kế hoạch đã tính lại gần nhất (bản Simulation mới nhất).',
+                actMtd: 'Actual – chi phí thực tế đã phát sinh, cộng dồn từ đầu tháng.',
+                estMtd: 'Estimate – dự phóng cuối tháng = Actual hiện tại + phần kế hoạch còn lại.',
+                fluctTgt: 'Fluctuating TGT – target co giãn theo sản lượng (sales & tồn kho).',
+            },
+            simuWeek: 'Chọn bản kế hoạch (Simulation) theo tuần dùng làm đường PL TGT. Mặc định lấy tuần mới nhất có số liệu.',
+            badge: 'So giá trị cuối (Estimate, không có thì Actual) với target (Fluctuating, không có thì FC): ≤100% OK · 100–105% Theo dõi · >105% Vượt.',
+            noActual: 'Tháng này chưa có số liệu Actual nên chưa đánh giá được; chỉ xem được target và kế hoạch.',
+        },
+
+        example: {
+            storyTitle: 'Ví dụ đời thường – tiền chợ tháng',
+            columns: {
+                what: 'Chuyện gì xảy ra',
+                amount: 'Triệu đ',
+                term: 'Gọi là',
+            },
+            steps: [
+                { text: 'Đầu năm định chi mỗi tháng', amount: '5', term: 'BP' },
+                { text: 'Cuối tháng trước tính lại: tháng này cần', amount: '6', term: 'FC' },
+                { text: 'Tuần 2 tính lại còn', amount: '6,2', term: 'PL (Simu)' },
+                { text: 'Đến ngày 10 đã tiêu', amount: '2,5', term: 'Actual' },
+                { text: 'Cứ đà này cuối tháng: 2,5 + 6,2 × 20/30 ≈', amount: '6,63', term: 'Estimate' },
+                { text: 'Nhà đông người hơn 10% → target hợp lý 6 × 1,1 =', amount: '6,6', term: 'Fluctuating TGT' },
+            ],
+            chartTitle: 'Áp vào chart',
+            chartBody: 'Cách đọc 1 chart T&SL: "Estimate 191 > FC 183 → nhìn badge Theo dõi 104% → xem đường đỏ (nếu có) để biết có do sản lượng tăng không."',
+
+            demo: {
+                title: 'Xem ví dụ trên chart',
+                unitNote: 'Đơn vị trong ví dụ: triệu đồng.',
+                sliderLabelToday: (day) => `Hôm nay là ngày ${day}`,
+                sliderLabelAssumed: (day) => `Giả sử hôm nay là ngày ${day}`,
+                todayChip: (ddMM) => `Hôm nay ${ddMM}`,
+                resetToday: '↺ Về hôm nay',
+                sliderHint: 'Ví dụ đang dùng ngày hôm nay — chart thật bên ngoài cũng đang ở ngày này. Kéo thử để xem cuối tháng Estimate sẽ thay đổi ra sao.',
+                todayLabel: 'Hôm nay',
+                dayLabel: (day) => `Ngày ${day}`,
+                plMtdLegend: 'PL MTD – kế hoạch lũy kế đến từng ngày (đường chấm xanh lá nhạt)',
+                callouts: {
+                    actual: (value) => `Đã tiêu ${value} (Actual)`,
+                    plMtd: (value, diff) =>
+                        `Kế hoạch đến hôm nay: ${value} (PL MTD) → Actual đang ${diff >= 0 ? 'cao' : 'thấp'} hơn kế hoạch ${Math.abs(diff).toFixed(2)}`,
+                    estimate: (value) => `Dự phóng cuối tháng: ${value}`,
+                    fluct: (value) => `Target co giãn: ${value}`,
+                },
+                conclusionTitle: 'Kết luận',
+                verdict: {
+                    ok: 'Đang trong mức cho phép',
+                    watch: 'Sát target, tiếp tục theo dõi',
+                    over: 'Có nguy cơ vượt, cần xem lại chi tiêu',
+                },
+                finalEstimate: 'Estimate cuối tháng',
+                finalActual: 'Actual cuối tháng',
+                conclusion: (finalLabel, final, target, ratio, status, verdict) =>
+                    `${finalLabel} ${final} / target co giãn ${target} = ${ratio}% → ${status}: ${verdict}.`,
+            },
+        },
+
+        formulas: {
+            title: 'Cách tính',
+            plMtd: {
+                title: 'PL MTD (kế hoạch đến hôm nay)',
+                meaning: 'Phần chi phí lẽ ra đã tiêu tính đến hôm nay nếu đi đúng kế hoạch.',
+                formula: 'PL MTD = PL TGT × (số ngày đã qua / số ngày trong tháng)',
+            },
+            diff: {
+                title: 'Chênh lệch so với kế hoạch',
+                meaning: 'Cho biết đang tiêu nhanh hay chậm hơn kế hoạch.',
+                formula: 'Chênh lệch = Actual − PL MTD',
+                faster: 'đang tiêu nhanh hơn kế hoạch',
+                slower: 'đang tiêu chậm hơn kế hoạch',
+            },
+            estimate: {
+                title: 'Estimate cuối tháng',
+                meaning: 'Nếu những ngày còn lại đi đúng kế hoạch thì cuối tháng sẽ tiêu bao nhiêu.',
+                meaningEnded: 'Tháng đã hết nên không còn dự phóng – giá trị cuối chính là Actual.',
+                formula: 'Estimate = Actual + PL TGT × (số ngày còn lại / số ngày trong tháng)',
+                tip: (est, pl, diff) => `Mẹo: Estimate − PL TGT = Actual − PL MTD → ${est} − ${pl} = ${diff}`,
+                endedNote: '(= Actual cuối tháng)',
+            },
+            fluct: {
+                title: 'Fluctuating TGT',
+                meaning: 'Target được nới hoặc siết theo sản lượng thực tế so với dự báo.',
+                formula: [
+                    'Fluct = FC × (1 + Ratio)',
+                    'Ratio = (chênh sales + chênh tồn kho) / Sales dự báo cả tháng',
+                ],
+            },
+            badge: {
+                title: 'Badge',
+                meaning: 'Một con số cho biết chart có cần chú ý không.',
+                formula: [
+                    '% = Giá trị cuối / Target',
+                    'Giá trị cuối = Estimate nếu tháng chưa hết, Actual nếu đã hết',
+                    'Target = Fluct nếu có, không thì FC',
+                ],
+                note: '(≤100% OK, 100–105% Theo dõi, >105% Vượt)',
+            },
+        },
+
+        faq: [
+            {
+                q: 'Vì sao chart OT không có đường Actual?',
+                a: 'Dữ liệu OT thực tế chưa được đưa vào hệ thống. Hiện chỉ xem được target và kế hoạch; badge OT chỉ mang tính tham khảo.',
+            },
+            {
+                q: 'Vì sao chưa có đường đỏ (Fluctuating TGT)?',
+                a: 'Cần dữ liệu doanh số & tồn kho theo ngày, đang chuẩn bị.',
+            },
+            {
+                q: 'Vì sao RM chỉ có số đến 2 ngày trước?',
+                a: 'Dữ liệu xuất nguyên vật liệu được cập nhật chậm hơn 1 ngày so với T&SL.',
+            },
+            {
+                q: 'Đường Actual có lúc đi xuống?',
+                a: 'Do có hàng trả lại kho hoặc điều chỉnh, chi phí âm trong ngày.',
+            },
+            {
+                q: 'Badge tính thế nào?',
+                a: 'So giá trị cuối (Estimate nếu tháng chưa hết, Actual nếu đã hết) với target (Fluctuating nếu có, không thì FC).',
+            },
+            {
+                q: 'Số liệu khác file Excel?',
+                a: 'Báo IT kèm tháng + chart + ngày.',
+            },
+        ],
+    },
+
     monitor: {
         title: 'Giám sát máy móc',
         tabs: {

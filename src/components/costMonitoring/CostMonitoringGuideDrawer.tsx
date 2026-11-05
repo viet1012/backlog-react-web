@@ -29,17 +29,15 @@ import { CostGuideFormulas } from './CostGuideFormulas'
 import { buildExampleDemo } from './costGuideDemo'
 import { CostLineSwatch } from './CostLineSwatch'
 import {
-  EXAMPLE,
-  EXAMPLE_DEMO,
-  FAQ,
+  BADGE_LEVELS,
+  EXAMPLE_DATA,
   buildConclusion,
   GLOSSARY,
-  GUIDE_TABS,
-  GUIDE_TITLE,
-  QUICK_START,
-  READ_CHART,
+  GUIDE_TAB_IDS,
+  QUICK_STEP_IDS,
   type GuideTabId,
 } from './costMonitoringGuide'
+import { useI18n } from '../../i18n/useI18n'
 
 interface CostMonitoringGuideDrawerProps {
   open: boolean
@@ -126,12 +124,15 @@ const tableSx = {
 // =========================================================
 
 function QuickStartTab() {
+  const { t } = useI18n()
+  const quick = t.costGuide.quick
+
   return (
     <Stack spacing={2.5}>
-      <Typography sx={BODY}>{QUICK_START.intro}</Typography>
+      <Typography sx={BODY}>{quick.intro}</Typography>
 
-      {QUICK_START.steps.map((step, i) => (
-        <Stack key={step.title} direction="row" spacing={1.75} sx={{ alignItems: 'flex-start' }}>
+      {QUICK_STEP_IDS.map((id, i) => (
+        <Stack key={id} direction="row" spacing={1.75} sx={{ alignItems: 'flex-start' }}>
           <Box
             sx={{
               flexShrink: 0,
@@ -150,13 +151,13 @@ function QuickStartTab() {
           </Box>
 
           <Box sx={{ pt: 0.25 }}>
-            <Typography sx={{ ...BODY, fontSize: 15, fontWeight: 800 }}>{step.title}</Typography>
-            <Typography sx={BODY} color="text.secondary">{step.body}</Typography>
+            <Typography sx={{ ...BODY, fontSize: 15, fontWeight: 800 }}>{quick.steps[id].title}</Typography>
+            <Typography sx={BODY} color="text.secondary">{quick.steps[id].body}</Typography>
 
-            {'badges' in step && (
+            {id === 'badge' && (
               <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 1, mt: 1 }}>
-                {step.badges.map((b) => (
-                  <StatusChip key={b.level} level={b.level} text={b.text} />
+                {BADGE_LEVELS.map((level) => (
+                  <StatusChip key={level} level={level} text={`${t.cost.status[level]} ${quick.badgeRanges[level]}`} />
                 ))}
               </Stack>
             )}
@@ -173,15 +174,18 @@ function QuickStartTab() {
 // =========================================================
 
 function ReadChartTab() {
+  const { t } = useI18n()
+  const read = t.costGuide.read
+
   return (
     <Stack spacing={2}>
       <CostGuideDiagram />
 
       <Stack spacing={1.25}>
-        {READ_CHART.annotations.map((a) => (
-          <Stack key={a.no} direction="row" spacing={1.25}>
+        {read.annotations.map((a, i) => (
+          <Stack key={CIRCLED[i]} direction="row" spacing={1.25}>
             <Typography sx={{ fontSize: 20, lineHeight: 1.2, color: 'primary.main', fontWeight: 800 }}>
-              {CIRCLED[a.no - 1]}
+              {CIRCLED[i]}
             </Typography>
             <Typography sx={BODY}>
               <b>{a.title}.</b> {a.body}
@@ -190,14 +194,14 @@ function ReadChartTab() {
         ))}
       </Stack>
 
-      <Callout title={READ_CHART.quickRead.title} tone="info">
-        {READ_CHART.quickRead.lines.map((line) => (
+      <Callout title={read.quickRead.title} tone="info">
+        {read.quickRead.lines.map((line) => (
           <Typography key={line} sx={{ ...BODY, mb: 0.5 }}>{line}</Typography>
         ))}
       </Callout>
 
-      <Callout title={READ_CHART.note.title} tone="warning">
-        <Typography sx={BODY}>{READ_CHART.note.body}</Typography>
+      <Callout title={read.note.title} tone="warning">
+        <Typography sx={BODY}>{read.note.body}</Typography>
       </Callout>
     </Stack>
   )
@@ -209,13 +213,22 @@ function ReadChartTab() {
 // =========================================================
 
 function GlossaryTab() {
+  const { t } = useI18n()
+  const glossary = t.costGuide.glossary
+
   const [query, setQuery] = useState('')
   const q = normalize(query.trim())
 
   const groups = GLOSSARY
     .map((g) => ({
       ...g,
-      terms: g.terms.filter((t) => !q || normalize(`${t.term} ${t.meaning} ${t.lineNote ?? ''}`).includes(q)),
+      terms: g.terms
+        .map((term) => ({
+          ...term,
+          ...glossary.terms[term.id],
+          lineNote: term.line ? glossary.lineNotes[term.line] : undefined,
+        }))
+        .filter((term) => !q || normalize(`${term.term} ${term.meaning} ${term.lineNote ?? ''}`).includes(q)),
     }))
     .filter((g) => g.terms.length > 0)
 
@@ -223,7 +236,7 @@ function GlossaryTab() {
     <Stack spacing={2}>
       <TextField
         size="small"
-        placeholder="Tìm thuật ngữ, ví dụ: FC, tồn kho, MTD..."
+        placeholder={glossary.searchPlaceholder}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         slotProps={{
@@ -239,32 +252,32 @@ function GlossaryTab() {
       />
 
       {groups.length === 0 && (
-        <Typography sx={BODY} color="text.secondary">Không tìm thấy thuật ngữ phù hợp.</Typography>
+        <Typography sx={BODY} color="text.secondary">{glossary.noResult}</Typography>
       )}
 
       {groups.map((g) => (
-        <Box key={g.title}>
-          <SectionTitle>{g.title}</SectionTitle>
+        <Box key={g.id}>
+          <SectionTitle>{glossary.groups[g.id]}</SectionTitle>
 
           <Table size="small" sx={tableSx}>
             <TableHead>
               <TableRow>
-                <TableCell sx={{ width: '30%' }}>Thuật ngữ</TableCell>
-                <TableCell>Nghĩa dễ hiểu</TableCell>
-                {g.showLine && <TableCell sx={{ width: 90 }}>Trên chart</TableCell>}
+                <TableCell sx={{ width: '30%' }}>{glossary.columns.term}</TableCell>
+                <TableCell>{glossary.columns.meaning}</TableCell>
+                {g.showLine && <TableCell sx={{ width: 90 }}>{glossary.columns.onChart}</TableCell>}
               </TableRow>
             </TableHead>
 
             <TableBody>
-              {g.terms.map((t) => (
-                <TableRow key={t.term}>
-                  <TableCell sx={{ fontWeight: 700 }}>{t.term}</TableCell>
-                  <TableCell>{t.meaning}</TableCell>
+              {g.terms.map((term) => (
+                <TableRow key={term.id}>
+                  <TableCell sx={{ fontWeight: 700 }}>{term.term}</TableCell>
+                  <TableCell>{term.meaning}</TableCell>
                   {g.showLine && (
-                    <TableCell title={t.lineNote} aria-label={t.lineNote}>
-                      {t.line && (
+                    <TableCell title={term.lineNote} aria-label={term.lineNote}>
+                      {term.line && (
                         <Box sx={{ pt: 0.75 }}>
-                          <CostLineSwatch series={t.line} width={60} />
+                          <CostLineSwatch series={term.line} width={60} />
                         </Box>
                       )}
                     </TableCell>
@@ -288,30 +301,33 @@ const CONCLUSION_TONE = { ok: 'success', watch: 'warning', over: 'error' } as co
 
 // Ngày hôm nay trong tháng, giới hạn theo tháng ví dụ (30 ngày: ngày 31 → 30)
 function todayInExample() {
-  return Math.min(Math.max(new Date().getDate(), 1), EXAMPLE_DEMO.daysInMonth)
+  return Math.min(Math.max(new Date().getDate(), 1), EXAMPLE_DATA.daysInMonth)
 }
 
 // Drawer (Modal) unmount nội dung khi đóng → mở lại sẽ khởi tạo lại state = hôm nay
 function ExampleTab() {
+  const { t } = useI18n()
+  const example = t.costGuide.example
+
   const [today] = useState(todayInExample)
   const [day, setDay] = useState(today)
   const demo = buildExampleDemo(day)
 
   return (
     <Stack spacing={2}>
-      <SectionTitle>{EXAMPLE.storyTitle}</SectionTitle>
+      <SectionTitle>{example.storyTitle}</SectionTitle>
 
       <Table size="small" sx={tableSx}>
         <TableHead>
           <TableRow>
-            <TableCell>Chuyện gì xảy ra</TableCell>
-            <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>Triệu đ</TableCell>
-            <TableCell>Gọi là</TableCell>
+            <TableCell>{example.columns.what}</TableCell>
+            <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>{example.columns.amount}</TableCell>
+            <TableCell>{example.columns.term}</TableCell>
           </TableRow>
         </TableHead>
 
         <TableBody>
-          {EXAMPLE.steps.map((s) => (
+          {example.steps.map((s) => (
             <TableRow key={s.term}>
               <TableCell>{s.text}</TableCell>
               <TableCell align="right" sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{s.amount}</TableCell>
@@ -321,7 +337,7 @@ function ExampleTab() {
         </TableBody>
       </Table>
 
-      <SectionTitle>{EXAMPLE_DEMO.title}</SectionTitle>
+      <SectionTitle>{example.demo.title}</SectionTitle>
       <CostGuideExampleChart
         day={day}
         today={today}
@@ -332,14 +348,14 @@ function ExampleTab() {
       />
 
       {/* kết luận sinh theo badge của ngày đang chọn */}
-      <Callout title={EXAMPLE_DEMO.conclusionTitle} tone={CONCLUSION_TONE[demo.values.level]}>
-        <Typography sx={BODY}>{buildConclusion(demo.values)}</Typography>
+      <Callout title={example.demo.conclusionTitle} tone={CONCLUSION_TONE[demo.values.level]}>
+        <Typography sx={BODY}>{buildConclusion(t, demo.values)}</Typography>
       </Callout>
 
       <CostGuideFormulas values={demo.values} />
 
-      <SectionTitle>{EXAMPLE.chartTitle}</SectionTitle>
-      <Typography sx={BODY}>{EXAMPLE.chartBody}</Typography>
+      <SectionTitle>{example.chartTitle}</SectionTitle>
+      <Typography sx={BODY}>{example.chartBody}</Typography>
     </Stack>
   )
 }
@@ -350,9 +366,11 @@ function ExampleTab() {
 // =========================================================
 
 function FaqTab() {
+  const { t } = useI18n()
+
   return (
     <Box>
-      {FAQ.map((item) => (
+      {t.costGuide.faq.map((item) => (
         <Accordion key={item.q} disableGutters elevation={0} sx={{ bgcolor: 'transparent', '&::before': { opacity: 1 } }}>
           <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}>
             <Typography sx={{ ...BODY, fontWeight: 700 }}>{item.q}</Typography>
@@ -380,6 +398,8 @@ const TAB_CONTENT: Record<GuideTabId, () => ReactNode> = {
 }
 
 export function CostMonitoringGuideDrawer({ open, tab, onTabChange, onClose }: CostMonitoringGuideDrawerProps) {
+  const { t } = useI18n()
+
   const Content = TAB_CONTENT[tab]
 
   return (
@@ -402,10 +422,10 @@ export function CostMonitoringGuideDrawer({ open, tab, onTabChange, onClose }: C
       <Box sx={{ flexShrink: 0, borderBottom: 1, borderColor: 'divider' }}>
         <Stack direction="row" sx={{ alignItems: 'center', px: 2, pt: 1.5, pb: 0.5 }}>
           <Typography component="h2" sx={{ flex: 1, fontSize: 18, fontWeight: 800 }}>
-            {GUIDE_TITLE}
+            {t.costGuide.title}
           </Typography>
 
-          <IconButton aria-label="Đóng" onClick={onClose}>
+          <IconButton aria-label={t.common.close} onClick={onClose}>
             <CloseRoundedIcon />
           </IconButton>
         </Stack>
@@ -417,8 +437,8 @@ export function CostMonitoringGuideDrawer({ open, tab, onTabChange, onClose }: C
           scrollButtons="auto"
           sx={{ px: 1, '& .MuiTab-root': { fontSize: 14, textTransform: 'none', fontWeight: 700, minHeight: 44 } }}
         >
-          {GUIDE_TABS.map((t) => (
-            <Tab key={t.id} value={t.id} label={t.label} />
+          {GUIDE_TAB_IDS.map((id) => (
+            <Tab key={id} value={id} label={t.costGuide.tabs[id]} />
           ))}
         </Tabs>
       </Box>

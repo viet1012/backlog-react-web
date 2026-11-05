@@ -428,6 +428,260 @@ export const en = {
         chartLoadFailed: 'Unable to load Cost Monitoring chart',
     },
 
+    costGuide: {
+        title: 'Cost Monitoring Guide',
+        tabs: {
+            quick: 'Quick start',
+            read: 'Reading a chart',
+            glossary: 'Glossary',
+            example: 'Worked example',
+            faq: 'FAQ',
+        },
+        diagramAria: 'Sample chart with its parts annotated',
+
+        quick: {
+            intro: 'The screen has 9 charts: 3 divisions (PRESS, MOLD, GUIDE) × 3 cost types (OT, T&SL, RM). Unit: thousand USD (K$).',
+            steps: {
+                month: {
+                    title: 'Pick a month',
+                    body: 'Choose the month at the top right. Leave "PL TGT by" at "Latest (auto)".',
+                },
+                badge: {
+                    title: 'Check the badge color',
+                    body: 'The badge at the top right of each chart tells you which charts need attention:',
+                },
+                open: {
+                    title: 'Look at the chart you care about',
+                    body: 'Read it as described in the "Reading a chart" tab.',
+                },
+            },
+            badgeRanges: {
+                ok: '≤100%',
+                watch: '100–105%',
+                over: '>105%',
+            },
+        },
+
+        read: {
+            annotations: [
+                {
+                    title: 'Stats row',
+                    body: 'The key numbers of the chart: FC, PL, Actual, Estimate, Fluct. The colored dot next to each matches its line on the chart.',
+                },
+                {
+                    title: 'Status badge',
+                    body: 'Compares the month-end value with the target. Green = within budget, yellow = keep an eye on it, red = at risk of overrun.',
+                },
+                {
+                    title: 'Actual line',
+                    body: 'Actual cost accumulated since the start of the month. The arrow marks the day with the latest data.',
+                },
+                {
+                    title: 'Estimate line',
+                    body: 'Continues from the arrow to month-end: the projected cost if the rest of the month goes according to plan.',
+                },
+                {
+                    title: 'Value tags on the right',
+                    body: 'Values of the horizontal lines (FC, PL, Fluct), in the same color as each line, so you do not have to trace the Y axis.',
+                },
+            ],
+            quickRead: {
+                title: 'Read it in 10 seconds',
+                lines: [
+                    'Look at the end of the blue line (Actual, or Estimate if the month is not over) and compare it with the target line.',
+                    'BELOW the target → saving. ABOVE the target → at risk of going over budget.',
+                ],
+            },
+            note: {
+                title: 'Note',
+                body: 'Early in the month there are only a few days of data, so Estimate is mostly the plan extended; conclusions are more reliable from mid-month.',
+            },
+        },
+
+        glossary: {
+            searchPlaceholder: 'Search terms, e.g. FC, inventory, MTD...',
+            noResult: 'No matching terms.',
+            columns: {
+                term: 'Term',
+                meaning: 'Plain meaning',
+                onChart: 'On chart',
+            },
+            groups: {
+                lines: 'Lines on the chart',
+                source: 'Source data',
+                costTypes: 'Cost types',
+            },
+            terms: {
+                fcTgt: {
+                    term: 'FC TGT (Forecast)',
+                    meaning: 'The cost forecast for the month, updated as things actually happen. It is the main reference for evaluation.',
+                },
+                plTgt: {
+                    term: 'PL TGT (Plan)',
+                    meaning: 'The most recently recalculated plan (latest Simulation).',
+                },
+                actMtd: {
+                    term: 'Actual (MTD)',
+                    meaning: 'Cost actually incurred, accumulated since the start of the month.',
+                },
+                estMtd: {
+                    term: 'Estimate (MTD)',
+                    meaning: 'Month-end projection = current Actual + the remaining part of the plan.',
+                },
+                fluctTgt: {
+                    term: 'Fluctuating TGT',
+                    meaning: 'A target that flexes with output: FC × (1 + sales & inventory variance vs. forecast). Producing more allows spending more.',
+                },
+                bp: { term: 'BP (Budget Plan)', meaning: 'The original budget set at the start of the year.' },
+                simu: { term: 'Simu W1–W5', meaning: 'Target recalculated for each week of the month.' },
+                mtd: { term: 'MTD (Month-To-Date)', meaning: 'Cumulative from day 1 to the day being viewed.' },
+                kusd: { term: 'K$', meaning: 'Thousand US dollars.' },
+                ot: { term: 'OT (Over Time)', meaning: 'Overtime cost.' },
+                tsl: { term: 'T&SL (Tools & Supplies)', meaning: 'Tools, cutting tools and consumables.' },
+                rm: { term: 'RM (Raw Material)', meaning: 'Raw materials.' },
+            },
+            lineNotes: {
+                fcTgt: 'Grey dashed line',
+                plTgt: 'Green line',
+                actMtd: 'Solid blue line, arrow at the end',
+                estMtd: 'Dashed blue line',
+                fluctTgt: 'Red line',
+            },
+        },
+
+        // 1-sentence tooltips for the legend / chips / badge / header dropdown
+        hints: {
+            series: {
+                fcTgt: 'FC TGT – the cost forecast for the month, the main reference for evaluation.',
+                plTgt: 'PL TGT – the most recently recalculated plan (latest Simulation).',
+                actMtd: 'Actual – cost actually incurred, accumulated since the start of the month.',
+                estMtd: 'Estimate – month-end projection = current Actual + the remaining part of the plan.',
+                fluctTgt: 'Fluctuating TGT – a target that flexes with output (sales & inventory).',
+            },
+            simuWeek: 'Choose which weekly plan (Simulation) is used as the PL TGT line. By default the latest week with data is used.',
+            badge: 'Compares the final value (Estimate, otherwise Actual) with the target (Fluctuating, otherwise FC): ≤100% OK · 100–105% Watch · >105% Over.',
+            noActual: 'There is no Actual data for this month yet, so it cannot be evaluated; only the target and plan are shown.',
+        },
+
+        example: {
+            storyTitle: 'Everyday example – the monthly grocery budget',
+            columns: {
+                what: 'What happens',
+                amount: 'M VND',
+                term: 'Called',
+            },
+            steps: [
+                { text: 'At the start of the year you plan to spend per month', amount: '5', term: 'BP' },
+                { text: 'End of last month you recalculate: this month needs', amount: '6', term: 'FC' },
+                { text: 'In week 2 you recalculate again', amount: '6.2', term: 'PL (Simu)' },
+                { text: 'By day 10 you have spent', amount: '2.5', term: 'Actual' },
+                { text: 'At this pace, by month-end: 2.5 + 6.2 × 20/30 ≈', amount: '6.63', term: 'Estimate' },
+                { text: '10% more people at home → fair target 6 × 1.1 =', amount: '6.6', term: 'Fluctuating TGT' },
+            ],
+            chartTitle: 'Applying it to a chart',
+            chartBody: 'How to read a T&SL chart: "Estimate 191 > FC 183 → the badge shows Watch 104% → check the red line (if any) to see whether higher output is the reason."',
+
+            demo: {
+                title: 'See the example on a chart',
+                unitNote: 'Unit in this example: million VND.',
+                sliderLabelToday: (day: number) => `Today is day ${day}`,
+                sliderLabelAssumed: (day: number) => `Suppose today is day ${day}`,
+                todayChip: (ddMM: string) => `Today ${ddMM}`,
+                resetToday: '↺ Back to today',
+                sliderHint: 'The example uses today’s date — the real charts outside are on this day too. Drag to see how the month-end Estimate changes.',
+                todayLabel: 'Today',
+                dayLabel: (day: number) => `Day ${day}`,
+                plMtdLegend: 'PL MTD – cumulative plan up to each day (light green dotted line)',
+                callouts: {
+                    actual: (value: string) => `Spent ${value} (Actual)`,
+                    plMtd: (value: string, diff: number) =>
+                        `Plan up to today: ${value} (PL MTD) → Actual is ${Math.abs(diff).toFixed(2)} ${diff >= 0 ? 'above' : 'below'} plan`,
+                    estimate: (value: string) => `Month-end projection: ${value}`,
+                    fluct: (value: string) => `Flexible target: ${value}`,
+                },
+                conclusionTitle: 'Conclusion',
+                verdict: {
+                    ok: 'Within the allowed range',
+                    watch: 'Close to target, keep monitoring',
+                    over: 'At risk of overrun, review spending',
+                },
+                finalEstimate: 'Month-end Estimate',
+                finalActual: 'Month-end Actual',
+                conclusion: (finalLabel: string, final: string, target: string, ratio: string, status: string, verdict: string) =>
+                    `${finalLabel} ${final} / flexible target ${target} = ${ratio}% → ${status}: ${verdict}.`,
+            },
+        },
+
+        formulas: {
+            title: 'How it is calculated',
+            plMtd: {
+                title: 'PL MTD (plan up to today)',
+                meaning: 'The cost that should have been spent by today if everything went according to plan.',
+                formula: 'PL MTD = PL TGT × (days elapsed / days in month)',
+            },
+            diff: {
+                title: 'Difference vs. plan',
+                meaning: 'Shows whether spending is faster or slower than planned.',
+                formula: 'Difference = Actual − PL MTD',
+                faster: 'spending faster than planned',
+                slower: 'spending slower than planned',
+            },
+            estimate: {
+                title: 'Month-end Estimate',
+                meaning: 'How much will be spent by month-end if the remaining days go according to plan.',
+                meaningEnded: 'The month is over, so there is no projection – the final value is the Actual.',
+                formula: 'Estimate = Actual + PL TGT × (days remaining / days in month)',
+                tip: (est: string, pl: number, diff: string) => `Tip: Estimate − PL TGT = Actual − PL MTD → ${est} − ${pl} = ${diff}`,
+                endedNote: '(= month-end Actual)',
+            },
+            fluct: {
+                title: 'Fluctuating TGT',
+                meaning: 'The target is loosened or tightened according to actual output vs. forecast.',
+                formula: [
+                    'Fluct = FC × (1 + Ratio)',
+                    'Ratio = (sales variance + inventory variance) / forecast sales for the month',
+                ],
+            },
+            badge: {
+                title: 'Badge',
+                meaning: 'A single number that tells you whether the chart needs attention.',
+                formula: [
+                    '% = Final value / Target',
+                    'Final value = Estimate if the month is not over, Actual if it is',
+                    'Target = Fluct if available, otherwise FC',
+                ],
+                note: '(≤100% OK, 100–105% Watch, >105% Over)',
+            },
+        },
+
+        faq: [
+            {
+                q: 'Why does the OT chart have no Actual line?',
+                a: 'Actual OT data is not in the system yet. For now only the target and plan are shown; the OT badge is for reference only.',
+            },
+            {
+                q: 'Why is there no red line (Fluctuating TGT) yet?',
+                a: 'It needs daily sales & inventory data, which is being prepared.',
+            },
+            {
+                q: 'Why does RM only have data up to 2 days ago?',
+                a: 'Raw material issue data is updated 1 day later than T&SL.',
+            },
+            {
+                q: 'Why does the Actual line sometimes go down?',
+                a: 'Because of returns to the warehouse or adjustments, which give a negative cost for that day.',
+            },
+            {
+                q: 'How is the badge calculated?',
+                a: 'It compares the final value (Estimate if the month is not over, Actual if it is) with the target (Fluctuating if available, otherwise FC).',
+            },
+            {
+                q: 'The numbers differ from the Excel file?',
+                a: 'Report it to IT with the month, chart and date.',
+            },
+        ],
+    },
+
     monitor: {
         title: 'Machine Monitoring',
         tabs: {

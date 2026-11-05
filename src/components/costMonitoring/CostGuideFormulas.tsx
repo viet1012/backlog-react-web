@@ -1,6 +1,7 @@
 import { Box, Stack, Typography, useTheme } from '@mui/material'
 import { seriesColorOf } from './costChartConfig'
-import { buildFormulas, FORMULA_TITLE, type ExampleValues } from './costMonitoringGuide'
+import { buildFormulas, type ExampleValues } from './costMonitoringGuide'
+import { useI18n } from '../../i18n/useI18n'
 
 const monoSx = {
   fontFamily: 'ui-monospace, SFMono-Regular, Consolas, monospace',
@@ -10,6 +11,8 @@ const monoSx = {
 
 // Thẻ công thức: tên + ý nghĩa → công thức (mono) → thay số theo ngày d → kết quả tô đúng màu đường
 export function CostGuideFormulas({ values }: { values: ExampleValues }) {
+  const { t } = useI18n()
+
   const theme = useTheme()
   const dark = theme.palette.mode === 'dark'
 
@@ -22,10 +25,10 @@ export function CostGuideFormulas({ values }: { values: ExampleValues }) {
   return (
     <Stack spacing={1.5}>
       <Typography sx={{ fontSize: 15, fontWeight: 800, mt: 1 }}>
-        {FORMULA_TITLE}
+        {t.costGuide.formulas.title}
       </Typography>
 
-      {buildFormulas(values).map((f, i) => {
+      {buildFormulas(t, values).map((f, i) => {
         const color = f.tone === 'ok' || f.tone === 'watch' || f.tone === 'over'
           ? statusColor[f.tone]
           : seriesColorOf(f.tone, dark)

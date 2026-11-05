@@ -19,7 +19,8 @@ import { CostChartStats } from './CostChartStats'
 import { COST_SERIES, TABULAR_NUMS, formatK, seriesColor, seriesColorOf } from './costChartConfig'
 import { buildXTicks, buildYAxis, spreadLabels } from './costChartUtils'
 import type { DemoRow } from './costGuideDemo'
-import { EXAMPLE_DEMO, type ExampleValues } from './costMonitoringGuide'
+import { EXAMPLE_DATA, type ExampleValues } from './costMonitoringGuide'
+import { useI18n } from '../../i18n/useI18n'
 
 interface CostGuideExampleChartProps {
   day: number
@@ -121,15 +122,18 @@ function DemoCallouts({ rows, values }: { rows: DemoRow[]; values: ExampleValues
 // =========================================================
 
 export function CostGuideExampleChart({ day, today, onDayChange, chart, rows, values }: CostGuideExampleChartProps) {
+  const { t } = useI18n()
+  const demo = t.costGuide.example.demo
+
   const theme = useTheme()
   const dark = theme.palette.mode === 'dark'
   const isToday = day === today
-  const sliderLabel = isToday ? EXAMPLE_DEMO.sliderLabelToday(day) : EXAMPLE_DEMO.sliderLabelAssumed(day)
+  const sliderLabel = isToday ? demo.sliderLabelToday(day) : demo.sliderLabelAssumed(day)
 
   const yAxis = buildYAxis(rows, chart)
   const axisTick = { fontSize: 11, fill: theme.palette.text.secondary, style: TABULAR_NUMS }
   const plColor = seriesColorOf('plTgt', dark)
-  const { callouts } = EXAMPLE_DEMO
+  const { callouts } = demo
 
   const calloutTexts = [
     callouts.actual(fmt2(values.act)),
@@ -189,7 +193,7 @@ export function CostGuideExampleChart({ day, today, onDayChange, chart, rows, va
                 strokeWidth={1}
                 strokeDasharray="2 2"
                 label={{
-                  value: isToday ? EXAMPLE_DEMO.todayLabel : EXAMPLE_DEMO.dayLabel(day),
+                  value: isToday ? demo.todayLabel : demo.dayLabel(day),
                   position: 'insideTopLeft',
                   fontSize: 10,
                   fill: theme.palette.text.secondary,
@@ -243,7 +247,7 @@ export function CostGuideExampleChart({ day, today, onDayChange, chart, rows, va
               size="small"
               color="primary"
               variant="outlined"
-              label={EXAMPLE_DEMO.todayChip(dayjs().format('DD/MM'))}
+              label={demo.todayChip(dayjs().format('DD/MM'))}
               sx={{ fontSize: 12, fontWeight: 700, height: 22 }}
             />
           ) : (
@@ -253,7 +257,7 @@ export function CostGuideExampleChart({ day, today, onDayChange, chart, rows, va
               onClick={() => onDayChange(today)}
               sx={{ fontSize: 13, fontWeight: 700, textTransform: 'none', minWidth: 0, py: 0, px: 0.75 }}
             >
-              {EXAMPLE_DEMO.resetToday}
+              {demo.resetToday}
             </Button>
           )}
         </Stack>
@@ -261,7 +265,7 @@ export function CostGuideExampleChart({ day, today, onDayChange, chart, rows, va
         <Slider
           value={day}
           min={1}
-          max={EXAMPLE_DEMO.daysInMonth}
+          max={EXAMPLE_DATA.daysInMonth}
           step={1}
           marks={[1, 10, 20, 30].map((v) => ({ value: v, label: String(v) }))}
           valueLabelDisplay="auto"
@@ -271,7 +275,7 @@ export function CostGuideExampleChart({ day, today, onDayChange, chart, rows, va
         />
 
         <Typography sx={{ fontSize: 14 }} color="text.secondary">
-          {EXAMPLE_DEMO.sliderHint}
+          {demo.sliderHint}
         </Typography>
       </Box>
 
@@ -288,7 +292,7 @@ export function CostGuideExampleChart({ day, today, onDayChange, chart, rows, va
         )}
 
         <Typography sx={{ fontSize: 14, lineHeight: 1.6 }} color="text.secondary">
-          {EXAMPLE_DEMO.plMtdLegend}. {EXAMPLE_DEMO.unitNote}
+          {demo.plMtdLegend}. {demo.unitNote}
         </Typography>
       </Stack>
     </Stack>

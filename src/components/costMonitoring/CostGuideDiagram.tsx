@@ -1,5 +1,6 @@
 import { Box, useTheme } from '@mui/material'
 import { STATUS_BADGE, seriesColorOf } from './costChartConfig'
+import { useI18n } from '../../i18n/useI18n'
 
 // Chart mẫu tĩnh (không gọi API) cho tab "Cách đọc chart", có chú thích ①–⑤.
 // Số liệu minh họa: FC 183, PL 170, Actual đến ngày 15 = 95, Estimate cuối tháng 191.
@@ -12,6 +13,8 @@ const ACTUAL = [[40, 0], [80, 22], [120, 42], [160, 60], [200, 80], [233, 95]] a
 const EST_END = 191
 
 export function CostGuideDiagram() {
+  const { t } = useI18n()
+
   const theme = useTheme()
   const dark = theme.palette.mode === 'dark'
 
@@ -55,7 +58,7 @@ export function CostGuideDiagram() {
       component="svg"
       viewBox="0 0 520 285"
       role="img"
-      aria-label="Chart mẫu có chú thích các thành phần"
+      aria-label={t.costGuide.diagramAria}
       sx={(t) => ({
         width: '100%',
         height: 'auto',
@@ -80,7 +83,7 @@ export function CostGuideDiagram() {
       {/* ② badge – pill nền nhạt + viền + chữ màu */}
       <rect x={424} y={9} width={88} height={22} rx={11} fill={watch.bg} stroke={watch.fg} strokeOpacity={0.3} />
       <text x={468} y={24.5} textAnchor="middle" fill={watch.fg} fontSize={12} fontWeight={700}>
-        Watch 104%
+        {t.cost.status.watch} 104%
       </text>
 
       {/* trục + grid ngang */}

@@ -11,7 +11,6 @@ import {
   type CostSeriesKey,
 } from './costChartConfig'
 import { getCostStatus, lastValue, type CostChartRow } from './costChartUtils'
-import { BADGE_HINT, NO_ACTUAL_HINT, SERIES_HINTS } from './costMonitoringGuide'
 import { useI18n } from '../../i18n/useI18n'
 
 interface CostChartStatsProps {
@@ -47,7 +46,7 @@ export function CostChartStats({ rows, chart, ratioDigits = 0 }: CostChartStatsP
 
     badge = (
       <Tooltip
-        title={status.level === 'noActual' ? NO_ACTUAL_HINT : BADGE_HINT}
+        title={status.level === 'noActual' ? t.costGuide.hints.noActual : t.costGuide.hints.badge}
         arrow
         enterTouchDelay={0}
       >
@@ -89,7 +88,7 @@ export function CostChartStats({ rows, chart, ratioDigits = 0 }: CostChartStatsP
           const color = seriesColor(series, dark)
 
           return (
-            <Tooltip key={c.key} title={SERIES_HINTS[c.key]} arrow enterTouchDelay={0}>
+            <Tooltip key={c.key} title={t.costGuide.hints.series[c.key]} arrow enterTouchDelay={0}>
               <Stack direction="row" sx={{ alignItems: 'center', gap: 0.5, cursor: 'help' }}>
                 {series.dash ? (
                   <Box component="svg" width={12} height={8} sx={{ flexShrink: 0 }}>

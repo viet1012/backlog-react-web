@@ -1,10 +1,12 @@
 import { Stack, Tooltip, Typography } from '@mui/material'
 import { COST_SERIES } from './costChartConfig'
 import { CostLineSwatch } from './CostLineSwatch'
-import { SERIES_HINTS } from './costMonitoringGuide'
+import { useI18n } from '../../i18n/useI18n'
 
 // Legend chung cho cả 9 chart – hiển thị 1 lần ở header, thứ tự như Excel
 export function CostChartLegend() {
+  const { t } = useI18n()
+
   return (
     <Stack
       direction="row"
@@ -12,7 +14,7 @@ export function CostChartLegend() {
     >
       {COST_SERIES.map((series) => (
         // enterTouchDelay=0 → tap trên mobile hiện tooltip ngay
-        <Tooltip key={series.key} title={SERIES_HINTS[series.key]} arrow enterTouchDelay={0}>
+        <Tooltip key={series.key} title={t.costGuide.hints.series[series.key]} arrow enterTouchDelay={0}>
           <Stack direction="row" sx={{ alignItems: 'center', gap: 0.75, cursor: 'help' }}>
             <CostLineSwatch series={series.key} />
 
