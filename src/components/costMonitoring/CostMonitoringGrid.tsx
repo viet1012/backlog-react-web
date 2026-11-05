@@ -58,17 +58,22 @@ export function CostMonitoringGrid({ month, data, loading }: CostMonitoringGridP
         flex: 1,
         minWidth: 0,
         minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
         overflowY: 'auto',
         '@media print': { overflow: 'visible', flex: 'none' },
       }}
     >
+      {/* md+: lưới giãn vừa chiều cao còn lại của trang (không scroll);
+          chỉ khi màn quá thấp (mỗi hàng < 170px) mới scroll */}
       <Box
         sx={(theme) => ({
           display: 'grid',
+          flex: { md: 1 },
           border: colDivider(theme),
           bgcolor: theme.palette.background.paper,
           gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: '40px repeat(3, minmax(0, 1fr))' },
-          gridTemplateRows: { md: 'auto repeat(3, 300px)' },
+          gridTemplateRows: { md: 'auto repeat(3, minmax(170px, 1fr))' },
           // A4 ngang: lưới 3×3 vừa 1 trang
           '@media print': {
             gridTemplateColumns: '40px repeat(3, minmax(0, 1fr))',
