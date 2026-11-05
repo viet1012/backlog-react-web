@@ -9,6 +9,7 @@ export const vi: Messages = {
         delete: 'Xóa',
         edit: 'Sửa',
         refresh: 'Làm mới',
+        guide: 'Hướng dẫn',
         reset: 'Đặt lại',
         apply: 'Áp dụng',
         clear: 'Xóa lọc',
@@ -230,7 +231,6 @@ export const vi: Messages = {
     facConfirm: {
         title: 'FAC CONFIRM',
         subtitle: 'Xác nhận công đoạn sản xuất.',
-        guide: 'Hướng dẫn sử dụng',
         saving: 'Đang lưu...',
         confirmChanges: (count) => `Xác nhận thay đổi (${count})`,
         cancelChanges: 'Hủy thay đổi',
@@ -356,7 +356,6 @@ export const vi: Messages = {
         plTgtBy: 'PL TGT theo',
         latestAuto: 'Mới nhất (tự động)',
         week: (week) => `Tuần ${week}`,
-        guide: 'Hướng dẫn',
         printLine: (month, updated) => `Tháng ${month} · Cập nhật ${updated}`,
         noData: 'Không có dữ liệu Cost Monitoring',
         chartEmpty: 'Chưa có dữ liệu',

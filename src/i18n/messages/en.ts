@@ -10,6 +10,7 @@ export const en = {
         delete: 'Delete',
         edit: 'Edit',
         refresh: 'Refresh',
+        guide: 'Guide',
         reset: 'Reset',
         apply: 'Apply',
         clear: 'Clear',
@@ -290,7 +291,6 @@ export const en = {
     facConfirm: {
         title: 'FAC CONFIRM',
         subtitle: 'Production process confirmation.',
-        guide: 'User guide',
         saving: 'Saving...',
         confirmChanges: (count: number) => `Confirm Changes (${count})`,
         cancelChanges: 'Cancel Changes',
@@ -414,7 +414,6 @@ export const en = {
         plTgtBy: 'PL TGT by',
         latestAuto: 'Latest (auto)',
         week: (week: number) => `Week ${week}`,
-        guide: 'Guide',
         printLine: (month: string, updated: string) => `Month ${month} · Updated ${updated}`,
         noData: 'No Cost Monitoring data',
         chartEmpty: 'No data yet',

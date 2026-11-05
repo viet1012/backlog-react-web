@@ -9,16 +9,11 @@ import {
 import DownloadRoundedIcon
   from '@mui/icons-material/DownloadRounded'
 
-import HelpOutlineRoundedIcon
-  from '@mui/icons-material/HelpOutlineRounded'
-
 import {
   Alert,
   Box,
   Button,
-  IconButton,
   Stack,
-  Tooltip,
 } from '@mui/material'
 
 import type {
@@ -59,6 +54,10 @@ import {
   FAC_CONFIRM_GUIDE_KEY,
   facConfirmGuideSteps,
 } from '../components/facConfirm/guide/facConfirmGuideSteps'
+
+import {
+  GuideButton,
+} from '../components/common/GuideButton'
 
 import {
   PageHeader,
@@ -894,20 +893,6 @@ export function FacConfirmPage({
             spacing={1}
             sx={{ alignItems: 'center' }}
           >
-            <Tooltip title={t.facConfirm.guide}>
-              <IconButton
-                size="small"
-                aria-label={t.facConfirm.guide}
-                onClick={
-                  guide.start
-                }
-              >
-                <HelpOutlineRoundedIcon
-                  fontSize="small"
-                />
-              </IconButton>
-            </Tooltip>
-
             <Button
               data-tour="fac-export"
               variant="outlined"
@@ -944,6 +929,12 @@ export function FacConfirmPage({
                 }
               />
             </Box>
+
+            <GuideButton
+              onClick={
+                guide.start
+              }
+            />
           </Stack>
         }
 

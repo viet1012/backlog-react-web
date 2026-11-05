@@ -11,10 +11,9 @@ import {
   Typography,
 } from '@mui/material'
 import type { PaletteMode } from '@mui/material'
-import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded'
 import dayjs from 'dayjs'
 import { useState } from 'react'
-import { AppButton } from '../components/common/AppButton'
+import { GuideButton } from '../components/common/GuideButton'
 import { PageHeader } from '../components/common/PageHeader'
 import { PageShell } from '../components/common/PageShell'
 import { RefreshButton } from '../components/common/RefreshButton'
@@ -177,15 +176,7 @@ export function CostMonitoringPage({
                 onClick={refresh}
               />
 
-              <AppButton
-                variant="outlined"
-                compact
-                icon={<HelpOutlineRoundedIcon fontSize="small" />}
-                onClick={() => setGuideOpen(true)}
-                sx={{ flexShrink: 0, whiteSpace: 'nowrap' }}
-              >
-                {t.cost.guide}
-              </AppButton>
+              <GuideButton onClick={() => setGuideOpen(true)} />
             </Box>
           }
           bottom={
