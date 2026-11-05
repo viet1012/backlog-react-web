@@ -49,35 +49,8 @@ export const vi: Messages = {
         toLight: 'Chuyển sang giao diện sáng',
     },
 
-    nav: {
-        groups: {
-            production: 'SẢN XUẤT',
-            planning: 'KẾ HOẠCH',
-            management: 'QUẢN LÝ',
-            monitoring: 'GIÁM SÁT',
-            setting: 'CÀI ĐẶT',
-        },
-        pcTraining: 'Đào tạo PC',
-        sph: 'SPH',
-        asakai: 'Asakai',
-        costMonitoring: 'Theo dõi chi phí',
-        userHome: 'Trang chủ',
-        backlogDetails: 'Chi tiết Backlog',
-        backlogSummary: 'Tổng hợp Backlog',
-        remainPoControl: 'Kiểm soát PO tồn',
-        deliveryConfirm: 'Xác nhận giao hàng',
-        odbfSimulation: 'Mô phỏng ODBF',
-        exportList: 'Danh sách xuất hàng',
-        packingList: 'Danh sách đóng gói',
-        shippingSchedule: 'Lịch giao hàng',
-        bosb: 'BOSB',
-        deadstock: 'Hàng tồn lâu',
-        pl: 'PL',
-        kpi: 'KPI',
-        ot: 'OT',
-        machine: 'Máy móc',
-        machineLocator: 'Vị trí máy',
-    },
+    // Menu sidebar giữ tên tiếng Anh ở cả 2 ngôn ngữ
+    nav: en.nav,
 
     sidebar: {
         appName: 'Production Control',
