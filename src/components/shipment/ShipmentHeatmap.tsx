@@ -11,6 +11,8 @@ import type {
 } from '../../types/shipment'
 import { ShipByBadge } from '../common/shipment/ShipByBadge'
 import { uiTokens } from '../../theme/uiTokens'
+import { useI18n } from '../../i18n/useI18n'
+import { getCurrentLanguage } from '../../i18n/i18nContext'
 
 
 interface ShipmentHeatmapProps {
@@ -42,7 +44,7 @@ function parseDate(value: string): Date {
 
 function formatDay(value: string): string {
     return new Intl.DateTimeFormat(
-        'en-GB',
+        getCurrentLanguage() === 'vi' ? 'vi-VN' : 'en-GB',
         {
             day: '2-digit',
         },
@@ -52,7 +54,7 @@ function formatDay(value: string): string {
 
 function formatMonth(value: string): string {
     return new Intl.DateTimeFormat(
-        'en-GB',
+        getCurrentLanguage() === 'vi' ? 'vi-VN' : 'en-GB',
         {
             month: 'short',
         },
@@ -64,7 +66,7 @@ function formatMonth(value: string): string {
 
 function formatWeekday(value: string): string {
     return new Intl.DateTimeFormat(
-        'en-GB',
+        getCurrentLanguage() === 'vi' ? 'vi-VN' : 'en-GB',
         {
             weekday: 'short',
         },
@@ -160,6 +162,9 @@ export function ShipmentHeatmap({
     onRowClick,
     onCellClick,
 }: ShipmentHeatmapProps) {
+
+    // Subscribe to language so date headers re-format on switch.
+    useI18n()
 
     const today =
         getTodayString()
@@ -320,6 +325,8 @@ export function ShipmentHeatmap({
 // =========================================================
 
 function CustomerHeaderCell() {
+    const { t } = useI18n()
+
     return (
         <Box
             sx={(theme) => ({
@@ -358,7 +365,7 @@ function CustomerHeaderCell() {
                         letterSpacing: 0.4,
                     }}
                 >
-                    CUSTOMER
+                    {t.shipment.customer}
                 </Typography>
 
                 <Typography
@@ -372,7 +379,7 @@ function CustomerHeaderCell() {
                             'text.secondary',
                     }}
                 >
-                    SHIP BY
+                    {t.shipment.shipBy}
                 </Typography>
 
             </Box>
@@ -807,6 +814,8 @@ function TooltipContent({
     percent,
 }: TooltipContentProps) {
 
+    const { t } = useI18n()
+
     return (
         <Box
             sx={{
@@ -823,22 +832,22 @@ function TooltipContent({
                     fontWeight: 800,
                 }}
             >
-                Fulfillment
+                {t.shipment.fulfillment}
             </Typography>
 
 
             <TooltipRow
-                label="PO Qty"
+                label={t.shipment.poQty}
                 value={poQty}
             />
 
             <TooltipRow
-                label="Final Qty"
+                label={t.columns.finalQty}
                 value={fnQty}
             />
 
             <TooltipRow
-                label="Ratio"
+                label={t.shipment.ratio}
                 value={`${percent}%`}
                 strong
             />

@@ -52,6 +52,7 @@ import {
   type MachineStatus,
 } from '../../utils/machineLocatorGeometry'
 import { AppButton } from '../common/AppButton'
+import { useI18n } from '../../i18n/useI18n'
 import {
   FitPreviews,
   TidyPreview,
@@ -389,6 +390,7 @@ export const MapCanvas = memo(function MapCanvas({
   onAcceptTidy,
   onRejectTidy,
 }: MapCanvasProps) {
+  const { t: tr } = useI18n()
   const crop = data.crop
   const [CX, CY, CW, CH] = crop
   const SW = CW * U
@@ -1467,7 +1469,7 @@ export const MapCanvas = memo(function MapCanvas({
             component="button"
             type="button"
             aria-pressed={groups[g]}
-            title={groups[g] ? `Ẩn nhóm ${MACHINE_STATUS_LABEL[g]}` : `Hiện nhóm ${MACHINE_STATUS_LABEL[g]}`}
+            title={groups[g] ? tr.locator.map.hideGroup(MACHINE_STATUS_LABEL[g]) : tr.locator.map.showGroup(MACHINE_STATUS_LABEL[g])}
             className={`ml-legend s-${g}${groups[g] ? '' : ' off'}`}
             onClick={() => onToggleGroup(g)}
           >
@@ -1499,14 +1501,14 @@ export const MapCanvas = memo(function MapCanvas({
         }}
         sx={toolsSx}
       >
-        <AppButton compact aria-label="Phóng to" onClick={() => zoomCenter(1.4)} sx={toolSx}>
+        <AppButton compact aria-label={tr.locator.map.zoomIn} onClick={() => zoomCenter(1.4)} sx={toolSx}>
           +
         </AppButton>
-        <AppButton compact aria-label="Thu nhỏ" onClick={() => zoomCenter(1 / 1.4)} sx={toolSx}>
+        <AppButton compact aria-label={tr.locator.map.zoomOut} onClick={() => zoomCenter(1 / 1.4)} sx={toolSx}>
           −
         </AppButton>
         <AppButton onClick={() => fit(true)} sx={toolSx}>
-          Xem toàn bộ
+          {tr.locator.map.fitAll}
         </AppButton>
 
         <FormControlLabel
@@ -1518,7 +1520,7 @@ export const MapCanvas = memo(function MapCanvas({
               onChange={(e) => onDimBackgroundChange(e.target.checked)}
             />
           )}
-          label="Làm mờ nền"
+          label={tr.locator.map.dimBackground}
         />
         <FormControlLabel
           sx={toolLabelSx}
@@ -1529,7 +1531,7 @@ export const MapCanvas = memo(function MapCanvas({
               onChange={(e) => onCadOutlineChange(e.target.checked)}
             />
           )}
-          label="Khung theo hình CAD"
+          label={tr.locator.map.cadFrames}
         />
         <FormControlLabel
           sx={toolLabelSx}
@@ -1540,7 +1542,7 @@ export const MapCanvas = memo(function MapCanvas({
               onChange={(e) => onZoomOnSelectChange(e.target.checked)}
             />
           )}
-          label="Zoom tới máy khi chọn"
+          label={tr.locator.map.zoomOnSelect}
         />
       </Box>
     </Box>

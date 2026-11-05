@@ -29,12 +29,15 @@ import {
   register,
 } from '../services/authService'
 import { useIsDaytime } from '../hooks/useIsDaytime'
+import { useI18n } from '../i18n/useI18n'
+import { LanguageToggleButton } from '../components/common/LanguageToggleButton'
 import { CLOCK_IN_COVER_MS, startClockIn } from '../components/shift/clockInStore'
 
 type AuthMode = 'login' | 'register'
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const { t } = useI18n()
   const [mode, setMode] = useState<AuthMode>('login')
   const [employeeId, setEmployeeId] = useState('')
   const [password, setPassword] = useState('')
@@ -95,10 +98,10 @@ export function LoginPage() {
     } catch (requestError) {
       setError(
         requestError instanceof AuthApiError && requestError.status === 401
-          ? 'Invalid Employee ID or password.'
+          ? t.auth.invalidCredentials
           : requestError instanceof Error
             ? requestError.message
-            : 'Invalid Employee ID or password.',
+            : t.auth.invalidCredentials,
       )
       setLoading(false)
     }
@@ -109,15 +112,15 @@ export function LoginPage() {
     const trimmedEmployeeId = registerEmployeeId.trim()
 
     if (!trimmedEmployeeId) {
-      setError('Employee ID (MSNV) is required.')
+      setError(t.auth.employeeIdRequired)
       return
     }
     if (!registerPassword) {
-      setError('Password is required.')
+      setError(t.auth.passwordRequired)
       return
     }
     if (registerPassword !== confirmPassword) {
-      setError('Confirm Password does not match Password.')
+      setError(t.auth.passwordMismatch)
       return
     }
 
@@ -134,7 +137,7 @@ export function LoginPage() {
       setError(
         requestError instanceof Error
           ? requestError.message
-          : 'Unable to create account.',
+          : t.auth.registerFailed,
       )
     } finally {
       setLoading(false)
@@ -161,6 +164,10 @@ export function LoginPage() {
       <LoginBrand />
       <LoginHeroText />
 
+      <Box sx={{ position: 'absolute', top: { xs: 16, md: 36, lg: 44 }, right: { xs: 16, md: 48, lg: 64 }, zIndex: 4 }}>
+        <LanguageToggleButton tone="glass" />
+      </Box>
+
       <Box sx={centerContainerSx}>
         <Box component="section" sx={loginCardSx}>
           <Box
@@ -177,15 +184,15 @@ export function LoginPage() {
             {isLogin ? (
               <AuthCardHeader
                 title="Production Control"
-                subtitle="Sign in with your S-Patrol account"
+                subtitle={t.auth.loginSubtitle}
               />
             ) : (
               <AuthCardHeader
-                title="Create Account"
-                subtitle="Register to Production Control"
+                title={t.auth.registerTitle}
+                subtitle={t.auth.registerSubtitle}
                 hint={(
                   <>
-                    Already have an S-Patrol account? No need to register —{' '}
+                    {t.auth.registerHintBefore}
                     <Typography
                       component="button"
                       type="button"
@@ -193,7 +200,7 @@ export function LoginPage() {
                       disabled={loading}
                       sx={authModeActionSx}
                     >
-                      sign in directly
+                      {t.auth.registerHintAction}
                     </Typography>
                     .
                   </>

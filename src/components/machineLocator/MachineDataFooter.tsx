@@ -7,6 +7,7 @@ import { useRef } from 'react'
 import type { MachineLocatorState } from '../../hooks/useMachineLocator'
 import { FitBatchPanel } from './FitBatchPanel'
 import { PanelButton } from './MachineInfo'
+import { useI18n } from '../../i18n/useI18n'
 
 interface MachineDataFooterProps {
   ml: MachineLocatorState
@@ -14,18 +15,20 @@ interface MachineDataFooterProps {
 
 // Ghi chú nguồn dữ liệu + Xuất / Nhập (nút chỉ hiện với ADMIN)
 export function MachineDataFooter({ ml }: MachineDataFooterProps) {
+  const { t } = useI18n()
+
   const fileRef = useRef<HTMLInputElement>(null)
 
   const error = ml.status.k === 'err'
   const note = !ml.loaded
-    ? 'Đang tải dữ liệu từ server…'
+    ? t.locator.footer.loading
     : !ml.canWrite
-      ? 'Bạn đang xem ở chế độ chỉ đọc.'
+      ? t.locator.footer.readOnly
       : ml.saving
-        ? 'Đang ghi lên server…'
+        ? t.locator.footer.writing
         : error
           ? ml.status.t
-          : 'Đang lưu vào server.'
+          : t.locator.footer.saving
 
   function openImport() {
     if (!ml.canStartImport() || !fileRef.current) return
@@ -62,10 +65,10 @@ export function MachineDataFooter({ ml }: MachineDataFooterProps) {
 
       {ml.canWrite && (
         <>
-          <PanelButton onClick={ml.exportCsv}>Xuất CSV</PanelButton>
-          <PanelButton onClick={ml.exportJson}>Xuất JSON</PanelButton>
-          <PanelButton onClick={ml.exportPng}>Ảnh layout</PanelButton>
-          <PanelButton disabled={ml.saving} onClick={openImport}>Nhập JSON</PanelButton>
+          <PanelButton onClick={ml.exportCsv}>{t.locator.footer.exportCsv}</PanelButton>
+          <PanelButton onClick={ml.exportJson}>{t.locator.footer.exportJson}</PanelButton>
+          <PanelButton onClick={ml.exportPng}>{t.locator.footer.layoutImage}</PanelButton>
+          <PanelButton disabled={ml.saving} onClick={openImport}>{t.locator.footer.importJson}</PanelButton>
 
           <input
             ref={fileRef}

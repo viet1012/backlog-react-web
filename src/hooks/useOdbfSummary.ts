@@ -5,6 +5,7 @@ import {
 } from 'react'
 import type { OdbfSummaryItem } from '../types/odbf'
 import { getOdbfSummary } from '../services/odbfService'
+import { getMessages } from '../i18n/i18nContext'
 
 
 
@@ -54,7 +55,7 @@ export function useOdbfSummary() {
           setError(
             err instanceof Error
               ? err.message
-              : 'Unable to load ODBF summary',
+              : getMessages().odbf.loadFailed,
           )
         }
       } finally {

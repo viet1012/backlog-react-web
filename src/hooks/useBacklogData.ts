@@ -11,6 +11,7 @@ import type {
 import {
   isExcelFilterField,
 } from '../config/backlogFilterFields'
+import { getMessages } from '../i18n/i18nContext'
 
 import {
   searchReports,
@@ -193,7 +194,7 @@ export function useBacklogData({
         setError(
           requestError instanceof Error
             ? requestError.message
-            : 'Unable to load production backlog',
+            : getMessages().backlog.loadFailed,
         )
 
       } finally {

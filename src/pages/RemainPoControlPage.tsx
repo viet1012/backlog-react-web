@@ -5,6 +5,7 @@ import { useMemo } from 'react'
 import { Box } from '@mui/material'
 
 import type { ThemeMode } from '../utils/uiPreferences'
+import { useI18n } from '../i18n/useI18n'
 
 const REMAIN_PO_CONTROL_URL = 'http://192.168.122.16:5004/'
 
@@ -15,6 +16,8 @@ interface RemainPoControlPageProps {
 export function RemainPoControlPage({
     mode,
 }: RemainPoControlPageProps) {
+    const { t } = useI18n()
+
     // Truyền theme hiện tại của app vào iframe: ?theme=light | dark
     const src = useMemo(() => {
         const url = new URL(REMAIN_PO_CONTROL_URL)
@@ -38,7 +41,7 @@ export function RemainPoControlPage({
             <Box
                 component="iframe"
                 src={src}
-                title="Remain PO Control"
+                title={t.nav.remainPoControl}
                 sx={{
                     width: '100%',
                     height: '100%',

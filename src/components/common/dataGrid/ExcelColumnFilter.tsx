@@ -14,6 +14,7 @@ import {
   Typography,
 } from '@mui/material'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useI18n } from '../../../i18n/useI18n'
 import { AppButton } from '../AppButton'
 import {
   ExcelFilterContext,
@@ -23,7 +24,8 @@ import {
   type ExcelFilterOptionsRequest,
 } from './excelFilterContext'
 import { ExcelDateTreeFilter } from './ExcelDateTreeFilter'
-import { ExcelFilterConditionMenu, type FilterCondition } from './ExcelFilterConditionMenu'
+import { ExcelFilterConditionMenu } from './ExcelFilterConditionMenu'
+import { conditionLabelKeys, type FilterCondition } from './excelFilterConditions'
 import { ExcelFilterValueList } from './ExcelFilterValueList'
 
 interface ExcelColumnFilterProviderProps {
@@ -42,27 +44,6 @@ interface ExcelColumnFilterProviderProps {
 type FilterView = 'values' | 'condition'
 
 const EMPTY_OPTION_CONTEXT_FILTERS: ExcelFilterItem[] = []
-
-const conditionLabels: Record<string, string> = {
-  equals: 'Equals',
-  doesNotEqual: 'Does Not Equal',
-  startsWith: 'Begins With',
-  endsWith: 'Ends With',
-  contains: 'Contains',
-  doesNotContain: 'Does Not Contain',
-  isEmpty: 'Is Empty',
-  isNotEmpty: 'Is Not Empty',
-  '=': 'Equals',
-  '!=': 'Does Not Equal',
-  '>': 'Greater Than',
-  '>=': 'Greater Than Or Equal',
-  '<': 'Less Than',
-  '<=': 'Less Than Or Equal',
-  before: 'Before',
-  after: 'After',
-  onOrAfter: 'On Or After',
-  onOrBefore: 'On Or Before',
-}
 
 const DATE_VALUE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 
@@ -103,10 +84,12 @@ function SelectAllRow({ checked, indeterminate, onChange }: {
   indeterminate: boolean
   onChange: () => void
 }) {
+  const { t } = useI18n()
+
   return (
     <Stack direction="row" sx={{ minHeight: 32, px: 0.75, alignItems: 'center' }}>
       <Checkbox size="small" checked={checked} indeterminate={indeterminate} onChange={onChange} />
-      <Typography sx={{ fontSize: 12, fontWeight: 700 }}>(Select All)</Typography>
+      <Typography sx={{ fontSize: 12, fontWeight: 700 }}>{t.dataGrid.selectAll}</Typography>
     </Stack>
   )
 }
@@ -128,8 +111,13 @@ function ValueFilterView({
   onToggleValue,
   onDateTreeChange,
 }: ValueFilterViewProps) {
+  const { t } = useI18n()
   const isDateFilter = kind === 'date'
-  const filterKindLabel = kind === 'text' ? 'Text' : kind === 'number' ? 'Number' : 'Date'
+  const filterKindLabel = kind === 'text'
+    ? t.dataGrid.textFilters
+    : kind === 'number'
+      ? t.dataGrid.numberFilters
+      : t.dataGrid.dateFilters
 
   return (
     <>
@@ -138,7 +126,7 @@ function ValueFilterView({
           autoFocus
           fullWidth
           size="small"
-          placeholder={isDateFilter ? 'Search date...' : 'Search values...'}
+          placeholder={isDateFilter ? t.dataGrid.searchDate : t.dataGrid.searchValues}
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}
           slotProps={{
@@ -157,7 +145,7 @@ function ValueFilterView({
         sx={{ minHeight: 36, px: 1.25 }}
       >
         <ListItemText
-          primary={`${filterKindLabel} Filters`}
+          primary={filterKindLabel}
           slotProps={{ primary: { sx: { fontSize: 12.5, fontWeight: 600 } } }}
         />
         <ChevronRightRoundedIcon fontSize="small" />
@@ -177,7 +165,7 @@ function ValueFilterView({
             <Stack direction="row" sx={{ minHeight: 30, px: 0.75, alignItems: 'center' }}>
               <Checkbox size="small" checked={selected.has('')} onChange={() => onToggleValue('')} />
               <Typography sx={{ fontSize: 11.5, fontStyle: 'italic', color: 'text.secondary' }}>
-                (Blanks)
+                {t.dataGrid.blanks}
               </Typography>
             </Stack>
           )}
@@ -222,11 +210,14 @@ function ConditionFilterView({
   onApply,
   onShowValues,
 }: ConditionFilterViewProps) {
+  const { t } = useI18n()
+  const labelKey = conditionLabelKeys[operator]
+
   return (
     <Box sx={{ px: 1, py: 1 }}>
       <Stack direction="row" sx={{ mb: 1, alignItems: 'center', justifyContent: 'space-between' }}>
-        <Typography sx={{ fontWeight: 700 }}>{conditionLabels[operator] ?? operator}</Typography>
-        <AppButton compact onClick={onShowValues}>Value list</AppButton>
+        <Typography sx={{ fontWeight: 700 }}>{labelKey ? t.dataGrid.conditions[labelKey] : operator}</Typography>
+        <AppButton compact onClick={onShowValues}>{t.dataGrid.valueList}</AppButton>
       </Stack>
       {needsValue && (
         <TextField
@@ -234,7 +225,7 @@ function ConditionFilterView({
           fullWidth
           size="small"
           type={kind === 'number' ? 'number' : kind === 'date' ? 'date' : 'text'}
-          placeholder="Enter value..."
+          placeholder={t.dataGrid.enterValue}
           value={value}
           onChange={(event) => onValueChange(event.target.value)}
           onKeyDown={(event) => {
@@ -259,13 +250,15 @@ function FilterFooter({
   onCancel: () => void
   onApply: () => void
 }) {
+  const { t } = useI18n()
+
   return (
     <>
       <Divider />
       <Stack direction="row" spacing={1} sx={{ px: 1, py: 1, justifyContent: 'flex-end' }}>
-        <AppButton disabled={!hasActiveFilter} onClick={onClear}>Clear</AppButton>
-        <AppButton onClick={onCancel}>Cancel</AppButton>
-        <AppButton appearance="action" disabled={!canApply} onClick={onApply}>OK</AppButton>
+        <AppButton disabled={!hasActiveFilter} onClick={onClear}>{t.dataGrid.clear}</AppButton>
+        <AppButton onClick={onCancel}>{t.common.cancel}</AppButton>
+        <AppButton appearance="action" disabled={!canApply} onClick={onApply}>{t.dataGrid.ok}</AppButton>
       </Stack>
     </>
   )
@@ -292,6 +285,8 @@ export function ExcelColumnFilterProvider({
   const [conditionValue, setConditionValue] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { t } = useI18n()
+  const loadValuesFailed = t.dataGrid.loadValuesFailed
 
   const kind: ExcelFilterKind = field ? getFilterKind(field) : 'text'
   const isDateFilter = kind === 'date'
@@ -328,14 +323,14 @@ export function ExcelColumnFilterProvider({
         if (controller.signal.aborted) return
         setOptions([])
         setSelected(new Set())
-        setError(requestError instanceof Error ? requestError.message : 'Unable to load filter values')
+        setError(requestError instanceof Error ? requestError.message : loadValuesFailed)
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false)
       })
 
     return () => controller.abort()
-  }, [anchorEl, excelFilters, field, loadOptions, optionContextFilters])
+  }, [anchorEl, excelFilters, field, loadOptions, optionContextFilters, loadValuesFailed])
 
   const visibleOptions = useMemo(
     () => filterVisibleOptions(options, search),

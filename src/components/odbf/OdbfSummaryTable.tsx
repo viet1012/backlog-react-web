@@ -14,6 +14,7 @@ import {
     type OdbfProductSummary,
 } from '../../utils/odbfSummaryMatrix'
 import { appScrollbarSx } from '../../theme/scrollbarStyle'
+import { useI18n } from '../../i18n/useI18n'
 
 interface OdbfSummaryTableProps {
     title: string
@@ -269,6 +270,8 @@ function OdbfProductRows({
     metric: OdbfSummaryMetric
     highlightDateKeys: Set<string>
 }) {
+    const { t } = useI18n()
+
     const productHeader = (
         <StickyBodyCell
             width={PRODUCT_COLUMN_WIDTH}
@@ -294,7 +297,7 @@ function OdbfProductRows({
                 groupStart
             />
             <OdbfDataRow
-                label="Late"
+                label={t.odbf.late}
                 rowType="progress"
                 product={product}
                 dates={dates}
@@ -302,7 +305,7 @@ function OdbfProductRows({
                 highlightDateKeys={highlightDateKeys}
             />
             <OdbfDataRow
-                label="Ratio"
+                label={t.odbf.ratio}
                 rowType="ratio"
                 product={product}
                 dates={dates}
@@ -319,6 +322,8 @@ export function OdbfSummaryTable({
     metric,
     loading = false,
 }: OdbfSummaryTableProps) {
+    const { t } = useI18n()
+
     const matrix = useMemo(
         () => buildOdbfMatrix(items, metric),
         [items, metric],
@@ -350,7 +355,7 @@ export function OdbfSummaryTable({
             ) : matrix.products.length === 0 ? (
                 <TableState minHeight={120}>
                     <Typography color="text.secondary" sx={{ fontSize: 12.5 }}>
-                        No ODBF summary data
+                        {t.odbf.noData}
                     </Typography>
                 </TableState>
             ) : (
@@ -398,14 +403,14 @@ export function OdbfSummaryTable({
                         <Box component="thead">
                             <Box component="tr">
                                 <HeaderCell width={PRODUCT_COLUMN_WIDTH} align="left" stickyLeft={0}>
-                                    ProductGrp
+                                    {t.odbf.productGroup}
                                 </HeaderCell>
                                 <HeaderCell
                                     width={STATUS_COLUMN_WIDTH}
                                     align="left"
                                     stickyLeft={STATUS_COLUMN_LEFT}
                                 >
-                                    Status2
+                                    {t.odbf.status2}
                                 </HeaderCell>
                                 {matrix.dates.map((date) => (
                                     <HeaderCell

@@ -14,6 +14,7 @@ import type {
   FacConfirmDailySummaryRequest,
   FacConfirmDailySummaryResponse,
 } from '../types/facConfirm'
+import { getMessages } from '../i18n/i18nContext'
 
 // Filter đổi liên tục => chờ ngừng rồi mới gọi lại
 const DEBOUNCE_MS = 300
@@ -133,7 +134,7 @@ export function useFacConfirmDailySummary({
           key: requestKey,
           message: requestError instanceof Error
             ? requestError.message
-            : 'Failed to load daily summary',
+            : getMessages().misc.dailySummaryFailed,
         })
       }
     }, hasDataRef.current ? DEBOUNCE_MS : 0)

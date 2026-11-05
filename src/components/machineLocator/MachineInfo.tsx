@@ -15,7 +15,6 @@ import {
 import type { MachineLocatorState } from '../../hooks/useMachineLocator'
 import type { FitMode } from '../../types/machineLocator'
 import {
-  FIT_MODE_LABEL,
   FIT_MODES,
 } from '../../utils/machineLocatorFit'
 import { normalizeCode } from '../../utils/machineLocatorGeometry'
@@ -24,6 +23,7 @@ import {
   type AppButtonProps,
 } from '../common/AppButton'
 import { codeFontFamily } from './machineLocatorColors'
+import { useI18n } from '../../i18n/useI18n'
 
 interface MachineInfoProps {
   ml: MachineLocatorState
@@ -134,6 +134,8 @@ function CodeInput({ placeholder, label, onSubmit, onInvalid }: CodeInputProps) 
 // =========================================================
 
 export function MachineInfo({ ml }: MachineInfoProps) {
+  const { t } = useI18n()
+
   const {
     cur,
     act,
@@ -145,7 +147,7 @@ export function MachineInfo({ ml }: MachineInfoProps) {
   } = ml
 
   const invalidCode = () =>
-    ml.setStatus('Mã cần dạng A-1234 hoặc L-123.', 'err')
+    ml.setStatus(t.locator.info.invalidCode, 'err')
 
   let content: ReactNode
 
@@ -155,23 +157,23 @@ export function MachineInfo({ ml }: MachineInfoProps) {
         <div>
           {editing
             ? panelMode === 'new'
-              ? 'Nhập mã máy mới, rồi kéo trên bản vẽ để vẽ khung.'
-              : 'Chọn một máy trong danh sách hoặc trên bản vẽ để chỉnh khung. Bấm “+ Máy mới” để thêm máy chưa có.'
-            : 'Bấm vào mã máy để xem vị trí. Có thể bấm trực tiếp vào máy trên bản vẽ.'}
+              ? t.locator.info.newHint
+              : t.locator.info.editHint
+            : t.locator.info.viewHint}
         </div>
 
         {editing && (
           <Actions>
             <PanelButton onClick={() => ml.openPanel('new')}>
-              Thêm máy mới
+              {t.locator.info.addNew}
             </PanelButton>
           </Actions>
         )}
 
         {editing && panelMode === 'new' && (
           <CodeInput
-            placeholder="Mã máy mới"
-            label="Tạo"
+            placeholder={t.locator.info.newCodePlaceholder}
+            label={t.locator.info.create}
             onSubmit={ml.createNew}
             onInvalid={invalidCode}
           />
@@ -187,20 +189,20 @@ export function MachineInfo({ ml }: MachineInfoProps) {
 
         <div>
           {!m
-            ? 'Máy này đã bị xóa khỏi danh sách.'
+            ? t.locator.info.removed
             : m.boxes.length > 1
-              ? `Mã này có ${m.boxes.length} vị trí trên bản vẽ.`
+              ? t.locator.info.multiLocations(m.boxes.length)
               : m.manual
-                ? 'Khung đã được chỉnh tay.'
+                ? t.locator.info.manualFrame
                 : m.u
-                  ? 'Nhãn trên bản vẽ bị chồng chữ, mã đọc chưa chắc chắn.'
-                  : 'Khung là vùng ước lượng quanh máy, dựa trên nét vẽ gần nhãn.'}
+                  ? t.locator.info.uncertain
+                  : t.locator.info.estimated}
         </div>
 
         {canWrite && m && (
           <Actions>
             <PanelButton onClick={() => ml.setEditing(true)}>
-              Chỉnh khung máy này
+              {t.locator.info.editThis}
             </PanelButton>
           </Actions>
         )}
@@ -216,9 +218,9 @@ export function MachineInfo({ ml }: MachineInfoProps) {
         <MachineCode code={cur} />
 
         <div>
-          {(nb ? '' : 'Máy chưa có khung. Bấm “Vẽ khung” rồi kéo trên bản vẽ. ')
-            + 'Nhấn ? để xem hướng dẫn.'
-            + (nb > 1 ? ` Đang chọn vị trí ${act + 1}/${nb}.` : '')}
+          {(nb ? '' : t.locator.info.noFrame)
+            + t.locator.info.pressHelp
+            + (nb > 1 ? t.locator.info.selectedLocation(act + 1, nb) : '')}
         </div>
 
         <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.6, mt: 1 }}>
@@ -235,45 +237,45 @@ export function MachineInfo({ ml }: MachineInfoProps) {
                 onChange={(e) => ml.setAutoFit(e.target.checked)}
               />
             )}
-            label="Tự ôm khi chỉnh"
+            label={t.locator.info.autoFit}
           />
 
           <PanelButton
             disabled={!nb || ml.fitterState === 'error'}
             loading={ml.fittingIdx !== null}
             title={ml.fitterState === 'error'
-              ? 'Không tải được ảnh layout'
-              : ml.fitterState === 'loading' ? 'Đang chuẩn bị ảnh layout…' : 'Phím tắt F (Shift: đảo “Giới hạn trong khung”)'}
+              ? t.locator.batch.layoutImageFailed
+              : ml.fitterState === 'loading' ? t.locator.info.preparingImage : t.locator.info.fitShortcut}
             onClick={(e) => ml.fitCurrent(e.shiftKey)}
           >
-            Ôm theo máy (F)
+            {t.locator.info.fitToMachine}
           </PanelButton>
 
           <PanelButton
             disabled={!draft?.boxes[act]?.p?.length || ml.fitterState !== 'ready'}
             aria-pressed={!!ml.tidyPreview}
             title={!draft?.boxes[act]?.p?.length
-              ? 'Khung chưa có đường bao'
-              : 'Rút gọn đường bao hiện tại, không ôm lại (phím tắt G)'}
+              ? t.locator.info.noOutline
+              : t.locator.info.tidyHint}
             onClick={ml.tidyCurrent}
           >
-            Làm gọn (G)
+            {t.locator.info.tidy}
           </PanelButton>
 
           <PanelButton
             aria-pressed={ml.fitTool}
             appearance={ml.fitTool ? 'action' : 'default'}
             disabled={ml.fitterState === 'error'}
-            title="Click vào máy trên bản vẽ để ôm quanh điểm click (Esc để thoát)"
+            title={t.locator.info.fitModeHint}
             onClick={() => ml.setFitTool(!ml.fitTool)}
           >
-            Chế độ fit
+            {t.locator.info.fitModeButton}
           </PanelButton>
         </Box>
 
         {nb > 0 && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.75 }}>
-            <span>Kiểu ôm</span>
+            <span>{t.locator.info.fitKind}</span>
 
             <ToggleButtonGroup
               exclusive
@@ -282,7 +284,7 @@ export function MachineInfo({ ml }: MachineInfoProps) {
               onChange={(_, v: FitMode | null) => {
                 if (v) ml.chooseFitMode(v)
               }}
-              aria-label="Kiểu ôm khung"
+              aria-label={t.locator.info.fitKindAria}
               sx={{
                 '& .MuiToggleButton-root': {
                   py: 0.25,
@@ -294,7 +296,7 @@ export function MachineInfo({ ml }: MachineInfoProps) {
             >
               {FIT_MODES.map((m) => (
                 <ToggleButton key={m} value={m}>
-                  {FIT_MODE_LABEL[m]}
+                  {t.locator.fitMode[m]}
                 </ToggleButton>
               ))}
             </ToggleButtonGroup>
@@ -303,40 +305,40 @@ export function MachineInfo({ ml }: MachineInfoProps) {
 
         <Actions>
           <PanelButton onClick={() => ml.beginDraw(nb ? 'replace' : 'add')}>
-            {nb ? 'Vẽ lại khung' : 'Vẽ khung'}
+            {nb ? t.locator.info.redraw : t.locator.info.draw}
           </PanelButton>
 
           {nb > 0 && (
             <PanelButton onClick={() => ml.beginDraw('add')}>
-              Thêm vị trí
+              {t.locator.info.addLocation}
             </PanelButton>
           )}
 
           {nb > 1 && (
             <PanelButton appearance="destructive" onClick={ml.removeLocation}>
-              Xóa vị trí {act + 1}
+              {t.locator.info.removeLocation(act + 1)}
             </PanelButton>
           )}
 
           <PanelButton onClick={() => ml.togglePanel('rename')}>
-            Đổi mã
+            {t.locator.info.rename}
           </PanelButton>
 
           {ml.canRevert && (
             <PanelButton disabled={ml.saving} onClick={() => void ml.revertAuto()}>
-              Về khung tự động
+              {t.locator.info.revert}
             </PanelButton>
           )}
 
           <PanelButton appearance="destructive" onClick={() => ml.togglePanel('del')}>
-            Xóa máy
+            {t.locator.info.deleteMachine}
           </PanelButton>
         </Actions>
 
         {panelMode === 'rename' && (
           <CodeInput
-            placeholder="Mã đúng"
-            label="Đổi"
+            placeholder={t.locator.info.correctCodePlaceholder}
+            label={t.locator.info.renameButton}
             onSubmit={ml.renameTo}
             onInvalid={invalidCode}
           />
@@ -345,15 +347,15 @@ export function MachineInfo({ ml }: MachineInfoProps) {
         {panelMode === 'del' && (
           <Box sx={{ display: 'flex', gap: 0.6, mt: 1, alignItems: 'center' }}>
             <Box component="span" sx={{ flex: 1 }}>
-              Xóa {cur} khỏi danh sách?
+              {t.locator.info.confirmDelete(cur)}
             </Box>
 
             <PanelButton appearance="destructive" disabled={ml.saving} onClick={ml.deleteMachine}>
-              Xóa
+              {t.locator.info.deleteButton}
             </PanelButton>
 
             <PanelButton onClick={ml.closePanel}>
-              Không
+              {t.locator.info.no}
             </PanelButton>
           </Box>
         )}
@@ -365,7 +367,7 @@ export function MachineInfo({ ml }: MachineInfoProps) {
               disabled={dirty || !nb || ml.saving}
               onClick={ml.confirmReview}
             >
-              Đúng rồi
+              {t.locator.info.confirmCorrect}
             </PanelButton>
           )}
 
@@ -375,11 +377,11 @@ export function MachineInfo({ ml }: MachineInfoProps) {
             loading={ml.saving}
             onClick={ml.save}
           >
-            Lưu
+            {t.locator.info.save}
           </PanelButton>
 
           <PanelButton disabled={!dirty} onClick={ml.cancel}>
-            Hủy thay đổi
+            {t.locator.info.cancelChanges}
           </PanelButton>
         </Actions>
       </>

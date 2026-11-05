@@ -5,7 +5,9 @@ import {
   type GridPaginationModel,
   type GridSortModel,
 } from '@mui/x-data-grid'
-import { backlogColumns } from './backlog/backlogColumns'
+import { useMemo } from 'react'
+import { createBacklogColumns } from './backlog/backlogColumns'
+import { useI18n } from '../i18n/useI18n'
 import { ExcelColumnFilterProvider } from './common/dataGrid/ExcelColumnFilter'
 import { ExcelColumnMenu } from './common/dataGrid/ExcelColumnMenu'
 import { ReusableDataGrid } from './common/dataGrid/ReusableDataGrid'
@@ -85,6 +87,9 @@ export function DataTable({
   onSortChange,
   onPaginationChange,
 }: DataTableProps) {
+  const { t } = useI18n()
+  const columns = useMemo(() => createBacklogColumns(t), [t])
+
   return (
     <ExcelColumnFilterProvider
       excelFilters={excelFilters}
@@ -96,7 +101,7 @@ export function DataTable({
     >
       <ReusableDataGrid<ProductionOrder>
         rows={data}
-        columns={backlogColumns}
+        columns={columns}
         getRowId={(row) => [
           row.VBELN ?? '', row.ZGLOBAL_CODE ?? '', row.PIER_AUFNR ?? '', row.AUFNR ?? '',
         ].join('|')}

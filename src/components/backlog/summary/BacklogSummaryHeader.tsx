@@ -4,6 +4,7 @@ import type { RefObject } from 'react'
 
 import { getSummaryGridTemplate } from './backlogSummaryStyles'
 import { formatDateHeader } from './backlogSummaryUtils'
+import { useI18n } from '../../../i18n/useI18n'
 
 interface BacklogSummaryHeaderProps {
   dates: string[]
@@ -16,6 +17,8 @@ export function BacklogSummaryHeader({
   today,
   todayHeaderRef,
 }: BacklogSummaryHeaderProps) {
+  const { t } = useI18n()
+
   return (
     <Box
       sx={(theme) => {
@@ -88,7 +91,7 @@ export function BacklogSummaryHeader({
           }
         }}
       >
-        Status
+        {t.columns.status}
       </Typography>
 
       {dates.map((date) => {

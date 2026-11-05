@@ -5,6 +5,8 @@ import {
   Typography,
 } from '@mui/material'
 
+import { useI18n } from '../../../i18n/useI18n'
+
 interface ExcelFilterValueListProps {
   values: string[]
   selected: ReadonlySet<string>
@@ -22,6 +24,7 @@ export function ExcelFilterValueList({
   onToggleAll,
   onToggleValue,
 }: ExcelFilterValueListProps) {
+  const { t } = useI18n()
   const labelSx = {
     m: 0,
     width: '100%',
@@ -46,7 +49,7 @@ export function ExcelFilterValueList({
             onChange={onToggleAll}
           />
         )}
-        label="(Select All)"
+        label={t.dataGrid.selectAll}
         sx={{
           ...labelSx,
           '& .MuiFormControlLabel-label': {
@@ -66,14 +69,14 @@ export function ExcelFilterValueList({
               onChange={() => onToggleValue(value)}
             />
           )}
-          label={value === '' ? '(Blanks)' : value}
+          label={value === '' ? t.dataGrid.blanks : value}
           sx={labelSx}
         />
       ))}
 
       {values.length === 0 && (
         <Typography color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
-          No values found
+          {t.dataGrid.noValues}
         </Typography>
       )}
     </Box>

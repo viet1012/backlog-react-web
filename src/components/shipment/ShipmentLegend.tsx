@@ -1,5 +1,6 @@
 import { Box, Stack, Typography } from '@mui/material'
 import { uiTokens } from '../../theme/uiTokens'
+import { useI18n } from '../../i18n/useI18n'
 
 const legendTextSx = {
   fontFamily: 'monospace',
@@ -8,6 +9,8 @@ const legendTextSx = {
 }
 
 export function ShipmentLegend() {
+  const { t } = useI18n()
+
   return (
     <Stack direction="row" spacing={3} sx={{ alignItems: 'center' }}>
       <Stack direction="row" spacing={0.8} sx={{ alignItems: 'center' }}>
@@ -27,7 +30,7 @@ export function ShipmentLegend() {
       <Stack direction="row" spacing={0.6} sx={{ alignItems: 'center' }}>
         <Typography sx={legendTextSx}>{'\u25a7'}</Typography>
         <Typography sx={legendTextSx}>
-          hatched = no shipment that day
+          {t.shipment.legendHatched}
         </Typography>
       </Stack>
 
@@ -38,7 +41,7 @@ export function ShipmentLegend() {
       >
         <Box sx={{ width: 7, height: 7, bgcolor: 'text.secondary' }} />
         <Typography sx={legendTextSx}>
-          Stock row = warehouse stock (no ShipBy)
+          {t.shipment.legendStock}
         </Typography>
       </Stack>
     </Stack>

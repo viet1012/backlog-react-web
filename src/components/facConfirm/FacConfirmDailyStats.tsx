@@ -61,6 +61,7 @@ import {
   type FacConfirmDailyStatsRange,
   type FacConfirmDailyStatsUnit,
 } from '../../utils/uiPreferences'
+import { useI18n } from '../../i18n/useI18n'
 
 
 interface FacConfirmDailyStatsProps {
@@ -112,8 +113,6 @@ const TILE_GAP = 6
 // Bảng chi tiết cuộn trong khung cao cố định
 const TABLE_HEIGHT = 112
 
-const NOTE =
-  'Thẻ phía trên tính lũy kế đến Export Date; thống kê này tính đúng từng ngày.'
 
 
 interface DailyPoint {
@@ -198,6 +197,8 @@ export function FacConfirmDailyStats({
   refreshToken,
   onSelectExportDate,
 }: FacConfirmDailyStatsProps) {
+  const { t } = useI18n()
+
   const theme = useTheme()
   const contentId = useId()
 
@@ -349,7 +350,7 @@ export function FacConfirmDailyStats({
         }}
       >
         <Typography variant="body2" color="text.secondary">
-          Không có dữ liệu trong khoảng ngày này.
+          {t.facConfirm.stats.emptyRange}
         </Typography>
       </Box>
     )
@@ -389,8 +390,8 @@ export function FacConfirmDailyStats({
           }}
         >
           {selectable
-            ? 'xanh = đã xác nhận / tổng cần xác nhận · cam = còn phải xác nhận · bấm ô để lọc theo Export Date'
-            : 'Số đã xác nhận trong từng ngày (theo ngày xác nhận)'}
+            ? t.facConfirm.stats.legendSelectable
+            : t.facConfirm.stats.legendConfirm}
         </Typography>
       </Box>
     )
@@ -466,14 +467,14 @@ export function FacConfirmDailyStats({
               variant="body2"
               sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}
             >
-              Thống kê {prefs.range} ngày
+              {t.facConfirm.stats.title(prefs.range)}
             </Typography>
           </ButtonBase>
 
-          <Tooltip title={NOTE}>
+          <Tooltip title={t.facConfirm.stats.note}>
             <InfoOutlinedIcon
               tabIndex={0}
-              aria-label={NOTE}
+              aria-label={t.facConfirm.stats.note}
               sx={{
                 fontSize: 16,
                 color: 'text.secondary',
@@ -488,7 +489,7 @@ export function FacConfirmDailyStats({
             <ToggleButtonGroup
               size="small"
               exclusive
-              aria-label="Công đoạn"
+              aria-label={t.facConfirm.stats.stage}
               value={stage}
               onChange={(_, value: FacConfirmProcessGroup | null) => {
                 if (value) {
@@ -506,7 +507,7 @@ export function FacConfirmDailyStats({
             <ToggleButtonGroup
               size="small"
               exclusive
-              aria-label="Đơn vị"
+              aria-label={t.facConfirm.stats.unit}
               value={prefs.unit}
               onChange={(_, value: FacConfirmDailyStatsUnit | null) => {
                 if (value) {
@@ -521,7 +522,7 @@ export function FacConfirmDailyStats({
             <ToggleButtonGroup
               size="small"
               exclusive
-              aria-label="Số ngày"
+              aria-label={t.facConfirm.stats.range}
               value={prefs.range}
               onChange={(_, value: FacConfirmDailyStatsRange | null) => {
                 if (value) {
@@ -539,7 +540,7 @@ export function FacConfirmDailyStats({
             <ToggleButtonGroup
               size="small"
               exclusive
-              aria-label="Tính theo ngày"
+              aria-label={t.facConfirm.stats.dateBy}
               value={prefs.dateBy}
               onChange={(_, value: FacConfirmDailyDateBy | null) => {
                 if (value) {
@@ -547,8 +548,8 @@ export function FacConfirmDailyStats({
                 }
               }}
             >
-              <ToggleButton value="EXPORT">Export Date</ToggleButton>
-              <ToggleButton value="CONFIRM">Ngày xác nhận</ToggleButton>
+              <ToggleButton value="EXPORT">{t.columns.exportDate}</ToggleButton>
+              <ToggleButton value="CONFIRM">{t.facConfirm.stats.confirmDate}</ToggleButton>
             </ToggleButtonGroup>
 
             {data && !summary.error ? (
@@ -571,7 +572,7 @@ export function FacConfirmDailyStats({
                       opacity: summary.stale ? 0.6 : 1,
                     }}
                   >
-                    Tồn nhiều nhất{' '}
+                    {t.facConfirm.stats.mostPending}{' '}
                     <Box
                       component="strong"
                       sx={{ color: 'text.primary' }}
@@ -597,7 +598,7 @@ export function FacConfirmDailyStats({
               sx={{ ml: 'auto', gap: 0.5 }}
             >
               <TableRowsRoundedIcon sx={{ fontSize: 16 }} />
-              Bảng
+              {t.facConfirm.stats.table}
             </ToggleButton>
           </>
         ) : summary.error ? (
@@ -718,6 +719,8 @@ function TotalSummary({
   colors: StatsColors
   stale: boolean
 }) {
+  const { t } = useI18n()
+
   return (
     <Box
       sx={{
@@ -733,7 +736,7 @@ function TotalSummary({
       }}
     >
       <Box component="span" sx={{ whiteSpace: 'nowrap' }}>
-        Đã xác nhận{' '}
+        {t.facConfirm.stats.confirmedLabel}{' '}
         <Box component="strong" sx={{ color: colors.done }}>
           {formatNumber(total.done)}
         </Box>
@@ -763,11 +766,11 @@ function TotalSummary({
           </Box>
 
           <Box component="span" sx={{ whiteSpace: 'nowrap' }}>
-            · Còn{' '}
+            {t.facConfirm.stats.remaining}{' '}
             <Box component="strong" sx={{ color: colors.pendingText }}>
               {formatNumber(total.pending)}
             </Box>
-            {' '}{unitLabel} cần xác nhận
+            {' '}{unitLabel} {t.facConfirm.stats.toConfirm}
           </Box>
         </>
       )}
@@ -847,6 +850,8 @@ function DayTile({
   selected: boolean
   onSelect?: (date: string) => void
 }) {
+  const { t } = useI18n()
+
   const day = dayjs(point.date)
   const dayLabel = formatDay(point.date)
 
@@ -854,10 +859,10 @@ function DayTile({
   const empty = !confirmMode && point.need === 0
 
   const ariaLabel = confirmMode
-    ? `${dayLabel}: đã xác nhận ${point.done}`
+    ? t.facConfirm.stats.ariaConfirmed(dayLabel, point.done)
     : empty
-      ? `${dayLabel}: không có đơn`
-      : `${dayLabel}: đã xác nhận ${point.done} trên ${point.need}, còn ${point.pending}`
+      ? t.facConfirm.stats.ariaEmpty(dayLabel)
+      : t.facConfirm.stats.ariaProgress(dayLabel, point.done, point.need, point.pending)
 
   let content: ReactNode
 
@@ -867,7 +872,7 @@ function DayTile({
         component="span"
         sx={{ fontSize: 13, color: 'text.secondary' }}
       >
-        Đã XN{' '}
+        {t.facConfirm.stats.doneShort}{' '}
         <Box
           component="strong"
           sx={{ fontSize: 15, fontWeight: 700, color: colors.done }}
@@ -882,7 +887,7 @@ function DayTile({
         component="span"
         sx={{ fontSize: 12, color: 'text.disabled' }}
       >
-        Không có đơn
+        {t.facConfirm.stats.noOrders}
       </Typography>
     )
   } else {
@@ -925,8 +930,8 @@ function DayTile({
           }}
         >
           {point.pending > 0
-            ? `còn ${formatNumber(point.pending)}`
-            : 'đã xong'}
+            ? t.facConfirm.stats.left(formatNumber(point.pending))
+            : t.facConfirm.stats.finished}
         </Typography>
       </>
     )
@@ -1047,6 +1052,8 @@ function ErrorLine({
   message: string
   onRetry: () => void
 }) {
+  const { t } = useI18n()
+
   return (
     <Box
       role="alert"
@@ -1063,7 +1070,7 @@ function ErrorLine({
       <ErrorOutlineRoundedIcon sx={{ fontSize: 16, flexShrink: 0 }} />
 
       <Box component="span" sx={{ whiteSpace: 'nowrap' }}>
-        Không tải được thống kê –
+        {t.facConfirm.stats.loadFailed}
       </Box>
 
       <Button
@@ -1083,7 +1090,7 @@ function ErrorLine({
           textDecoration: 'underline',
         }}
       >
-        Thử lại
+        {t.common.retry}
       </Button>
     </Box>
   )
@@ -1105,6 +1112,8 @@ function DailyTable({
   selectedDate: string | null
   onSelect?: (date: string) => void
 }) {
+  const { t } = useI18n()
+
   return (
     <Box
       sx={{
@@ -1127,10 +1136,10 @@ function DailyTable({
       >
         <TableHead>
           <TableRow>
-            <TableCell>Ngày</TableCell>
-            <TableCell align="right">Cần XN ({unitLabel})</TableCell>
-            <TableCell align="right">Đã XN</TableCell>
-            <TableCell align="right">Chưa XN</TableCell>
+            <TableCell>{t.facConfirm.stats.day}</TableCell>
+            <TableCell align="right">{t.facConfirm.stats.need(unitLabel)}</TableCell>
+            <TableCell align="right">{t.facConfirm.stats.doneShort}</TableCell>
+            <TableCell align="right">{t.facConfirm.stats.pending}</TableCell>
             <TableCell align="right">%</TableCell>
           </TableRow>
         </TableHead>

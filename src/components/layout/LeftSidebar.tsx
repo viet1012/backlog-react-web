@@ -58,6 +58,7 @@ import {
 } from '../../services/authService'
 
 import { LogoutConfirmDialog } from './LogoutConfirmDialog'
+import { useI18n } from '../../i18n/useI18n'
 
 // =========================================================
 // SIDEBAR
@@ -71,12 +72,15 @@ export function LeftSidebar() {
   const navigate =
     useNavigate()
 
+  const { t } =
+    useI18n()
+
   const session =
     getAuthSession()
 
   const username =
     getAuthenticatedUsername()
-    ?? 'Production User'
+    ?? t.sidebar.fallbackUser
 
 
 
@@ -309,7 +313,7 @@ export function LeftSidebar() {
                   textOverflow: 'ellipsis',
                 }}
               >
-                Production Control
+                {t.sidebar.appName}
               </Typography>
 
               <Typography
@@ -327,7 +331,7 @@ export function LeftSidebar() {
                   textOverflow: 'ellipsis',
                 }}
               >
-                Factory Operations
+                {t.sidebar.appTagline}
               </Typography>
             </Box>
           </Box>
@@ -335,7 +339,7 @@ export function LeftSidebar() {
           {/* COLLAPSE BUTTON */}
 
           <Tooltip
-            title="Collapse sidebar"
+            title={t.sidebar.collapse}
             placement="right"
             arrow
           >
@@ -412,7 +416,7 @@ export function LeftSidebar() {
           }}
         >
           <Tooltip
-            title="Expand sidebar"
+            title={t.sidebar.expand}
             placement="right"
             arrow
           >
@@ -580,7 +584,7 @@ export function LeftSidebar() {
                 >
                   <ListItemText
                     primary={
-                      group.label
+                      t.nav.groups[group.id]
                     }
 
                     slotProps={{
@@ -671,23 +675,26 @@ export function LeftSidebar() {
                             isReady
                             && location.pathname === item.path
 
+                          const label =
+                            t.nav[item.labelKey]
+
                           const tooltipTitle =
                             isDeveloping
-                              ? `${item.label} — Đang phát triển`
+                              ? t.sidebar.developingTooltip(label)
                               : isTodo
-                                ? `${item.label} — Chưa làm`
-                                : item.label
+                                ? t.sidebar.notStartedTooltip(label)
+                                : label
 
                           const statusIndicator =
                             isDeveloping
                               ? {
-                                label: 'Developing',
+                                label: t.sidebar.developing,
                                 icon: <ConstructionRounded />,
                                 color: 'warning.main',
                               }
                               : isTodo
                                 ? {
-                                  label: 'Chưa làm',
+                                  label: t.sidebar.notStarted,
                                   icon: <ScheduleRounded />,
                                   color: 'text.disabled',
                                 }
@@ -697,12 +704,12 @@ export function LeftSidebar() {
                             item.action === 'input'
                               ? {
                                 icon: <EditOutlined />,
-                                label: 'Input',
+                                label: t.sidebar.input,
                               }
                               : item.action === 'view'
                                 ? {
                                   icon: <VisibilityOutlined />,
-                                  label: 'View',
+                                  label: t.sidebar.view,
                                 }
                                 : null
                           const menuContent = (
@@ -741,7 +748,7 @@ export function LeftSidebar() {
 
                               <ListItemText
                                 aria-hidden={collapsed}
-                                primary={item.label}
+                                primary={label}
 
                                 sx={{
                                   position: 'absolute',
@@ -1129,11 +1136,11 @@ export function LeftSidebar() {
       >
         {collapsed ? (
           <Tooltip
-            title="Sign out"
+            title={t.sidebar.signOut}
             placement="right"
           >
             <IconButton
-              aria-label="Sign out"
+              aria-label={t.sidebar.signOut}
               onClick={() => setLogoutOpen(true)}
               sx={(theme) => ({
                 width: 34,
@@ -1254,16 +1261,16 @@ export function LeftSidebar() {
                   whiteSpace: 'nowrap',
                 })}
               >
-                {primaryRole ?? 'Production System'}
+                {primaryRole ?? t.sidebar.fallbackRole}
               </Box>
             </Box>
 
             <Tooltip
-              title="Sign out"
+              title={t.sidebar.signOut}
               placement="right"
             >
               <IconButton
-                aria-label="Sign out"
+                aria-label={t.sidebar.signOut}
                 size="small"
                 onClick={() => setLogoutOpen(true)}
                 sx={(theme) => ({

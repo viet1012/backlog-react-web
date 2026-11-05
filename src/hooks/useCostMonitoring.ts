@@ -12,6 +12,7 @@ import {
   getCostMonitoringMonths,
   toApiMonth,
 } from '../services/costMonitoringService'
+import { getMessages } from '../i18n/i18nContext'
 
 
 function toErrorMessage(err: unknown, fallback: string) {
@@ -81,7 +82,7 @@ export function useCostMonitoring() {
       } catch (err) {
         if (!controller.signal.aborted) {
           setError(
-            toErrorMessage(err, 'Unable to load Cost Monitoring months'),
+            toErrorMessage(err, getMessages().cost.monthsLoadFailed),
           )
         }
       } finally {
@@ -125,7 +126,7 @@ export function useCostMonitoring() {
         if (!controller.signal.aborted) {
           setData(null)
           setError(
-            toErrorMessage(err, 'Unable to load Cost Monitoring chart'),
+            toErrorMessage(err, getMessages().cost.chartLoadFailed),
           )
         }
       } finally {

@@ -44,6 +44,8 @@ import {
 } from '../machineLocator/machineLocatorColors'
 import { toneColors } from './monitorColors'
 import { segmentedSx } from './segmentedSx'
+import { getMessages } from '../../i18n/i18nContext'
+import { useI18n } from '../../i18n/useI18n'
 import {
   MONITOR_TONES,
   type MachineMark,
@@ -198,6 +200,7 @@ export const MonitorMap = memo(function MonitorMap({
   onSelect,
   onHover,
 }: MonitorMapProps) {
+  const { t: tr } = useI18n()
   const [CX, CY, CW, CH] = data.crop
   const SW = CW * U
   const SH = CH * U
@@ -568,7 +571,7 @@ export const MonitorMap = memo(function MonitorMap({
     // mã · status · area · quá hạn N ngày …
     timers.current.tip = window.setTimeout(() => {
       if (hoverCode.current !== code) return
-      tip.textContent = `${code} · ${marks[code]?.sub ?? 'Không có dữ liệu'}`
+      tip.textContent = `${code} · ${marks[code]?.sub ?? getMessages().common.noData}`
       tip.style.visibility = 'visible'
     }, TOOLTIP_DELAY)
   }
@@ -679,7 +682,7 @@ export const MonitorMap = memo(function MonitorMap({
     <Box sx={rootSx}>
       {/* TOOLBAR riêng phía trên bản đồ: chỉ nền + zoom (số liệu nằm ở panel phải) */}
       <Box sx={toolbarSx}>
-        <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>Nền:</Typography>
+        <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>{tr.monitor.map.background}</Typography>
         <ToggleButtonGroup
           exclusive
           size="small"
@@ -687,11 +690,11 @@ export const MonitorMap = memo(function MonitorMap({
           onChange={(_, v: BackgroundMode | null) => {
             if (v) setBackground(v)
           }}
-          aria-label="Nền bản vẽ"
+          aria-label={tr.monitor.map.backgroundAria}
           sx={segmentedSx}
         >
           {BACKGROUND_MODES.map((m) => (
-            <ToggleButton key={m.id} value={m.id}>{m.label}</ToggleButton>
+            <ToggleButton key={m.id} value={m.id}>{tr.monitor.map[m.id]}</ToggleButton>
           ))}
         </ToggleButtonGroup>
 
@@ -708,29 +711,29 @@ export const MonitorMap = memo(function MonitorMap({
               onChange={(e) => setShowSafe(e.target.checked)}
             />
           )}
-          label="Hiện máy đã an toàn"
+          label={tr.monitor.map.showSafe}
         />
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, ml: 'auto' }}>
           {cur && machines[cur] && (
-            <Tooltip title={`Định vị lại ${cur}`}>
+            <Tooltip title={tr.monitor.map.relocate(cur)}>
               <AppButton
                 compact
-                aria-label="Định vị lại"
+                aria-label={tr.monitor.map.relocateAria}
                 icon={<GpsFixedRoundedIcon sx={{ fontSize: 17 }} />}
                 onClick={() => locate(cur)}
                 sx={toolSx}
               />
             </Tooltip>
           )}
-          <AppButton compact aria-label="Thu nhỏ" onClick={() => zoomCenter(1 / 1.4)} sx={toolSx}>
+          <AppButton compact aria-label={tr.monitor.map.zoomOut} onClick={() => zoomCenter(1 / 1.4)} sx={toolSx}>
             −
           </AppButton>
-          <AppButton compact aria-label="Phóng to" onClick={() => zoomCenter(1.4)} sx={toolSx}>
+          <AppButton compact aria-label={tr.monitor.map.zoomIn} onClick={() => zoomCenter(1.4)} sx={toolSx}>
             +
           </AppButton>
           <AppButton onClick={() => fit(true)} sx={toolSx}>
-            Xem toàn bộ
+            {tr.monitor.map.fitAll}
           </AppButton>
         </Box>
       </Box>

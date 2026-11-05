@@ -14,6 +14,9 @@ import { alpha, keyframes } from '@mui/material/styles'
 
 import { LogoutRounded } from '@mui/icons-material'
 
+import type { Messages } from '../../i18n/messages/en'
+import { useI18n } from '../../i18n/useI18n'
+
 import {
     Beacon,
     DustBurst,
@@ -59,8 +62,6 @@ const messageFade = 450
 const messageHold = 900
 
 const confirmAt = shutterStartAt + messageAt + messageFade + messageHold
-
-const shutterMessage = 'TAN CA — HẸN GẶP LẠI'
 
 // =========================================================
 // KEYFRAMES (transform / opacity only, except the hazard stripes)
@@ -121,11 +122,11 @@ type AndonState = 'idle' | 'warn' | 'stop'
 
 type LampMode = 'off' | 'on' | 'blink'
 
-const andonLabels: Record<AndonState, string> = {
-    idle: 'Andon light: running',
-    warn: 'Andon light: warning',
-    stop: 'Andon light: stopped',
-}
+const andonLabelKeys = {
+    idle: 'andonRunning',
+    warn: 'andonWarning',
+    stop: 'andonStopped',
+} as const satisfies Record<AndonState, keyof Messages['logout']>
 
 const housingColor = '#2b2f36'
 
@@ -140,6 +141,7 @@ function AndonLight({
     state: AndonState
     reduceMotion: boolean
 }) {
+    const { t } = useI18n()
     const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '')
 
     const lamps: { color: string; deep: string; mode: LampMode }[] = [
@@ -151,7 +153,7 @@ function AndonLight({
     return (
         <Box
             role="img"
-            aria-label={andonLabels[state]}
+            aria-label={t.logout[andonLabelKeys[state]]}
             sx={{
                 display: 'block',
                 width: 24,
@@ -386,6 +388,7 @@ function TimeClockSlot({
     checkoutTime: string | null
     reduceMotion: boolean
 }) {
+    const { t } = useI18n()
     const grow = reduceMotion
         ? 'none'
         : 'height 150ms ease, opacity 150ms ease, margin 150ms ease'
@@ -458,7 +461,7 @@ function TimeClockSlot({
                             color: 'text.secondary',
                         }}
                     >
-                        Check-out {checkoutTime}
+                        {t.logout.checkOut(checkoutTime)}
                     </Typography>
                 )}
             </Box>
@@ -477,6 +480,7 @@ function ShutterOverlay({
     username: string
     onSkip: () => void
 }) {
+    const { t } = useI18n()
     const [night] = useState(() => isNightShift(new Date()))
 
     return (
@@ -485,7 +489,7 @@ function ShutterOverlay({
 
             <ShutterPanel animation={`${shutterDrop} ${dropDuration}ms ${dropDelay}ms both`}>
                 <ShutterMessage
-                    title={shutterMessage}
+                    title={t.shift.clockOutTitle}
                     subtitle={username}
                     animation={`${fadeUp} ${messageFade}ms ease-out ${messageAt}ms both`}
                 />
@@ -516,6 +520,7 @@ export function LogoutConfirmDialog({
     onCancel,
     onConfirm,
 }: LogoutConfirmDialogProps) {
+    const { t } = useI18n()
     const reduceMotion = useMediaQuery(
         '(prefers-reduced-motion: reduce)',
         { noSsr: true },
@@ -669,14 +674,14 @@ export function LogoutConfirmDialog({
                         id="logout-dialog-title"
                         sx={{ fontSize: 18, fontWeight: 800, mb: 0.75 }}
                     >
-                        Sign out?
+                        {t.logout.title}
                     </Typography>
 
                     <Typography
                         id="logout-dialog-desc"
                         sx={{ fontSize: 13, color: 'text.secondary', mb: 2 }}
                     >
-                        You will need to sign in again to continue.
+                        {t.logout.description}
                     </Typography>
 
                     {/* CURRENT USER — clipped at the slot's top edge while sinking */}
@@ -778,7 +783,7 @@ export function LogoutConfirmDialog({
                             borderColor: 'divider',
                         }}
                     >
-                        Cancel
+                        {t.common.cancel}
                     </Button>
 
                     <Button
@@ -847,7 +852,7 @@ export function LogoutConfirmDialog({
                             },
                         })}
                     >
-                        Sign out
+                        {t.logout.signOut}
                     </Button>
                 </DialogActions>
             </Dialog>

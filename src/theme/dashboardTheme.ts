@@ -1,8 +1,17 @@
 import { createTheme, type PaletteMode } from '@mui/material/styles'
+import { enUS as coreEnUS, viVN as coreViVN } from '@mui/material/locale'
 import type { } from '@mui/x-data-grid/themeAugmentation'
+import { enUS as gridEnUS, viVN as gridViVN } from '@mui/x-data-grid/locales'
+import { enUS as pickersEnUS, viVN as pickersViVN } from '@mui/x-date-pickers/locales'
+import type { Language } from '../utils/uiPreferences'
 import { uiTokens } from './uiTokens'
 
-export function createDashboardTheme(mode: PaletteMode) {
+const muiLocales = {
+  vi: [coreViVN, gridViVN, pickersViVN],
+  en: [coreEnUS, gridEnUS, pickersEnUS],
+} as const
+
+export function createDashboardTheme(mode: PaletteMode, language: Language = 'vi') {
   const dark = mode === 'dark'
 
   return createTheme({
@@ -284,5 +293,5 @@ export function createDashboardTheme(mode: PaletteMode) {
         },
       },
     },
-  })
+  }, ...muiLocales[language])
 }

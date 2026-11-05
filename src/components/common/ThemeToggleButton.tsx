@@ -17,6 +17,8 @@ import type {
   Theme,
 } from '@mui/material/styles'
 
+import { useI18n } from '../../i18n/useI18n'
+
 interface ThemeToggleButtonProps {
   mode: PaletteMode
   onToggle: () => void
@@ -183,6 +185,7 @@ export function ThemeToggleButton({
   mode,
   onToggle,
 }: ThemeToggleButtonProps) {
+  const { t } = useI18n()
   const [phase, setPhase] = useState<TransitionPhase>('idle')
   const [reveal, setReveal] = useState<RevealState | null>(null)
   const phaseRef = useRef<TransitionPhase>('idle')
@@ -357,8 +360,8 @@ export function ThemeToggleButton({
 
   const isLight = mode === 'light'
   const label = isLight
-    ? 'Switch to dark mode'
-    : 'Switch to light mode'
+    ? t.theme.toDark
+    : t.theme.toLight
 
   return (
     <>

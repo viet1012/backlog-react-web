@@ -29,28 +29,21 @@ import {
 import type {
   ReportFilters,
 } from '../../services/reportService'
+import type { Messages } from '../../i18n/messages/en'
+import { useI18n } from '../../i18n/useI18n'
 
 
-const labels:
-  Record<keyof ReportFilters, string> = {
-
-  search:
-    'Search',
-
-  status:
-    'Status',
-
-  div:
-    'Division',
-
-  currentProcess:
-    'Process',
-
-  shipBy:
-    'Ship By',
-
-  productionDate:
-    'Production Date',
+function getFilterLabels(
+  t: Messages,
+): Record<keyof ReportFilters, string> {
+  return {
+    search: t.common.search,
+    status: t.columns.status,
+    div: t.columns.division,
+    currentProcess: t.backlog.process,
+    shipBy: t.columns.shipBy,
+    productionDate: t.columns.productionDate,
+  }
 }
 
 
@@ -112,6 +105,10 @@ export function BacklogFilterBar({
   onClear,
 }: BacklogFilterBarProps) {
 
+  const { t } = useI18n()
+
+  const labels = getFilterLabels(t)
+
   const activeFilters =
     (
       Object.entries(
@@ -162,7 +159,7 @@ export function BacklogFilterBar({
         }}
       >
         <TextField
-          placeholder="Search sales order, global code, product..."
+          placeholder={t.backlog.searchPlaceholder}
 
           size="small"
 
@@ -274,7 +271,7 @@ export function BacklogFilterBar({
                 }
               >
                 <MenuItem value="">
-                  All
+                  {t.common.all}
                 </MenuItem>
 
 
@@ -305,7 +302,7 @@ export function BacklogFilterBar({
 
 
         <TextField
-          label="Production Date"
+          label={t.columns.productionDate}
 
           type="date"
 
@@ -373,7 +370,7 @@ export function BacklogFilterBar({
 
             color="text.secondary"
           >
-            Active filters:
+            {t.backlog.activeFilters}
           </Typography>
 
 
@@ -412,7 +409,7 @@ export function BacklogFilterBar({
 
                 variant="outlined"
 
-                label={`Status: ${summaryFilter.status}`}
+                label={`${t.columns.status}: ${summaryFilter.status}`}
               />
 
               <Chip
@@ -420,7 +417,7 @@ export function BacklogFilterBar({
 
                 variant="outlined"
 
-                label={`Export Date: ${summaryFilter.date}`}
+                label={`${t.columns.exportDate}: ${summaryFilter.date}`}
               />
             </>
           )}
@@ -434,7 +431,7 @@ export function BacklogFilterBar({
               variant="outlined"
 
               label={
-                `Column filters: ${excelFilterCount}`
+                t.backlog.columnFilters(excelFilterCount)
               }
             />
           )}

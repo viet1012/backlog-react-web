@@ -7,6 +7,7 @@ import InboxRoundedIcon
   from '@mui/icons-material/InboxRounded'
 
 import { ClearButton } from '../common/ClearButton'
+import { useI18n } from '../../i18n/useI18n'
 
 
 interface FacConfirmNoRowsOverlayProps {
@@ -20,6 +21,8 @@ export function FacConfirmNoRowsOverlay({
   hasFilters,
   onClearFilters,
 }: FacConfirmNoRowsOverlayProps) {
+  const { t } = useI18n()
+
   return (
     <Box
       sx={{
@@ -48,7 +51,7 @@ export function FacConfirmNoRowsOverlay({
           color: 'text.primary',
         }}
       >
-        Không có dữ liệu cần xác nhận
+        {t.facConfirm.noRowsTitle}
       </Typography>
 
       <Typography
@@ -56,7 +59,7 @@ export function FacConfirmNoRowsOverlay({
           fontSize: 12.5,
         }}
       >
-        Thử đổi Export Date hoặc xóa bộ lọc
+        {t.facConfirm.noRowsHint}
       </Typography>
 
       {hasFilters && (

@@ -57,6 +57,17 @@ export function saveThemeMode(mode: ThemeMode): void {
   savePreference('theme', mode)
 }
 
+export type Language = 'vi' | 'en'
+
+export function loadLanguage(fallback: Language): Language {
+  const stored = loadPreference('language')
+  return stored === 'vi' || stored === 'en' ? stored : fallback
+}
+
+export function saveLanguage(language: Language): void {
+  savePreference('language', language)
+}
+
 export function loadGridPreferences(
   gridKey: string,
   defaultPageSize: number,

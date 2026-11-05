@@ -99,6 +99,7 @@ import {
   loadFacConfirmPreferences,
   saveFacConfirmPreferences,
 } from '../utils/uiPreferences'
+import { useI18n } from '../i18n/useI18n'
 
 
 interface FacConfirmPageProps {
@@ -126,6 +127,8 @@ export function FacConfirmPage({
   mode,
   onToggleMode,
 }: FacConfirmPageProps) {
+
+  const { t } = useI18n()
 
   const [pagePreferences] =
     useState(loadFacConfirmPreferences)
@@ -753,6 +756,7 @@ export function FacConfirmPage({
         const allFields =
           getFacConfirmColumns(
             procGrp,
+            t,
           ).map(
             (column) =>
               column.field,
@@ -790,6 +794,7 @@ export function FacConfirmPage({
         procGrp,
         preferences.columnOrder,
         preferences.columnVisibilityModel,
+        t,
       ],
     )
 
@@ -865,9 +870,9 @@ export function FacConfirmPage({
     <PageShell>
 
       <PageHeader
-        title="FAC CONFIRM"
+        title={t.facConfirm.title}
 
-        subtitle="Production process confirmation."
+        subtitle={t.facConfirm.subtitle}
 
         status={
           <UpdatedStatus
@@ -889,10 +894,10 @@ export function FacConfirmPage({
             spacing={1}
             sx={{ alignItems: 'center' }}
           >
-            <Tooltip title="Hướng dẫn sử dụng">
+            <Tooltip title={t.facConfirm.guide}>
               <IconButton
                 size="small"
-                aria-label="Hướng dẫn sử dụng"
+                aria-label={t.facConfirm.guide}
                 onClick={
                   guide.start
                 }
@@ -920,8 +925,8 @@ export function FacConfirmPage({
             >
               {
                 exporting
-                  ? 'Exporting...'
-                  : 'Export Excel'
+                  ? t.common.exporting
+                  : t.common.exportExcel
               }
             </Button>
 
@@ -1010,7 +1015,7 @@ export function FacConfirmPage({
               disabled={loading}
               onClick={handleRefresh}
             >
-              Thử lại
+              {t.common.retry}
             </Button>
           }
         >

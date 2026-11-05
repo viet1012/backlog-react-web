@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '../config/api'
+import { getMessages } from '../i18n/i18nContext'
 
 const AUTH_STORAGE_KEY = 'production_control_auth'
 
@@ -81,14 +82,14 @@ async function postAuth<T>(
   if (!response.ok) {
     throw new AuthApiError(
       data?.message
-      || `Authentication failed (${response.status}).`,
+      || getMessages().misc.authFailed(response.status),
       response.status,
     )
   }
 
   if (!data) {
     throw new AuthApiError(
-      'Invalid authentication response.',
+      getMessages().misc.authInvalidResponse,
     )
   }
 

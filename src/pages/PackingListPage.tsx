@@ -1,6 +1,9 @@
 import { InventoryOutlined } from '@mui/icons-material'
 import { PlaceholderPage } from '../components/common/PlaceholderPage'
+import { useI18n } from '../i18n/useI18n'
 
 export function PackingListPage() {
-  return <PlaceholderPage title="Packing List" subtitle="Prepare and review packing information for shipments." icon={InventoryOutlined} />
+  const { t } = useI18n()
+
+  return <PlaceholderPage title={t.nav.packingList} subtitle={t.placeholder.packingList} icon={InventoryOutlined} />
 }

@@ -6,6 +6,7 @@ import { RefreshButton } from '../components/common/RefreshButton'
 import { UpdatedStatus } from '../components/common/UpdatedStatus'
 import { OdbfSummaryTable } from '../components/odbf/OdbfSummaryTable'
 import { useOdbfSummary } from '../hooks/useOdbfSummary'
+import { useI18n } from '../i18n/useI18n'
 
 interface OdbfPageProps {
   mode: PaletteMode
@@ -16,6 +17,8 @@ export function OdbfPage({
   mode,
   onToggleMode,
 }: OdbfPageProps) {
+  const { t } = useI18n()
+
   const {
     items,
     loading,
@@ -29,8 +32,8 @@ export function OdbfPage({
   return (
     <PageShell>
       <PageHeader
-        title="ODBF Summary"
-        subtitle="Daily PO & quantity progress by product group"
+        title={t.odbf.title}
+        subtitle={t.odbf.subtitle}
         status={
           <UpdatedStatus
             updatedAt={lastUpdated}
@@ -58,14 +61,14 @@ export function OdbfPage({
           {showMatrices ? (
             <>
               <OdbfSummaryTable
-                title="PO COUNT"
+                title={t.odbf.poCount}
                 items={items}
                 metric="countPo"
                 loading={loading}
               />
 
               <OdbfSummaryTable
-                title="QUANTITY"
+                title={t.odbf.quantity}
                 items={items}
                 metric="sumQty"
                 loading={loading}
@@ -83,7 +86,7 @@ export function OdbfPage({
               })}
             >
               <Typography color="text.secondary" sx={{ fontSize: 12.5 }}>
-                No ODBF summary data
+                {t.odbf.noData}
               </Typography>
             </Box>
           ) : null}

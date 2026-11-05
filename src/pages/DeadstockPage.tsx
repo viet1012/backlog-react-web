@@ -1,6 +1,9 @@
 import { DeleteSweepOutlined } from '@mui/icons-material'
 import { PlaceholderPage } from '../components/common/PlaceholderPage'
+import { useI18n } from '../i18n/useI18n'
 
 export function DeadstockPage() {
-  return <PlaceholderPage title="Deadstock" subtitle="Identify and manage slow-moving or obsolete inventory." icon={DeleteSweepOutlined} />
+  const { t } = useI18n()
+
+  return <PlaceholderPage title={t.nav.deadstock} subtitle={t.placeholder.deadstock} icon={DeleteSweepOutlined} />
 }

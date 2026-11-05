@@ -7,6 +7,7 @@ import type {
   MachineLayoutConfig,
 } from '../types/machineLocator'
 import { getCurrentEmployeeId } from './authService'
+import { getMessages } from '../i18n/i18nContext'
 
 // =========================================================
 // MACHINE STORE – API backlog-be (/api/machine-locator)
@@ -63,7 +64,7 @@ async function request<T>(
   if (write) {
     const employeeId = getCurrentEmployeeId()
 
-    if (!employeeId) throw new MachineStoreError('auth', 'Chưa đăng nhập.')
+    if (!employeeId) throw new MachineStoreError('auth', getMessages().locator.errors.notSignedIn)
 
     headers['X-Employee-Id'] = employeeId
   }
@@ -73,7 +74,7 @@ async function request<T>(
   try {
     res = await fetch(url, { cache: 'no-store', ...init, headers })
   } catch (e) {
-    throw new MachineStoreError('api_fail', e instanceof Error ? e.message : 'mất kết nối server')
+    throw new MachineStoreError('api_fail', e instanceof Error ? e.message : getMessages().locator.errors.connectionLost)
   }
 
   const body = await res.json().catch(() => null) as (T & { message?: string }) | null
@@ -86,7 +87,7 @@ async function request<T>(
     )
   }
 
-  if (!body) throw new MachineStoreError('api_fail', 'Response rỗng hoặc không phải JSON.')
+  if (!body) throw new MachineStoreError('api_fail', getMessages().locator.errors.emptyResponse)
 
   return body
 }
@@ -120,7 +121,7 @@ function toLayoutConfig(f: FloorDto): MachineLayoutConfig {
 
 function toState(f: FloorDto): MachineStoreState {
   if (!f.m || !f.crop || !f.page || !f.ppp || typeof f.version !== 'number') {
-    throw new MachineStoreError('api_fail', `Dữ liệu floor ${f.id ?? ''} thiếu crop / page / ppp / version / m.`)
+    throw new MachineStoreError('api_fail', getMessages().locator.errors.badFloor(String(f.id ?? '')))
   }
 
   return { data: { crop: f.crop, page: f.page, ppp: f.ppp, m: f.m }, version: f.version }
@@ -142,7 +143,7 @@ function write(
 export async function listFloors(): Promise<MachineLayoutConfig[]> {
   const floors = await request<FloorDto[]>(`${API_URL}/floors`)
 
-  if (!Array.isArray(floors)) throw new MachineStoreError('api_fail', 'Danh sách floor không hợp lệ.')
+  if (!Array.isArray(floors)) throw new MachineStoreError('api_fail', getMessages().locator.errors.badFloorList)
 
   return floors.map(toLayoutConfig)
 }
@@ -222,13 +223,13 @@ export function isStoreConflict(error: unknown): boolean {
 
 export function machineStoreErrorMessage(error: unknown): string {
   if (isStoreConflict(error)) {
-    return 'Dữ liệu đã bị người khác sửa. Đã tải lại dữ liệu mới nhất – kiểm tra rồi lưu lại.'
+    return getMessages().locator.errors.conflict
   }
 
   if (error instanceof MachineStoreError && error.code === 'auth') {
-    return 'Không có quyền ghi: ' + error.message
+    return getMessages().locator.errors.noPermission + error.message
   }
 
-  return 'Không lưu được: '
-    + ((error instanceof Error && error.message) || 'lỗi không rõ')
+  return getMessages().locator.errors.saveFailed
+    + ((error instanceof Error && error.message) || getMessages().locator.errors.unknown)
 }

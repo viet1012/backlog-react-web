@@ -29,6 +29,7 @@ import { toApiMonth } from '../services/costMonitoringService'
 import type { CostSimuWeek } from '../types/costMonitoring'
 import { uiTokens } from '../theme/uiTokens'
 import { loadPreference, savePreference } from '../utils/uiPreferences'
+import { useI18n } from '../i18n/useI18n'
 
 // Cờ đã xem hướng dẫn – lần đầu vào trang tự mở tab "Bắt đầu nhanh"
 const GUIDE_SEEN_KEY = 'costMonitoringGuideSeen'
@@ -70,6 +71,8 @@ export function CostMonitoringPage({
   mode,
   onToggleMode,
 }: CostMonitoringPageProps) {
+  const { t } = useI18n()
+
   const {
     months,
     month,
@@ -112,7 +115,7 @@ export function CostMonitoringPage({
         }}
       >
         <PageHeader
-          title="COST MONITORING (Unit: K$)"
+          title={t.cost.title}
           status={
             <UpdatedStatus
               updatedAt={lastUpdated}
@@ -129,10 +132,10 @@ export function CostMonitoringPage({
                 sx={{ alignItems: 'center', gap: { xs: 0.5, sm: 1 }, py: '8px', flexShrink: 0 }}
               >
                 <FormControl size="small" sx={{ width: 110, flexShrink: 0 }}>
-                  <InputLabel>Tháng</InputLabel>
+                  <InputLabel>{t.cost.month}</InputLabel>
 
                   <Select
-                    label="Tháng"
+                    label={t.cost.month}
                     value={month ?? ''}
                     disabled={months.length === 0}
                     onChange={(event) => setMonth(event.target.value)}
@@ -148,18 +151,20 @@ export function CostMonitoringPage({
                 <Tooltip title={SIMU_WEEK_HINT} arrow placement="bottom" enterTouchDelay={0}>
                   <FormControl size="small" sx={{ width: 175, flexShrink: 0 }}>
                     {/* Mới nhất = '' → cần shrink/notched để nhãn không đè lên chữ của option */}
-                    <InputLabel shrink>PL TGT theo</InputLabel>
+                    <InputLabel shrink>{t.cost.plTgtBy}</InputLabel>
 
                     <Select<CostSimuWeek>
-                      label="PL TGT theo"
+                      label={t.cost.plTgtBy}
                       value={simuWeek}
                       displayEmpty
                       notched
                       onChange={(event) => setSimuWeek(event.target.value)}
                     >
                       {SIMU_WEEK_OPTIONS.map((option) => (
-                        <MenuItem key={option.label} value={option.value}>
-                          {option.label}
+                        <MenuItem key={option.value || 'latest'} value={option.value}>
+                          {option.value
+                            ? t.cost.week(Number(option.value.slice(-1)))
+                            : t.cost.latestAuto}
                         </MenuItem>
                       ))}
                     </Select>
@@ -179,7 +184,7 @@ export function CostMonitoringPage({
                 onClick={() => setGuideOpen(true)}
                 sx={{ flexShrink: 0, whiteSpace: 'nowrap' }}
               >
-                Hướng dẫn
+                {t.cost.guide}
               </AppButton>
             </Box>
           }
@@ -187,7 +192,7 @@ export function CostMonitoringPage({
             <>
               {/* chỉ hiện khi in: dropdown tháng bị ẩn nên ghi rõ tháng + thời điểm cập nhật */}
               <Typography className="cost-print-only" sx={{ fontSize: 12, mb: 0.5, pl: 1 }}>
-                Tháng {month ?? '–'} · Cập nhật {lastUpdated ? dayjs(lastUpdated).format('DD/MM/YYYY HH:mm') : '–'}
+                {t.cost.printLine(month ?? '–', lastUpdated ? dayjs(lastUpdated).format('DD/MM/YYYY HH:mm') : '–')}
               </Typography>
 
               <CostChartLegend />
@@ -215,7 +220,7 @@ export function CostMonitoringPage({
             })}
           >
             <Typography color="text.secondary" sx={{ fontSize: 12.5 }}>
-              No Cost Monitoring data
+              {t.cost.noData}
             </Typography>
           </Box>
         ) : (

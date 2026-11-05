@@ -1,4 +1,5 @@
 import type { BacklogStatusSummaryRow } from '../../../services/reportService'
+import { getCurrentLanguage } from '../../../i18n/i18nContext'
 import {
   BACKLOG_STATUS_COLORS,
   normalizeBacklogStatus,
@@ -44,6 +45,10 @@ export function formatDateHeader(
     || !Number.isFinite(day)
   ) {
     return value
+  }
+
+  if (getCurrentLanguage() === 'vi') {
+    return `${day}/${month}`
   }
 
   const date = new Date(year, month - 1, day)

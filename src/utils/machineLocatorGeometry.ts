@@ -10,6 +10,7 @@ import type {
   Polygon,
   ResizeHandle,
 } from '../types/machineLocator'
+import { getMessages } from '../i18n/i18nContext'
 
 // Hệ số phóng của stage: 1 pt PDF = U px CSS ở scale 1
 export const STAGE_UNIT = 4
@@ -57,9 +58,10 @@ export type GroupVisibility = Record<MachineStatus, boolean>
 export const ALL_GROUPS_VISIBLE: GroupVisibility = { auto: true, manual: true, review: true }
 
 export const MACHINE_STATUS_LABEL: Record<MachineStatus, string> = {
-  auto: 'Từ CAD',
-  manual: 'Đã sửa',
-  review: 'Cần soát',
+  // getters: label follows the current UI language
+  get auto() { return getMessages().locator.status.auto },
+  get manual() { return getMessages().locator.status.manual },
+  get review() { return getMessages().locator.status.review },
 }
 
 // "cần soát" chỉ có ý nghĩa với ADMIN; người khác thấy máy đó như khung tự động

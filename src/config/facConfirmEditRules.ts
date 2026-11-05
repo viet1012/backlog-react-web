@@ -12,6 +12,8 @@ import {
     FAC_CONFIRM_PROCESS_CONFIG,
 } from './facConfirmProcessConfig'
 
+import { getMessages } from '../i18n/i18nContext'
+
 
 // =========================================================
 // QUY TẮC SỬA Ô ĐẶC BIỆT
@@ -31,7 +33,7 @@ export interface FacConfirmEditRule {
 
     // Tên nhóm dòng khớp quy tắc, dùng cho tooltip tiêu đề cột
     // (vd "Chỉ nhập với hàng Không có Heat")
-    matchLabel: string
+    matchLabelKey: 'noHeatRows'
 
     process: FacConfirmProcessGroup
 
@@ -73,7 +75,7 @@ export const FAC_CONFIRM_EDIT_RULES: readonly FacConfirmEditRule[] = [
         description:
             'Rough + dòng Không có Heat: nhập To Drill và To CLG, khóa To Heat.',
         process: 'Rough',
-        matchLabel: 'hàng Không có Heat',
+        matchLabelKey: 'noHeatRows',
         matches: isNoHeatRow,
         editableFields: ['toDrill', 'heatFinish'],
 
@@ -227,17 +229,19 @@ export function getFieldRuleDescription(
     const isProcessColumn =
         FAC_CONFIRM_PROCESS_CONFIG[process].columns.includes(field)
 
+    const rules = getMessages().facConfirm.rules
+
     const descriptions = FAC_CONFIRM_EDIT_RULES
         .filter((rule) => rule.process === process)
         .flatMap((rule) => {
             const ruleAllows = rule.editableFields.includes(field)
 
             if (!isProcessColumn && ruleAllows) {
-                return [`Chỉ nhập với ${rule.matchLabel}`]
+                return [rules.onlyFor(rules[rule.matchLabelKey])]
             }
 
             if (isProcessColumn && !ruleAllows) {
-                return [`Không nhập với ${rule.matchLabel}`]
+                return [rules.notFor(rules[rule.matchLabelKey])]
             }
 
             return []

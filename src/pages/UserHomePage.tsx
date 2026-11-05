@@ -11,6 +11,7 @@ import {
   userHomeCardSx,
 } from '../components/userHome/userHomeStyles'
 import { getAuthSession } from '../services/authService'
+import { useI18n } from '../i18n/useI18n'
 
 interface UserHomePageProps {
   mode: PaletteMode
@@ -125,14 +126,16 @@ function AccountDetail({ label, value }: AccountDetailProps) {
 }
 
 export function UserHomePage({ mode, onToggleMode }: UserHomePageProps) {
+  const { t } = useI18n()
+
   const session = getAuthSession()
   const displayName = session?.name || session?.employeeId || 'User'
 
   return (
     <PageShell>
       <PageHeader
-        title="User Home"
-        subtitle="Production Control"
+        title={t.userHome.title}
+        subtitle={t.userHome.subtitle}
         mode={mode}
         onToggleMode={onToggleMode}
       />
@@ -156,7 +159,7 @@ export function UserHomePage({ mode, onToggleMode }: UserHomePageProps) {
               letterSpacing: '0.2em',
             }}
           >
-            PRODUCTION CONTROL
+            {t.userHome.brand}
           </Typography>
 
           <Typography
@@ -169,10 +172,10 @@ export function UserHomePage({ mode, onToggleMode }: UserHomePageProps) {
               textShadow: '0 4px 22px rgba(0, 0, 0, 0.34)',
             }}
           >
-            Welcome, {displayName}
+            {t.userHome.welcome(displayName)}
           </Typography>
           <Typography sx={{ mt: 0.9, fontSize: 13.5, color: 'rgba(215, 232, 246, 0.62)' }}>
-            Your Production Control workspace
+            {t.userHome.workspace}
           </Typography>
 
           <Box sx={{ mt: 2.6 }}>
@@ -187,10 +190,10 @@ export function UserHomePage({ mode, onToggleMode }: UserHomePageProps) {
               gap: 1.1,
             }}
           >
-            <AccountDetail label="Employee ID" value={session?.employeeId || '—'} />
-            <AccountDetail label="Department" value={session?.dept || '—'} />
-            <AccountDetail label="Section" value={session?.section || '—'} />
-            <AccountDetail label="Role" value={session?.roles.join(', ') || 'USER'} />
+            <AccountDetail label={t.userHome.employeeId} value={session?.employeeId || '—'} />
+            <AccountDetail label={t.userHome.department} value={session?.dept || '—'} />
+            <AccountDetail label={t.userHome.section} value={session?.section || '—'} />
+            <AccountDetail label={t.userHome.role} value={session?.roles.join(', ') || 'USER'} />
           </Box>
         </Box>
       </Box>

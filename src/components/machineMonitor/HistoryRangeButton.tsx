@@ -19,6 +19,7 @@ import {
   resolveRange,
   type MonitorRange,
 } from './monitorRange'
+import { useI18n } from '../../i18n/useI18n'
 
 // =========================================================
 // NÚT KHOẢNG NGÀY: "📅 01/10 – 27/10/2026 ⌄" -> popover: preset (áp dụng ngay) | Từ / Đến tuỳ chọn
@@ -36,6 +37,8 @@ export function HistoryRangeButton({
   onChange: (r: MonitorRange) => void
   ariaLabel: string
 }) {
+  const { t } = useI18n()
+
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   // bản nháp Từ / Đến (chỉ áp dụng khi bấm "Áp dụng")
   const [from, setFrom] = useState<Dayjs | null>(null)
@@ -102,7 +105,7 @@ export function HistoryRangeButton({
         }}
       >
         {/* preset: bấm = áp dụng ngay + đóng */}
-        <Box role="listbox" aria-label="Khoảng có sẵn" sx={{ py: 0.75, borderRight: '1px solid', borderColor: 'divider' }}>
+        <Box role="listbox" aria-label={t.monitor.range.available} sx={{ py: 0.75, borderRight: '1px solid', borderColor: 'divider' }}>
           {RANGE_PRESETS.map((p) => {
             const on = value.preset === p.id
 
@@ -137,11 +140,11 @@ export function HistoryRangeButton({
         {/* khoảng tuỳ chọn */}
         <Box sx={{ p: 1.25, display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
           <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'text.secondary' }}>
-            Tuỳ chọn
+            {t.monitor.range.custom}
           </Typography>
 
           <DatePicker
-            label="Từ"
+            label={t.monitor.range.fromLabel}
             value={from}
             onChange={(v) => setFrom(v)}
             format="DD/MM/YYYY"
@@ -149,7 +152,7 @@ export function HistoryRangeButton({
             slotProps={{ textField: { size: 'small', fullWidth: true } }}
           />
           <DatePicker
-            label="Đến"
+            label={t.monitor.range.toLabel}
             value={to}
             onChange={(v) => setTo(v)}
             format="DD/MM/YYYY"
@@ -159,14 +162,14 @@ export function HistoryRangeButton({
                 size: 'small',
                 fullWidth: true,
                 error: !orderOk,
-                helperText: orderOk ? undefined : 'Đến phải sau Từ',
+                helperText: orderOk ? undefined : t.monitor.range.toAfterFrom,
               },
             }}
           />
 
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.75, mt: 0.25 }}>
             <AppButton onClick={() => setAnchor(null)} sx={{ height: 30, minWidth: 0 }}>
-              Huỷ
+              {t.common.cancel}
             </AppButton>
             <AppButton
               appearance="action"
@@ -181,7 +184,7 @@ export function HistoryRangeButton({
               }}
               sx={{ height: 30, minWidth: 0 }}
             >
-              Áp dụng
+              {t.common.apply}
             </AppButton>
           </Box>
         </Box>

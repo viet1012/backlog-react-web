@@ -34,6 +34,7 @@ import {
   isPastDue,
   isSafe,
 } from './hseStatus'
+import { useI18n } from '../../../i18n/useI18n'
 
 interface Lightbox {
   names: string[]
@@ -52,13 +53,15 @@ export function HseDetailPanel({
   machine: HseMachine | undefined
   unassigned?: boolean
 }) {
+  const { t } = useI18n()
+
   const [historyOpen, setHistoryOpen] = useState(false)
   const [lightbox, setLightbox] = useState<Lightbox | null>(null)
 
   if (!machine) {
     return (
       <Typography sx={{ p: 2, fontSize: 13, color: 'text.secondary' }}>
-        {unassigned ? 'Nhóm này không còn lỗi nào.' : 'Máy này chưa có lỗi an toàn nào được ghi nhận.'}
+        {unassigned ? t.monitor.detail.noGroupErrors : t.monitor.detail.noMachineErrors}
       </Typography>
     )
   }
@@ -72,17 +75,17 @@ export function HseDetailPanel({
   return (
     <Box sx={{ px: 1.75, pb: 2 }}>
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0.75, mb: 1.5 }}>
-        <Stat label="Chưa xử lý" value={machine.openCount} tone="bad" />
-        <Stat label="Quá hạn" value={machine.overdueCount} tone="critical" />
-        <Stat label="Chờ HSE" value={machine.waitCount} tone="warn" />
-        <Stat label="An toàn" value={machine.safeCount} tone="ok" />
+        <Stat label={t.monitor.detail.statOpen} value={machine.openCount} tone="bad" />
+        <Stat label={t.monitor.hseStatus.OVERDUE} value={machine.overdueCount} tone="critical" />
+        <Stat label={t.monitor.detail.statWait} value={machine.waitCount} tone="warn" />
+        <Stat label={t.monitor.hseStatus.SAFE} value={machine.safeCount} tone="ok" />
       </Box>
 
       {open.length
         ? open.map((it) => <HseItemCard key={it.id} item={it} unassigned={unassigned} onOpenImages={openImages} />)
         : (
           <Typography sx={{ py: 1, fontSize: 13, color: 'text.secondary' }}>
-            Không còn lỗi chưa đóng.
+            {t.monitor.detail.noOpen}
           </Typography>
         )}
 
@@ -105,7 +108,7 @@ export function HseDetailPanel({
               '&:hover': { bgcolor: 'action.hover' },
             }}
           >
-            Lịch sử đã an toàn ({safe.length})
+            {t.monitor.detail.safeHistory(safe.length)}
             <ExpandMoreRoundedIcon
               sx={{ fontSize: 18, transition: 'transform .2s', transform: historyOpen ? 'rotate(180deg)' : 'none' }}
             />
@@ -190,6 +193,8 @@ function HseItemCard({
   unassigned: boolean
   onOpenImages: (names: string[], index: number) => void
 }) {
+  const { t } = useI18n()
+
   const tone = hseTone(item.status)
   const pastDue = isPastDue(item.dueDate, item.status)
   const hasAt = !!(item.atStatus || item.atUser || item.atDate || item.atComment || item.atImageNames?.length)
@@ -213,11 +218,11 @@ function HseItemCard({
         {item.riskTotal != null && (
           <Tooltip
             title={item.riskFreq != null || item.riskProb != null || item.riskSev != null
-              ? `Tần suất ${item.riskFreq ?? '-'} · Khả năng ${item.riskProb ?? '-'} · Mức độ ${item.riskSev ?? '-'}`
+              ? t.monitor.detail.riskTitle(String(item.riskFreq ?? '-'), String(item.riskProb ?? '-'), String(item.riskSev ?? '-'))
               : ''}
           >
             <Box component="span" sx={{ font: `700 12px ${codeFontFamily}`, color: 'text.primary' }}>
-              Risk {item.riskTotal}
+              {t.monitor.detail.risk} {item.riskTotal}
             </Box>
           </Tooltip>
         )}
@@ -238,7 +243,7 @@ function HseItemCard({
       <Box sx={kvSx}>
         {unassigned && (
           <>
-            <span>Khu vực</span>
+            <span>{t.monitor.detail.area}</span>
             <Box component="span" sx={{ whiteSpace: 'pre-line' }}>
               {item.area || '-'}
               {item.division && (
@@ -258,29 +263,29 @@ function HseItemCard({
                 </Box>
               )}
             </Box>
-            <span>Máy (phiếu)</span>
+            <span>{t.monitor.detail.machineTicket}</span>
             <Box component="span" sx={{ whiteSpace: 'pre-line', fontFamily: codeFontFamily }}>
               {item.machineText || '-'}
             </Box>
           </>
         )}
-        <span>Phát hiện</span>
+        <span>{t.monitor.detail.found}</span>
         <span>{[formatHseDate(item.createdAt), item.patrolUser].filter(Boolean).join(' · ') || '-'}</span>
-        <span>PIC</span>
+        <span>{t.monitor.detail.pic}</span>
         <span>{item.pic || '-'}</span>
-        <span>Hạn xử lý</span>
+        <span>{t.monitor.detail.dueLabel}</span>
         <Box component="span" sx={pastDue ? { color: 'error.main', fontWeight: 700 } : undefined}>
           {formatHseDate(item.dueDate) || '-'}
-          {pastDue ? ' (quá hạn)' : ''}
+          {pastDue ? t.monitor.detail.overdueSuffix : ''}
         </Box>
       </Box>
 
-      <TextBlock label="Nội dung" text={item.comment} />
-      <TextBlock label="Đối sách" text={item.countermeasure} />
+      <TextBlock label={t.monitor.detail.content} text={item.comment} />
+      <TextBlock label={t.monitor.detail.countermeasure} text={item.countermeasure} />
       <Thumbs names={item.imageNames} onOpen={onOpenImages} />
 
       {hasAt && (
-        <SubSection title="PIC khắc phục" chip={item.atStatus}>
+        <SubSection title={t.monitor.detail.picFix} chip={item.atStatus}>
           <Meta user={item.atUser} date={item.atDate} />
           <TextBlock text={item.atComment} />
           <Thumbs names={item.atImageNames} onOpen={onOpenImages} />
@@ -288,7 +293,7 @@ function HseItemCard({
       )}
 
       {hasHse && (
-        <SubSection title="HSE xác nhận" chip={item.hseJudge}>
+        <SubSection title={t.monitor.detail.hseConfirm} chip={item.hseJudge}>
           <Meta user={item.hseUser} date={item.hseDate} />
           <TextBlock text={item.hseComment} />
           <Thumbs names={item.hseImageNames} onOpen={onOpenImages} />
@@ -346,6 +351,8 @@ function TextBlock({ label, text }: { label?: string, text?: string | null }) {
 }
 
 function Thumbs({ names, onOpen }: { names?: string[] | null, onOpen: (names: string[], index: number) => void }) {
+  const { t } = useI18n()
+
   const list = (names ?? []).filter(Boolean)
 
   if (!list.length) return null
@@ -356,7 +363,7 @@ function Thumbs({ names, onOpen }: { names?: string[] | null, onOpen: (names: st
         <ButtonBase
           key={`${n}-${i}`}
           onClick={() => onOpen(list, i)}
-          aria-label={`Phóng to ảnh ${n}`}
+          aria-label={t.monitor.detail.zoomImage(n)}
           sx={{
             width: 64,
             height: 64,
@@ -385,6 +392,8 @@ function Thumbs({ names, onOpen }: { names?: string[] | null, onOpen: (names: st
 // =========================================================
 
 function ImageLightbox({ value, onChange }: { value: Lightbox | null, onChange: (v: Lightbox | null) => void }) {
+  const { t } = useI18n()
+
   const n = value?.names.length ?? 0
   const go = (d: number) => {
     if (value) onChange({ ...value, index: (value.index + d + n) % n })
@@ -417,16 +426,16 @@ function ImageLightbox({ value, onChange }: { value: Lightbox | null, onChange: 
             </Typography>
             {n > 1 && (
               <>
-                <IconButton size="small" aria-label="Ảnh trước" onClick={() => go(-1)} sx={{ color: '#ddd' }}>
+                <IconButton size="small" aria-label={t.monitor.detail.prevImage} onClick={() => go(-1)} sx={{ color: '#ddd' }}>
                   <ChevronLeftRoundedIcon />
                 </IconButton>
                 <Typography sx={{ fontSize: 12 }}>{(value?.index ?? 0) + 1}/{n}</Typography>
-                <IconButton size="small" aria-label="Ảnh sau" onClick={() => go(1)} sx={{ color: '#ddd' }}>
+                <IconButton size="small" aria-label={t.monitor.detail.nextImage} onClick={() => go(1)} sx={{ color: '#ddd' }}>
                   <ChevronRightRoundedIcon />
                 </IconButton>
               </>
             )}
-            <IconButton size="small" aria-label="Đóng" onClick={() => onChange(null)} sx={{ color: '#ddd' }}>
+            <IconButton size="small" aria-label={t.common.close} onClick={() => onChange(null)} sx={{ color: '#ddd' }}>
               <CloseRoundedIcon />
             </IconButton>
           </Box>

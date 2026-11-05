@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   GridToolbarColumnsButton, GridToolbarContainer,
   type GridPaginationModel, type GridSortModel,
 } from '@mui/x-data-grid'
-import { backlogColumns } from '../backlog/backlogColumns'
+import { createBacklogColumns } from '../backlog/backlogColumns'
+import { useI18n } from '../../i18n/useI18n'
 import { ReusableDataGrid } from '../common/dataGrid/ReusableDataGrid'
 import { useGridPreferences } from '../../hooks/useGridPreferences'
 import { preventColumnHeaderSort } from '../../theme/dataGridHeaderStyles'
@@ -23,6 +24,8 @@ interface ShipmentDataTableProps {
 }
 
 export function ShipmentDataTable({ rows, loading }: ShipmentDataTableProps) {
+  const { t } = useI18n()
+  const columns = useMemo(() => createBacklogColumns(t), [t])
   const [page, setPage] = useState(0)
   const [sortModel, setSortModel] = useState<GridSortModel>([])
   const preferences = useGridPreferences('shipping-schedule', 20)
@@ -39,7 +42,7 @@ export function ShipmentDataTable({ rows, loading }: ShipmentDataTableProps) {
   return (
     <ReusableDataGrid<ProductionOrder>
       rows={rows}
-      columns={backlogColumns}
+      columns={columns}
       getRowId={(row) => `${row.VBELN}-${row.AUFNR}-${row.ZGLOBAL_CODE}`}
       loading={loading}
       page={page}

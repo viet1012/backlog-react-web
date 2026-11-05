@@ -12,6 +12,7 @@ import {
 } from './costChartConfig'
 import { getCostStatus, lastValue, type CostChartRow } from './costChartUtils'
 import { BADGE_HINT, NO_ACTUAL_HINT, SERIES_HINTS } from './costMonitoringGuide'
+import { useI18n } from '../../i18n/useI18n'
 
 interface CostChartStatsProps {
   rows: CostChartRow[]
@@ -20,14 +21,10 @@ interface CostChartStatsProps {
   ratioDigits?: number
 }
 
-const STATUS_LABEL = {
-  ok: 'OK',
-  watch: 'Watch',
-  over: 'Over',
-} as const
-
 // Dải số liệu phía trên vùng vẽ: chip FC / PL / Act / Est / Fluct + badge trạng thái
 export function CostChartStats({ rows, chart, ratioDigits = 0 }: CostChartStatsProps) {
+  const { t } = useI18n()
+
   const theme = useTheme()
   const dark = theme.palette.mode === 'dark'
 
@@ -71,8 +68,8 @@ export function CostChartStats({ rows, chart, ratioDigits = 0 }: CostChartStatsP
           }}
         >
           {status.level === 'noActual'
-            ? 'Chưa có actual'
-            : `${STATUS_LABEL[status.level]} ${status.ratio.toFixed(ratioDigits)}%`}
+            ? t.cost.noActual
+            : `${t.cost.status[status.level]} ${status.ratio.toFixed(ratioDigits)}%`}
         </Box>
       </Tooltip>
     )

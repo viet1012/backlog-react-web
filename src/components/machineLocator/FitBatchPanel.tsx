@@ -11,16 +11,17 @@ import {
   codeFontFamily,
   mapColors,
 } from './machineLocatorColors'
+import { useI18n } from '../../i18n/useI18n'
 
 interface FitBatchPanelProps {
   ml: MachineLocatorState
 }
 
-const STATUS_LABEL: Record<FitStatus, string> = {
-  fit: 'đã ôm',
-  review: 'cần soát',
-  miss: 'không nhận ra',
-}
+const STATUS_LABEL_KEY = {
+  fit: 'statusFit',
+  review: 'statusReview',
+  miss: 'statusMiss',
+} as const satisfies Record<FitStatus, string>
 
 const STATUS_COLOR: Record<FitStatus, string> = {
   fit: 'success.main',
@@ -31,17 +32,19 @@ const STATUS_COLOR: Record<FitStatus, string> = {
 // Ôm hàng loạt các khung chưa có đường bao (ADMIN, khi đang sửa): tiến độ + bảng kết quả.
 // Kết quả nằm trong bản nháp, chỉ ghi khi bấm "Lưu kết quả"
 export function FitBatchPanel({ ml }: FitBatchPanelProps) {
+  const { t } = useI18n()
+
   const { batch } = ml
 
   if (!batch) {
     return (
       <PanelButton
         disabled={!ml.unfittedCount || ml.fitterState === 'error' || !!ml.draft?.dirty}
-        title={ml.fitterState === 'error' ? 'Không tải được ảnh layout' : undefined}
+        title={ml.fitterState === 'error' ? t.locator.batch.layoutImageFailed : undefined}
         onClick={() => void ml.runFitBatch()}
         sx={{ width: '100%' }}
       >
-        Ôm các khung chưa có đường bao ({ml.unfittedCount})
+        {t.locator.batch.fitUnfitted(ml.unfittedCount)}
       </PanelButton>
     )
   }
@@ -61,7 +64,7 @@ export function FitBatchPanel({ ml }: FitBatchPanelProps) {
     >
       <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, mb: 0.5 }}>
         <Typography sx={{ fontSize: 12, fontWeight: 700 }}>
-          {batch.running ? 'Đang ôm khung…' : 'Kết quả ôm hàng loạt'}
+          {batch.running ? t.locator.batch.running : t.locator.batch.results}
         </Typography>
 
         <Typography sx={{ fontSize: 12, color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>
@@ -76,7 +79,7 @@ export function FitBatchPanel({ ml }: FitBatchPanelProps) {
       {batch.rows.length > 0 && (
         <Box
           role="table"
-          aria-label="Kết quả ôm khung"
+          aria-label={t.locator.batch.resultsAria}
           sx={{
             maxHeight: 180,
             overflowY: 'auto',
@@ -86,10 +89,10 @@ export function FitBatchPanel({ ml }: FitBatchPanelProps) {
           }}
         >
           <Box role="row" sx={rowSx(false)}>
-            <span role="columnheader">Mã</span>
-            <span role="columnheader">Tin cậy</span>
-            <span role="columnheader">Dời/đổi (pt)</span>
-            <span role="columnheader">Trạng thái</span>
+            <span role="columnheader">{t.locator.batch.colCode}</span>
+            <span role="columnheader">{t.locator.batch.colScore}</span>
+            <span role="columnheader">{t.locator.batch.colShift}</span>
+            <span role="columnheader">{t.locator.batch.colStatus}</span>
           </Box>
 
           {batch.rows.map((r, k) => (
@@ -98,7 +101,7 @@ export function FitBatchPanel({ ml }: FitBatchPanelProps) {
               role="row"
               tabIndex={0}
               aria-current={batch.reviewIdx === k}
-              title="Zoom tới máy và soát từ dòng này"
+              title={t.locator.batch.zoomRow}
               onClick={() => (batch.running ? ml.focusMachine(r.code) : ml.reviewFitBatch(k))}
               onKeyDown={(e) => {
                 if (e.key === ' ') {
@@ -122,7 +125,7 @@ export function FitBatchPanel({ ml }: FitBatchPanelProps) {
                 role="cell"
                 sx={{ color: r.decision ? 'text.secondary' : STATUS_COLOR[r.status], fontWeight: 600 }}
               >
-                {r.decision === 'accept' ? 'đã nhận' : r.decision === 'skip' ? 'bỏ qua' : STATUS_LABEL[r.status]}
+                {r.decision === 'accept' ? t.locator.batch.accepted : r.decision === 'skip' ? t.locator.batch.skipped : t.locator.batch[STATUS_LABEL_KEY[r.status]]}
               </Box>
             </Box>
           ))}
@@ -133,7 +136,7 @@ export function FitBatchPanel({ ml }: FitBatchPanelProps) {
         {batch.running
           ? (
             <PanelButton onClick={ml.stopFitBatch}>
-              Dừng
+              {t.locator.batch.stop}
             </PanelButton>
           )
           : (
@@ -141,17 +144,17 @@ export function FitBatchPanel({ ml }: FitBatchPanelProps) {
               {batch.rows.length > 0 && (
                 batch.reviewIdx === null
                   ? (
-                    <PanelButton onClick={() => ml.reviewFitBatch(0)} title="Enter = nhận, S = bỏ qua">
-                      Soát lần lượt
+                    <PanelButton onClick={() => ml.reviewFitBatch(0)} title={t.locator.batch.reviewHint}>
+                      {t.locator.batch.reviewInOrder}
                     </PanelButton>
                   )
                   : (
                     <>
                       <PanelButton appearance="success" onClick={() => ml.decideFitReview('accept')}>
-                        Nhận (Enter)
+                        {t.locator.batch.accept}
                       </PanelButton>
                       <PanelButton onClick={() => ml.decideFitReview('skip')}>
-                        Bỏ qua (S)
+                        {t.locator.batch.skip}
                       </PanelButton>
                     </>
                   )
@@ -162,11 +165,11 @@ export function FitBatchPanel({ ml }: FitBatchPanelProps) {
                 disabled={!ml.pendingFitCount}
                 onClick={() => void ml.saveFitBatch()}
               >
-                Lưu kết quả ({ml.pendingFitCount} máy)
+                {t.locator.batch.saveResults(ml.pendingFitCount)}
               </PanelButton>
 
               <PanelButton onClick={ml.discardFitBatch}>
-                {ml.pendingFitCount ? 'Bỏ kết quả' : 'Đóng'}
+                {ml.pendingFitCount ? t.locator.batch.discardResults : t.common.close}
               </PanelButton>
             </>
           )}

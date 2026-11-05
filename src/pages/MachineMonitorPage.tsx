@@ -71,13 +71,13 @@ import {
   loadPreference,
   savePreference,
 } from '../utils/uiPreferences'
+import { useI18n } from '../i18n/useI18n'
 
 interface MachineMonitorPageProps {
   mode: PaletteMode
   onToggleMode: () => void
 }
 
-const PAGE_TITLE = 'Machine Monitoring'
 const PREF_LAYOUT = 'machine-monitor:layout'
 const PREF_ONLY_ACTIVE = 'machine-monitor:onlyActive'
 const DEFAULT_LAYOUT_ID = 'factory-b-f1'
@@ -98,6 +98,7 @@ export function MachineMonitorPage({
   mode,
   onToggleMode,
 }: MachineMonitorPageProps) {
+  const { t: tr } = useI18n()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
 
@@ -105,12 +106,12 @@ export function MachineMonitorPage({
   useEffect(() => {
     const prev = document.title
 
-    document.title = PAGE_TITLE
+    document.title = tr.monitor.title
 
     return () => {
       document.title = prev
     }
-  }, [])
+  }, [tr])
 
   // Floor dùng chung với Machine Locator (GET /floors); null = đang tải
   const [layouts, setLayouts] = useState<MachineLayoutConfig[] | null>(null)
@@ -172,7 +173,7 @@ export function MachineMonitorPage({
         onChange={(_, v: string) => go({ tab: v })}
         variant="scrollable"
         scrollButtons={false}
-        aria-label="Monitoring function"
+        aria-label={tr.monitor.functionAria}
         sx={tabsSx}
       >
         {MONITOR_TABS.map((t) => (
@@ -193,7 +194,7 @@ export function MachineMonitorPage({
                     bgcolor: 'action.selected',
                   }}
                 >
-                  Coming soon
+                  {tr.placeholder.comingSoon}
                 </Box>
               </Box>
             )}
@@ -207,7 +208,7 @@ export function MachineMonitorPage({
           onChange={(_, v: string) => go({ layout: v })}
           variant="scrollable"
           scrollButtons={false}
-          aria-label="Floor"
+          aria-label={tr.monitor.floor}
           sx={[tabsSx, { borderLeft: '1px solid', borderColor: 'divider', pl: 1 }]}
         >
           {layouts.map((l) => (
@@ -220,7 +221,7 @@ export function MachineMonitorPage({
 
   const header = (status?: ReactNode, actions?: ReactNode) => (
     <PageHeader
-      title={PAGE_TITLE}
+      title={tr.monitor.title}
       // vd "Safety — Fac A"
       subtitle={layout ? `${entry.label} — ${layout.name}` : entry.label}
       status={status}
@@ -238,8 +239,8 @@ export function MachineMonitorPage({
 
         <LoadState
           text={layoutsError
-            ? `Không tải được danh sách layout: ${layoutsError}`
-            : layouts ? 'Chưa có layout nào trên server.' : 'Đang tải danh sách layout…'}
+            ? tr.monitor.layoutsFailed(layoutsError)
+            : layouts ? tr.monitor.noLayouts : tr.monitor.loadingLayouts}
           error={!!layoutsError}
           onRetry={layoutsError ? () => setLayoutsSeq((s) => s + 1) : undefined}
         />
@@ -265,6 +266,8 @@ function LoadState({
   error: boolean
   onRetry?: () => void
 }) {
+  const { t } = useI18n()
+
   return (
     <GlassPanel
       sx={{
@@ -284,7 +287,7 @@ function LoadState({
 
       {onRetry && (
         <AppButton onClick={onRetry}>
-          Thử lại
+          {t.common.retry}
         </AppButton>
       )}
     </GlassPanel>
@@ -315,6 +318,8 @@ const GROUPS_SECTION = '_groups'
 const rowKey = (t: MonitorTarget) => `${t.kind}:${t.id}`
 
 function MonitorView({ layout, tab, header }: MonitorViewProps) {
+  const { t: tr } = useI18n()
+
   // khoảng lịch sử (tab có history), nhớ theo tab; giá trị cũ dạng chuỗi -> về mặc định
   const prefHistory = `machine-monitor:${tab.id}:history`
   const [history, setHistory] = useState<MonitorRange | undefined>(() =>
@@ -412,7 +417,7 @@ function MonitorView({ layout, tab, header }: MonitorViewProps) {
     .filter((s) => s.codes.length)
   const others = list.filter((c) => !sectionDefs.some((s) => s.id === marks[c]?.section))
 
-  if (others.length) allSections.push({ id: '_other', label: sectionDefs.length ? 'Khác' : tab.listTitle, codes: others })
+  if (others.length) allSections.push({ id: '_other', label: sectionDefs.length ? tr.monitor.other : tab.listTitle, codes: others })
 
   const sections = sectionFilter ? allSections.filter((s) => s.id === sectionFilter) : allSections
   const showGroups = !!tab.groups && (!sectionFilter || sectionFilter === GROUPS_SECTION)
@@ -508,12 +513,12 @@ function MonitorView({ layout, tab, header }: MonitorViewProps) {
   // ô số: các mục của tab + "Không gắn máy"; bấm = lọc nhóm, bấm lại = bỏ lọc
   const tiles = [
     ...legend,
-    ...(tab.groups ? [{ tone: 'bad' as const, label: 'Không gắn máy', count: groupsOpen, section: GROUPS_SECTION }] : []),
+    ...(tab.groups ? [{ tone: 'bad' as const, label: tr.monitor.unassigned, count: groupsOpen, section: GROUPS_SECTION }] : []),
   ]
 
   const summary = data && tab.panelSummary
     ? tab.panelSummary(data, { mapCodes, historyLabel: history && rangeLabel(history) })
-    : `${mapCodes.length} máy trên bản đồ`
+    : tr.monitor.machinesOnMap(mapCodes.length)
 
   const gen = data ? tab.generatedAt(data) : null
   const updatedAt = gen && dayjs(gen).isValid() ? dayjs(gen).toDate() : loadedAt
@@ -528,7 +533,7 @@ function MonitorView({ layout, tab, header }: MonitorViewProps) {
       <>
         {page}
         <LoadState
-          text={error ? `Không tải được dữ liệu: ${error}` : 'Đang tải dữ liệu từ server…'}
+          text={error ? tr.monitor.dataFailed(error) : tr.monitor.loadingData}
           error={!!error}
           onRetry={error ? refresh : undefined}
         />
@@ -542,14 +547,14 @@ function MonitorView({ layout, tab, header }: MonitorViewProps) {
     ? {
       title: detailTarget.id,
       mono: true,
-      sub: (marks[detailTarget.id]?.sub ?? 'Không có dữ liệu')
-        + (!floor.machines[detailTarget.id] ? ' · không có trên bản đồ' : ''),
+      sub: (marks[detailTarget.id]?.sub ?? tr.common.noData)
+        + (!floor.machines[detailTarget.id] ? ` · ${tr.monitor.notOnMap}` : ''),
     }
     : {
       title: group?.label ?? detailTarget.id,
       mono: false,
       // description đã gồm số lỗi + risk -> không ghép thêm mark.sub cho khỏi lặp
-      sub: ['Lỗi không gắn máy', group?.description || group?.mark.sub].filter(Boolean).join(' · '),
+      sub: [tr.monitor.unassignedErrors, group?.description || group?.mark.sub].filter(Boolean).join(' · '),
     })
 
   const renderRow = (t: MonitorTarget, title: string, mark: MachineMark | undefined, extra?: string) => {
@@ -563,7 +568,7 @@ function MonitorView({ layout, tab, header }: MonitorViewProps) {
         title={title}
         mono={t.kind === 'machine'}
         mark={mark}
-        detail={[mark?.detail ?? (mark ? null : 'Không có dữ liệu'), extra].filter(Boolean).join(' · ')}
+        detail={[mark?.detail ?? (mark ? null : tr.common.noData), extra].filter(Boolean).join(' · ')}
         selected={open || (t.kind === 'machine' && t.id === cur)}
         hovered={t.kind === 'machine' && t.id === mapHover}
         expanded={open}
@@ -630,7 +635,7 @@ function MonitorView({ layout, tab, header }: MonitorViewProps) {
         >
           {error && (
             <Typography role="status" sx={{ px: 1.75, pt: 1, fontSize: 12, color: 'error.main' }}>
-              Không làm mới được: {error}
+              {tr.monitor.refreshFailed} {error}
             </Typography>
           )}
 
@@ -640,7 +645,7 @@ function MonitorView({ layout, tab, header }: MonitorViewProps) {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <AppButton
                     compact
-                    aria-label="Quay lại danh sách"
+                    aria-label={tr.monitor.backToList}
                     icon={<ArrowBackRoundedIcon sx={{ fontSize: 18 }} />}
                     onClick={() => setDetailTarget(null)}
                     sx={{ height: 30, minWidth: 30 }}
@@ -681,7 +686,7 @@ function MonitorView({ layout, tab, header }: MonitorViewProps) {
                   {tab.help && (
                     <IconButton
                       size="small"
-                      aria-label="Giải thích trạng thái"
+                      aria-label={tr.monitor.statusHelp}
                       onClick={(e) => setHelpAnchor(e.currentTarget)}
                       sx={{ p: 0.25, color: 'text.secondary' }}
                     >
@@ -735,7 +740,7 @@ function MonitorView({ layout, tab, header }: MonitorViewProps) {
                   size="small"
                   type="search"
                   value={query}
-                  placeholder={tab.groups ? 'Tìm mã máy / nhóm, ví dụ 1443, INS' : 'Tìm mã máy, ví dụ 1443'}
+                  placeholder={tab.groups ? tr.monitor.searchWithGroups : tr.monitor.search}
                   autoComplete="off"
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={(e) => {
@@ -745,7 +750,7 @@ function MonitorView({ layout, tab, header }: MonitorViewProps) {
                       onRowClick({ kind: 'group', id: (openGroups[0] ?? safeGroups[0]).key })
                     }
                   }}
-                  slotProps={{ htmlInput: { 'aria-label': 'Tìm mã máy' } }}
+                  slotProps={{ htmlInput: { 'aria-label': tr.monitor.searchAria } }}
                   sx={{
                     mt: 1,
                     '& .MuiInputBase-input': { fontFamily: codeFontFamily, fontSize: 14 },
@@ -788,7 +793,7 @@ function MonitorView({ layout, tab, header }: MonitorViewProps) {
                         { kind: 'machine', id: c },
                         c,
                         marks[c],
-                        floor.machines[c] ? undefined : 'không có trên bản đồ',
+                        floor.machines[c] ? undefined : tr.monitor.notOnMap,
                       ))}
                     </Collapse>
                   </Box>
@@ -796,15 +801,15 @@ function MonitorView({ layout, tab, header }: MonitorViewProps) {
 
                 {!sections.length && sectionFilter !== GROUPS_SECTION && (
                   <Typography sx={{ py: 3, textAlign: 'center', fontSize: 13, color: 'text.secondary' }}>
-                    {q ? 'Không có mã máy khớp.' : 'Không có máy nào có lỗi chưa đóng.'}
+                    {q ? tr.monitor.noMatch : tr.monitor.noOpenMachines}
                   </Typography>
                 )}
 
                 {showGroups && (
                   <Box>
                     <SectionHeader
-                      label={`Lỗi không gắn máy (${groupsOpen})`}
-                      hint="Lỗi ở khu vực / thiết bị không có trên bản đồ"
+                      label={tr.monitor.unassignedCount(groupsOpen)}
+                      hint={tr.monitor.unassignedHint}
                       open={!collapsed.has(GROUPS_SECTION)}
                       onToggle={() => toggleCollapsed(GROUPS_SECTION)}
                     />
@@ -814,7 +819,7 @@ function MonitorView({ layout, tab, header }: MonitorViewProps) {
 
                       {!openGroups.length && (
                         <Typography sx={{ py: 1, px: 1, fontSize: 12.5, color: 'text.secondary' }}>
-                          {q ? 'Không có nhóm chưa đóng khớp.' : 'Không có lỗi chưa đóng.'}
+                          {q ? tr.monitor.noOpenGroupMatch : tr.monitor.noOpenErrors}
                         </Typography>
                       )}
 
@@ -834,7 +839,7 @@ function MonitorView({ layout, tab, header }: MonitorViewProps) {
                               '&:hover': { bgcolor: 'action.hover' },
                             }}
                           >
-                            {`Đã an toàn (${safeGroups.length})`}
+                            {tr.monitor.safeCount(safeGroups.length)}
                             <ExpandMoreRoundedIcon
                               sx={{
                                 fontSize: 18,
@@ -894,7 +899,7 @@ function MonitorView({ layout, tab, header }: MonitorViewProps) {
         slotProps={{ paper: { sx: { p: 1.5, maxWidth: 340, borderRadius: uiTokens.card.borderRadius } } }}
       >
         <Typography sx={{ mb: 1, fontSize: 13, fontWeight: 700 }}>
-          Trạng thái và màu
+          {tr.monitor.statusAndColors}
         </Typography>
         {(tab.help ?? []).map((h) => (
           <Box key={h.chip.label} sx={{ display: 'grid', gridTemplateColumns: '128px 1fr', gap: 1, py: 0.6 }}>
@@ -952,12 +957,14 @@ function StatTile({
   active: boolean
   onClick?: () => void
 }) {
+  const { t } = useI18n()
+
   return (
     <ButtonBase
       onClick={onClick}
       disabled={!onClick}
       aria-pressed={active}
-      title={active ? 'Bỏ lọc' : `Chỉ hiện: ${label}`}
+      title={active ? t.monitor.clearFilter : t.monitor.onlyShow(label)}
       sx={(theme) => {
         const c = toneColor(tone, theme.palette.mode === 'dark')
 
@@ -1005,6 +1012,8 @@ function HistoryRow({
   onClick: () => void
   onPointerEnter: () => void
 }) {
+  const { t } = useI18n()
+
   return (
     <ButtonBase
       role="listitem"
@@ -1044,7 +1053,7 @@ function HistoryRow({
         )}
       </Box>
       <Typography sx={{ fontSize: 11.5, color: 'text.secondary', whiteSpace: 'nowrap' }}>
-        {`${row.count} lỗi`}
+        {t.monitor.errorCount(row.count)}
       </Typography>
     </ButtonBase>
   )
@@ -1138,6 +1147,8 @@ function MonitorRow({
   onOpenDetail: () => void
   onPointerEnter: () => void
 }) {
+  const { t } = useI18n()
+
   const tone = mark?.tone ?? 'none'
 
   return (
@@ -1189,7 +1200,7 @@ function MonitorRow({
             {mark?.badge ? (
               <Box
                 component="span"
-                title={`${mark.badge} lỗi chưa đóng`}
+                title={t.monitor.openErrorCount(mark.badge)}
                 sx={(theme) => ({
                   minWidth: 18,
                   px: 0.5,
@@ -1214,7 +1225,7 @@ function MonitorRow({
         {mark?.level && (
           <Box
             component="span"
-            title="Mức risk cao nhất"
+            title={t.monitor.highestRisk}
             sx={(theme) => {
               const c = toneColor(mark.level!.strong ? 'critical' : 'warn', theme.palette.mode === 'dark')
 
@@ -1261,7 +1272,7 @@ function MonitorRow({
             endIcon={<ChevronRightRoundedIcon sx={{ fontSize: 18 }} />}
             sx={{ mt: 0.5, height: 28 }}
           >
-            Xem chi tiết
+            {t.monitor.viewDetail}
           </AppButton>
         </Box>
       </Collapse>

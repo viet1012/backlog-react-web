@@ -10,6 +10,7 @@ import { ShipmentHeatmap } from '../components/shipment/ShipmentHeatmap'
 import { buildDateRange, buildShipmentRows, getDefaultShipmentDateRange } from '../components/shipment/shipmentHeatmapUtils'
 import { useShipmentData } from '../hooks/useShipmentData'
 import type { ShipmentHeatmapRow } from '../types/shipment'
+import { useI18n } from '../i18n/useI18n'
 interface ShipmentPageProps {
   mode: 'light' | 'dark'
   onToggleMode: () => void
@@ -24,6 +25,8 @@ export function ShipmentPage({
   // =========================================================
   // PAGE FILTER STATE
   // =========================================================
+  const { t } = useI18n()
+
   const [fromD, setFromD] = useState(defaultRange.fromD)
   const [toD, setToD] = useState(defaultRange.toD)
   const [appliedFromD, setAppliedFromD] = useState(defaultRange.fromD)
@@ -50,11 +53,11 @@ export function ShipmentPage({
   // =========================================================
   function handleApplyDate() {
     if (!fromD || !toD) {
-      setValidationError('Please select From Date and To Date')
+      setValidationError(t.shipment.selectDates)
       return
     }
     if (fromD > toD) {
-      setValidationError('From Date cannot be after To Date')
+      setValidationError(t.shipment.fromAfterTo)
       return
     }
     setValidationError(null)
@@ -89,8 +92,8 @@ export function ShipmentPage({
   return (
     <PageShell>
       <PageHeader
-        title="SHIPMENT FULFILLMENT"
-        subtitle="Monitor shipment fulfillment and delivery readiness."
+        title={t.shipment.title}
+        subtitle={t.shipment.subtitle}
         status={
           <UpdatedStatus
             updatedAt={lastUpdated}

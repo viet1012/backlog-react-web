@@ -6,6 +6,7 @@ import {
   type ReportFilters,
 } from '../services/reportService'
 import { createBacklogFilters, removeStatusFilters } from './backlogFilterUtils'
+import { getMessages } from '../i18n/i18nContext'
 
 interface UseBacklogSummaryParams {
   filters: ReportFilters
@@ -63,7 +64,7 @@ export function useBacklogSummary({
         setError(
           requestError instanceof Error
             ? requestError.message
-            : 'Unable to load backlog status summary',
+            : getMessages().misc.backlogSummaryFailed,
         )
       })
       .finally(() => {

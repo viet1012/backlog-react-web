@@ -2,7 +2,10 @@ import { useId } from 'react'
 import { Box, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 
+import { useI18n } from '../../i18n/useI18n'
+
 export function FactoryNoRowsOverlay() {
+    const { t } = useI18n()
     const uid = useId().replace(/:/g, '')
     const glassId = `factory-glass-${uid}`
     const glassShineId = `factory-glass-shine-${uid}`
@@ -422,7 +425,7 @@ export function FactoryNoRowsOverlay() {
                     textAlign: 'center',
                 }}
             >
-                Không có dữ liệu
+                {t.common.noData}
             </Typography>
 
             <Typography
@@ -434,7 +437,7 @@ export function FactoryNoRowsOverlay() {
                     opacity: 0.78,
                 }}
             >
-                Dữ liệu sẽ hiển thị tại đây khi có kết quả phù hợp.
+                {t.status.noRowsHint}
             </Typography>
         </Box>
     )

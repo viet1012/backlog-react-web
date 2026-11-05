@@ -60,6 +60,7 @@ import {
   AdapterDayjs,
 } from '@mui/x-date-pickers/AdapterDayjs'
 import { getDefaultAuthRoute } from './services/authService'
+import { useI18n } from './i18n/useI18n'
 
 const DEFAULT_THEME_MODE:
   ThemeMode =
@@ -97,13 +98,16 @@ function App() {
       () => loadThemeMode(DEFAULT_THEME_MODE),
     )
 
+  const { language } = useI18n()
+
   const theme =
     useMemo(
       () =>
         createDashboardTheme(
           mode,
+          language,
         ),
-      [mode],
+      [mode, language],
     )
 
 
@@ -125,6 +129,7 @@ function App() {
 
       <LocalizationProvider
         dateAdapter={AdapterDayjs}
+        adapterLocale={language}
       >
 
         <CssBaseline />

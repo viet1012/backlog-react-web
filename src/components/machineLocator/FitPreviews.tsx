@@ -18,7 +18,6 @@ import {
   FIT_CONFIG,
   FIT_GAP_MAX,
   FIT_GAP_MIN,
-  FIT_MODE_LABEL,
   FIT_MODES,
   TIDY_LEVEL_MAX,
   TIDY_LEVEL_MIN,
@@ -29,6 +28,7 @@ import {
 } from '../../utils/machineLocatorGeometry'
 import { PanelButton } from './MachineInfo'
 import { mapColors } from './machineLocatorColors'
+import { useI18n } from '../../i18n/useI18n'
 
 interface FitPreviewsProps {
   fx: FitSession
@@ -91,6 +91,8 @@ export function FitPreviews({
   onAccept,
   onReject,
 }: FitPreviewsProps) {
+  const { t } = useI18n()
+
   const [CX, CY, CW, CH] = crop
   const { variants } = fx.view
   // vùng nhìn: bao khung gốc (nếu có) + mọi kết quả, nới 15%, giữ tỉ lệ ô xem trước.
@@ -128,7 +130,7 @@ export function FitPreviews({
   return (
     <Box
       role="group"
-      aria-label="Kết quả ôm khung"
+      aria-label={t.locator.preview.resultsAria}
       onPointerDown={stop}
       onPointerUp={stop}
       onPointerMove={stop}
@@ -148,8 +150,8 @@ export function FitPreviews({
               disabled={!r}
               aria-pressed={sel}
               title={!r
-                ? 'Không có kết quả cho kiểu này'
-                : `${FIT_MODE_LABEL[m]} · tin cậy ${r.score}` + (r.fallback ? ' (không thấy viền kín, dùng “Sát”)' : '')}
+                ? t.locator.preview.noResult
+                : t.locator.preview.scoreTitle(t.locator.fitMode[m], r.score) + (r.fallback ? t.locator.preview.fallback : '')}
               onClick={() => onPick(m)}
               sx={{
                 display: 'flex',
@@ -185,7 +187,7 @@ export function FitPreviews({
                 )}
               </svg>
               <span style={{ whiteSpace: 'nowrap' }}>
-                {FIT_MODE_LABEL[m]}{r?.fallback ? '*' : ''}
+                {t.locator.fitMode[m]}{r?.fallback ? '*' : ''}
               </span>
               <Box component="span" sx={{ fontWeight: 700, color: r ? scoreColor(r.score) : 'text.disabled' }}>
                 {r ? r.score : '–'}
@@ -196,7 +198,7 @@ export function FitPreviews({
       </Box>
 
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5, px: 0.5 }}>
-        <span style={{ whiteSpace: 'nowrap' }}>Độ sát</span>
+        <span style={{ whiteSpace: 'nowrap' }}>{t.locator.preview.tightness}</span>
         <Slider
           size="small"
           min={1}
@@ -205,10 +207,10 @@ export function FitPreviews({
           value={tightness}
           valueLabelDisplay="auto"
           onChange={(_, v) => onTune({ tightness: v as number })}
-          aria-label="Độ sát"
+          aria-label={t.locator.preview.tightness}
           sx={{ flex: 1, minWidth: 64 }}
         />
-        <span style={{ whiteSpace: 'nowrap' }} title="Bịt khe hở của viền (px) trước khi tìm viền kín">Bịt hở</span>
+        <span style={{ whiteSpace: 'nowrap' }} title={t.locator.preview.closeGapsHint}>{t.locator.preview.closeGaps}</span>
         <Slider
           size="small"
           min={FIT_GAP_MIN}
@@ -218,7 +220,7 @@ export function FitPreviews({
           valueLabelDisplay="auto"
           valueLabelFormat={(v) => `${v} px`}
           onChange={(_, v) => onTune({ gap: v as number })}
-          aria-label="Bịt hở (px)"
+          aria-label={t.locator.preview.closeGapsAria}
           sx={{ flex: 1, minWidth: 48 }}
         />
         <FormControlLabel
@@ -226,30 +228,30 @@ export function FitPreviews({
           control={(
             <Switch size="small" checked={ortho} onChange={(e) => onTune({ ortho: e.target.checked })} />
           )}
-          label="Nắn vuông góc"
+          label={t.locator.preview.squareUp}
         />
         <FormControlLabel
           sx={switchLabelSx}
           title={hasRef
-            ? `Không cho kết quả vượt khung gốc quá ${FIT_CONFIG.boxOverflowPx} px (Shift+F: đảo riêng lần ôm đó)`
-            : 'Ôm quanh điểm click không có khung gốc'}
+            ? t.locator.preview.limitHint(FIT_CONFIG.boxOverflowPx)
+            : t.locator.preview.noOriginal}
           disabled={!hasRef}
           control={(
             <Switch size="small" checked={clip} onChange={(e) => onTune({ clip: e.target.checked })} />
           )}
-          label="Giới hạn trong khung"
+          label={t.locator.preview.limitToFrame}
         />
       </Box>
 
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5, mt: 0.5 }}>
         {ghost && (
           <Box component="span" sx={{ mr: 'auto', px: 0.5, color: 'text.secondary' }}>
-            Xem trước – chưa đổi khung
+            {t.locator.preview.previewNote}
           </Box>
         )}
-        <PanelButton onClick={onReject} title="Esc">{ghost ? 'Bỏ (Esc)' : 'Hủy (Esc)'}</PanelButton>
+        <PanelButton onClick={onReject} title="Esc">{ghost ? t.locator.preview.discard : t.locator.preview.cancel}</PanelButton>
         <PanelButton appearance="action" onClick={onAccept} title="Enter">
-          {ghost ? 'Áp dụng (Enter)' : 'Nhận (Enter)'}
+          {ghost ? t.locator.preview.apply : t.locator.preview.accept}
         </PanelButton>
       </Box>
     </Box>
@@ -276,10 +278,12 @@ export function TidyPreview({
   onAccept,
   onReject,
 }: TidyPreviewProps) {
+  const { t } = useI18n()
+
   return (
     <Box
       role="group"
-      aria-label="Làm gọn đường bao"
+      aria-label={t.locator.preview.tidyAria}
       onPointerDown={stop}
       onPointerUp={stop}
       onPointerMove={stop}
@@ -287,7 +291,7 @@ export function TidyPreview({
       sx={panelSx}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 0.5, minWidth: 240 }}>
-        <span style={{ whiteSpace: 'nowrap' }}>Mức gọn</span>
+        <span style={{ whiteSpace: 'nowrap' }}>{t.locator.preview.tidyLevel}</span>
         <Slider
           size="small"
           min={TIDY_LEVEL_MIN}
@@ -297,21 +301,21 @@ export function TidyPreview({
           value={level}
           valueLabelDisplay="auto"
           onChange={(_, v) => onLevel(v as number)}
-          aria-label="Mức gọn"
+          aria-label={t.locator.preview.tidyLevel}
           sx={{ flex: 1, minWidth: 80 }}
         />
         <Box component="span" sx={{ whiteSpace: 'nowrap', color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>
-          {before} → {after ?? '…'} đỉnh
+          {t.locator.preview.vertices(before, String(after ?? '…'))}
         </Box>
       </Box>
 
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5, mt: 0.5 }}>
         <Box component="span" sx={{ mr: 'auto', px: 0.5, color: 'text.secondary' }}>
-          Xem trước – chưa đổi khung
+          {t.locator.preview.previewNote}
         </Box>
-        <PanelButton onClick={onReject} title="Esc">Bỏ (Esc)</PanelButton>
+        <PanelButton onClick={onReject} title="Esc">{t.locator.preview.discard}</PanelButton>
         <PanelButton appearance="action" disabled={after === null} onClick={onAccept} title="Enter">
-          Áp dụng (Enter)
+          {t.locator.preview.apply}
         </PanelButton>
       </Box>
     </Box>

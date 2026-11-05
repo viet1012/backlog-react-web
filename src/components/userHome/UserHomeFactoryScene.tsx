@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { C, H, INK, LOOP, SIGN_FAMILY, W, createStatics, type Ctx } from './factoryScene/primitives'
 import { SCENES } from './factoryScene/scenes'
 import { drawShellBack, drawShellFront } from './factoryScene/shell'
+import { useI18n } from '../../i18n/useI18n'
 
 /*
  * Hoạt cảnh nhà máy kiểu truyện tranh, nhiều cảnh.
@@ -64,6 +65,8 @@ interface UserHomeFactorySceneProps {
 }
 
 export function UserHomeFactoryScene({ mode }: UserHomeFactorySceneProps) {
+  const { t } = useI18n()
+
   const backRef = useRef<HTMLCanvasElement>(null)
   const frontRef = useRef<HTMLCanvasElement>(null)
   const engineRef = useRef<SceneEngine | null>(null)
@@ -219,7 +222,7 @@ export function UserHomeFactoryScene({ mode }: UserHomeFactorySceneProps) {
     <Box onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
       <Box
         role="img"
-        aria-label={`Animated factory scene: ${SCENES[scene].title}`}
+        aria-label={t.misc.factorySceneAria(SCENES[scene].title)}
         sx={{
           position: 'relative',
           width: '100%',
@@ -295,7 +298,7 @@ export function UserHomeFactoryScene({ mode }: UserHomeFactorySceneProps) {
         {SCENES.map((item, i) => (
           <ButtonBase
             key={item.key}
-            aria-label={`Show ${item.title}`}
+            aria-label={t.misc.showScene(item.title)}
             aria-pressed={i === scene}
             onClick={() => selectScene(i)}
             sx={{

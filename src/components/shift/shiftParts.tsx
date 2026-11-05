@@ -3,6 +3,8 @@ import { useEffect, useRef, type ReactNode } from 'react'
 import { Box, Portal, Typography } from '@mui/material'
 import { alpha, keyframes } from '@mui/material/styles'
 
+import { useI18n } from '../../i18n/useI18n'
+
 // Shared pieces for the clock-in (login) and clock-out (logout) sequences.
 
 export const monoFont = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace'
@@ -127,6 +129,7 @@ export function ShiftOverlayRoot({
     fadeOutAt?: number
     children: ReactNode
 }) {
+    const { t } = useI18n()
     const onSkipRef = useRef(onSkip)
 
     useEffect(() => {
@@ -153,7 +156,7 @@ export function ShiftOverlayRoot({
             <Box
                 role="status"
                 aria-live="polite"
-                title="Click to skip"
+                title={t.shift.skip}
                 onClick={onSkip}
                 sx={(theme) => ({
                     position: 'fixed',

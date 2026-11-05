@@ -18,6 +18,7 @@ import type {
   MonitorTarget,
 } from '../monitorTypes'
 import { HseDetailPanel } from './HseDetailPanel'
+import { getMessages } from '../../../i18n/i18nContext'
 import {
   hseChip,
   hseSeverity,
@@ -112,6 +113,8 @@ function openItemsOf(m: HseMachine): HseItem[] {
     .sort((a, b) => hseSeverity(b.status) - hseSeverity(a.status) || (b.riskTotal ?? 0) - (a.riskTotal ?? 0))
 }
 
+const hseText = () => getMessages().monitor.hse
+
 // trạng thái hiển thị của 1 lỗi: OPEN / NG đã qua hạn -> OVERDUE
 function itemStatus(it: HseItem): string {
   return (it.status === 'OPEN' || it.status === 'NG') && isPastDue(it.dueDate, it.status) ? 'OVERDUE' : it.status
@@ -122,12 +125,12 @@ function timeText(status: string, items: HseItem[]): string | null {
   if (status === 'WAIT_HSE') {
     const at = pickDay(items.map((it) => it.atDate), true)
 
-    return at ? `PIC xong ${at}` : null
+    return at ? hseText().picDone(at) : null
   }
 
   const due = pickDay(items.map((it) => it.dueDate), false)
 
-  return due ? `hạn ${due}` : null
+  return due ? hseText().due(due) : null
 }
 
 // máy hoặc nhóm không gắn máy (cùng dạng HseMachine)
@@ -136,7 +139,7 @@ function hseMark(m: HseMachine): MachineMark {
   const openItems = openItemsOf(m)
   const first = openItems[0] ?? m.items?.[0]
   const area = first?.area?.trim() || null
-  const pic = first?.pic?.trim() ? `PIC ${first.pic.trim()}` : null
+  const pic = first?.pic?.trim() ? hseText().pic(first.pic.trim()) : null
   // số ngày quá hạn lâu nhất trong các lỗi chưa đóng
   const late = Math.max(0, ...openItems.map((it) => overdueDays(it.dueDate)))
   const chip = hseChip(m.status, late)
@@ -156,8 +159,8 @@ function hseMark(m: HseMachine): MachineMark {
       area,
       pic,
       time,
-      open > 1 ? `${open} lỗi chưa đóng` : null,
-      m.maxRisk != null ? `risk max ${m.maxRisk}` : null,
+      open > 1 ? getMessages().monitor.openErrorCount(open) : null,
+      m.maxRisk != null ? getMessages().monitor.riskMax(m.maxRisk) : null,
     ].filter(Boolean).join(' · '),
     section: sectionOf(m.status),
     chip,
@@ -168,30 +171,39 @@ function hseMark(m: HseMachine): MachineMark {
 
 export const hseTab: MonitorTabDef<HseResponse> = {
   id: 'hse',
-  label: 'Safety',
-  listTitle: 'Máy có lỗi chưa đóng',
-  activeFilterLabel: 'Chỉ hiện máy / nhóm có lỗi chưa đóng',
+  // getters: text follows the current UI language
+  get label() { return getMessages().monitor.tabs.hse },
+  get listTitle() { return hseText().listTitle },
+  get activeFilterLabel() { return hseText().activeFilter },
 
   history: {
     defaultRange: DEFAULT_SAFE_RANGE,
-    label: 'Lịch sử an toàn',
-    note: 'Chỉ áp dụng cho lỗi đã an toàn. Lỗi chưa đóng luôn hiện tất cả.',
-    rowsTitle: 'Đã an toàn trong khoảng',
+    get label() { return hseText().historyLabel },
+    get note() { return hseText().historyNote },
+    get rowsTitle() { return hseText().historyRowsTitle },
   },
 
-  sections: [
-    { id: 'overdue', label: 'Quá hạn', hint: 'Đã qua hạn, PIC chưa khắc phục' },
-    { id: 'open', label: 'Chưa xử lý / NG', hint: 'Còn trong hạn hoặc HSE yêu cầu làm lại' },
-    { id: 'wait', label: 'Chờ HSE duyệt', hint: 'PIC báo đã khắc phục, chờ HSE xác nhận' },
-  ],
+  get sections() {
+    const s = hseText().sections
 
-  help: [
-    { chip: hseChip('OVERDUE'), text: 'Đã qua hạn xử lý, PIC chưa khắc phục. Đỏ đậm, viền nhấp nháy trên bản đồ.' },
-    { chip: hseChip('OPEN'), text: 'Lỗi còn trong hạn, PIC chưa khắc phục.' },
-    { chip: hseChip('NG'), text: 'PIC đã khắc phục nhưng HSE kiểm tra chưa đạt, cần làm lại. Đỏ, viền nét đứt.' },
-    { chip: hseChip('WAIT_HSE'), text: 'PIC báo đã khắc phục, đang chờ HSE xác nhận an toàn.' },
-    { chip: hseChip('SAFE'), text: 'Đã an toàn: không tô màu trên bản đồ (chỉ thấy viền ở nền "Ẩn").' },
-  ],
+    return [
+      { id: 'overdue', label: s.overdue.label, hint: s.overdue.hint },
+      { id: 'open', label: s.open.label, hint: s.open.hint },
+      { id: 'wait', label: s.wait.label, hint: s.wait.hint },
+    ]
+  },
+
+  get help() {
+    const h = hseText().help
+
+    return [
+      { chip: hseChip('OVERDUE'), text: h.OVERDUE },
+      { chip: hseChip('OPEN'), text: h.OPEN },
+      { chip: hseChip('NG'), text: h.NG },
+      { chip: hseChip('WAIT_HSE'), text: h.WAIT_HSE },
+      { chip: hseChip('SAFE'), text: h.SAFE },
+    ]
+  },
 
   load(floorId, signal, history) {
     return fetchHseMonitor(floorId, signal, resolveRange(history ?? DEFAULT_SAFE_RANGE))
@@ -214,9 +226,9 @@ export const hseTab: MonitorTabDef<HseResponse> = {
   // ô số ở header panel phải (số máy); "Không gắn máy" do page thêm
   legend(data): MonitorLegendItem[] {
     return [
-      { tone: 'critical', label: 'Quá hạn', count: summaryCount(data, ['OVERDUE']), section: 'overdue' },
-      { tone: 'bad', label: 'Chưa xử lý', count: summaryCount(data, ['NG', 'OPEN']), section: 'open' },
-      { tone: 'warn', label: 'Chờ HSE duyệt', count: summaryCount(data, ['WAIT_HSE']), section: 'wait' },
+      { tone: 'critical', label: getMessages().monitor.hseStatus.OVERDUE, count: summaryCount(data, ['OVERDUE']), section: 'overdue' },
+      { tone: 'bad', label: hseText().legendOpen, count: summaryCount(data, ['NG', 'OPEN']), section: 'open' },
+      { tone: 'warn', label: getMessages().monitor.hseStatus.WAIT_HSE, count: summaryCount(data, ['WAIT_HSE']), section: 'wait' },
     ]
   },
 
@@ -226,7 +238,7 @@ export const hseTab: MonitorTabDef<HseResponse> = {
     const nSafeItems = [...Object.values(data.machines), ...data.unassigned]
       .reduce((a, m) => a + (m.safeCount ?? 0), 0)
 
-    return `${nSafeItems} lỗi đã an toàn · ${mapCodes.length} máy trên bản đồ`
+    return hseText().safeSummary(nSafeItems, mapCodes.length)
   },
 
   groups(data) {
@@ -261,7 +273,7 @@ export const hseTab: MonitorTabDef<HseResponse> = {
         title,
         detail: [
           safe.find((it) => it.area?.trim())?.area?.trim(),
-          last ? `HSE xác nhận ${last.format('DD/MM')}` : null,
+          last ? hseText().hseConfirmed(last.format('DD/MM')) : null,
         ].filter(Boolean).join(' · '),
         count,
         last: last?.valueOf() ?? 0,
@@ -287,12 +299,12 @@ export const hseTab: MonitorTabDef<HseResponse> = {
       return {
         id: String(it.id),
         chip: hseChip(st, overdueDays(it.dueDate)),
-        text: text || '(không có nội dung)',
+        text: text || hseText().noContent,
         meta: [
-          it.pic?.trim() ? `PIC ${it.pic.trim()}` : null,
+          it.pic?.trim() ? hseText().pic(it.pic.trim()) : null,
           st === 'WAIT_HSE'
-            ? (dayMonth(it.atDate) ? `PIC xong ${dayMonth(it.atDate)}` : null)
-            : (dayMonth(it.dueDate) ? `hạn ${dayMonth(it.dueDate)}` : null),
+            ? (dayMonth(it.atDate) ? hseText().picDone(dayMonth(it.atDate)!) : null)
+            : (dayMonth(it.dueDate) ? hseText().due(dayMonth(it.dueDate)!) : null),
         ].filter(Boolean).join(' · '),
       }
     })

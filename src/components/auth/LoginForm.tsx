@@ -21,6 +21,7 @@ import {
 import { useState } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
 
+import { useI18n } from '../../i18n/useI18n'
 import { AuthField } from './AuthField'
 import {
   authCheckboxLabelSx,
@@ -65,6 +66,7 @@ export function LoginForm({
   onCreateAccount,
   onSubmit,
 }: LoginFormProps) {
+  const { t } = useI18n()
   const canSubmit = employeeId.trim() !== '' && password !== ''
   const [capsLockOn, setCapsLockOn] = useState(false)
 
@@ -85,8 +87,8 @@ export function LoginForm({
       {/* MSNV */}
       <AuthField
         id="login-employee-id"
-        label="Employee ID (MSNV)"
-        placeholder="e.g. 22847"
+        label={t.auth.employeeId}
+        placeholder={t.auth.employeeIdPlaceholder}
         value={employeeId}
         onChange={(event) =>
           onEmployeeIdChange(event.target.value)
@@ -111,8 +113,8 @@ export function LoginForm({
       <Box>
         <AuthField
           id="login-password"
-          label="Password"
-          placeholder="Enter your password"
+          label={t.auth.password}
+          placeholder={t.auth.passwordPlaceholder}
           type={showPassword ? 'text' : 'password'}
           value={password}
           onChange={(event) =>
@@ -137,13 +139,13 @@ export function LoginForm({
                   <IconButton
                     aria-label={
                       showPassword
-                        ? 'Hide password'
-                        : 'Show password'
+                        ? t.auth.hidePassword
+                        : t.auth.showPassword
                     }
                     title={
                       showPassword
-                        ? 'Hide password'
-                        : 'Show password'
+                        ? t.auth.hidePassword
+                        : t.auth.showPassword
                     }
                     aria-pressed={showPassword}
                     edge="end"
@@ -171,7 +173,7 @@ export function LoginForm({
 
         {capsLockOn && (
           <Typography role="status" sx={capsLockHintSx}>
-            Caps Lock is on
+            {t.auth.capsLockOn}
           </Typography>
         )}
       </Box>
@@ -200,7 +202,7 @@ export function LoginForm({
               sx={authCheckboxSx}
             />
           }
-          label="Remember me"
+          label={t.auth.rememberMe}
           sx={authCheckboxLabelSx}
         />
       </Box>
@@ -233,21 +235,21 @@ export function LoginForm({
               size={16}
               color="inherit"
             />
-            Signing in...
+            {t.auth.signingIn}
           </Box>
         ) : (
-          'Sign In'
+          t.auth.signIn
         )}
       </Button>
 
       <Typography sx={authHintSx}>
-        Already using S-Patrol? Sign in with the same Employee ID and password.
+        {t.auth.sPatrolHint}
       </Typography>
 
       <Typography
         sx={authModeFooterSx}
       >
-        Don&apos;t have an account?{' '}
+        {t.auth.noAccount}{' '}
 
         <Typography
           component="button"
@@ -256,7 +258,7 @@ export function LoginForm({
           disabled={loading}
           sx={authModeActionSx}
         >
-          Create account
+          {t.auth.createAccount}
         </Typography>
       </Typography>
     </Box>

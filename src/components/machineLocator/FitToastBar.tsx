@@ -5,6 +5,7 @@ import {
 } from '@mui/material'
 
 import type { MachineLocatorState } from '../../hooks/useMachineLocator'
+import { useI18n } from '../../i18n/useI18n'
 
 interface FitToastBarProps {
   ml: MachineLocatorState
@@ -12,6 +13,7 @@ interface FitToastBarProps {
 
 // Kết quả ôm khung: "Đã ôm theo máy · Hoàn tác", cảnh báo khung đổi nhiều, không nhận ra hình máy
 export function FitToastBar({ ml }: FitToastBarProps) {
+  const { t: tr } = useI18n()
   const t = ml.fitToast
 
   return (
@@ -37,7 +39,7 @@ export function FitToastBar({ ml }: FitToastBarProps) {
               onClick={() => ml.undo(t.undoId)}
               sx={{ fontWeight: 700, textTransform: 'none' }}
             >
-              Hoàn tác
+              {tr.locator.undo}
             </Button>
           )
           : undefined}

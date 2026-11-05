@@ -8,6 +8,7 @@ import type {
   HseSafeRange,
   HseUnassignedGroup,
 } from '../types/machineMonitor'
+import { getMessages } from '../i18n/i18nContext'
 
 // =========================================================
 // MACHINE MONITOR – API backlog-be (/api/machine-monitor), chỉ đọc
@@ -59,13 +60,13 @@ function normalizeUnassigned(raw: unknown): HseUnassignedGroup[] {
   return raw
     .filter((g): g is Partial<HseUnassignedGroup> => !!g && typeof g === 'object')
     .map((g, i) => {
-      const label = String(g.label ?? '').trim() || `Nhóm ${i + 1}`
+      const label = String(g.label ?? '').trim() || getMessages().monitor.group(i + 1)
       const items = Array.isArray(g.items) ? g.items : []
       const open = (g.openCount ?? 0) + (g.waitCount ?? 0)
       const description = [
         topArea(items),
-        open ? `${open} lỗi chưa đóng` : null,
-        g.maxRisk != null ? `risk max ${g.maxRisk}` : null,
+        open ? getMessages().monitor.openErrorCount(open) : null,
+        g.maxRisk != null ? getMessages().monitor.riskMax(g.maxRisk) : null,
       ].filter(Boolean).join(' · ')
 
       return {

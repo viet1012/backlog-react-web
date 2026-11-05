@@ -1,5 +1,8 @@
 import { useEffect } from 'react'
 
+import type { Messages } from '../../i18n/messages/en'
+import { useI18n } from '../../i18n/useI18n'
+
 import {
     finishClockIn,
     useClockInRun,
@@ -37,15 +40,17 @@ const walkOnDuration = gaitCycle * 2
 const fadeOutAt = riseAt + riseDuration - 100
 const endAt = fadeOutAt + 300
 
-function greeting(date: Date) {
+function greeting(date: Date, shift: Messages['shift']) {
     const hour = date.getHours()
 
-    if (hour >= 5 && hour < 11) return 'CHÀO BUỔI SÁNG'
-    if (hour >= 11 && hour < 18) return 'CHÀO BUỔI CHIỀU'
-    return 'CHÀO BUỔI TỐI'
+    if (hour >= 5 && hour < 11) return shift.goodMorning
+    if (hour >= 11 && hour < 18) return shift.goodAfternoon
+    return shift.goodEvening
 }
 
 function ClockInSequence({ run }: { run: ClockInRun }) {
+    const { t } = useI18n()
+
     useEffect(() => {
         const timer = window.setTimeout(() => finishClockIn(run.id), endAt)
         return () => window.clearTimeout(timer)
@@ -60,9 +65,9 @@ function ClockInSequence({ run }: { run: ClockInRun }) {
         >
             <ShutterPanel animation={`${shutterRise} ${riseDuration}ms ${riseAt}ms forwards`}>
                 <ShutterMessage
-                    title={`VÀO CA — ${greeting(run.startedAt)}`}
+                    title={t.shift.clockInTitle(greeting(run.startedAt, t.shift))}
                     subtitle={run.username}
-                    detail={`Check-in ${formatClock(run.startedAt)}`}
+                    detail={t.shift.checkIn(formatClock(run.startedAt))}
                     animation={`${fadeUp} ${messageFade}ms ease-out ${messageAt}ms both`}
                 />
             </ShutterPanel>

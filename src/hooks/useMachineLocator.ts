@@ -85,6 +85,10 @@ import {
   loadPreference,
   savePreference,
 } from '../utils/uiPreferences'
+import { getMessages } from '../i18n/i18nContext'
+
+// Status / toast text is read at call time so it follows the current UI language.
+const L = () => getMessages().locator
 
 // Yêu cầu MapCanvas đưa vùng bounds vào tầm nhìn (hoặc zoom tới)
 export interface RevealRequest {
@@ -561,7 +565,7 @@ export function useMachineLocator(
     if (!f) return
 
     if (f.status === 'error') {
-      showToast('Chưa tải được ảnh layout – không ôm được khung.', 'info')
+      showToast(L().toast.imageNotLoaded, 'info')
       return
     }
 
@@ -584,7 +588,7 @@ export function useMachineLocator(
           if (token !== fitSeq.current) return
           pendingFit.current = null
           setFitting(null)
-          showToast(`Không ôm được khung: ${e instanceof Error ? e.message : e}`, 'info')
+          showToast(L().toast.fitFailed(e instanceof Error ? e.message : String(e)), 'info')
         },
       )
     }, delay)
@@ -609,7 +613,7 @@ export function useMachineLocator(
         // chỉnh thanh trượt giữ kiểu đang chọn của bản xem trước
         mode: req.kind === 'tune' && g && g.code === req.code ? g.mode : defMode,
       }))
-      if (!any) showToast('Không nhận ra hình máy quanh điểm click', 'info')
+      if (!any) showToast(L().toast.notRecognizedAtClick, 'info')
       return
     }
 
@@ -642,10 +646,10 @@ export function useMachineLocator(
       }
       showToast(
         !b
-          ? 'Không nhận ra hình máy quanh điểm click'
+          ? L().toast.notRecognizedAtClick
           : req.manual
-            ? 'Không nhận ra hình máy – giữ nguyên khung'
-            : 'Không nhận ra hình máy – giữ khung chữ nhật',
+            ? L().toast.notRecognizedKeep
+            : L().toast.notRecognizedRect,
         'info',
       )
       return
@@ -665,8 +669,8 @@ export function useMachineLocator(
       setFitPreview({ code: d.code, i: req.i, undoId })
       showToast(
         big
-          ? `Khung đổi nhiều (${Math.round(shift)} pt) – kiểm tra lại · tin cậy ${r.score}`
-          : `Đã ôm theo máy · tin cậy ${r.score}` + (r.fallback ? ' (không thấy viền kín, dùng “Sát”)' : ''),
+          ? L().toast.bigShift(Math.round(shift), r.score)
+          : L().toast.fitted(r.score) + (r.fallback ? L().preview.fallback : ''),
         big || r.score < 50 ? 'warning' : 'success',
         undoId,
       )
@@ -731,7 +735,7 @@ export function useMachineLocator(
     const r = g.session.view.variants[g.mode]
 
     if (!r) {
-      showToast('Kiểu ôm này không có kết quả – chọn kiểu khác trước khi nhận', 'info')
+      showToast(L().toast.noResultForMode, 'info')
       setFitGhost(g)
       return
     }
@@ -746,7 +750,7 @@ export function useMachineLocator(
     setDraft({ ...draft, boxes, dirty: true })
     setAct(i)
     markWarn(draft.code, i, false)
-    showToast(`Đã áp dụng khung · tin cậy ${r.score}`, r.score < 50 ? 'warning' : 'success', undoId)
+    showToast(L().toast.applied(r.score), r.score < 50 ? 'warning' : 'success', undoId)
   }
 
   // Công thức đang dùng của khung đang chọn (lần tinh chỉnh trước còn chờ kết quả thì cộng dồn lên nó)
@@ -881,7 +885,7 @@ export function useMachineLocator(
         (e: unknown) => {
           if (token !== tidySeq.current) return
           setTidy(null)
-          showToast(`Không làm gọn được: ${e instanceof Error ? e.message : e}`, 'info')
+          showToast(L().toast.tidyFailed(e instanceof Error ? e.message : String(e)), 'info')
         },
       )
     }, delay)
@@ -894,12 +898,12 @@ export function useMachineLocator(
     if (!editing || !draft || !b) return
 
     if (!b.p?.length) {
-      showToast('Khung chưa có đường bao – ôm theo máy (F) trước', 'info')
+      showToast(L().toast.noOutlineYet, 'info')
       return
     }
 
     if (fitter.current?.status !== 'ready') {
-      showToast(fitterState === 'error' ? 'Chưa tải được ảnh layout – không làm gọn được.' : 'Đang chuẩn bị ảnh layout…', 'info')
+      showToast(fitterState === 'error' ? L().toast.tidyImageFailed : L().toast.preparingImage, 'info')
       return
     }
 
@@ -938,7 +942,7 @@ export function useMachineLocator(
     boxes[t.i] = { ...boxes[t.i], ...bboxOfOutline(polys), p: polys, fx: undefined }
     setDraft({ ...draft, boxes, dirty: true })
     markWarn(draft.code, t.i, false)
-    showToast(`Đã làm gọn · ${count(t.from)} → ${count(polys)} đỉnh`, 'success', undoId)
+    showToast(L().toast.tidied(count(t.from), count(polys)), 'success', undoId)
   }
 
   // Sửa đỉnh đường bao (kéo / thêm / xoá đỉnh): khung b theo bao ngoài đường bao mới
@@ -1153,7 +1157,7 @@ export function useMachineLocator(
     if (!f || batch?.running) return
 
     if (draft && draft.dirty) {
-      setStatus(`Lưu hoặc hủy thay đổi của ${draft.code} trước khi ôm hàng loạt.`, 'err')
+      setStatus(L().msg.saveOrCancelBeforeBatch(draft.code), 'err')
       return
     }
 
@@ -1167,7 +1171,7 @@ export function useMachineLocator(
     }
 
     if (!jobs.length) {
-      setStatus('Mọi khung đều đã có đường bao.', 'ok')
+      setStatus(L().msg.allHaveOutline, 'ok')
       return
     }
 
@@ -1181,7 +1185,7 @@ export function useMachineLocator(
     batchStop.current = false
     cancelFit()
     setBatch({ running: true, done: 0, total: jobs.length, rows: [], pending: waiting, orig, reviewIdx: null })
-    setStatus(`Đang ôm ${jobs.length} khung…`)
+    setStatus(L().msg.batchRunning(jobs.length))
 
     let error = ''
 
@@ -1243,12 +1247,12 @@ export function useMachineLocator(
     const nReview = rows.filter((x) => x.status === 'review').length
 
     if (error) {
-      setStatus(`Dừng ôm hàng loạt: ${error}`, 'err')
+      setStatus(L().msg.batchStopped(String(error)), 'err')
     } else {
       setStatus(
-        `Đã ôm ${nFit}/${rows.length} khung`
-        + (nReview ? `, ${nReview} khung cần soát` : '')
-        + (rows.length - nFit ? `, ${rows.length - nFit} không nhận ra` : '')
+        L().msg.batchDone(nFit, rows.length)
+        + (nReview ? L().msg.batchReview(nReview) : '')
+        + (rows.length - nFit ? L().msg.batchMiss(rows.length - nFit) : '')
         + '. Bấm “Soát lần lượt” (Enter nhận, S bỏ qua) rồi “Lưu kết quả”.',
         'ok',
       )
@@ -1274,14 +1278,14 @@ export function useMachineLocator(
 
     if (idx >= batch.rows.length) {
       setBatch((b) => b && { ...b, reviewIdx: null })
-      setStatus(`Đã soát hết ${batch.rows.length} khung. Bấm “Lưu kết quả” để ghi.`, 'ok')
+      setStatus(L().msg.reviewedAll(batch.rows.length), 'ok')
       return
     }
 
     const row = batch.rows[idx]
 
     if (draft && draft.dirty && draft.code !== row.code) {
-      setStatus(`Lưu hoặc hủy thay đổi của ${draft.code} trước khi soát tiếp.`, 'err')
+      setStatus(L().msg.saveOrCancelBeforeReview(draft.code), 'err')
       return
     }
 
@@ -1322,7 +1326,7 @@ export function useMachineLocator(
     if (!batch || batch.running) return
 
     if (draft && draft.dirty) {
-      setStatus(`Lưu hoặc hủy thay đổi của ${draft.code} trước.`, 'err')
+      setStatus(L().msg.saveOrCancelFirst(draft.code), 'err')
       return
     }
 
@@ -1332,13 +1336,13 @@ export function useMachineLocator(
 
     const ops: MachineBulkOp[] = entries.map(([code, boxes]) => ({ type: 'set', code, boxes: editBoxes(boxes) }))
     // ôm lại theo ảnh: giữ nguyên trạng thái máy (u / src / r)
-    const next = await runWrite(`Đang lưu ${entries.length} máy…`, () => bulkMachineEdits(layout, ops, version, true))
+    const next = await runWrite(L().msg.savingMachines(entries.length), () => bulkMachineEdits(layout, ops, version, true))
 
     if (!next) return
 
     setBatch((b) => b && { ...b, pending: {} })
     applyStore(next, {})
-    setStatus(`Đã lưu khung đã ôm của ${entries.length} máy.`, 'ok')
+    setStatus(L().msg.savedBatch(entries.length), 'ok')
   }
 
   const pendingFitCount = Object.keys(pending ?? {}).length
@@ -1375,7 +1379,7 @@ export function useMachineLocator(
       })
       .catch((e: unknown) => {
         if (!alive) return
-        setStatusMessage({ t: `Không tải được dữ liệu: ${e instanceof Error ? e.message : e}`, k: 'err' })
+        setStatusMessage({ t: L().msg.dataFailed(e instanceof Error ? e.message : String(e)), k: 'err' })
         setLoadFailed(true)
         setLoaded(true)
       })
@@ -1403,7 +1407,7 @@ export function useMachineLocator(
     const isEditing = options.editing ?? editing
 
     if (draft && draft.dirty && draft.code !== c) {
-      setStatus(`Lưu hoặc hủy thay đổi của ${draft.code} trước khi chọn máy khác.`, 'err')
+      setStatus(L().msg.saveOrCancelBeforeSelect(draft.code), 'err')
       return
     }
 
@@ -1445,7 +1449,7 @@ export function useMachineLocator(
     if (!cur) return
 
     if (draft && draft.dirty) {
-      setStatus(`Lưu hoặc hủy thay đổi của ${draft.code} trước khi bỏ chọn.`, 'err')
+      setStatus(L().msg.saveOrCancelBeforeDeselect(draft.code), 'err')
       return
     }
 
@@ -1470,12 +1474,12 @@ export function useMachineLocator(
 
   function setEditing(on: boolean) {
     if (!on && draft && draft.dirty) {
-      setStatus(`Lưu hoặc hủy thay đổi của ${draft.code} trước khi thoát.`, 'err')
+      setStatus(L().msg.saveOrCancelBeforeExit(draft.code), 'err')
       return
     }
 
     if (!on && (batch?.running || pendingFitCount)) {
-      setStatus('Lưu hoặc bỏ kết quả ôm hàng loạt trước khi thoát.', 'err')
+      setStatus(L().msg.saveOrDiscardBatchBeforeExit, 'err')
       return
     }
 
@@ -1497,7 +1501,7 @@ export function useMachineLocator(
 
   function startNew(code?: string) {
     if (draft && draft.dirty) {
-      setStatus(`Lưu hoặc hủy thay đổi của ${draft.code} trước.`, 'err')
+      setStatus(L().msg.saveOrCancelFirst(draft.code), 'err')
       return
     }
 
@@ -1518,7 +1522,7 @@ export function useMachineLocator(
   function createNew(c: string) {
     if (machines[c]) {
       select(c, { editing: true })
-      setStatus(`${c} đã có trong danh sách.`, 'err')
+      setStatus(L().msg.alreadyInList(c), 'err')
       return
     }
 
@@ -1527,7 +1531,7 @@ export function useMachineLocator(
     setPanelMode(null)
     setDraft({ code: c, boxes: [], dirty: false, isNew: true })
     setQuery('')
-    setStatus(`Kéo trên bản vẽ để vẽ khung cho ${c}, sau đó bấm Lưu.`)
+    setStatus(L().msg.dragToDraw(c))
     setDrawMode('add')
   }
 
@@ -1602,14 +1606,14 @@ export function useMachineLocator(
 
     if (!c || !data.m[c]) return
 
-    if (draft?.dirty && !window.confirm(`Bỏ thay đổi chưa lưu của ${c} và về khung tự động?`)) return
+    if (draft?.dirty && !window.confirm(L().msg.confirmRevert(c))) return
 
     cancelFit()
     cancelTidy()
     setFitPreview(null)
     setFitGhost(null)
 
-    const next = await runWrite('Đang về khung tự động…', () => revertMachine(layout, c, version))
+    const next = await runWrite(L().msg.reverting, () => revertMachine(layout, c, version))
 
     if (!next) return
 
@@ -1627,7 +1631,7 @@ export function useMachineLocator(
       setCur(null)
     }
 
-    setStatus(`Đã đưa ${c} về khung tự động.`, 'ok')
+    setStatus(L().msg.reverted(c), 'ok')
   }
 
   function cancel() {
@@ -1664,7 +1668,7 @@ export function useMachineLocator(
 
     const c = draft.code
     const boxes = editBoxes(draft.boxes)
-    const next = await runWrite('Đang lưu…', () => setMachineEdit(layout, c, { boxes }, version))
+    const next = await runWrite(L().msg.saving, () => setMachineEdit(layout, c, { boxes }, version))
 
     if (!next) return
 
@@ -1675,7 +1679,7 @@ export function useMachineLocator(
     undoStack.current.forEach((u) => {
       u.dirty = true
     })
-    setStatus(`Đã lưu ${c}.`, 'ok')
+    setStatus(L().msg.saved(c), 'ok')
   }
 
   // "Đúng rồi": bỏ cờ cần soát, giữ nguyên khung
@@ -1685,12 +1689,12 @@ export function useMachineLocator(
 
     if (!c || !m || !m.review || draft?.dirty) return
 
-    const next = await runWrite('Đang lưu…', () => confirmMachine(layout, c, version))
+    const next = await runWrite(L().msg.saving, () => confirmMachine(layout, c, version))
 
     if (!next) return
 
     applyStore(next)
-    setStatus(`Đã đánh dấu ${c} là đã soát.`, 'ok')
+    setStatus(L().msg.markedReviewed(c), 'ok')
   }
 
   async function renameTo(n: string) {
@@ -1704,7 +1708,7 @@ export function useMachineLocator(
     }
 
     if (machines[n]) {
-      setStatus(`${n} đã có trong danh sách. Xóa hoặc đổi mã đó trước.`, 'err')
+      setStatus(L().msg.renameConflict(n), 'err')
       return
     }
 
@@ -1713,11 +1717,11 @@ export function useMachineLocator(
       if (draft) setDraft({ ...draft, code: n })
       setCur(n)
       setPanelMode(null)
-      setStatus(`Đã đổi ${o} thành ${n}.`, 'ok')
+      setStatus(L().msg.renamed(o, n), 'ok')
       return
     }
 
-    const next = await runWrite('Đang đổi mã…', () => renameMachine(layout, o, n, version))
+    const next = await runWrite(L().msg.renaming, () => renameMachine(layout, o, n, version))
 
     if (!next) return
 
@@ -1730,7 +1734,7 @@ export function useMachineLocator(
     setCur(n)
     // đang sửa dở thì giữ bản nháp (đổi mã), lưu sau
     setDraft(draft && draft.dirty ? { ...draft, code: n } : freshDraft(n, next))
-    setStatus(`Đã đổi ${o} thành ${n}.`, 'ok')
+    setStatus(L().msg.renamed(o, n), 'ok')
   }
 
   async function deleteMachine() {
@@ -1740,7 +1744,7 @@ export function useMachineLocator(
 
     // máy chưa lưu lên server: chỉ bỏ bản nháp
     const next = data.m[c]
-      ? await runWrite('Đang xóa…', () => removeMachine(layout, c, version))
+      ? await runWrite(L().msg.deleting, () => removeMachine(layout, c, version))
       : current
 
     if (!next) return
@@ -1751,7 +1755,7 @@ export function useMachineLocator(
     setDrawMode(null)
     setPanelMode(null)
     setCur(null)
-    setStatus(`Đã xóa ${c}.`, 'ok')
+    setStatus(L().msg.deleted(c), 'ok')
   }
 
   // =======================================================
@@ -1762,7 +1766,7 @@ export function useMachineLocator(
 
   function exportFile(name: string, content: string | Blob) {
     downloadFile(name, content)
-    setStatus(`Đã xuất ${name}.`, 'ok')
+    setStatus(L().msg.exported(name), 'ok')
   }
 
   function exportCsv() {
@@ -1781,19 +1785,19 @@ export function useMachineLocator(
 
       exportFile(layout.exportMeta.imageFile, await res.blob())
     } catch {
-      setStatus('Không xuất được file trong chế độ xem này.', 'err')
+      setStatus(L().msg.exportUnavailable, 'err')
     }
   }
 
   // false: đang có thay đổi chưa lưu, không mở hộp chọn file
   function canStartImport(): boolean {
     if (draft && draft.dirty) {
-      setStatus(`Lưu hoặc hủy thay đổi của ${draft.code} trước khi nhập.`, 'err')
+      setStatus(L().msg.saveOrCancelBeforeImport(draft.code), 'err')
       return false
     }
 
     if (batch?.running || pendingFitCount) {
-      setStatus('Lưu hoặc bỏ kết quả ôm hàng loạt trước khi nhập.', 'err')
+      setStatus(L().msg.saveOrDiscardBatchBeforeImport, 'err')
       return false
     }
 
@@ -1811,7 +1815,7 @@ export function useMachineLocator(
     const { ops } = plan
 
     if (!ops.length) {
-      setStatus('Dữ liệu trong file giống hiện tại, không có gì thay đổi.', 'ok')
+      setStatus(L().msg.importNoChanges, 'ok')
       return
     }
 
@@ -1819,19 +1823,22 @@ export function useMachineLocator(
     const dels = ops.filter((op) => op.type === 'del').map((op) => op.code).sort(compareCodes)
 
     if (dels.length && !window.confirm(
-      `File ${file.name} không có ${dels.length} máy đang có trên layout này. `
-      + `Nhập sẽ XOÁ ${dels.length} máy:\n${dels.slice(0, 20).join(', ')}${dels.length > 20 ? ', …' : ''}\n\nTiếp tục?`,
+      L().msg.confirmImportDelete(
+        file.name,
+        dels.length,
+        `${dels.slice(0, 20).join(', ')}${dels.length > 20 ? ', …' : ''}`,
+      ),
     )) {
-      setStatus('Đã hủy nhập JSON.')
+      setStatus(L().msg.importCancelled)
       return
     }
 
-    const next = await runWrite(`Đang nhập ${ops.length} thay đổi…`, () => bulkMachineEdits(layout, ops, version))
+    const next = await runWrite(L().msg.importing(ops.length), () => bulkMachineEdits(layout, ops, version))
 
     if (!next) return
 
     applyStore(next)
-    setStatus(`Đã nhập ${ops.length} thay đổi từ ${file.name}.`, 'ok')
+    setStatus(L().msg.imported(ops.length, file.name), 'ok')
   }
 
   // =======================================================
@@ -1959,10 +1966,10 @@ export function useMachineLocator(
 
   const hint = drawMode && cur
     ? drawMode === 'replace'
-      ? `Kéo trên bản vẽ để vẽ lại khung ${cur}. Esc để hủy.`
-      : `Kéo trên bản vẽ để vẽ khung cho ${cur}. Esc để hủy.`
+      ? L().msg.redrawHint(cur)
+      : L().msg.drawHint(cur)
     : editing && fitTool && cur
-      ? `Chế độ fit: click vào máy để ôm khung ${cur} quanh điểm click. Esc để thoát.`
+      ? L().msg.fitModeHint(cur)
       : ''
 
   return {
@@ -2010,7 +2017,7 @@ export function useMachineLocator(
     // thay đổi chưa lưu (cho hộp hỏi khi chuyển tab xưởng)
     dirtyLabel: draft?.dirty
       ? draft.code
-      : pendingFitCount ? `${pendingFitCount} máy vừa ôm hàng loạt` : null,
+      : pendingFitCount ? L().msg.pendingBatch(pendingFitCount) : null,
     fitTool,
     fitTightness,
     fitOrtho,

@@ -28,6 +28,8 @@ import {
     FacConfirmDateTimeEditCell,
 } from './FacConfirmDateTimeEditCell'
 
+import type { Messages } from '../../i18n/messages/en'
+
 
 function renderDateTimeEditCell(
     params: Parameters<
@@ -203,9 +205,32 @@ const facConfirmColumnDefinitions:
 // BUILD COLUMNS
 // =========================================================
 
+// field → shared header key in t.columns
+const headerKeys: Partial<Record<string, keyof Messages['columns']>> = {
+    ferth: 'productType',
+    productGrp: 'productGroup',
+    aufnr: 'aufnr',
+    zglobalCode: 'globalCode',
+    issueD: 'issueDate',
+    exportD: 'exportDate',
+    cusId: 'customer',
+    shipBy: 'shipBy',
+    mtoId: 'mtoId',
+    prtAddcmt2: 'comment',
+    currentProcess: 'currentProcess',
+    finalQty: 'finalQty',
+    pname: 'productName',
+    note: 'heatNote',
+    toDrill: 'toDrill',
+    toHeat: 'toHeat',
+    heatFinish: 'toClg',
+    toPk: 'toPk',
+}
+
 export function getFacConfirmColumns(
     activeProcess:
         FacConfirmProcessGroup | null,
+    t: Messages,
 ): GridColDef<FacConfirmRow>[] {
 
     // Cột có thể sửa ở công đoạn (gồm cột quy tắc mở thêm).
@@ -218,9 +243,17 @@ export function getFacConfirmColumns(
             : null
 
     return facConfirmColumnDefinitions.map(
-        (column) => ({
+        (column) => {
+            const headerKey = headerKeys[column.field]
+            const headerName = headerKey
+                ? t.columns[headerKey]
+                : column.headerName
+
+            return {
 
             ...column,
+
+            headerName,
 
             sortable: true,
 
@@ -233,11 +266,12 @@ export function getFacConfirmColumns(
                 <ExcelFilterHeader
                     field={column.field}
                     label={
-                        column.headerName
+                        headerName
                         ?? column.field
                     }
                 />
             ),
-        }),
+            }
+        },
     )
 }

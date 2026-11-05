@@ -1,6 +1,9 @@
 import { ReceiptLongOutlined } from '@mui/icons-material'
 import { PlaceholderPage } from '../components/common/PlaceholderPage'
+import { useI18n } from '../i18n/useI18n'
 
 export function PlPage() {
-  return <PlaceholderPage title="PL" subtitle="Review profit and loss management information." icon={ReceiptLongOutlined} />
+  const { t } = useI18n()
+
+  return <PlaceholderPage title={t.nav.pl} subtitle={t.placeholder.pl} icon={ReceiptLongOutlined} />
 }

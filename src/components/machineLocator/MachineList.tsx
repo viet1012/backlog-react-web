@@ -24,6 +24,8 @@ import {
   codeFontFamily,
   mapColors,
 } from './machineLocatorColors'
+import { useI18n } from '../../i18n/useI18n'
+import { getMessages } from '../../i18n/i18nContext'
 
 interface MachineListProps {
   machines: MachineMap
@@ -60,19 +62,21 @@ function machineTag(
   const m = machines[code]
   const n = m.boxes.length
 
-  if (canWrite && m.review) return ['cần soát', 'review']
+  const list = getMessages().locator.list
+
+  if (canWrite && m.review) return [list.tagReview, 'review']
 
   const tag: [string, TagKind] | null = !base[code]
-    ? ['mới', 'edit']
+    ? [list.tagNew, 'edit']
     : n > 1
-      ? ['2 chỗ', 'warn']
+      ? [list.tagPlaces(2), 'warn']
       : m.manual
-        ? ['đã sửa', 'edit']
+        ? [list.tagEdited, 'edit']
         : m.u
           ? ['?', 'warn']
           : null
 
-  if (tag && n > 2) tag[0] = `${n} chỗ`
+  if (tag && n > 2) tag[0] = list.tagPlaces(n)
 
   return tag
 }
@@ -120,6 +124,8 @@ function MachineListView({
   onOpenElsewhere,
   onHover,
 }: MachineListProps) {
+  const { t } = useI18n()
+
   const buttons = useRef(new Map<string, HTMLButtonElement>())
 
   const codes = Object.keys(machines).sort(compareCodes)
@@ -221,7 +227,7 @@ function MachineListView({
             >
               <Box component="span" sx={{ flex: 1 }}>
                 <Box component="b" sx={{ fontFamily: codeFontFamily }}>{m.code}</Box>
-                {' '}nằm ở {m.layoutName} — mở?
+                {t.locator.list.foundIn(m.layoutName)}
               </Box>
 
               <AppButton
@@ -229,31 +235,31 @@ function MachineListView({
                 onClick={() => onOpenElsewhere(m.layoutId, m.code)}
                 sx={{ height: 28, minWidth: 0, px: 1 }}
               >
-                Mở {m.layoutName}
+                {t.locator.list.open(m.layoutName)}
               </AppButton>
             </Box>
           ))}
 
           {codes.length === 0 && !query.trim() ? (
             canWrite
-              ? 'Chưa có máy nào trên layout này. Bấm “+ Máy mới” để thêm.'
-              : 'Chưa có dữ liệu vị trí máy.'
+              ? t.locator.list.emptyWritable
+              : t.locator.list.emptyReadOnly
           ) : reviewOnly && !query.trim() ? (
-            'Không còn máy cần soát.'
+            t.locator.list.noneToReview
           ) : newCode && canWrite ? (
             <>
-              <div>Chưa có {newCode} trong danh sách.</div>
+              <div>{t.locator.list.notInList(newCode)}</div>
 
               <AppButton
                 appearance="action"
                 onClick={() => onStartNew(newCode)}
                 sx={{ mt: 0.75, height: 30 }}
               >
-                Thêm máy {newCode} và vẽ khung
+                {t.locator.list.addAndDraw(newCode)}
               </AppButton>
             </>
           ) : (
-            `Không có mã nào chứa “${query.trim()}”. Thử nhập ít số hơn.`
+            t.locator.list.noMatch(query.trim())
           )}
         </Box>
       )}

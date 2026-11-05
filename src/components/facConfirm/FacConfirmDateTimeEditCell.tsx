@@ -29,11 +29,14 @@ import dayjs, {
 import type {
     FacConfirmRow,
 } from '../../types/facConfirm'
+import { useI18n } from '../../i18n/useI18n'
 
 
 export function FacConfirmDateTimeEditCell(
     params: GridRenderEditCellParams<FacConfirmRow>,
 ) {
+    const { t } = useI18n()
+
     const {
         id,
         field,
@@ -211,7 +214,7 @@ export function FacConfirmDateTimeEditCell(
                             px: 1.25,
                         }}
                     >
-                        Cancel
+                        {t.common.cancel}
                     </Button>
 
                     <Button
@@ -226,7 +229,7 @@ export function FacConfirmDateTimeEditCell(
                             px: 1.5,
                         }}
                     >
-                        OK
+                        {t.dataGrid.ok}
                     </Button>
                 </DialogActions>
             )
@@ -234,6 +237,7 @@ export function FacConfirmDateTimeEditCell(
         [
             cancelEdit,
             commitValue,
+            t,
         ],
     )
 

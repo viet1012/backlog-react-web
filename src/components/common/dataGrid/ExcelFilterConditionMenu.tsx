@@ -1,35 +1,31 @@
 import { Menu, MenuItem } from '@mui/material'
+import { useI18n } from '../../../i18n/useI18n'
 import type { ExcelFilterKind } from './excelFilterContext'
-
-export interface FilterCondition {
-  label: string
-  operator: string
-  requiresValue: boolean
-}
+import type { FilterCondition } from './excelFilterConditions'
 
 const conditions: Record<ExcelFilterKind, FilterCondition[]> = {
   text: [
-    { label: 'Equals...', operator: 'equals', requiresValue: true },
-    { label: 'Does Not Equal...', operator: 'doesNotEqual', requiresValue: true },
-    { label: 'Begins With...', operator: 'startsWith', requiresValue: true },
-    { label: 'Ends With...', operator: 'endsWith', requiresValue: true },
-    { label: 'Contains...', operator: 'contains', requiresValue: true },
-    { label: 'Does Not Contain...', operator: 'doesNotContain', requiresValue: true },
-    { label: 'Is Empty', operator: 'isEmpty', requiresValue: false },
-    { label: 'Is Not Empty', operator: 'isNotEmpty', requiresValue: false },
+    { labelKey: 'equals', operator: 'equals', requiresValue: true },
+    { labelKey: 'doesNotEqual', operator: 'doesNotEqual', requiresValue: true },
+    { labelKey: 'beginsWith', operator: 'startsWith', requiresValue: true },
+    { labelKey: 'endsWith', operator: 'endsWith', requiresValue: true },
+    { labelKey: 'contains', operator: 'contains', requiresValue: true },
+    { labelKey: 'doesNotContain', operator: 'doesNotContain', requiresValue: true },
+    { labelKey: 'isEmpty', operator: 'isEmpty', requiresValue: false },
+    { labelKey: 'isNotEmpty', operator: 'isNotEmpty', requiresValue: false },
   ],
   number: [
-    { label: 'Equals...', operator: '=', requiresValue: true },
-    { label: 'Does Not Equal...', operator: '!=', requiresValue: true },
-    { label: 'Greater Than...', operator: '>', requiresValue: true },
-    { label: 'Greater Than Or Equal...', operator: '>=', requiresValue: true },
-    { label: 'Less Than...', operator: '<', requiresValue: true },
-    { label: 'Less Than Or Equal...', operator: '<=', requiresValue: true },
+    { labelKey: 'equals', operator: '=', requiresValue: true },
+    { labelKey: 'doesNotEqual', operator: '!=', requiresValue: true },
+    { labelKey: 'greaterThan', operator: '>', requiresValue: true },
+    { labelKey: 'greaterOrEqual', operator: '>=', requiresValue: true },
+    { labelKey: 'lessThan', operator: '<', requiresValue: true },
+    { labelKey: 'lessOrEqual', operator: '<=', requiresValue: true },
   ],
   date: [
-    { label: 'Equals...', operator: 'equals', requiresValue: true },
-    { label: 'Before...', operator: 'before', requiresValue: true },
-    { label: 'After...', operator: 'after', requiresValue: true },
+    { labelKey: 'equals', operator: 'equals', requiresValue: true },
+    { labelKey: 'before', operator: 'before', requiresValue: true },
+    { labelKey: 'after', operator: 'after', requiresValue: true },
   ],
 }
 
@@ -46,6 +42,8 @@ export function ExcelFilterConditionMenu({
   onClose,
   onSelect,
 }: ExcelFilterConditionMenuProps) {
+  const { t } = useI18n()
+
   return (
     <Menu
       open={Boolean(anchorEl)}
@@ -57,13 +55,14 @@ export function ExcelFilterConditionMenu({
     >
       {conditions[kind].map((condition) => (
         <MenuItem
-          key={condition.label}
+          key={condition.operator}
           onClick={() => {
             onSelect(condition)
             onClose()
           }}
         >
-          {condition.label}
+          {t.dataGrid.conditions[condition.labelKey]}
+          {condition.requiresValue ? '...' : ''}
         </MenuItem>
       ))}
     </Menu>

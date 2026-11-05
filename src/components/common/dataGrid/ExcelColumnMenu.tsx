@@ -29,6 +29,8 @@ import {
     useExcelColumnFilter,
 } from './excelFilterContext'
 
+import { useI18n } from '../../../i18n/useI18n'
+
 // =========================================================
 // EXCEL COLUMN MENU
 // =========================================================
@@ -46,6 +48,9 @@ export function ExcelColumnMenu(
 
     const excelFilter =
         useExcelColumnFilter()
+
+    const { t } =
+        useI18n()
 
 
     // =======================================================
@@ -200,7 +205,7 @@ export function ExcelColumnMenu(
                     </ListItemIcon>
 
                     <ListItemText
-                        primary="Sort A to Z"
+                        primary={t.dataGrid.sortAsc}
                     />
                 </ListItemButton>
 
@@ -220,7 +225,7 @@ export function ExcelColumnMenu(
                     </ListItemIcon>
 
                     <ListItemText
-                        primary="Sort Z to A"
+                        primary={t.dataGrid.sortDesc}
                     />
                 </ListItemButton>
 
@@ -250,7 +255,7 @@ export function ExcelColumnMenu(
                     </ListItemIcon>
 
                     <ListItemText
-                        primary="Filter..."
+                        primary={t.dataGrid.filterMenu}
                     />
                 </ListItemButton>
 

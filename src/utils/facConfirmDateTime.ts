@@ -1,3 +1,5 @@
+import { getMessages } from '../i18n/i18nContext'
+
 interface FacConfirmDateTimeParts {
   year: string
   month: string
@@ -59,9 +61,8 @@ function pad2(
 function getInvalidDateTimeMessage(): string {
   const now = new Date()
 
-  return (
-    'Sai định dạng ngày giờ. VD: '
-    + `${pad2(now.getDate())}`
+  return getMessages().facConfirm.dateTime.invalidFormat(
+    `${pad2(now.getDate())}`
     + `/${pad2(now.getMonth() + 1)}`
     + `/${now.getFullYear()}`
     + ` ${pad2(now.getHours())}`
@@ -325,8 +326,9 @@ export function normalizeFacConfirmDateTimeForApi(
     < now.getTime()
   ) {
     throw new Error(
-      `Không được chọn thời gian trước `
-      + `${formatDateTimeForMessage(now)}.`,
+      getMessages().facConfirm.dateTime.notBefore(
+        formatDateTimeForMessage(now),
+      ),
     )
   }
 
@@ -519,11 +521,16 @@ export function validateHeatFinish(
   ) {
     throw new Error(
       fromHeatStart
-        ? `${materialLabel}: To CLG phải từ thời điểm bắt đầu Heat `
-          + `(${formatDateTimeForMessage(baseDate)}) + ${waitingDays} ngày, `
-          + `tức từ ${formatDateTimeForMessage(minimumFinish)} trở đi.`
-        : `${materialLabel}: To CLG phải từ `
-          + `${formatDateTimeForMessage(minimumFinish)} trở đi.`,
+        ? getMessages().facConfirm.dateTime.clgFromHeatStart(
+          materialLabel,
+          formatDateTimeForMessage(baseDate),
+          waitingDays,
+          formatDateTimeForMessage(minimumFinish),
+        )
+        : getMessages().facConfirm.dateTime.clgFrom(
+          materialLabel,
+          formatDateTimeForMessage(minimumFinish),
+        ),
     )
   }
 }
@@ -563,8 +570,10 @@ export function validateFacConfirmDateTimeNotBefore(
     < minimumDate.getTime()
   ) {
     throw new Error(
-      `${label} phải từ `
-      + `${formatDateTimeForMessage(minimumDate)} trở đi.`,
+      getMessages().facConfirm.dateTime.mustBeFrom(
+        label,
+        formatDateTimeForMessage(minimumDate),
+      ),
     )
   }
 }

@@ -3,6 +3,7 @@ import { Tooltip } from '@mui/material'
 import RefreshRoundedIcon
     from '@mui/icons-material/RefreshRounded'
 
+import { useI18n } from '../../i18n/useI18n'
 import { AppButton } from './AppButton'
 
 interface RefreshButtonProps {
@@ -14,12 +15,13 @@ export function RefreshButton({
     loading = false,
     onClick,
 }: RefreshButtonProps) {
+    const { t } = useI18n()
 
     return (
-        <Tooltip title="Refresh">
+        <Tooltip title={t.common.refresh}>
             <span>
                 <AppButton
-                    aria-label="Refresh"
+                    aria-label={t.common.refresh}
                     variant="outlined"
                     compact
                     loading={loading}

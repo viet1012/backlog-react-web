@@ -11,6 +11,7 @@ import type {
 import {
   uiTokens,
 } from '../../theme/uiTokens'
+import { useI18n } from '../../i18n/useI18n'
 
 
 type ClassifyMode =
@@ -71,6 +72,8 @@ export function FacConfirmClassifyControl({
   disabled = false,
   onChange,
 }: FacConfirmClassifyControlProps) {
+
+  const { t } = useI18n()
 
   const selectedMode =
     getClassifyMode(value)
@@ -251,7 +254,7 @@ export function FacConfirmClassifyControl({
             key={mode}
             value={mode}
           >
-            {label}
+            {mode === 'all' ? t.common.all : label}
           </ToggleButton>
         ),
       )}

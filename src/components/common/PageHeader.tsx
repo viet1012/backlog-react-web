@@ -7,6 +7,7 @@ import { alpha } from '@mui/material/styles'
 
 import type { ReactNode } from 'react'
 import { glassPanelSx, uiTokens } from '../../theme/uiTokens'
+import { LanguageToggleButton } from './LanguageToggleButton'
 import { ThemeToggleButton } from './ThemeToggleButton'
 
 interface PageHeaderProps {
@@ -234,6 +235,8 @@ export function PageHeader({
           {status}
 
           {actions}
+
+          <LanguageToggleButton />
 
           <ThemeToggleButton
             mode={mode}

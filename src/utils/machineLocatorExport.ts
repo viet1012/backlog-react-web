@@ -17,6 +17,7 @@ import {
   sameBoxes,
   sameOutlines,
 } from './machineLocatorGeometry'
+import { getMessages } from '../i18n/i18nContext'
 
 // =========================================================
 // EXPORT
@@ -173,13 +174,13 @@ export function planJsonImport(
   try {
     parsed = JSON.parse(text)
   } catch {
-    return { ok: false, error: 'File không phải JSON hợp lệ.' }
+    return { ok: false, error: getMessages().locator.errors.invalidJson }
   }
 
   const machines = (parsed as { machines?: unknown } | null)?.machines
 
   if (!Array.isArray(machines)) {
-    return { ok: false, error: 'File JSON không có danh sách machines. Dùng file xuất từ trang này.' }
+    return { ok: false, error: getMessages().locator.errors.noMachines }
   }
 
   const seen = new Set<string>()

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { getShipmentDetail, getShipmentFulfillment } from '../services/shipmentService'
 import type { ProductionOrder } from '../types/report'
 import type { ShipmentDetailFilter, ShipmentFulfillment } from '../types/shipment'
+import { getMessages } from '../i18n/i18nContext'
 
 export function useShipmentData(appliedFromD: string, appliedToD: string) {
   const [data, setData] = useState<ShipmentFulfillment[]>([])
@@ -27,7 +28,7 @@ export function useShipmentData(appliedFromD: string, appliedToD: string) {
         if (!controller.signal.aborted) {
           setError(requestError instanceof Error
             ? requestError.message
-            : 'Unable to load shipment fulfillment')
+            : getMessages().shipment.loadFailed)
         }
       } finally {
         if (!controller.signal.aborted) setLoading(false)
@@ -50,7 +51,7 @@ export function useShipmentData(appliedFromD: string, appliedToD: string) {
     } catch (requestError) {
       setDetailError(requestError instanceof Error
         ? requestError.message
-        : 'Unable to load shipment detail')
+        : getMessages().shipment.detailLoadFailed)
     } finally {
       setDetailLoading(false)
     }

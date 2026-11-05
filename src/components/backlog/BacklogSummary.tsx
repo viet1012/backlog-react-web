@@ -32,6 +32,8 @@ import {
   normalizeBacklogStatus,
 } from './backlogStatus'
 import { appScrollbarSx } from '../../theme/scrollbarStyle'
+import { getCurrentLanguage } from '../../i18n/i18nContext'
+import { useI18n } from '../../i18n/useI18n'
 
 const STATUS_COLUMN_WIDTH = 110
 const DATE_COLUMN_WIDTH = 100
@@ -152,6 +154,10 @@ function formatDateHeader(
       day,
     )
 
+  if (getCurrentLanguage() === 'vi') {
+    return `${day}/${month}`
+  }
+
   const monthLabel =
     date.toLocaleString(
       'en-US',
@@ -207,6 +213,8 @@ export function BacklogSummary({
   selectedCell,
   onCellClick,
 }: BacklogSummaryProps) {
+
+  const { t } = useI18n()
 
   const [collapsed, setCollapsed] =
     useState(false)
@@ -345,15 +353,15 @@ export function BacklogSummary({
             color: 'text.primary',
           }}
         >
-          Backlog Summary
+          {t.backlog.summaryTitle}
         </Typography>
 
         <IconButton
           size="small"
           aria-label={
             collapsed
-              ? 'Expand Backlog Summary'
-              : 'Collapse Backlog Summary'
+              ? t.backlog.expandSummary
+              : t.backlog.collapseSummary
           }
           onClick={() => {
             setCollapsed(
@@ -391,7 +399,7 @@ export function BacklogSummary({
                 py: 0.25,
               }}
             >
-              Status summary unavailable: {error}
+              {t.backlog.summaryUnavailable} {error}
             </Alert>
           )}
 
@@ -595,7 +603,7 @@ export function BacklogSummary({
                       }
                     }}
                   >
-                    Status
+                    {t.columns.status}
                   </Typography>
 
 

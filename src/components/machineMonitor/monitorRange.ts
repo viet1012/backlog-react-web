@@ -1,5 +1,9 @@
 import dayjs from 'dayjs'
 
+import { getMessages } from '../../i18n/i18nContext'
+
+const rangeText = () => getMessages().monitor.range
+
 // =========================================================
 // KHOẢNG NGÀY "LỊCH SỬ" (vd lịch sử an toàn): preset tương đối theo hôm nay hoặc tuỳ chọn
 // Lưu preset (không lưu ngày) để "Tháng này" luôn là tháng hiện tại khi mở lại
@@ -15,11 +19,11 @@ export interface MonitorRange {
 }
 
 export const RANGE_PRESETS: { id: RangePreset, label: string }[] = [
-  { id: 'month', label: 'Tháng này' },
-  { id: 'lastMonth', label: 'Tháng trước' },
-  { id: '3months', label: '3 tháng gần đây' },
-  { id: 'year', label: 'Năm nay' },
-  { id: 'all', label: 'Tất cả' },
+  { id: 'month', get label() { return rangeText().thisMonth } },
+  { id: 'lastMonth', get label() { return rangeText().lastMonth } },
+  { id: '3months', get label() { return rangeText().last3Months } },
+  { id: 'year', get label() { return rangeText().thisYear } },
+  { id: 'all', get label() { return rangeText().all } },
 ]
 
 export const presetRange = (preset: RangePreset): MonitorRange => ({ preset, from: null, to: null })
@@ -48,15 +52,15 @@ export function resolveRange(r: MonitorRange): { from: string | null, to: string
 export function rangeLabel(r: MonitorRange): string {
   const { from, to } = resolveRange(r)
 
-  if (!from && !to) return 'Tất cả thời gian'
+  if (!from && !to) return rangeText().allTime
 
   const f = from ? dayjs(from) : null
   const t = to ? dayjs(to) : null
 
   if (f && t) return `${f.format(f.year() === t.year() ? 'DD/MM' : 'DD/MM/YYYY')} – ${t.format('DD/MM/YYYY')}`
-  if (f) return `Từ ${f.format('DD/MM/YYYY')}`
+  if (f) return rangeText().from(f.format('DD/MM/YYYY'))
 
-  return `Đến ${t!.format('DD/MM/YYYY')}`
+  return rangeText().to(t!.format('DD/MM/YYYY'))
 }
 
 // đọc lại từ preference; sai dạng -> null

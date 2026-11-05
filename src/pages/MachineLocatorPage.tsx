@@ -63,6 +63,7 @@ import {
   loadPreference,
   savePreference,
 } from '../utils/uiPreferences'
+import { useI18n } from '../i18n/useI18n'
 
 interface MachineLocatorPageProps {
   mode: PaletteMode
@@ -84,6 +85,8 @@ export function MachineLocatorPage({
   mode,
   onToggleMode,
 }: MachineLocatorPageProps) {
+  const { t } = useI18n()
+
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
 
@@ -184,16 +187,16 @@ export function MachineLocatorPage({
     return (
       <PageShell>
         <PageHeader
-          title="Machine Locator"
-          subtitle="Vị trí máy"
+          title={t.locator.title}
+          subtitle={t.locator.subtitle}
           mode={mode}
           onToggleMode={onToggleMode}
         />
 
         <LoadState
           text={layoutsError
-            ? `Không tải được danh sách layout: ${layoutsError}`
-            : layouts ? 'Chưa có layout nào trên server.' : 'Đang tải danh sách layout…'}
+            ? t.monitor.layoutsFailed(layoutsError)
+            : layouts ? t.monitor.noLayouts : t.monitor.loadingLayouts}
           error={!!layoutsError}
           onRetry={layoutsError ? () => setLayoutsSeq((s) => s + 1) : undefined}
         />
@@ -204,8 +207,8 @@ export function MachineLocatorPage({
   return (
     <PageShell>
       <PageHeader
-        title="Machine Locator"
-        subtitle={`Vị trí máy — ${layout.name}`}
+        title={t.locator.title}
+        subtitle={t.locator.subtitleWithLayout(layout.name)}
         bottom={(
           <Tabs
             value={layout.id}
@@ -248,15 +251,17 @@ export function MachineLocatorPage({
         slotProps={{ paper: { sx: { borderRadius: uiTokens.dialog.borderRadius } } }}
       >
         <DialogTitle sx={{ fontSize: uiTokens.dialogTypography.titleFontSize, fontWeight: 700 }}>
-          Chuyển layout?
+          {t.locator.switchLayoutTitle}
         </DialogTitle>
         <DialogContent sx={{ fontSize: 13 }}>
-          Thay đổi chưa lưu của {pending?.dirty} sẽ bị bỏ nếu chuyển sang
-          {' '}{findLayout(pending?.layoutId)?.name}.
+          {t.locator.switchLayoutBody(
+            String(pending?.dirty ?? ''),
+            findLayout(pending?.layoutId)?.name ?? '',
+          )}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <AppButton onClick={() => setPending(null)}>
-            Ở lại
+            {t.facConfirm.unsaved.stay}
           </AppButton>
           <AppButton
             appearance="destructive"
@@ -266,7 +271,7 @@ export function MachineLocatorPage({
               setPending(null)
             }}
           >
-            Bỏ thay đổi và chuyển
+            {t.locator.discardAndSwitch}
           </AppButton>
         </DialogActions>
       </Dialog>
@@ -284,6 +289,8 @@ function LoadState({
   error: boolean
   onRetry?: () => void
 }) {
+  const { t } = useI18n()
+
   return (
     <GlassPanel
       sx={{
@@ -303,7 +310,7 @@ function LoadState({
 
       {onRetry && (
         <AppButton onClick={onRetry}>
-          Thử lại
+          {t.common.retry}
         </AppButton>
       )}
     </GlassPanel>
@@ -323,6 +330,8 @@ function MachineLocatorView({
   onDirtyChange,
   onOpenElsewhere,
 }: MachineLocatorViewProps) {
+  const { t } = useI18n()
+
   const ml = useMachineLocator(layout, hasAnyRole(['ADMIN']))
 
   const codes = Object.keys(ml.machines).sort(compareCodes)
@@ -409,7 +418,7 @@ function MachineLocatorView({
   if (!ml.ready) {
     return (
       <LoadState
-        text={ml.loaded ? ml.status.t : 'Đang tải dữ liệu từ server…'}
+        text={ml.loaded ? ml.status.t : t.locator.footer.loading}
         error={ml.loaded}
         onRetry={ml.loaded ? ml.reloadFloor : undefined}
       />
@@ -506,16 +515,16 @@ function MachineLocatorView({
         <Box sx={{ px: 1.75, pt: 1.5, pb: 1.25 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
             <Typography sx={{ fontSize: 15, fontWeight: 700 }}>
-              Vị trí máy
+              {t.locator.panelTitle}
             </Typography>
 
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
               <EditToolbar ml={ml} />
 
-              <Tooltip title="Hướng dẫn (?)">
+              <Tooltip title={t.locator.help}>
                 <PanelButton
                   compact
-                  aria-label="Hướng dẫn"
+                  aria-label={t.locator.helpAria}
                   icon={<HelpOutlineRoundedIcon sx={{ fontSize: 18 }} />}
                   onClick={() => setHelpOpen(true)}
                 />
@@ -524,8 +533,8 @@ function MachineLocatorView({
           </Box>
 
           <Typography sx={{ mt: 0.25, fontSize: 12, color: 'text.secondary' }}>
-            {`${codes.length} mã máy, ${nLoc} vị trí`}
-            {nMan ? `, ${nMan} mã đã chỉnh tay` : ''}
+            {t.locator.summary(codes.length, nLoc)}
+            {nMan ? t.locator.summaryManual(nMan) : ''}
           </Typography>
 
           <TextField
@@ -533,7 +542,7 @@ function MachineLocatorView({
             size="small"
             type="search"
             value={ml.query}
-            placeholder="Tìm mã, ví dụ 1443"
+            placeholder={t.locator.searchPlaceholder}
             autoComplete="off"
             onChange={(e) => ml.setQuery(e.target.value)}
             onKeyDown={(e) => {
@@ -542,7 +551,7 @@ function MachineLocatorView({
                   matchesMachineFilter(c, ml.machines, ml.query, ml.groups, ml.canWrite)))
               }
             }}
-            slotProps={{ htmlInput: { 'aria-label': 'Tìm mã máy' } }}
+            slotProps={{ htmlInput: { 'aria-label': t.locator.searchAria } }}
             sx={{
               mt: 1.25,
               '& .MuiInputBase-input': {
@@ -569,9 +578,9 @@ function MachineLocatorView({
               )}
               label={(
                 <>
-                  Chỉ hiện máy cần soát
+                  {t.locator.reviewOnly}
                   <Box component="span" sx={{ ml: 0.75, fontWeight: 700, color: mapColors.review }}>
-                    Cần soát: {ml.reviewCount}
+                    {t.locator.reviewCount(ml.reviewCount)}
                   </Box>
                 </>
               )}

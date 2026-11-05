@@ -2,6 +2,8 @@ import { ChevronRightRounded, ExpandMoreRounded } from '@mui/icons-material'
 import { Box, Checkbox, Collapse, IconButton, Stack, Typography } from '@mui/material'
 import { useMemo, useState } from 'react'
 
+import { useI18n } from '../../../i18n/useI18n'
+
 interface Props {
   options: string[]
   selectedValues: string[]
@@ -27,11 +29,6 @@ interface DateYear {
 }
 
 const DATE_VALUE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-] as const
-
 function parseDateOption(raw: string) {
   const value = raw.trim()
   if (!DATE_VALUE_PATTERN.test(value)) return null
@@ -45,7 +42,7 @@ function parseDateOption(raw: string) {
   }
 }
 
-function buildDateTree(options: string[]): DateYear[] {
+function buildDateTree(options: string[], monthNames: readonly string[]): DateYear[] {
   const years = new Map<number, Map<number, DateDay[]>>()
 
   for (const raw of options) {
@@ -75,7 +72,7 @@ function buildDateTree(options: string[]): DateYear[] {
           const days = [...rawDays].sort((left, right) => left.day - right.day)
           return {
             key: `${year}-${String(month).padStart(2, '0')}`,
-            label: MONTH_NAMES[month - 1] ?? String(month),
+            label: monthNames[month - 1] ?? String(month),
             days,
             values: days.map((day) => day.value),
           }
@@ -203,7 +200,9 @@ function YearNode({ item, expanded, expandedMonths, selected, onToggleExpanded, 
 }
 
 export function ExcelDateTreeFilter({ options, selectedValues, onChange }: Props) {
-  const tree = useMemo(() => buildDateTree(options), [options])
+  const { t } = useI18n()
+  const monthNames = t.dataGrid.months
+  const tree = useMemo(() => buildDateTree(options, monthNames), [options, monthNames])
   const selected = useMemo(() => new Set(selectedValues), [selectedValues])
   const [expandedYears, setExpandedYears] = useState<Set<number>>(
     () => new Set(tree.map((item) => item.year)),

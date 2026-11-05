@@ -5,7 +5,11 @@ import {
     Typography,
 } from '@mui/material'
 
+import { useI18n } from '../../i18n/useI18n'
+
 export function DinoNoRowsOverlay() {
+    const { t } = useI18n()
+
     return (
         <Box
             sx={{
@@ -423,7 +427,7 @@ export function DinoNoRowsOverlay() {
                     color: 'text.primary',
                 }}
             >
-                Không có dữ liệu
+                {t.common.noData}
             </Typography>
 
             <Typography

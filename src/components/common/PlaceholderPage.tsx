@@ -5,6 +5,7 @@ import { useColorScheme } from '@mui/material/styles'
 import { PageHeader } from './PageHeader'
 import { PageShell } from './PageShell'
 import { GlassPanel } from './GlassPanel'
+import { useI18n } from '../../i18n/useI18n'
 
 interface PlaceholderPageProps {
   title: string
@@ -18,6 +19,7 @@ export function PlaceholderPage({
   icon: Icon,
 }: PlaceholderPageProps) {
   const { mode, setMode } = useColorScheme()
+  const { t } = useI18n()
 
   return (
     <PageShell>
@@ -78,7 +80,7 @@ export function PlaceholderPage({
               lineHeight: 1.6,
             }}
           >
-            This workspace is ready for the upcoming {title} functionality.
+            {t.placeholder.upcoming(title)}
           </Typography>
         </Box>
       </GlassPanel>

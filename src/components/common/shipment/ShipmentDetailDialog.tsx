@@ -18,6 +18,7 @@ import type { ProductionOrder } from '../../../types/report'
 import { uiTokens } from '../../../theme/uiTokens'
 import { ShipmentDataTable } from '../../shipment/ShipmentDataTable'
 import { AppButton } from '../AppButton'
+import { useI18n } from '../../../i18n/useI18n'
 
 
 interface ShipmentDetailDialogProps {
@@ -38,6 +39,8 @@ export function ShipmentDetailDialog({
     error,
     onClose,
 }: ShipmentDetailDialogProps) {
+    const { t } = useI18n()
+
     return (
         <Dialog
             open={open}
@@ -72,7 +75,7 @@ export function ShipmentDetailDialog({
                             fontWeight: 800,
                         }}
                     >
-                        SHIPMENT DETAIL
+                        {t.shipment.detailTitle}
                     </Typography>
 
                     {filter && (
@@ -83,20 +86,20 @@ export function ShipmentDetailDialog({
                                 color: 'text.secondary',
                             }}
                         >
-                            Customer:
+                            {t.shipment.customerLabel}
                             {' '}
                             <b>{filter.cusId}</b>
 
                             {' · '}
 
-                            Ship By:
+                            {t.shipment.shipByLabel}
                             {' '}
                             <b>{filter.shipBy}</b>
 
                             {filter.exportDate && (
                                 <>
                                     {' · '}
-                                    Export Date:
+                                    {t.shipment.exportDateLabel}
                                     {' '}
                                     <b>{filter.exportDate}</b>
                                 </>
@@ -104,7 +107,7 @@ export function ShipmentDetailDialog({
 
                             {' · '}
 
-                            Orders:
+                            {t.shipment.ordersLabel}
                             {' '}
                             <b>{data.length.toLocaleString()}</b>
                         </Typography>
@@ -115,7 +118,7 @@ export function ShipmentDetailDialog({
 
                 <AppButton
                     compact
-                    aria-label="Close"
+                    aria-label={t.common.close}
                     onClick={onClose}
                     icon={<CloseRoundedIcon />}
                 />

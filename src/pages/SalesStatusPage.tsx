@@ -3,15 +3,17 @@ import { useColorScheme } from '@mui/material/styles'
 
 import { PageHeader } from '../components/common/PageHeader'
 import { PageShell } from '../components/common/PageShell'
+import { useI18n } from '../i18n/useI18n'
 
 export function SalesStatusPage() {
   const { mode, setMode } = useColorScheme()
+  const { t } = useI18n()
 
   return (
     <PageShell>
       <PageHeader
-        title="Sales Status"
-        subtitle="Sales status overview"
+        title={t.placeholder.salesStatus}
+        subtitle={t.placeholder.salesStatusSubtitle}
         mode={mode === 'light' ? 'light' : 'dark'}
         onToggleMode={() =>
           setMode(mode === 'dark' ? 'light' : 'dark')
@@ -20,7 +22,7 @@ export function SalesStatusPage() {
 
       <Card sx={{ p: 2 }}>
         <Typography color="text.secondary">
-          Coming soon
+          {t.placeholder.comingSoon}
         </Typography>
       </Card>
     </PageShell>

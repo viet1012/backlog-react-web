@@ -4,6 +4,7 @@ import { GlassPanel } from '../common/GlassPanel'
 import { uiTokens } from '../../theme/uiTokens'
 import { ShipmentLegend } from './ShipmentLegend'
 import { AppButton } from '../common/AppButton'
+import { useI18n } from '../../i18n/useI18n'
 
 interface ShipmentFilterBarProps {
   fromD: string
@@ -18,6 +19,8 @@ interface ShipmentFilterBarProps {
 export function ShipmentFilterBar({
   fromD, toD, loading, onFromDateChange, onToDateChange, onApply, onReset,
 }: ShipmentFilterBarProps) {
+  const { t } = useI18n()
+
   const controlSx = { height: uiTokens.control.height, fontSize: uiTokens.control.fontSize }
   const dateFieldSx: SxProps<Theme> = (theme) => ({
     width: 145,
@@ -31,17 +34,17 @@ export function ShipmentFilterBar({
     <GlassPanel sx={{ px: 1.5, py: 1 }}>
       <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', overflowX: 'auto' }}>
         <Typography sx={{ fontSize: uiTokens.typography.inputLabel, fontWeight: 700, color: 'text.secondary', mr: 0.5 }}>
-          DATE RANGE
+          {t.shipment.dateRange}
         </Typography>
-        <TextField label="From" type="date" size="small" value={fromD}
+        <TextField label={t.shipment.from} type="date" size="small" value={fromD}
           onChange={(event) => onFromDateChange(event.target.value)}
           slotProps={{ inputLabel: { shrink: true } }} sx={dateFieldSx} />
         <Typography color="text.secondary" sx={{ fontSize: 12 }}>→</Typography>
-        <TextField label="To" type="date" size="small" value={toD}
+        <TextField label={t.shipment.to} type="date" size="small" value={toD}
           onChange={(event) => onToDateChange(event.target.value)}
           slotProps={{ inputLabel: { shrink: true } }} sx={dateFieldSx} />
-        <AppButton appearance="action" disabled={loading} onClick={onApply}>Apply</AppButton>
-        <AppButton disabled={loading} onClick={onReset}>14 Days</AppButton>
+        <AppButton appearance="action" disabled={loading} onClick={onApply}>{t.common.apply}</AppButton>
+        <AppButton disabled={loading} onClick={onReset}>{t.shipment.last14Days}</AppButton>
         <Box sx={{ flex: 1 }} />
         <ShipmentLegend />
       </Stack>

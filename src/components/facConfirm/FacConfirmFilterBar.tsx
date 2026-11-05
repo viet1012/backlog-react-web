@@ -29,6 +29,7 @@ import type {
 import { GlassPanel } from '../common/GlassPanel'
 import { FacConfirmClassifyControl } from './FacConfirmClassifyControl'
 import { FacConfirmProcessGroupStrip } from './FacConfirmProcessGroupStrip'
+import { useI18n } from '../../i18n/useI18n'
 
 interface FacConfirmFilterBarProps {
   div: string
@@ -103,6 +104,8 @@ export function FacConfirmFilterBar({
   onSearchChange,
 }: FacConfirmFilterBarProps) {
 
+  const { t } = useI18n()
+
   const heatTypeOptions =
     getHeatTypeOptions(div)
 
@@ -146,11 +149,11 @@ export function FacConfirmFilterBar({
           }}
         >
           <InputLabel>
-            Division
+            {t.columns.division}
           </InputLabel>
 
           <Select
-            label="Division"
+            label={t.columns.division}
             value={div}
             onChange={(event) =>
               onDivChange(event.target.value)
@@ -176,7 +179,7 @@ export function FacConfirmFilterBar({
 
         <TextField
           data-tour="fac-date"
-          label="Export Date"
+          label={t.columns.exportDate}
           type="date"
           size="small"
           value={expD}
@@ -225,11 +228,11 @@ export function FacConfirmFilterBar({
           }}
         >
           <InputLabel>
-            Heat Type
+            {t.facConfirm.heatType}
           </InputLabel>
 
           <Select<FacConfirmHeatType>
-            label="Heat Type"
+            label={t.facConfirm.heatType}
             value={heatType}
             onChange={handleHeatTypeChange}
           >
@@ -243,7 +246,7 @@ export function FacConfirmFilterBar({
 
         <TextField
           data-tour="fac-search"
-          placeholder="Search order, global code, product..."
+          placeholder={t.facConfirm.searchPlaceholder}
           size="small"
           value={search}
           onChange={(event) =>

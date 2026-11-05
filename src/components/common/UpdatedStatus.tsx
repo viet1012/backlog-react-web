@@ -1,4 +1,5 @@
 import { Box, Stack, Typography } from '@mui/material'
+import { useI18n } from '../../i18n/useI18n'
 import { uiTokens } from '../../theme/uiTokens'
 
 interface UpdatedStatusProps {
@@ -7,6 +8,8 @@ interface UpdatedStatusProps {
 }
 
 export function UpdatedStatus({ updatedAt, error = false }: UpdatedStatusProps) {
+  const { t, language } = useI18n()
+
   return (
     <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
       <Box
@@ -23,8 +26,8 @@ export function UpdatedStatus({ updatedAt, error = false }: UpdatedStatusProps) 
         sx={{ fontSize: uiTokens.header.metaFontSize, whiteSpace: 'nowrap' }}
       >
         {error
-          ? 'Connection issue'
-          : `Live   Last updated: ${updatedAt ? updatedAt.toLocaleTimeString() : 'Not yet loaded'}`}
+          ? t.status.connectionIssue
+          : t.status.live(updatedAt ? updatedAt.toLocaleTimeString(language === 'vi' ? 'vi-VN' : 'en-US') : t.status.notLoaded)}
       </Typography>
     </Stack>
   )

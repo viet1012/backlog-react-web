@@ -128,6 +128,8 @@ import {
 
 import { AppButton } from '../common/AppButton'
 import { ClearButton } from '../common/ClearButton'
+import { useI18n } from '../../i18n/useI18n'
+import { getMessages } from '../../i18n/i18nContext'
 
 // Cho trang điều khiển thay đổi chưa lưu (vd khi đổi công đoạn)
 export interface FacConfirmDataTableHandle {
@@ -232,6 +234,8 @@ function FacConfirmToolbar({
   onClearFilters,
 }: FacConfirmToolbarProps) {
 
+  const { t } = useI18n()
+
   return (
     <GridToolbarContainer
       sx={{
@@ -269,8 +273,8 @@ function FacConfirmToolbar({
               onClick={onConfirm}
             >
               {saving
-                ? 'Saving...'
-                : `Confirm Changes (${changeCount})`}
+                ? t.facConfirm.saving
+                : t.facConfirm.confirmChanges(changeCount)}
             </AppButton>
 
             <AppButton
@@ -278,7 +282,7 @@ function FacConfirmToolbar({
               icon={<UndoRoundedIcon />}
               onClick={onCancelChanges}
             >
-              Cancel Changes
+              {t.facConfirm.cancelChanges}
             </AppButton>
           </Box>
         )}
@@ -352,6 +356,8 @@ export function FacConfirmDataTable({
   // =======================================================
   // SAVE STATE
   // =======================================================
+
+  const { t } = useI18n()
 
   const [
     saving,
@@ -471,6 +477,7 @@ export function FacConfirmDataTable({
 
         return getFacConfirmColumns(
           highlightProcGrp,
+          t,
         ).map((column) => {
 
           if (
@@ -578,6 +585,7 @@ export function FacConfirmDataTable({
         highlightProcGrp,
         someFieldsKey,
         tourFields,
+        t,
       ],
     )
 
@@ -687,7 +695,7 @@ export function FacConfirmDataTable({
 
         if (!employeeId) {
           setEditError(
-            'Không xác định được tài khoản, vui lòng đăng nhập lại.',
+            getMessages().facConfirm.accountUnknown,
           )
 
           return false
@@ -702,8 +710,7 @@ export function FacConfirmDataTable({
           )
         ) {
           setEditError(
-            'Có thay đổi chưa lưu của công đoạn khác. '
-            + 'Vui lòng chọn lại công đoạn đó để lưu, hoặc Cancel Changes.',
+            getMessages().facConfirm.otherProcessUnsaved,
           )
 
           return false
@@ -740,7 +747,7 @@ export function FacConfirmDataTable({
           setEditError(
             error instanceof Error
               ? error.message
-              : 'Unable to save Fac Confirm.',
+              : getMessages().facConfirm.saveFailed,
           )
 
           return false
@@ -829,7 +836,7 @@ export function FacConfirmDataTable({
         setEditError(
           error instanceof Error
             ? error.message
-            : 'Invalid value.',
+            : getMessages().facConfirm.invalidValue,
         )
       },
       [
@@ -1563,7 +1570,7 @@ export function FacConfirmDataTable({
         {/* Đang tải trên dữ liệu cũ: thanh mỏng, không che bảng */}
         {loading && !showSkeleton && (
           <LinearProgress
-            aria-label="Đang tải dữ liệu"
+            aria-label={t.facConfirm.loadingData}
             sx={{
               position: 'absolute',
               top: 0,

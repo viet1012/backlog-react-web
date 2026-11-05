@@ -42,8 +42,9 @@ import {
   type ReportFilters,
 } from '../services/reportService'
 import {
-  backlogColumns,
+  createBacklogColumns,
 } from '../components/backlog/backlogColumns'
+import { useI18n } from '../i18n/useI18n'
 
 const initialFilters: ReportFilters = {
   search: '',
@@ -180,6 +181,9 @@ export function BacklogPage({
   mode,
   onToggleMode,
 }: BacklogPageProps) {
+
+  const { t } =
+    useI18n()
 
   const [
     filters,
@@ -741,7 +745,7 @@ export function BacklogPage({
       () => {
 
         const allFields =
-          backlogColumns.map(
+          createBacklogColumns(t).map(
             (column) =>
               column.field,
           )
@@ -792,6 +796,7 @@ export function BacklogPage({
       [
         preferences.columnOrder,
         preferences.columnVisibilityModel,
+        t,
       ],
     )
 
@@ -949,9 +954,9 @@ export function BacklogPage({
     <PageShell>
 
       <PageHeader
-        title="PRODUCTION BACKLOG"
+        title={t.backlog.title}
 
-        subtitle="Monitor production status, process flow and delivery progress."
+        subtitle={t.backlog.subtitle}
 
         status={
           <UpdatedStatus
@@ -991,8 +996,8 @@ export function BacklogPage({
             >
               {
                 exporting
-                  ? 'Exporting...'
-                  : 'Export Excel'
+                  ? t.common.exporting
+                  : t.common.exportExcel
               }
             </Button>
 

@@ -6,6 +6,7 @@ import {
   DialogContentText,
   DialogTitle,
 } from '@mui/material'
+import { useI18n } from '../../i18n/useI18n'
 
 
 interface FacConfirmUnsavedChangesDialogProps {
@@ -38,6 +39,8 @@ export function FacConfirmUnsavedChangesDialog({
   onDiscard,
   onStay,
 }: FacConfirmUnsavedChangesDialogProps) {
+  const { t } = useI18n()
+
   return (
     <Dialog
       open={open}
@@ -55,7 +58,7 @@ export function FacConfirmUnsavedChangesDialog({
           fontWeight: 800,
         }}
       >
-        Còn thay đổi chưa lưu
+        {t.facConfirm.unsaved.title}
       </DialogTitle>
 
       <DialogContent>
@@ -64,8 +67,7 @@ export function FacConfirmUnsavedChangesDialog({
             fontSize: 13.5,
           }}
         >
-          Có {changeCount} ô đã sửa nhưng chưa lưu.
-          Lưu trước khi đổi công đoạn?
+          {t.facConfirm.unsaved.body(changeCount)}
         </DialogContentText>
       </DialogContent>
 
@@ -80,7 +82,7 @@ export function FacConfirmUnsavedChangesDialog({
           disabled={saving}
           onClick={onStay}
         >
-          Ở lại
+          {t.facConfirm.unsaved.stay}
         </Button>
 
         <Button
@@ -88,7 +90,7 @@ export function FacConfirmUnsavedChangesDialog({
           disabled={saving}
           onClick={onDiscard}
         >
-          Bỏ thay đổi
+          {t.facConfirm.unsaved.discard}
         </Button>
 
         <Button
@@ -96,7 +98,7 @@ export function FacConfirmUnsavedChangesDialog({
           loading={saving}
           onClick={onSave}
         >
-          Lưu ngay
+          {t.facConfirm.unsaved.saveNow}
         </Button>
       </DialogActions>
     </Dialog>

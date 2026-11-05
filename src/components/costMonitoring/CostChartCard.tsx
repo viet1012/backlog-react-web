@@ -15,6 +15,7 @@ import { CostChartOverlay } from './CostChartOverlay'
 import { CostChartStats } from './CostChartStats'
 import { COST_SERIES, TABULAR_NUMS, formatK, seriesColor } from './costChartConfig'
 import { buildRows, buildXTicks, buildYAxis } from './costChartUtils'
+import { useI18n } from '../../i18n/useI18n'
 
 interface CostChartCardProps {
   // "2026-10" – dùng để dựng đủ ngày trong tháng cho trục X
@@ -35,6 +36,8 @@ function EmptyState({ text }: { text: string }) {
 }
 
 export function CostChartCard({ month, chart, title, loading }: CostChartCardProps) {
+  const { t } = useI18n()
+
   const theme = useTheme()
   const dark = theme.palette.mode === 'dark'
 
@@ -80,7 +83,7 @@ export function CostChartCard({ month, chart, title, loading }: CostChartCardPro
   if (!chart && loading) {
     body = <Skeleton variant="rounded" sx={{ flex: 1, minHeight: 0 }} />
   } else if (!chart || visibleSeries.length === 0) {
-    body = <EmptyState text="Chưa có dữ liệu" />
+    body = <EmptyState text={t.cost.chartEmpty} />
   } else {
     const yAxis = buildYAxis(rows, chart)
     const axisTick = { fontSize: 11, fill: theme.palette.text.secondary, style: TABULAR_NUMS }
@@ -160,7 +163,7 @@ export function CostChartCard({ month, chart, title, loading }: CostChartCardPro
         flexDirection: 'column',
         minWidth: 0,
         minHeight: 0,
-        // ô ~300px: dải chip ~28px + vùng chart ~240px
+        // md+: cao theo ô lưới (giãn vừa trang) – dải chip ~28px, phần còn lại cho chart
         height: { xs: 325, md: '100%' },
         // nền do ô lưới quyết định (MOLD có tint xen kẽ)
         bgcolor: 'transparent',

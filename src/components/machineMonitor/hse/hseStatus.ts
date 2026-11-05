@@ -4,17 +4,20 @@ import type {
   MonitorChip,
   MonitorTone,
 } from '../monitorTypes'
+import { getMessages } from '../../../i18n/i18nContext'
+
+const statusText = () => getMessages().monitor.hseStatus
 
 // nặng -> nhẹ (sắp danh sách / lỗi trong panel)
 const STATUS_ORDER = ['OVERDUE', 'NG', 'OPEN', 'WAIT_HSE', 'SAFE']
 
 // nhãn rõ nghĩa cho người xem (NG = HSE kiểm tra lại thấy chưa đạt)
 export const HSE_STATUS_LABEL: Record<string, string> = {
-  OVERDUE: 'Quá hạn',
-  NG: 'HSE yêu cầu làm lại',
-  OPEN: 'Chưa xử lý',
-  WAIT_HSE: 'Chờ HSE duyệt',
-  SAFE: 'An toàn',
+  get OVERDUE() { return statusText().OVERDUE },
+  get NG() { return statusText().NG },
+  get OPEN() { return statusText().OPEN },
+  get WAIT_HSE() { return statusText().WAIT_HSE },
+  get SAFE() { return statusText().SAFE },
 }
 
 export function hseStatusLabel(status: string): string {
@@ -41,7 +44,7 @@ export function hseSeverity(status: string): number {
 // chip trạng thái bằng chữ; OVERDUE kèm số ngày quá hạn, NG viền đứt
 export function hseChip(status: string, lateDays = 0): MonitorChip {
   return {
-    label: status === 'OVERDUE' && lateDays ? `Quá hạn ${lateDays} ngày` : hseStatusLabel(status),
+    label: status === 'OVERDUE' && lateDays ? getMessages().monitor.overdueDays(lateDays) : hseStatusLabel(status),
     tone: hseTone(status),
     dashed: status === 'NG',
   }

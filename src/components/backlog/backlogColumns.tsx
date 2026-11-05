@@ -20,6 +20,7 @@ import type {
 import { DATA_GRID_COLUMN_WIDTHS } from '../common/dataGrid/dataGridColumnWidths'
 import { useOptionalExcelColumnFilter } from '../common/dataGrid/excelFilterContext'
 import { getBacklogStatusColor } from './backlogStatus'
+import type { Messages } from '../../i18n/messages/en'
 
 
 // =========================================================
@@ -301,8 +302,12 @@ const numberColumn = (
 // COLUMNS
 // =========================================================
 
-export const backlogColumns:
-  GridColDef<ProductionOrder>[] = [
+export function createBacklogColumns(
+  t: Messages,
+): GridColDef<ProductionOrder>[] {
+  const h = t.columns
+
+  return [
 
     // -------------------------------------------------------
     // MAIN
@@ -310,19 +315,19 @@ export const backlogColumns:
 
     textColumn(
       'VBELN',
-      'Sales Order',
+      h.salesOrder,
       120,
     ),
 
     textColumn(
       'ZGLOBAL_CODE',
-      'Global Code',
+      h.globalCode,
       DATA_GRID_COLUMN_WIDTHS.globalCode,
     ),
 
     textColumn(
       'PNAME',
-      'Product Name',
+      h.productName,
       DATA_GRID_COLUMN_WIDTHS.productName,
     ),
 
@@ -335,7 +340,7 @@ export const backlogColumns:
       field: 'Status',
 
       headerName:
-        'Status',
+        h.status,
 
       width: 100,
 
@@ -344,7 +349,7 @@ export const backlogColumns:
       renderHeader: () => (
         <FilterHeader
           field="Status"
-          label="Status"
+          label={h.status}
         />
       ),
 
@@ -353,7 +358,7 @@ export const backlogColumns:
 
         return (
           <Chip
-            label={value || 'Unknown'}
+            label={value || t.common.unknown}
             size="small"
             variant="outlined"
             sx={{
@@ -392,7 +397,7 @@ export const backlogColumns:
 
     textColumn(
       'CurrentProcess',
-      'Current Process',
+      h.currentProcess,
       DATA_GRID_COLUMN_WIDTHS.currentProcess,
     ),
 
@@ -403,13 +408,13 @@ export const backlogColumns:
 
     textColumn(
       'PIER_AUFNR',
-      'PIER_AUFNR',
+      h.pierAufnr,
       130,
     ),
 
     textColumn(
       'AUFNR',
-      'Production Order',
+      h.productionOrder,
       140,
     ),
 
@@ -420,34 +425,34 @@ export const backlogColumns:
 
     dateColumn(
       'IssueD',
-      'Issue Date',
+      h.issueDate,
       DATA_GRID_COLUMN_WIDTHS.date,
     ),
 
     dateColumn(
       'ProductionD',
-      'Production Date',
+      h.productionDate,
     ),
 
     dateColumn(
       'PromiseD',
-      'Promise Date',
+      h.promiseDate,
     ),
 
     dateColumn(
       'ExportD',
-      'Export Date',
+      h.exportDate,
       DATA_GRID_COLUMN_WIDTHS.date,
     ),
 
     dateColumn(
       'ORG_Date',
-      'Original Date',
+      h.originalDate,
     ),
 
     dateColumn(
       'MSM_Ship',
-      'MSM Ship',
+      h.msmShip,
     ),
 
 
@@ -457,13 +462,13 @@ export const backlogColumns:
 
     textColumn(
       'RRONYU1',
-      'Customer Code',
+      h.customerCode,
       DATA_GRID_COLUMN_WIDTHS.customer,
     ),
 
     textColumn(
       'ShipBy',
-      'Ship By',
+      h.shipBy,
       DATA_GRID_COLUMN_WIDTHS.shipBy,
     ),
 
@@ -474,23 +479,23 @@ export const backlogColumns:
 
     numberColumn(
       'GAMNG',
-      'Order Qty',
+      h.orderQty,
     ),
 
     numberColumn(
       'NETPR',
-      'Net Price',
+      h.netPrice,
     ),
 
     textColumn(
       'PHCD',
-      'PHCD',
+      h.phcd,
       120,
     ),
 
     numberColumn(
       'KWMENG',
-      'Sales Qty',
+      h.salesQty,
     ),
 
 
@@ -500,19 +505,19 @@ export const backlogColumns:
 
     textColumn(
       'RODENK',
-      'RODENK',
+      h.rodenk,
       100,
     ),
 
     textColumn(
       'LOEKZ',
-      'Delete Flag',
+      h.deleteFlag,
       110,
     ),
 
     textColumn(
       'MTO_ID',
-      'MTO ID',
+      h.mtoId,
       DATA_GRID_COLUMN_WIDTHS.mtoId,
     ),
 
@@ -523,19 +528,19 @@ export const backlogColumns:
 
     textColumn(
       'PRT_ADDCMT1',
-      'Comment 1',
+      h.comment1,
       180,
     ),
 
     textColumn(
       'PRT_ADDCMT2',
-      'Comment 2',
+      h.comment2,
       DATA_GRID_COLUMN_WIDTHS.comment,
     ),
 
     textColumn(
       'PRT_STS',
-      'PRT Status',
+      h.prtStatus,
       110,
     ),
 
@@ -546,19 +551,19 @@ export const backlogColumns:
 
     textColumn(
       'Div',
-      'Division',
+      h.division,
       90,
     ),
 
     textColumn(
       'FERTH',
-      'Product Type',
+      h.productType,
       DATA_GRID_COLUMN_WIDTHS.productType,
     ),
 
     textColumn(
       'PO_SRG_Convert',
-      'Converted PO',
+      h.convertedPo,
       160,
     ),
 
@@ -569,26 +574,26 @@ export const backlogColumns:
 
     dateColumn(
       'ToDrill',
-      'To Drill',
+      h.toDrill,
       DATA_GRID_COLUMN_WIDTHS.date,
     ),
 
     dateColumn(
       'ToHeat',
-      'To Heat',
+      h.toHeat,
       DATA_GRID_COLUMN_WIDTHS.date,
     ),
 
     dateColumn(
       'ToPK',
-      'To Packing',
+      h.toPacking,
       DATA_GRID_COLUMN_WIDTHS.date,
     ),
 
 
     textColumn(
       'HeatCharge',
-      'Heat Charge',
+      h.heatCharge,
       130,
     ),
 
@@ -599,22 +604,22 @@ export const backlogColumns:
 
     numberColumn(
       'ProcessQty',
-      'Process Qty',
+      h.processQty,
     ),
 
     numberColumn(
       'Z300Qty',
-      'Z300 Qty',
+      h.z300Qty,
     ),
 
     numberColumn(
       'PkQty',
-      'Packing Qty',
+      h.packingQty,
     ),
 
     numberColumn(
       'FinalQty',
-      'Final Qty',
+      h.finalQty,
       DATA_GRID_COLUMN_WIDTHS.quantity,
     ),
 
@@ -625,12 +630,12 @@ export const backlogColumns:
 
     dateColumn(
       'TimeSQuenching',
-      'Start Quenching',
+      h.startQuenching,
     ),
 
     dateColumn(
       'TimeFHeat',
-      'Finish Heat',
+      h.finishHeat,
     ),
 
 
@@ -640,19 +645,19 @@ export const backlogColumns:
 
     textColumn(
       'C_PRODH',
-      'C_PRODH',
+      h.cProdh,
       130,
     ),
 
     textColumn(
       'C_KEYCONTROL1',
-      'Key Control 1',
+      h.keyControl1,
       140,
     ),
 
     textColumn(
       'C_KEYCONTROL3',
-      'Key Control 3',
+      h.keyControl3,
       140,
     ),
 
@@ -662,31 +667,31 @@ export const backlogColumns:
 
     textColumn(
       'Classify',
-      'Classify',
+      h.classify,
       120,
     ),
 
     textColumn(
       'ProcessGrp2',
-      'Process Group',
+      h.processGroup,
       140,
     ),
 
     textColumn(
       'ProductGrp',
-      'Product Group',
+      h.productGroup,
       130,
     ),
 
     textColumn(
       'CountODBF',
-      'Count ODBF',
+      h.countOdbf,
       110,
     ),
 
     textColumn(
       'Status2',
-      'Status 2',
+      h.status2,
       120,
     ),
 
@@ -696,25 +701,25 @@ export const backlogColumns:
 
     dateColumn(
       'Pickup_Time',
-      'Pickup Time',
+      h.pickupTime,
       DATA_GRID_COLUMN_WIDTHS.date,
     ),
 
     dateColumn(
       'PK_Received',
-      'PK Received',
+      h.pkReceived,
       DATA_GRID_COLUMN_WIDTHS.date,
     ),
 
     numberColumn(
       'WaitingDays',
-      'Waiting Days',
+      h.waitingDays,
       DATA_GRID_COLUMN_WIDTHS.quantity,
     ),
 
     textColumn(
       'Heat_Note',
-      'Heat Note',
+      h.heatNote,
       DATA_GRID_COLUMN_WIDTHS.heatNote,
     ),
     // -------------------------------------------------------
@@ -723,12 +728,13 @@ export const backlogColumns:
 
     textColumn(
       'Updater',
-      'Updater',
+      h.updater,
       120,
     ),
 
     dateColumn(
       'UpdatedAt',
-      'Updated At',
+      h.updatedAt,
     ),
   ]
+}

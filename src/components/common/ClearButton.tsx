@@ -11,6 +11,7 @@ import {
 import {
     AppButton,
 } from './AppButton'
+import { useI18n } from '../../i18n/useI18n'
 
 
 interface ClearButtonProps {
@@ -27,6 +28,8 @@ export function ClearButton({
     disabled = false,
     onClick,
 }: ClearButtonProps) {
+
+    const { t } = useI18n()
 
     const clearAll =
         mode === 'clearAll'
@@ -162,8 +165,8 @@ export function ClearButton({
         >
             {
                 clearAll
-                    ? 'Clear All'
-                    : 'Clear Filters'
+                    ? t.misc.clearAll
+                    : t.misc.clearFilters
             }
         </AppButton>
     )

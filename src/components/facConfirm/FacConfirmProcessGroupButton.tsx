@@ -29,6 +29,7 @@ import {
 import {
   FacConfirmAnimatedProcessIcon,
 } from './facConfirmProcessAnimations'
+import { useI18n } from '../../i18n/useI18n'
 
 
 interface Props {
@@ -73,6 +74,8 @@ export function FacConfirmProcessGroupButton({
   disabled,
   onClick,
 }: Props) {
+
+  const { t } = useI18n()
 
   const showSkeleton =
     !item && loading
@@ -332,7 +335,7 @@ export function FacConfirmProcessGroupButton({
                   color: successColor,
                 }}
               >
-                DONE
+                {t.facConfirm.done}
               </Typography>
             </Box>
 
@@ -400,7 +403,7 @@ export function FacConfirmProcessGroupButton({
               whiteSpace: 'nowrap',
             }}
           >
-            Cần xác nhận:
+            {t.facConfirm.needConfirm}
           </Typography>
 
 
@@ -469,7 +472,7 @@ export function FacConfirmProcessGroupButton({
               whiteSpace: 'nowrap',
             }}
           >
-            Đã xác nhận:
+            {t.facConfirm.confirmed}
           </Typography>
 
 

@@ -25,6 +25,7 @@ import {
     MonitorHeartOutlined,
 } from '@mui/icons-material'
 import type { UserRole } from '../../services/authService'
+import type { Messages } from '../../i18n/messages/en'
 
 
 // =========================================================
@@ -36,9 +37,13 @@ export type MenuItemStatus =
     | 'developing'
     | 'todo'
 
+export type MenuGroupId = keyof Messages['nav']['groups']
+
+export type MenuItemLabelKey = Exclude<keyof Messages['nav'], 'groups'>
+
+// Labels are i18n keys: group label = t.nav.groups[id], item label = t.nav[labelKey].
 export interface MenuGroupConfig {
-    id: string
-    label: string
+    id: MenuGroupId
     items: MenuItemConfig[]
 }
 
@@ -53,7 +58,7 @@ export type MenuItemAction =
     | 'input'
 
 export interface MenuItemConfig {
-    label: string
+    labelKey: MenuItemLabelKey
     path: string
     icon: ReactNode
     status?: MenuItemStatus
@@ -75,11 +80,10 @@ export const menuGroups:
 
         {
             id: 'production',
-            label: 'PRODUCTION',
 
             items: [
                 {
-                    label: 'PC Training',
+                    labelKey: 'pcTraining',
                     path: '/pc-training',
                     status: 'ready',
                     disabled: true,
@@ -89,7 +93,7 @@ export const menuGroups:
                 },
 
                 {
-                    label: 'SPH',
+                    labelKey: 'sph',
                     path: '/sph',
                     status: 'todo',
                     icon: (
@@ -98,7 +102,7 @@ export const menuGroups:
                 },
 
                 {
-                    label: 'Asakai',
+                    labelKey: 'asakai',
                     path: '/asakai',
                     status: 'todo',
                     icon: (
@@ -107,7 +111,7 @@ export const menuGroups:
                 },
 
                 {
-                    label: 'Cost Monitoring',
+                    labelKey: 'costMonitoring',
                     path: '/cost-monitoring',
                     status: 'ready',
                     action: 'view',
@@ -124,11 +128,10 @@ export const menuGroups:
         // =====================================================
         {
             id: 'planning',
-            label: 'PLANNING',
 
             items: [
                 {
-                    label: 'User Home',
+                    labelKey: 'userHome',
                     path: '/user-home',
                     status: 'ready',
                     roles: ['USER'],
@@ -138,7 +141,7 @@ export const menuGroups:
                 },
 
                 {
-                    label: 'Backlog Details',
+                    labelKey: 'backlogDetails',
                     path: '/backlog',
                     status: 'ready',
                     roles: ['PC'],
@@ -149,7 +152,7 @@ export const menuGroups:
                 },
 
                 {
-                    label: 'Backlog Summary',
+                    labelKey: 'backlogSummary',
                     path: '/backlog-summary',
                     status: 'todo',
                     roles: ['PC'],
@@ -160,7 +163,7 @@ export const menuGroups:
                 },
 
                 {
-                    label: 'Remain PO Control',
+                    labelKey: 'remainPoControl',
                     path: '/remain-po-control',
                     status: 'ready',
                     roles: ['PC'],
@@ -171,7 +174,7 @@ export const menuGroups:
                 },
 
                 {
-                    label: 'Delivery Confirm',
+                    labelKey: 'deliveryConfirm',
                     path: '/fac-confirm',
                     status: 'ready',
                     roles: ['PC', 'PRO'],
@@ -182,7 +185,7 @@ export const menuGroups:
                 },
 
                 {
-                    label: 'ODBF Simulation',
+                    labelKey: 'odbfSimulation',
                     path: '/odbf',
                     status: 'ready',
                     roles: ['PC', 'PRO'],
@@ -193,7 +196,7 @@ export const menuGroups:
                 },
 
                 {
-                    label: 'Export List',
+                    labelKey: 'exportList',
                     path: '/export-list',
                     status: 'todo',
                     roles: ['PC'],
@@ -204,7 +207,7 @@ export const menuGroups:
                 },
 
                 {
-                    label: 'Packing List',
+                    labelKey: 'packingList',
                     path: '/packing-list',
                     status: 'todo',
                     roles: ['PRO'],
@@ -215,7 +218,7 @@ export const menuGroups:
                 },
 
                 {
-                    label: 'Shipping Schedule',
+                    labelKey: 'shippingSchedule',
                     path: '/shipping-schedule',
                     status: 'todo',
                     roles: ['PC', 'PRO'],
@@ -233,11 +236,10 @@ export const menuGroups:
 
         {
             id: 'management',
-            label: 'MANAGEMENT',
 
             items: [
                 {
-                    label: 'BOSB',
+                    labelKey: 'bosb',
                     path: '/bosb',
                     status: 'todo',
                     icon: (
@@ -246,7 +248,7 @@ export const menuGroups:
                 },
 
                 {
-                    label: 'Deadstock',
+                    labelKey: 'deadstock',
                     path: '/deadstock',
                     status: 'todo',
                     icon: (
@@ -255,7 +257,7 @@ export const menuGroups:
                 },
 
                 {
-                    label: 'PL',
+                    labelKey: 'pl',
                     path: '/pl',
                     status: 'todo',
                     icon: (
@@ -264,7 +266,7 @@ export const menuGroups:
                 },
 
                 {
-                    label: 'KPI',
+                    labelKey: 'kpi',
                     path: '/kpi',
                     status: 'todo',
                     icon: (
@@ -273,7 +275,7 @@ export const menuGroups:
                 },
 
                 {
-                    label: 'OT',
+                    labelKey: 'ot',
                     path: '/ot',
                     status: 'todo',
                     icon: (
@@ -289,11 +291,10 @@ export const menuGroups:
 
         {
             id: 'monitoring',
-            label: 'MONITORING',
 
             items: [
                 {
-                    label: 'Machine',
+                    labelKey: 'machine',
                     path: '/monitoring/machine',
                     status: 'ready',
                     action: 'view',
@@ -310,11 +311,10 @@ export const menuGroups:
 
         {
             id: 'setting',
-            label: 'SETTING',
 
             items: [
                 {
-                    label: 'Machine Locator',
+                    labelKey: 'machineLocator',
                     path: '/settings/machine-locator',
                     status: 'ready',
                     action: 'view',

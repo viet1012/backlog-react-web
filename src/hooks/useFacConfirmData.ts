@@ -25,6 +25,7 @@ import type {
   FacConfirmProcessGroupSummary,
   FacConfirmRow,
 } from '../types/facConfirm'
+import { getMessages } from '../i18n/i18nContext'
 
 interface UseFacConfirmDataParams
   extends FacConfirmDataScope {
@@ -328,7 +329,7 @@ export function useFacConfirmData({
       setError(
         requestError instanceof Error
           ? requestError.message
-          : 'Failed to load Fac Confirm',
+          : getMessages().misc.facConfirmLoadFailed,
       )
     } finally {
       if (tableRequestRef.current === controller) {
