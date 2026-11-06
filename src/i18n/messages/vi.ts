@@ -88,6 +88,7 @@ export const vi: Messages = {
         checkOut: (time) => `Đăng xuất lúc ${time}`,
         signingOut: 'Đang đăng xuất…',
         beep: 'Bíp!',
+        employeeId: 'MSNV',
         byeLines: [
             'Hẹn gặp lại!',
             'Về sớm vậy sao? 🥺',

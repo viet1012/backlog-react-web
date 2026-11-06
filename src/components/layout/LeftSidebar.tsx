@@ -1117,6 +1117,7 @@ export function LeftSidebar() {
         <LogoutConfirmDialog
           open={logoutOpen}
           username={username}
+          employeeId={session?.employeeId}
           role={primaryRole}
           avatarSeed={avatarSeed}
           onCancel={() => setLogoutOpen(false)}

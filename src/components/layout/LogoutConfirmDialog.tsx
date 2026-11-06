@@ -39,6 +39,8 @@ import { FactoryVehicle, vehicleSize, type VehicleKind } from './FactoryVehicle'
 interface LogoutConfirmDialogProps {
     open: boolean
     username: string
+    /** MSNV, shown on the badge under the name */
+    employeeId?: string
     role?: string
     /** Seed of the user's character; defaults to the stored one. */
     avatarSeed?: string
@@ -1189,6 +1191,7 @@ function ShutterOverlay({
 export function LogoutConfirmDialog({
     open,
     username,
+    employeeId,
     role,
     avatarSeed,
     onCancel,
@@ -1388,11 +1391,11 @@ export function LogoutConfirmDialog({
                             {/* Same character as the sidebar and the walking worker; tips the hat on hover */}
                             <Box
                                 sx={(theme) => ({
-                                    width: 36,
-                                    height: 36,
+                                    width: 44,
+                                    height: 44,
                                     flexShrink: 0,
                                     overflow: 'hidden',
-                                    borderRadius: '10px',
+                                    borderRadius: '12px',
                                     border: '1px solid',
                                     borderColor: theme.palette.mode === 'dark'
                                         ? 'rgba(255,255,255,0.14)'
@@ -1405,7 +1408,7 @@ export function LogoutConfirmDialog({
                             >
                                 <FactoryAvatar
                                     seed={seed}
-                                    size={36}
+                                    size={44}
                                     period={period}
                                     animate={!reduceMotion}
                                 />
@@ -1415,19 +1418,53 @@ export function LogoutConfirmDialog({
                                 <Typography noWrap sx={{ fontSize: 13, fontWeight: 700 }}>
                                     {username}
                                 </Typography>
-                                {role && (
-                                    <Typography
-                                        noWrap
-                                        sx={{
-                                            fontSize: 10.5,
-                                            fontWeight: 700,
-                                            letterSpacing: '0.08em',
-                                            color: 'primary.main',
-                                        }}
-                                    >
-                                        {role}
-                                    </Typography>
-                                )}
+
+                                {/* MSNV tag (printed like the number on a badge) + role */}
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, minWidth: 0, mt: 0.25 }}>
+                                    {employeeId && (
+                                        <Box
+                                            component="span"
+                                            sx={(theme) => ({
+                                                flexShrink: 0,
+                                                display: 'inline-flex',
+                                                alignItems: 'baseline',
+                                                gap: 0.5,
+                                                px: 0.6,
+                                                borderRadius: '4px',
+                                                border: '1px solid',
+                                                borderColor: 'divider',
+                                                bgcolor: theme.palette.mode === 'dark'
+                                                    ? 'rgba(255,255,255,0.05)'
+                                                    : 'rgba(15,23,42,0.04)',
+                                                fontFamily: monoFont,
+                                                fontSize: 10.5,
+                                                lineHeight: '16px',
+                                                whiteSpace: 'nowrap',
+                                            })}
+                                        >
+                                            <Box component="span" sx={{ color: 'text.secondary', fontSize: 9.5, letterSpacing: '0.06em' }}>
+                                                {t.logout.employeeId}
+                                            </Box>
+                                            <Box component="span" sx={{ fontWeight: 700, letterSpacing: '0.04em' }}>
+                                                {employeeId}
+                                            </Box>
+                                        </Box>
+                                    )}
+                                    {role && (
+                                        <Typography
+                                            noWrap
+                                            sx={{
+                                                minWidth: 0,
+                                                fontSize: 10.5,
+                                                fontWeight: 700,
+                                                letterSpacing: '0.08em',
+                                                color: 'primary.main',
+                                            }}
+                                        >
+                                            {role}
+                                        </Typography>
+                                    )}
+                                </Box>
                             </Box>
 
                             {/* SCANLINE — white sheen vanishes on a light card, so tint it there */}
