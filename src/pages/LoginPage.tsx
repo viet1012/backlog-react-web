@@ -9,6 +9,7 @@ import { AuthCardHeader } from '../components/auth/AuthCardHeader'
 import { LoginBrand } from '../components/auth/LoginBrand'
 import { LoginForm } from '../components/auth/LoginForm'
 import { LoginHeroText } from '../components/auth/LoginHeroText'
+import { LoginTraffic } from '../components/auth/LoginTraffic'
 import { RegisterForm } from '../components/auth/RegisterForm'
 import {
   authModeActionSx,
@@ -165,7 +166,12 @@ export function LoginPage() {
         createAuthModeSwitchSx(),
       ]}
     >
-      <Box aria-hidden sx={createDayBackgroundLayerSx(dayBackground, isDaytime)} />
+      {/* Traffic on the photo's roads: night set under the day photo, day set
+          inside its layer (under its dark overlay). Each runs only while its photo shows. */}
+      <LoginTraffic night running={!isDaytime || modeSwitching} />
+      <Box aria-hidden sx={createDayBackgroundLayerSx(dayBackground, isDaytime)}>
+        <LoginTraffic running={isDaytime || modeSwitching} />
+      </Box>
       <LoginBrand />
       <LoginHeroText />
 

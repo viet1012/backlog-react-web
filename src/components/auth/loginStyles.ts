@@ -605,7 +605,8 @@ export const centerContainerSx = {
    Chuyển động nhẹ, không rotate, scale tối đa 1.03 để ảnh không bị nội suy nhòe.
    Mép ảnh: lớp rộng 104% (inset -2%), dịch tối đa ~1.25% mỗi chiều -> không lộ viền.
 ========================================================= */
-const BG_LAYER_INSET = '-2%'
+export const BG_LAYER_INSET = '-2%'
+export const BG_MOTION_ANIMATION = 'factoryCinematicMotion 30s ease-in-out infinite alternate'
 
 function bgImageLayerBase(backgroundImage: string) {
   return {
@@ -623,11 +624,11 @@ function bgImageLayerBase(backgroundImage: string) {
     backfaceVisibility: 'hidden',
     WebkitBackfaceVisibility: 'hidden',
 
-    animation: 'factoryCinematicMotion 30s ease-in-out infinite alternate',
+    animation: BG_MOTION_ANIMATION,
   }
 }
 
-const cinematicMotionKeyframes = {
+export const cinematicMotionKeyframes = {
   '0%': {
     transform: 'scale(1) translate3d(-1.2%, -0.4%, 0)',
   },
