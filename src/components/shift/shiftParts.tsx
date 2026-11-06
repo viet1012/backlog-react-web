@@ -128,12 +128,19 @@ export function ShiftOverlayRoot({
     onSkip,
     shakeAt,
     fadeIn = false,
+    revealAt,
     fadeOutAt,
     children,
 }: {
     onSkip: () => void
     shakeAt?: number
     fadeIn?: boolean
+    /**
+     * Mount the overlay early but keep it invisible until this time (ms):
+     * the mount / first paint cost then lands before the animation starts
+     * instead of in the middle of it.
+     */
+    revealAt?: number
     fadeOutAt?: number
     children: ReactNode
 }) {
@@ -155,6 +162,7 @@ export function ShiftOverlayRoot({
 
     const animations = [
         fadeIn && `${sceneFade} 280ms ease-out both`,
+        revealAt !== undefined && `${sceneFade} 200ms ease-out ${revealAt}ms both`,
         shakeAt !== undefined && `${screenShake} 120ms linear ${shakeAt}ms`,
         fadeOutAt !== undefined && `${overlayFadeOut} 300ms ease-in ${fadeOutAt}ms forwards`,
     ].filter(Boolean)
@@ -176,6 +184,7 @@ export function ShiftOverlayRoot({
                     zIndex: theme.zIndex.modal + 1,
                     overflow: 'hidden',
                     cursor: 'pointer',
+                    willChange: 'transform, opacity',
                     animation: animations.length ? animations.join(', ') : 'none',
                 })}
             >
@@ -454,7 +463,8 @@ export function Worker({
                 bottom,
                 height,
                 aspectRatio: '40 / 76',
-                willChange: 'transform',
+                // No will-change here: it freezes the layer's raster scale and the
+                // figure turns blurry inside a scaled / moving parent.
                 animation: `${sceneFade} 200ms ease-out both`,
 
                 '& svg': { display: 'block', width: '100%', height: '100%', overflow: 'visible' },
@@ -812,10 +822,13 @@ export function Beacon({
     tone,
     start,
     duration,
+    beam = 420,
 }: {
     tone: keyof typeof beaconTones
     start: number
     duration: number
+    /** Diameter of the sweeping light; keep it small in small scenes. */
+    beam?: number
 }) {
     const { rgb, lamp } = beaconTones[tone]
 
@@ -837,14 +850,16 @@ export function Beacon({
                     position: 'absolute',
                     top: '50%',
                     left: '50%',
-                    width: 420,
-                    height: 420,
-                    mt: '-210px',
-                    ml: '-210px',
+                    width: beam,
+                    height: beam,
+                    mt: `${-beam / 2}px`,
+                    ml: `${-beam / 2}px`,
                     borderRadius: '50%',
                     background: `conic-gradient(from 0deg, rgba(${rgb},0.55), rgba(${rgb},0) 55deg, transparent 180deg, rgba(${rgb},0.55) 180deg, rgba(${rgb},0) 235deg, transparent 360deg)`,
                     WebkitMaskImage: 'radial-gradient(circle, #000 0, #000 15%, transparent 70%)',
                     maskImage: 'radial-gradient(circle, #000 0, #000 15%, transparent 70%)',
+                    // Own layer: drawn once, then only rotated by the GPU
+                    willChange: 'transform',
                     animation: `${beaconSpin} 0.9s linear infinite`,
                 }}
             />
@@ -861,6 +876,7 @@ export function Beacon({
                         position: 'absolute',
                         inset: 0,
                         background: 'conic-gradient(from 0deg, rgba(255,255,255,0.85), transparent 90deg, transparent 360deg)',
+                        willChange: 'transform',
                         animation: `${beaconSpin} 0.9s linear infinite`,
                     },
                 }}

@@ -117,11 +117,8 @@ export function getSidebarSx(
           )
         `,
 
-        backdropFilter:
-            'blur(16px) saturate(135%)',
-
-        WebkitBackdropFilter:
-            'blur(16px) saturate(135%)',
+        // No backdrop-filter: the sidebar holds looping animations (avatar,
+        // LED, online dot) and a blurred backdrop would be redrawn every frame.
 
         borderRight:
             theme.palette.mode === 'dark'
@@ -226,6 +223,12 @@ export function getSidebarSx(
                 1,
         },
 
+        // Looping animations (avatar, LED, online dot) rest while a modal
+        // (logout) plays its own animation on top.
+        '&[data-ambient="paused"] *': {
+            animationPlayState: 'paused !important',
+        },
+
         '@media (prefers-reduced-motion: reduce)': {
             transition:
                 'none',
@@ -299,16 +302,6 @@ export function getBrandCardSx(
             theme.palette.mode === 'dark'
                 ? '1px solid rgba(255,255,255,0.08)'
                 : '1px solid rgba(255,255,255,0.90)',
-
-        backdropFilter:
-            'blur(12px) saturate(135%)',
-
-        WebkitBackdropFilter:
-            'blur(12px) saturate(135%)',
-
-        // Tách lớp riêng để ảnh logo trong ô có backdrop-filter không bị nhòe
-        transform:
-            'translateZ(0)',
 
         boxShadow:
             theme.palette.mode === 'dark'
