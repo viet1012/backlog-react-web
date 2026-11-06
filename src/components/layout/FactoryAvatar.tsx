@@ -1,3 +1,5 @@
+import { memo } from 'react'
+
 import { Box } from '@mui/material'
 import { keyframes } from '@mui/material/styles'
 
@@ -52,7 +54,8 @@ function MouthShape({ mouth }: { mouth: WorkerMouth }) {
 // on hover (see LeftSidebar).
 // =========================================================
 
-export function FactoryAvatar({
+// Memoized: the parents re-render on every hover / focus.
+export const FactoryAvatar = memo(function FactoryAvatar({
     seed,
     size = 34,
     period,
@@ -88,11 +91,15 @@ export function FactoryAvatar({
                 '& .factory-avatar-head': {
                     position: 'absolute',
                     inset: 0,
+                    willChange: animate ? 'transform' : 'auto',
                     animation: animate ? `${bob} 2.6s ease-in-out infinite` : 'none',
                 },
+                // Eye line (y 19.4 of 40) as the blink pivot
                 '& .factory-avatar-eyes': {
-                    transformBox: 'fill-box',
-                    transformOrigin: 'center',
+                    position: 'absolute',
+                    inset: 0,
+                    transformOrigin: '50% 48.5%',
+                    willChange: animate ? 'transform' : 'auto',
                     animation: animate
                         ? `${blink} 4.2s ease-in-out ${character.blinkDelay}ms infinite`
                         : 'none',
@@ -127,13 +134,6 @@ export function FactoryAvatar({
                             <circle cx={28.2} cy={19.6} r={2.6} fill="#ef4444" {...outline} />
                         </>
                     )}
-
-                    <g className="factory-avatar-eyes">
-                        <circle cx={17} cy={19.4} r={1.1} fill="#1f2937" />
-                        <circle cx={23} cy={19.4} r={1.1} fill="#1f2937" />
-                        <circle cx={17.35} cy={19.05} r={0.35} fill="#fff" />
-                        <circle cx={23.35} cy={19.05} r={0.35} fill="#fff" />
-                    </g>
 
                     <circle cx={15.2} cy={22} r={1.2} fill="#f87171" opacity={0.35} />
                     <circle cx={24.8} cy={22} r={1.2} fill="#f87171" opacity={0.35} />
@@ -179,7 +179,17 @@ export function FactoryAvatar({
                         )}
                     </g>
                 </svg>
+
+                {/* Eyes on their own layer: the blink is a GPU scale, no repaint */}
+                <Box className="factory-avatar-eyes">
+                    <svg viewBox="0 0 40 40" shapeRendering="geometricPrecision">
+                        <circle cx={17} cy={19.4} r={1.1} fill="#1f2937" />
+                        <circle cx={23} cy={19.4} r={1.1} fill="#1f2937" />
+                        <circle cx={17.35} cy={19.05} r={0.35} fill="#fff" />
+                        <circle cx={23.35} cy={19.05} r={0.35} fill="#fff" />
+                    </svg>
+                </Box>
             </Box>
         </Box>
     )
-}
+})

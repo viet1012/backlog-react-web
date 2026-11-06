@@ -34,6 +34,7 @@ import {
 import { buildWorkerCharacter, readAvatarSeed, type WorkerCharacter } from '../shift/workerCharacter'
 
 import { FactoryAvatar } from './FactoryAvatar'
+import { FactoryVehicle, vehicleSize, type VehicleKind } from './FactoryVehicle'
 
 interface LogoutConfirmDialogProps {
     open: boolean
@@ -88,7 +89,7 @@ const gateRail = 10
 // 90% and leave the character / text slightly blurry.
 const paperSpring = keyframes`
     from { opacity: 0; transform: translateY(16px); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
+    to { opacity: 1; transform: translateY(0); }
 `
 
 // Same curve as shutterDrop, starting from the rolled-up position.
@@ -141,13 +142,12 @@ const lightTwinkle = keyframes`
 `
 
 // A vehicle on the factory road. The animated box is as tall as the lane,
-// so translateY(-100%) → 0 drives the vehicle drawn at its bottom edge
-// from the far end of the lane to the near end.
+// so translateY(-100%) → 0 drives the vehicle drawn at its bottom edge from
+// under the bridge (hidden by the road clip) to past the bottom of the frame.
+// Translate only: a scale here re-rasters the tiny vehicle and makes it shimmer.
 const drive = keyframes`
-    0% { transform: translateY(-100%); opacity: 0; }
-    12% { opacity: 1; }
-    85% { opacity: 1; }
-    100% { transform: translateY(0); opacity: 0; }
+    from { transform: translate3d(0, -100%, 0); }
+    to { transform: translate3d(0, 0, 0); }
 `
 
 const birdFly = keyframes`
@@ -224,12 +224,48 @@ const photoWidth = 'max(135%, 480px)'
 const photoCenterX = '-55%'
 const photoOffset = '-33%'
 
-// Two lanes of the main road under the MISUMI bridge (left in % of the photo).
-// Each lane runs two vehicles, offset by negative delays (s).
-const lanes = [
-    { left: 53.9, reverse: false, duration: 7, delays: [0, -3.6] },
-    { left: 55.3, reverse: true, duration: 8.5, delays: [-1.8, -6] },
-] as const
+// Two lanes of the main road, starting at the bottom edge of the MISUMI bridge
+// (in % of the photo). The road leans right going down the photo: slope is
+// the pixels moved right per pixel down. Traffic keeps right, so the left lane
+// drives down and the right one drives up. Each vehicle is placed along the
+// lane by a negative delay (s); offset (% of the photo width) keeps
+// motorbikes to the side of the lane.
+const laneTop = 63.1
+const laneWidth = 3.2
+
+interface LaneVehicle {
+    kind: VehicleKind
+    color: string
+    delay: number
+    offset?: number
+}
+
+const lanes: { left: number; slope: number; up: boolean; duration: number; traffic: LaneVehicle[] }[] = [
+    {
+        left: 53.66,
+        slope: 0.07,
+        up: false,
+        duration: 8,
+        traffic: [
+            { kind: 'car', color: '#f8fafc', delay: 0 },
+            { kind: 'motorbike', color: '#dc2626', delay: -2.1, offset: -0.42 },
+            { kind: 'truck', color: '#1d4ed8', delay: -3.9 },
+            { kind: 'car', color: '#991b1b', delay: -6.5 },
+        ],
+    },
+    {
+        left: 55.8,
+        slope: 0.1,
+        up: true,
+        duration: 9,
+        traffic: [
+            { kind: 'bus', color: '#2563eb', delay: -0.6 },
+            { kind: 'car', color: '#9ca3af', delay: -3.6 },
+            { kind: 'motorbike', color: '#facc15', delay: -5.2, offset: 0.32 },
+            { kind: 'van', color: '#f1f5f9', delay: -6.8 },
+        ],
+    },
+]
 
 // Lamps along the main road in the night photo: [left %, top %]
 const roadLamps = [
@@ -287,60 +323,20 @@ const gatePalettes: Record<DayPeriod, GatePalette> = {
 // [x, y, flap delay s] inside the flock
 const flock = [[0, 6, 0], [14, 0, 0.12], [26, 9, 0.24]] as const
 
-// Memoized: the dialog re-renders on every hover / focus of the buttons.
-const GateScene = memo(function GateScene({
-    period,
-    warn,
-    closing,
-    reduceMotion,
-    character,
-}: {
-    period: DayPeriod
-    warn: boolean
-    closing: boolean
-    reduceMotion: boolean
-    character: WorkerCharacter
-}) {
-    const { t } = useI18n()
+// Photo, traffic and sky: nothing here depends on the hover / confirm state,
+// so hovering Sign out never re-renders it. GateScene pauses it on confirm
+// through data-closing.
+const GateBackdrop = memo(function GateBackdrop({ period, animate }: { period: DayPeriod; animate: boolean }) {
     const gate = gatePalettes[period]
     const photo = scenePhotos[gate.photo]
-
-    // A new random line each time the hover starts (never the same twice in a row).
-    const byeLines = [...t.logout.byeLines, ...t.logout.byeByPeriod[period]]
-    const [byeIndex, setByeIndex] = useState(0)
-    const [prevWarn, setPrevWarn] = useState(warn)
-
-    if (warn !== prevWarn) {
-        setPrevWarn(warn)
-
-        if (warn) {
-            const next = Math.floor(Math.random() * (byeLines.length - 1))
-            setByeIndex(next >= byeIndex ? next + 1 : next)
-        }
-    }
     const night = gate.photo === 'night'
-    const animate = !reduceMotion
-
-    // The factory "runs" until sign-out is confirmed.
-    const running = animate && !closing ? 'running' : 'paused'
-
-    const shutterAnimation = !animate
-        ? 'none'
-        : closing
-            ? `${gateDrop} ${gateDropDuration}ms both`
-            : `${gateRise} ${gateRiseDuration}ms ${gateRiseDelay}ms both`
+    const running = animate ? 'running' : 'paused'
 
     return (
         <Box
-            aria-hidden
             sx={{
-                position: 'relative',
-                height: gateHeight,
-                overflow: 'hidden',
-                bgcolor: night ? '#0b1330' : '#93c5fd',
-                // Keep the scene's repaints from spreading to the rest of the dialog
-                contain: 'paint',
-                isolation: 'isolate',
+                position: 'absolute',
+                inset: 0,
 
                 '& .gate-cloud': {
                     position: 'absolute',
@@ -355,38 +351,71 @@ const GateScene = memo(function GateScene({
                     transformOrigin: '50% 100%',
                     animation: animate ? `${birdFlap} 0.32s ease-in-out infinite alternate` : 'none',
                 },
+                // Hides the vehicles while they are under the bridge. Kept
+                // straight (not on the tilted lanes): a rotated clip needs a mask
+                // layer that is costly with moving layers inside.
+                '& .gate-road': {
+                    position: 'absolute',
+                    top: `${laneTop}%`,
+                    left: 0,
+                    right: 0,
+                    height: '40%',
+                    overflow: 'hidden',
+                },
                 '& .gate-lane': {
                     position: 'absolute',
-                    top: '62%',
-                    height: '24%',
-                    width: '1.1%',
+                    top: 0,
+                    width: `${laneWidth}%`,
+                    height: '100%',
+                    transformOrigin: '50% 0',
                 },
-                '& .gate-vehicle': {
+                // Always animated: paused with reduced motion, it still shows
+                // each vehicle at its own spot along the lane
+                '& .gate-traffic': {
                     position: 'absolute',
                     inset: 0,
-                    opacity: 0,
-                    willChange: 'transform, opacity',
-                    animation: animate ? `${drive} var(--drive-duration) linear var(--drive-delay) infinite` : 'none',
+                    willChange: 'transform',
+                    backfaceVisibility: 'hidden',
+                    animation: `${drive} var(--drive-duration) linear var(--drive-delay) infinite`,
                     animationPlayState: running,
+                },
+                '& .gate-lane-up .gate-traffic': { animationDirection: 'reverse' },
+                '& .gate-vehicle': {
+                    position: 'absolute',
+                    left: '50%',
+                    bottom: 0,
+                    transform: 'translateX(-50%)',
 
-                    // The vehicle itself, at the near end of the lane box
-                    '&::after': {
-                        content: '""',
-                        position: 'absolute',
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        height: '13%',
-                        borderRadius: '1.5px',
-                        bgcolor: night ? '#cbd5e1' : '#f8fafc',
-                        boxShadow: night
-                            ? '0 3px 5px rgba(253,224,71,0.9)'
-                            : '0 1px 1px rgba(15,23,42,0.45)',
+                    '& svg': {
+                        display: 'block',
+                        width: '100%',
+                        height: '100%',
+                        overflow: 'visible',
+                        filter: night
+                            ? 'brightness(0.72) saturate(0.85)'
+                            : 'drop-shadow(0.8px 1.2px 0.5px rgba(15,23,42,0.55))',
                     },
                 },
-                '& .gate-vehicle-up': {
-                    animationDirection: 'reverse',
-                    '&::after': night ? { boxShadow: '0 3px 5px rgba(239,68,68,0.85)' } : {},
+                '& .gate-lane-up .gate-vehicle': { transform: 'translateX(-50%) rotate(180deg)' },
+                // Night: headlight beam ahead of the vehicle, red glow behind it
+                '& .gate-beam': {
+                    position: 'absolute',
+                    top: '96%',
+                    left: '50%',
+                    width: '210%',
+                    aspectRatio: '1 / 1.15',
+                    transform: 'translateX(-50%)',
+                    clipPath: 'polygon(30% 0, 70% 0, 100% 100%, 0 100%)',
+                    background: 'radial-gradient(ellipse 60% 100% at 50% 0%, rgba(254,243,199,0.6), rgba(254,243,199,0) 100%)',
+                },
+                '& .gate-tail': {
+                    position: 'absolute',
+                    top: 0,
+                    left: '50%',
+                    width: '150%',
+                    aspectRatio: '3',
+                    transform: 'translate(-50%, -45%)',
+                    background: 'radial-gradient(closest-side, rgba(239,68,68,0.75), rgba(239,68,68,0))',
                 },
                 '& .gate-lamp': {
                     position: 'absolute',
@@ -412,6 +441,7 @@ const GateScene = memo(function GateScene({
                 }}
             >
                 <Box
+                    className="gate-pan"
                     sx={{
                         position: 'absolute',
                         inset: 0,
@@ -429,20 +459,46 @@ const GateScene = memo(function GateScene({
                         sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }}
                     />
 
-                    {lanes.map((lane) => (
-                        <Box key={lane.left} className="gate-lane" style={{ left: `${lane.left}%` }}>
-                            {lane.delays.map((delay) => (
-                                <Box
-                                    key={delay}
-                                    className={lane.reverse ? 'gate-vehicle gate-vehicle-up' : 'gate-vehicle'}
-                                    style={{
-                                        ['--drive-duration' as string]: `${lane.duration}s`,
-                                        ['--drive-delay' as string]: `${delay}s`,
-                                    }}
-                                />
-                            ))}
-                        </Box>
-                    ))}
+                    <Box className="gate-road">
+                        {lanes.map((lane) => (
+                            <Box
+                                key={lane.left}
+                                className={lane.up ? 'gate-lane gate-lane-up' : 'gate-lane'}
+                                style={{
+                                    left: `${lane.left}%`,
+                                    transform: `translateX(-50%) rotate(${-Math.atan(lane.slope) * 180 / Math.PI}deg)`,
+                                }}
+                            >
+                                {lane.traffic.map((vehicle) => {
+                                    const size = vehicleSize[vehicle.kind]
+
+                                    return (
+                                        <Box
+                                            key={vehicle.delay}
+                                            className="gate-traffic"
+                                            style={{
+                                                ['--drive-duration' as string]: `${lane.duration}s`,
+                                                ['--drive-delay' as string]: `${vehicle.delay}s`,
+                                            }}
+                                        >
+                                            <Box
+                                                className="gate-vehicle"
+                                                style={{
+                                                    width: `${size.width / laneWidth * 100}%`,
+                                                    aspectRatio: `${size.width} / ${size.length}`,
+                                                    marginLeft: `${(vehicle.offset ?? 0) / laneWidth * 100}%`,
+                                                }}
+                                            >
+                                                {night && <Box className="gate-beam" />}
+                                                <FactoryVehicle kind={vehicle.kind} color={vehicle.color} />
+                                                {night && <Box className="gate-tail" />}
+                                            </Box>
+                                        </Box>
+                                    )
+                                })}
+                            </Box>
+                        ))}
+                    </Box>
 
                     {night && roadLamps.map(([left, top], index) => (
                         <Box
@@ -534,6 +590,72 @@ const GateScene = memo(function GateScene({
                     ))}
                 </Box>
             )}
+        </Box>
+    )
+})
+
+// Memoized: the dialog re-renders on every hover / focus of the buttons.
+const GateScene = memo(function GateScene({
+    period,
+    warn,
+    closing,
+    reduceMotion,
+    character,
+}: {
+    period: DayPeriod
+    warn: boolean
+    closing: boolean
+    reduceMotion: boolean
+    character: WorkerCharacter
+}) {
+    const { t } = useI18n()
+    const gate = gatePalettes[period]
+
+    // A new random line each time the hover starts (never the same twice in a row).
+    const byeLines = [...t.logout.byeLines, ...t.logout.byeByPeriod[period]]
+    const [byeIndex, setByeIndex] = useState(0)
+    const [prevWarn, setPrevWarn] = useState(warn)
+
+    if (warn !== prevWarn) {
+        setPrevWarn(warn)
+
+        if (warn) {
+            const next = Math.floor(Math.random() * (byeLines.length - 1))
+            setByeIndex(next >= byeIndex ? next + 1 : next)
+        }
+    }
+    const night = gate.photo === 'night'
+    const animate = !reduceMotion
+
+    // The factory "runs" until sign-out is confirmed.
+    const running = animate && !closing ? 'running' : 'paused'
+
+    const shutterAnimation = !animate
+        ? 'none'
+        : closing
+            ? `${gateDrop} ${gateDropDuration}ms both`
+            : `${gateRise} ${gateRiseDuration}ms ${gateRiseDelay}ms both`
+
+    return (
+        <Box
+            aria-hidden
+            data-closing={closing || undefined}
+            sx={{
+                position: 'relative',
+                height: gateHeight,
+                overflow: 'hidden',
+                bgcolor: night ? '#0b1330' : '#93c5fd',
+                // Keep the scene's repaints from spreading to the rest of the dialog
+                contain: 'paint',
+                isolation: 'isolate',
+
+                // Confirm: the factory stops (overrides the backdrop's play state)
+                '&[data-closing] .gate-pan, &[data-closing] .gate-traffic': {
+                    animationPlayState: 'paused',
+                },
+            }}
+        >
+            <GateBackdrop period={period} animate={animate} />
 
             {/* LIGHTS OUT on confirm: the factory goes dark behind the shutter */}
             <Box
@@ -703,26 +825,34 @@ function TimeClockSlot({
     reduceMotion: boolean
 }) {
     const { t } = useI18n()
-    const grow = reduceMotion
-        ? 'none'
-        : 'height 150ms ease, opacity 150ms ease, margin 150ms ease'
 
+    // Laid over the badge (which sinks into the slot) instead of growing the
+    // dialog: a height change would re-layout the whole dialog every frame.
+    // Opacity / transform only.
     return (
-        <>
+        <Box
+            sx={{
+                position: 'absolute',
+                inset: 0,
+                pointerEvents: 'none',
+                visibility: active ? 'visible' : 'hidden',
+            }}
+        >
             <Box
                 aria-hidden
                 sx={(theme) => ({
-                    position: 'relative',
-                    mx: 'auto',
+                    position: 'absolute',
+                    left: '15%',
+                    bottom: 4,
                     width: '70%',
-                    height: active ? 10 : 0,
-                    opacity: active ? 1 : 0,
-                    borderRadius: '5px',
-                    bgcolor: 'action.hover',
+                    height: 8,
+                    borderRadius: '4px',
+                    bgcolor: theme.palette.mode === 'dark' ? '#1f2937' : '#e2e8f0',
                     boxShadow: theme.palette.mode === 'dark'
                         ? 'inset 0 2px 3px rgba(0,0,0,0.6)'
                         : 'inset 0 2px 3px rgba(15,23,42,0.22)',
-                    transition: grow,
+                    opacity: active ? 1 : 0,
+                    transition: reduceMotion ? 'none' : 'opacity 150ms ease',
                 })}
             >
                 {/* LED */}
@@ -754,15 +884,21 @@ function TimeClockSlot({
                 </Box>
             </Box>
 
+            {/* Shows once the badge is mostly gone */}
             <Box
                 sx={{
-                    overflow: 'hidden',
-                    height: active ? 18 : 0,
-                    mt: active ? 0.75 : 0,
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 14,
+                    display: 'grid',
+                    placeItems: 'center',
                     opacity: active ? 1 : 0,
+                    transform: active ? 'translateY(0)' : 'translateY(6px)',
                     transition: reduceMotion
                         ? 'none'
-                        : 'height 150ms ease, margin 150ms ease, opacity 200ms ease 150ms',
+                        : 'opacity 220ms ease 300ms, transform 260ms cubic-bezier(.2,.8,.3,1) 300ms',
                 }}
             >
                 {checkoutTime && (
@@ -779,7 +915,7 @@ function TimeClockSlot({
                     </Typography>
                 )}
             </Box>
-        </>
+        </Box>
     )
 }
 
@@ -878,11 +1014,13 @@ export function LogoutConfirmDialog({
         onConfirmRef.current = onConfirm
     }, [onConfirm])
 
-    // Warm the photo cache so the scene is ready the first time the dialog opens.
+    // Download and decode the photos up front: decoding an 1800px image while
+    // the dialog opens would drop the first frames of the open animation.
     useEffect(() => {
         for (const src of [factoryDay, factoryNight]) {
             const image = new Image()
             image.src = src
+            image.decode().catch(() => {})
         }
     }, [])
 
@@ -999,8 +1137,8 @@ export function LogoutConfirmDialog({
                         {t.logout.description}
                     </Typography>
 
-                    {/* EMPLOYEE BADGE — clipped at the slot's top edge while sinking */}
-                    <Box sx={{ overflow: 'hidden' }}>
+                    {/* EMPLOYEE BADGE — sinks into the time clock slot, clipped at its edge */}
+                    <Box sx={{ position: 'relative', overflow: 'hidden' }}>
                         <Box
                             sx={(theme) => ({
                                 position: 'relative',
@@ -1100,13 +1238,13 @@ export function LogoutConfirmDialog({
                                 />
                             )}
                         </Box>
-                    </Box>
 
-                    <TimeClockSlot
-                        active={stopped}
-                        checkoutTime={checkoutTime}
-                        reduceMotion={reduceMotion}
-                    />
+                        <TimeClockSlot
+                            active={stopped}
+                            checkoutTime={checkoutTime}
+                            reduceMotion={reduceMotion}
+                        />
+                    </Box>
                 </DialogContent>
 
                 <DialogActions sx={{ px: 3, pb: 2.5, pt: 1, gap: 1 }}>

@@ -362,80 +362,102 @@ export function Worker({
     const outline = { stroke: 'rgba(15,23,42,0.55)', strokeWidth: 0.6 }
     const shirt = '#1e3a5f'
 
+    // Each moving part is its own HTML layer holding an SVG with the same
+    // 40×76 viewBox, stacked. A transform on an SVG <g> repaints the drawing
+    // on the main thread every frame (it stutters while React is busy);
+    // on an HTML layer the GPU only moves the already drawn part.
+    const part = (className: string, children: ReactNode) => (
+        <Box className={`worker-layer ${className}`}>
+            <svg viewBox="0 0 40 76" shapeRendering="geometricPrecision">{children}</svg>
+        </Box>
+    )
+
     const figure = (
-        <svg viewBox="0 0 40 76" shapeRendering="geometricPrecision">
-            <ellipse cx="21" cy="73" rx="9" ry="2" fill="rgba(0,0,0,0.28)" />
+        <Box className="worker-layer">
+            <svg viewBox="0 0 40 76">
+                <ellipse cx="21" cy="73" rx="9" ry="2" fill="rgba(0,0,0,0.28)" />
+            </svg>
 
-            <g className="worker-bob">
+            <Box className="worker-layer worker-bob">
                 {/* BACK LIMBS */}
-                <g className="worker-arm-back">
-                    <rect x="17.5" y="26" width="5" height="16" rx="2.5" fill={shade(shirt, -0.2)} {...outline} />
-                    <circle cx="20" cy="43.4" r="2.6" fill="#cbd5e1" {...outline} />
-                </g>
-                <g className="worker-leg-back">
-                    <rect x="17" y="45" width="6" height="22" rx="3" fill="#1b3354" {...outline} />
-                    <rect x="16.5" y="65.6" width="11" height="4.8" rx="2.2" fill="#111827" {...outline} />
-                </g>
-                <g className="worker-leg-front">
-                    <rect x="17" y="45" width="6" height="22" rx="3" fill="#274b77" {...outline} />
-                    <rect x="16.5" y="65.6" width="11" height="4.8" rx="2.2" fill="#1f2937" {...outline} />
-                    <rect x="16.5" y="69.2" width="11" height="1.3" rx="0.6" fill="#475569" />
-                </g>
-
-                {/* TORSO: work shirt, hi-vis vest with 2 reflective stripes, ID badge, belt */}
-                <rect x="13" y="24" width="14" height="25" rx="6" fill={shirt} {...outline} />
-                <rect x="13" y="25.6" width="14" height="19.4" rx="5.4" fill={vest} {...outline} />
-                <path d="M19 24.4 L21.4 28 L23.8 24.4 Z" fill={shirt} />
-                <rect x="13.3" y="33" width="13.4" height="1.9" fill="#f1f5f9" opacity={0.92} />
-                <rect x="13.3" y="38.4" width="13.4" height="1.9" fill="#f1f5f9" opacity={0.92} />
-                <rect x="22" y="27.6" width="3.4" height="4.2" rx="0.8" fill="#f8fafc" />
-                <rect x="22.4" y="28.2" width="2.6" height="1.1" fill="#2563eb" />
-                <rect x="13" y="44.4" width="14" height="2.6" fill="#0f172a" />
-                <rect x="22.4" y="44.7" width="2.4" height="2" rx="0.4" fill="#94a3b8" />
-
-                {/* NECK + HEAD (facing right) */}
-                <rect x="19.2" y="20.6" width="4" height="4.4" fill={shade(skin, -0.08)} />
-                {accessory === 'pencil' && (
-                    <path d="M15.4 18.6 L18.6 12.4" stroke="#facc15" strokeWidth="1.5" strokeLinecap="round" />
-                )}
-                <circle cx="21" cy="16" r="6.6" fill={skin} {...outline} />
-                <circle cx="27.4" cy="16.9" r="1.15" fill={skin} />
-                <path d="M14.4 13.6 Q14 17 15.6 18.6 L17.4 17.4 Q16.4 15.6 16.8 13.6 Z" fill="#3b2a20" />
-                <ellipse cx="19.6" cy="16.9" rx="1.3" ry="1.6" fill={shade(skin, -0.12)} />
-                <ellipse cx="24.5" cy="15.8" rx="0.8" ry="1" fill="#1f2937" />
-                <circle cx="24.75" cy="15.45" r="0.28" fill="#fff" />
-                <circle cx="24.1" cy="18.5" r="1.1" fill="#f87171" opacity={0.3} />
-                <path d="M25.1 19.2 Q26.2 20 27.1 19" stroke="#7c2d12" strokeWidth="0.7" strokeLinecap="round" fill="none" />
-                {accessory === 'earmuffs' && <circle cx="19.6" cy="16.9" r="2.4" fill="#ef4444" {...outline} />}
-                {accessory === 'mustache' && <ellipse cx="26.4" cy="18.3" rx="1.7" ry="0.75" fill="#4b2e1e" />}
-
-                {/* HARD HAT: dome, ridge, highlight, front-peaked brim */}
-                <path d="M13.5 13.6 A7.5 7.5 0 0 1 28.5 13.6 Z" fill={hat} {...outline} />
-                <rect x="19.6" y="6.3" width="2.8" height="7.3" rx="1.4" fill={shade(hat, -0.12)} />
-                <path d="M15.6 11.6 Q16.6 8.6 19.4 7.4" stroke="#fff" strokeWidth="0.9" strokeLinecap="round" fill="none" opacity={0.6} />
-                <rect x="12.6" y="12.8" width="19.4" height="1.9" rx="0.95" fill={shade(hat, -0.15)} {...outline} />
-                {accessory === 'goggles' && (
+                {part('worker-arm-back', (
                     <>
-                        <rect x="21.5" y="9.4" width="6.5" height="2.4" rx="1.2" fill="#334155" />
-                        <circle cx="26.4" cy="10.6" r="0.9" fill="#7dd3fc" />
+                        <rect x="17.5" y="26" width="5" height="16" rx="2.5" fill={shade(shirt, -0.2)} {...outline} />
+                        <circle cx="20" cy="43.4" r="2.6" fill="#cbd5e1" {...outline} />
                     </>
-                )}
-                {accessory === 'headlamp' && (
+                ))}
+                {part('worker-leg-back', (
                     <>
-                        <rect x="26" y="9.5" width="3" height="2.6" rx="0.8" fill="#374151" />
-                        <circle cx="28.6" cy="10.8" r="0.7" fill="#fef08a" />
+                        <rect x="17" y="45" width="6" height="22" rx="3" fill="#1b3354" {...outline} />
+                        <rect x="16.5" y="65.6" width="11" height="4.8" rx="2.2" fill="#111827" {...outline} />
                     </>
-                )}
+                ))}
+                {part('worker-leg-front', (
+                    <>
+                        <rect x="17" y="45" width="6" height="22" rx="3" fill="#274b77" {...outline} />
+                        <rect x="16.5" y="65.6" width="11" height="4.8" rx="2.2" fill="#1f2937" {...outline} />
+                        <rect x="16.5" y="69.2" width="11" height="1.3" rx="0.6" fill="#475569" />
+                    </>
+                ))}
+
+                <svg viewBox="0 0 40 76" shapeRendering="geometricPrecision">
+                    {/* TORSO: work shirt, hi-vis vest with 2 reflective stripes, ID badge, belt */}
+                    <rect x="13" y="24" width="14" height="25" rx="6" fill={shirt} {...outline} />
+                    <rect x="13" y="25.6" width="14" height="19.4" rx="5.4" fill={vest} {...outline} />
+                    <path d="M19 24.4 L21.4 28 L23.8 24.4 Z" fill={shirt} />
+                    <rect x="13.3" y="33" width="13.4" height="1.9" fill="#f1f5f9" opacity={0.92} />
+                    <rect x="13.3" y="38.4" width="13.4" height="1.9" fill="#f1f5f9" opacity={0.92} />
+                    <rect x="22" y="27.6" width="3.4" height="4.2" rx="0.8" fill="#f8fafc" />
+                    <rect x="22.4" y="28.2" width="2.6" height="1.1" fill="#2563eb" />
+                    <rect x="13" y="44.4" width="14" height="2.6" fill="#0f172a" />
+                    <rect x="22.4" y="44.7" width="2.4" height="2" rx="0.4" fill="#94a3b8" />
+
+                    {/* NECK + HEAD (facing right) */}
+                    <rect x="19.2" y="20.6" width="4" height="4.4" fill={shade(skin, -0.08)} />
+                    {accessory === 'pencil' && (
+                        <path d="M15.4 18.6 L18.6 12.4" stroke="#facc15" strokeWidth="1.5" strokeLinecap="round" />
+                    )}
+                    <circle cx="21" cy="16" r="6.6" fill={skin} {...outline} />
+                    <circle cx="27.4" cy="16.9" r="1.15" fill={skin} />
+                    <path d="M14.4 13.6 Q14 17 15.6 18.6 L17.4 17.4 Q16.4 15.6 16.8 13.6 Z" fill="#3b2a20" />
+                    <ellipse cx="19.6" cy="16.9" rx="1.3" ry="1.6" fill={shade(skin, -0.12)} />
+                    <ellipse cx="24.5" cy="15.8" rx="0.8" ry="1" fill="#1f2937" />
+                    <circle cx="24.75" cy="15.45" r="0.28" fill="#fff" />
+                    <circle cx="24.1" cy="18.5" r="1.1" fill="#f87171" opacity={0.3} />
+                    <path d="M25.1 19.2 Q26.2 20 27.1 19" stroke="#7c2d12" strokeWidth="0.7" strokeLinecap="round" fill="none" />
+                    {accessory === 'earmuffs' && <circle cx="19.6" cy="16.9" r="2.4" fill="#ef4444" {...outline} />}
+                    {accessory === 'mustache' && <ellipse cx="26.4" cy="18.3" rx="1.7" ry="0.75" fill="#4b2e1e" />}
+
+                    {/* HARD HAT: dome, ridge, highlight, front-peaked brim */}
+                    <path d="M13.5 13.6 A7.5 7.5 0 0 1 28.5 13.6 Z" fill={hat} {...outline} />
+                    <rect x="19.6" y="6.3" width="2.8" height="7.3" rx="1.4" fill={shade(hat, -0.12)} />
+                    <path d="M15.6 11.6 Q16.6 8.6 19.4 7.4" stroke="#fff" strokeWidth="0.9" strokeLinecap="round" fill="none" opacity={0.6} />
+                    <rect x="12.6" y="12.8" width="19.4" height="1.9" rx="0.95" fill={shade(hat, -0.15)} {...outline} />
+                    {accessory === 'goggles' && (
+                        <>
+                            <rect x="21.5" y="9.4" width="6.5" height="2.4" rx="1.2" fill="#334155" />
+                            <circle cx="26.4" cy="10.6" r="0.9" fill="#7dd3fc" />
+                        </>
+                    )}
+                    {accessory === 'headlamp' && (
+                        <>
+                            <rect x="26" y="9.5" width="3" height="2.6" rx="0.8" fill="#374151" />
+                            <circle cx="28.6" cy="10.8" r="0.7" fill="#fef08a" />
+                        </>
+                    )}
+                </svg>
 
                 {/* FRONT ARM (waves) */}
-                <g className="worker-wave">
-                    <g className="worker-arm-front">
-                        <rect x="17.5" y="26" width="5" height="16" rx="2.5" fill={shade(shirt, 0.12)} {...outline} />
-                        <circle cx="20" cy="43.4" r="2.7" fill="#e2e8f0" {...outline} />
-                    </g>
-                </g>
-            </g>
-        </svg>
+                <Box className="worker-layer worker-wave">
+                    {part('worker-arm-front', (
+                        <>
+                            <rect x="17.5" y="26" width="5" height="16" rx="2.5" fill={shade(shirt, 0.12)} {...outline} />
+                            <circle cx="20" cy="43.4" r="2.7" fill="#e2e8f0" {...outline} />
+                        </>
+                    ))}
+                </Box>
+            </Box>
+        </Box>
     )
 
     const moved = walks.reduceRight<ReactNode>(
@@ -445,6 +467,8 @@ export function Worker({
                     '--walk-dx': walk.dx,
                     position: 'absolute',
                     inset: 0,
+                    // Layer ready before the walk starts (no promotion hitch)
+                    willChange: 'transform',
                     animation: `${walkStep} ${walk.duration}ms linear ${walk.start}ms forwards`,
                 }}
             >
@@ -467,13 +491,27 @@ export function Worker({
                 // figure turns blurry inside a scaled / moving parent.
                 animation: `${sceneFade} 200ms ease-out both`,
 
-                '& svg': { display: 'block', width: '100%', height: '100%', overflow: 'visible' },
+                '& .worker-layer': { position: 'absolute', inset: 0 },
+                '& svg': {
+                    position: 'absolute',
+                    inset: 0,
+                    display: 'block',
+                    width: '100%',
+                    height: '100%',
+                    overflow: 'visible',
+                },
+                // Moving parts keep their own GPU layer (rotate / translate only,
+                // never scaled, so they stay sharp). Pivots: shoulder (20,27)
+                // and hip (20,47) of the 40×76 viewBox, in %.
+                '& .worker-bob, & .worker-arm-back, & .worker-arm-front, & .worker-wave, & .worker-leg-back, & .worker-leg-front': {
+                    willChange: 'transform',
+                },
                 '& .worker-bob': { animation: gait(bodyBob, gaitCycle / 2, 'ease-in-out') },
                 '& .worker-arm-back, & .worker-arm-front, & .worker-wave': {
-                    transformOrigin: '20px 27px',
+                    transformOrigin: '50% 35.53%',
                 },
                 '& .worker-leg-back, & .worker-leg-front': {
-                    transformOrigin: '20px 47px',
+                    transformOrigin: '50% 61.84%',
                 },
                 '& .worker-wave': {
                     animation: wave
@@ -805,6 +843,8 @@ export function DustBurst({ at }: { at: number }) {
                             ? 'rgba(203,213,225,0.85)'
                             : 'rgba(75,85,99,0.75)',
                         opacity: 0,
+                        // Layers made at mount, not all at once when the burst starts
+                        willChange: 'transform, opacity',
                         animation: `${dustBurst} 800ms cubic-bezier(.2,.7,.3,1) ${at + particle.delay}ms forwards`,
                     })}
                 />
