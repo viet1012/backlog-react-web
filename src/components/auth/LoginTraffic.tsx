@@ -135,6 +135,18 @@ function laneKeyframes(points: Point[], ratio: number) {
     return {
         animation: keyframes`${stops.join('\n')}`,
         meanHeading: headings.reduce((sum, angle) => sum + angle, 0) / headings.length,
+        /** % of the photo width */
+        length: total,
+    }
+}
+
+/** Screen shadow (sun from the top left) in the frame of a drawing turned to `heading`. */
+function shadowFor(heading: number) {
+    const turn = (heading - 90) * Math.PI / 180
+
+    return {
+        x: Math.cos(turn) + 1.5 * Math.sin(turn),
+        y: -Math.sin(turn) + 1.5 * Math.cos(turn),
     }
 }
 
@@ -229,20 +241,123 @@ function buildLanes(photo: Photo) {
     return laneSpecs.map((spec) => {
         const path = laneFrom(spec.center(photo), spec.offset(ratio), ratio)
         const { animation, meanHeading } = laneKeyframes(path, ratio)
-        // Screen shadow (sun from the top left) in the drawing's own frame
-        const turn = (meanHeading - 90) * Math.PI / 180
-        const shadow = {
-            x: Math.cos(turn) + 1.5 * Math.sin(turn),
-            y: -Math.sin(turn) + 1.5 * Math.cos(turn),
-        }
 
-        return { ...spec, animation, shadow }
+        return { ...spec, animation, shadow: shadowFor(meanHeading) }
     })
 }
 
 const lanesByPhoto: Record<Photo, ReturnType<typeof buildLanes>> = {
     day: buildLanes('day'),
     night: buildLanes('night'),
+}
+
+// =========================================================
+// WORKERS WALKING IN
+// From under the trees south of the road, over the crosswalks (the right
+// group also over the zebra in front of the gate), round the island and
+// through the guard barrier into the yard left of the gate.
+// Same spots on both photos.
+// =========================================================
+
+type WalkRoute = 'left' | 'right'
+
+const walkRoutes: Record<WalkRoute, Point[]> = {
+    left: [
+        [47.75, 99.5], [47.75, 96.5], [47.8, 89.2], [47.5, 88], [46.6, 86.6], [45.6, 84.6],
+        [45.1, 82.2], [44.9, 79.5],
+    ],
+    right: [
+        [64.9, 99.5], [64.7, 97], [64.3, 89.4], [62.2, 87.3], [60.4, 85.6], [59.6, 85],
+        [52.4, 85], [50.8, 86.4], [49.3, 87.7], [48.1, 88.3], [46.9, 87.4], [45.9, 85.4],
+        [45.3, 83], [45.1, 80.2],
+    ],
+}
+
+// About 1.1 m/s here (1 m is ~0.38% of the photo width)
+const walkSpeed = 0.42
+// Footprint in % of the photo width: a bit over life size so it reads on screen
+const walkerWidth = 0.26
+
+// Blue work shirt and trousers
+const walkerShirt = '#2563eb'
+const walkerTrousers = '#1e3a8a'
+
+interface WalkerSpec {
+    route: WalkRoute
+    /** Beside the route, % of the photo width (+ = the walker's right): pairs walk side by side */
+    side: number
+    delay: number
+    helmet: string
+    backpack?: boolean
+}
+
+const walkerSpecs: WalkerSpec[] = [
+    { route: 'left', side: -0.15, delay: 0, helmet: '#f8fafc' },
+    { route: 'left', side: 0.15, delay: -0.3, helmet: '#facc15', backpack: true },
+    { route: 'left', side: 0, delay: -10, helmet: '#facc15' },
+    { route: 'left', side: -0.15, delay: -19, helmet: '#f8fafc', backpack: true },
+    { route: 'left', side: 0.15, delay: -19.4, helmet: '#f8fafc' },
+    { route: 'right', side: 0.15, delay: -6, helmet: '#facc15' },
+    { route: 'right', side: -0.15, delay: -6.3, helmet: '#f8fafc' },
+    { route: 'right', side: 0, delay: -22, helmet: '#f8fafc', backpack: true },
+    { route: 'right', side: -0.15, delay: -38, helmet: '#facc15' },
+    { route: 'right', side: 0.15, delay: -38.5, helmet: '#f8fafc' },
+]
+
+function buildWalkers(photo: Photo) {
+    const ratio = photoRatio[photo]
+
+    return walkerSpecs.map((spec, index) => {
+        const path = laneFrom(walkRoutes[spec.route], spec.side, ratio)
+        const { animation, meanHeading, length } = laneKeyframes(path, ratio)
+
+        return {
+            ...spec,
+            id: `${spec.route}-${index}`,
+            animation,
+            duration: length / walkSpeed,
+            shadow: shadowFor(meanHeading),
+        }
+    })
+}
+
+const walkersByPhoto: Record<Photo, ReturnType<typeof buildWalkers>> = {
+    day: buildWalkers('day'),
+    night: buildWalkers('night'),
+}
+
+// One stride: a leg and the opposite arm swing forward together
+const stride = keyframes`
+    0%, 100% { transform: translateY(-12%); }
+    50% { transform: translateY(12%); }
+`
+
+// Seen from above, facing down (like the vehicles): legs and arms on two
+// layers that swing in turn, body and hard hat on top.
+function Walker({ helmet, backpack }: { helmet: string; backpack?: boolean }) {
+    return (
+        <>
+            <Box className="login-step">
+                <svg viewBox="0 0 10 12">
+                    <rect x={2.8} y={5.4} width={1.9} height={4.6} rx={0.95} fill={walkerTrousers} />
+                    <ellipse cx={9} cy={6.6} rx={0.9} ry={1.6} fill={walkerShirt} />
+                </svg>
+            </Box>
+            <Box className="login-step login-step-alt">
+                <svg viewBox="0 0 10 12">
+                    <rect x={5.3} y={5.4} width={1.9} height={4.6} rx={0.95} fill={walkerTrousers} />
+                    <ellipse cx={1} cy={6.6} rx={0.9} ry={1.6} fill={walkerShirt} />
+                </svg>
+            </Box>
+            <svg viewBox="0 0 10 12">
+                {backpack && <rect x={3} y={2.4} width={4} height={2.8} rx={0.9} fill="#334155" />}
+                <ellipse cx={5} cy={6} rx={4.1} ry={2.2} fill={walkerShirt} stroke="#1e3a8a" strokeWidth={0.3} />
+                <circle cx={5} cy={6.2} r={2.15} fill={helmet} stroke="rgba(15,23,42,0.5)" strokeWidth={0.3} />
+                <ellipse cx={5} cy={8} rx={1.5} ry={0.6} fill={helmet} stroke="rgba(15,23,42,0.4)" strokeWidth={0.25} />
+                <path d="M5 4.3 V7.6" stroke="rgba(15,23,42,0.25)" strokeWidth={0.5} />
+            </svg>
+        </>
+    )
 }
 
 // =========================================================
@@ -300,6 +415,32 @@ export const LoginTraffic = memo(function LoginTraffic({
                             : 'drop-shadow(var(--shadow-x) var(--shadow-y) 0.8px rgba(15,23,42,0.5))',
                     },
                 },
+                '& .login-walker': {
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    transform: 'translate(-50%, -50%)',
+
+                    '& .login-step': {
+                        position: 'absolute',
+                        inset: 0,
+                        willChange: 'transform',
+                        animation: `${stride} 0.8s ease-in-out infinite`,
+                        animationPlayState: running ? 'running' : 'paused',
+                    },
+                    '& .login-step-alt': { animationDelay: '-0.4s' },
+                    '& svg': {
+                        position: 'absolute',
+                        inset: 0,
+                        display: 'block',
+                        width: '100%',
+                        height: '100%',
+                        overflow: 'visible',
+                        filter: night
+                            ? 'brightness(0.75) saturate(0.9)'
+                            : 'drop-shadow(var(--shadow-x) var(--shadow-y) 0.6px rgba(15,23,42,0.45))',
+                    },
+                },
                 '& .login-beam': {
                     position: 'absolute',
                     top: '96%',
@@ -322,7 +463,7 @@ export const LoginTraffic = memo(function LoginTraffic({
 
                 '@media (prefers-reduced-motion: reduce)': {
                     animation: 'none',
-                    '& .login-mover': { animationPlayState: 'paused' },
+                    '& .login-mover, & .login-step': { animationPlayState: 'paused' },
                 },
             }}
         >
@@ -371,6 +512,33 @@ export const LoginTraffic = memo(function LoginTraffic({
                     )
                 }))}
 
+                {walkersByPhoto[photo].map((walker) => {
+                    const timing = `${walker.duration.toFixed(2)}s linear ${walker.delay}s infinite`
+
+                    return (
+                        <Box
+                            key={walker.id}
+                            className="login-mover"
+                            sx={{ animation: `${walker.animation} ${timing}, ${fadeEnds} ${timing}` }}
+                            style={{
+                                ['--shadow-x' as string]: `${(walker.shadow.x * 0.6).toFixed(2)}px`,
+                                ['--shadow-y' as string]: `${(walker.shadow.y * 0.6).toFixed(2)}px`,
+                            }}
+                        >
+                            <Box
+                                className="login-walker"
+                                style={{
+                                    width: `calc(var(--photo-width) * ${walkerWidth / 100})`,
+                                    aspectRatio: '10 / 12',
+                                }}
+                            >
+                                <Walker helmet={walker.helmet} backpack={walker.backpack} />
+                            </Box>
+                        </Box>
+                    )
+                })}
+
+                {/* Trees last: vehicles and walkers pass under them */}
                 {treeOverlays[photo].parts.map(({ src, box: [x, y, width, height] }) => {
                     const [photoWidth, photoHeight] = treeOverlays[photo].size
 
