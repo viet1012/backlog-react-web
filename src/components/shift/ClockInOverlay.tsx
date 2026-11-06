@@ -18,6 +18,7 @@ import {
     shutterRise,
     Worker,
 } from './shiftParts'
+import { buildWorkerCharacter, readAvatarSeed } from './workerCharacter'
 
 // =========================================================
 // TIMELINE (ms from overlay mount) — mirror of the clock-out:
@@ -76,6 +77,7 @@ function ClockInSequence({ run }: { run: ClockInRun }) {
                 ]}
                 wave={{ start: waveStart, duration: waveDuration }}
                 gaitCycle={gaitCycle}
+                character={buildWorkerCharacter(readAvatarSeed(run.username))}
             />
         </ShiftOverlayRoot>
     )

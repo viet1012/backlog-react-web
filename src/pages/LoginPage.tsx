@@ -32,6 +32,7 @@ import { useIsDaytime } from '../hooks/useIsDaytime'
 import { useI18n } from '../i18n/useI18n'
 import { LanguageToggleButton } from '../components/common/LanguageToggleButton'
 import { CLOCK_IN_COVER_MS, startClockIn } from '../components/shift/clockInStore'
+import { randomAvatarSeed, writeAvatarSeed } from '../components/shift/workerCharacter'
 
 type AuthMode = 'login' | 'register'
 
@@ -85,6 +86,10 @@ export function LoginPage() {
     try {
       const session = await login(employeeId.trim(), password, remember)
       const target = getDefaultAuthRoute(session)
+      const username = getAuthenticatedUsername() ?? employeeId.trim()
+
+      // New random factory character on every sign-in (sidebar, logout, animations)
+      writeAvatarSeed(username, randomAvatarSeed())
 
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         navigate(target, { replace: true })
@@ -93,7 +98,7 @@ export function LoginPage() {
 
       // Clock-in overlay (App root) covers the screen first, then we navigate
       // underneath it. Loading stays on so no re-render redirects early.
-      startClockIn(getAuthenticatedUsername() ?? employeeId.trim())
+      startClockIn(username)
       window.setTimeout(() => navigate(target, { replace: true }), CLOCK_IN_COVER_MS)
     } catch (requestError) {
       setError(

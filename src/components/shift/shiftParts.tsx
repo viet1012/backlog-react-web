@@ -5,6 +5,8 @@ import { alpha, keyframes } from '@mui/material/styles'
 
 import { useI18n } from '../../i18n/useI18n'
 
+import { defaultWorkerCharacter, shade, type WorkerCharacter } from './workerCharacter'
+
 // Shared pieces for the clock-in (login) and clock-out (logout) sequences.
 
 export const monoFont = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace'
@@ -327,6 +329,7 @@ export function Worker({
     gaitCycle = 440,
     height = 'clamp(64px, 11vh, 112px)',
     bottom = 14,
+    character = defaultWorkerCharacter,
 }: {
     startX: string
     walks: WorkerWalk[]
@@ -334,7 +337,11 @@ export function Worker({
     gaitCycle?: number
     height?: number | string
     bottom?: number
+    /** Same character as the user's avatar (side view). */
+    character?: WorkerCharacter
 }) {
+    const { skin, hat, vest, accessory } = character
+
     const gait = (name: typeof limbSwing, period: number, easing = 'linear') =>
         walks.length
             ? walks
@@ -342,37 +349,80 @@ export function Worker({
                 .join(', ')
             : 'none'
 
+    // Thin dark outline keeps the small figure crisp on any background.
+    const outline = { stroke: 'rgba(15,23,42,0.55)', strokeWidth: 0.6 }
+    const shirt = '#1e3a5f'
+
     const figure = (
-        <svg viewBox="0 0 40 76">
+        <svg viewBox="0 0 40 76" shapeRendering="geometricPrecision">
             <ellipse cx="21" cy="73" rx="9" ry="2" fill="rgba(0,0,0,0.28)" />
 
             <g className="worker-bob">
+                {/* BACK LIMBS */}
                 <g className="worker-arm-back">
-                    <rect x="17.5" y="26" width="5" height="19" rx="2.5" fill="#1d4ed8" />
+                    <rect x="17.5" y="26" width="5" height="16" rx="2.5" fill={shade(shirt, -0.2)} {...outline} />
+                    <circle cx="20" cy="43.4" r="2.6" fill="#cbd5e1" {...outline} />
                 </g>
                 <g className="worker-leg-back">
-                    <rect x="17" y="45" width="6" height="24" rx="3" fill="#1e3a5f" />
-                    <rect x="17" y="67" width="10" height="4" rx="2" fill="#111827" />
+                    <rect x="17" y="45" width="6" height="22" rx="3" fill="#1b3354" {...outline} />
+                    <rect x="16.5" y="65.6" width="11" height="4.8" rx="2.2" fill="#111827" {...outline} />
                 </g>
                 <g className="worker-leg-front">
-                    <rect x="17" y="45" width="6" height="24" rx="3" fill="#274b77" />
-                    <rect x="17" y="67" width="10" height="4" rx="2" fill="#1f2937" />
+                    <rect x="17" y="45" width="6" height="22" rx="3" fill="#274b77" {...outline} />
+                    <rect x="16.5" y="65.6" width="11" height="4.8" rx="2.2" fill="#1f2937" {...outline} />
+                    <rect x="16.5" y="69.2" width="11" height="1.3" rx="0.6" fill="#475569" />
                 </g>
 
-                {/* TORSO: uniform, hi-vis stripe, badge */}
-                <rect x="13" y="24" width="14" height="25" rx="6" fill="#2563eb" />
-                <rect x="13" y="35" width="14" height="2.5" fill="#fbbf24" />
-                <rect x="21" y="27.5" width="4" height="5" rx="1" fill="#f8fafc" />
+                {/* TORSO: work shirt, hi-vis vest with 2 reflective stripes, ID badge, belt */}
+                <rect x="13" y="24" width="14" height="25" rx="6" fill={shirt} {...outline} />
+                <rect x="13" y="25.6" width="14" height="19.4" rx="5.4" fill={vest} {...outline} />
+                <path d="M19 24.4 L21.4 28 L23.8 24.4 Z" fill={shirt} />
+                <rect x="13.3" y="33" width="13.4" height="1.9" fill="#f1f5f9" opacity={0.92} />
+                <rect x="13.3" y="38.4" width="13.4" height="1.9" fill="#f1f5f9" opacity={0.92} />
+                <rect x="22" y="27.6" width="3.4" height="4.2" rx="0.8" fill="#f8fafc" />
+                <rect x="22.4" y="28.2" width="2.6" height="1.1" fill="#2563eb" />
+                <rect x="13" y="44.4" width="14" height="2.6" fill="#0f172a" />
+                <rect x="22.4" y="44.7" width="2.4" height="2" rx="0.4" fill="#94a3b8" />
 
-                {/* HEAD + HARD HAT */}
-                <circle cx="21" cy="16" r="6.5" fill="#f0c39a" />
-                <path d="M 13.5 15 A 7.5 7.5 0 0 1 28.5 15 Z" fill="#facc15" />
-                <rect x="12.5" y="14" width="19" height="2" rx="1" fill="#eab308" />
+                {/* NECK + HEAD (facing right) */}
+                <rect x="19.2" y="20.6" width="4" height="4.4" fill={shade(skin, -0.08)} />
+                {accessory === 'pencil' && (
+                    <path d="M15.4 18.6 L18.6 12.4" stroke="#facc15" strokeWidth="1.5" strokeLinecap="round" />
+                )}
+                <circle cx="21" cy="16" r="6.6" fill={skin} {...outline} />
+                <circle cx="27.4" cy="16.9" r="1.15" fill={skin} />
+                <path d="M14.4 13.6 Q14 17 15.6 18.6 L17.4 17.4 Q16.4 15.6 16.8 13.6 Z" fill="#3b2a20" />
+                <ellipse cx="19.6" cy="16.9" rx="1.3" ry="1.6" fill={shade(skin, -0.12)} />
+                <ellipse cx="24.5" cy="15.8" rx="0.8" ry="1" fill="#1f2937" />
+                <circle cx="24.75" cy="15.45" r="0.28" fill="#fff" />
+                <circle cx="24.1" cy="18.5" r="1.1" fill="#f87171" opacity={0.3} />
+                <path d="M25.1 19.2 Q26.2 20 27.1 19" stroke="#7c2d12" strokeWidth="0.7" strokeLinecap="round" fill="none" />
+                {accessory === 'earmuffs' && <circle cx="19.6" cy="16.9" r="2.4" fill="#ef4444" {...outline} />}
+                {accessory === 'mustache' && <ellipse cx="26.4" cy="18.3" rx="1.7" ry="0.75" fill="#4b2e1e" />}
 
+                {/* HARD HAT: dome, ridge, highlight, front-peaked brim */}
+                <path d="M13.5 13.6 A7.5 7.5 0 0 1 28.5 13.6 Z" fill={hat} {...outline} />
+                <rect x="19.6" y="6.3" width="2.8" height="7.3" rx="1.4" fill={shade(hat, -0.12)} />
+                <path d="M15.6 11.6 Q16.6 8.6 19.4 7.4" stroke="#fff" strokeWidth="0.9" strokeLinecap="round" fill="none" opacity={0.6} />
+                <rect x="12.6" y="12.8" width="19.4" height="1.9" rx="0.95" fill={shade(hat, -0.15)} {...outline} />
+                {accessory === 'goggles' && (
+                    <>
+                        <rect x="21.5" y="9.4" width="6.5" height="2.4" rx="1.2" fill="#334155" />
+                        <circle cx="26.4" cy="10.6" r="0.9" fill="#7dd3fc" />
+                    </>
+                )}
+                {accessory === 'headlamp' && (
+                    <>
+                        <rect x="26" y="9.5" width="3" height="2.6" rx="0.8" fill="#374151" />
+                        <circle cx="28.6" cy="10.8" r="0.7" fill="#fef08a" />
+                    </>
+                )}
+
+                {/* FRONT ARM (waves) */}
                 <g className="worker-wave">
                     <g className="worker-arm-front">
-                        <rect x="17.5" y="26" width="5" height="19" rx="2.5" fill="#3b82f6" />
-                        <circle cx="20" cy="45" r="2.6" fill="#f0c39a" />
+                        <rect x="17.5" y="26" width="5" height="16" rx="2.5" fill={shade(shirt, 0.12)} {...outline} />
+                        <circle cx="20" cy="43.4" r="2.7" fill="#e2e8f0" {...outline} />
                     </g>
                 </g>
             </g>
