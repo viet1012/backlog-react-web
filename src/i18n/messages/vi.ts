@@ -73,6 +73,25 @@ export const vi: Messages = {
         description: 'Bạn sẽ cần đăng nhập lại để tiếp tục.',
         signOut: 'Đăng xuất',
         checkOut: (time) => `Đăng xuất lúc ${time}`,
+        signingOut: 'Đang đăng xuất…',
+        byeLines: [
+            'Hẹn gặp lại!',
+            'Về sớm vậy sao? 🥺',
+            'Nghỉ ngơi nhé!',
+            'Mai gặp lại nha!',
+            'Đi đường cẩn thận nha!',
+            'Hôm nay vất vả rồi!',
+            'Để tôi đóng cổng cho!',
+            'Bye bye 👋',
+            'Ở lại thêm chút đi mà…',
+            'Nhớ mang đồ về nha!',
+        ],
+        byeByPeriod: {
+            morning: ['Mới sáng đã về rồi?', 'Chúc một ngày tốt lành!'],
+            noon: ['Đi ăn trưa hả? 🍜', 'Ăn trưa ngon miệng nha!'],
+            afternoon: ['Tan ca rồi à?', 'Về nhà bình an nha!'],
+            night: ['Ngủ ngon nha! 🌙', 'Tăng ca muộn thế!'],
+        },
     },
 
     shift: {

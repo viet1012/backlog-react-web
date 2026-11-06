@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 
 import {
-    Avatar,
     Box,
     Button,
     Dialog,
@@ -14,6 +13,8 @@ import { alpha, keyframes } from '@mui/material/styles'
 
 import { LogoutRounded } from '@mui/icons-material'
 
+import factoryDay from '../../assets/logout-scene-day.webp'
+import factoryNight from '../../assets/logout-scene-night.webp'
 import { useI18n } from '../../i18n/useI18n'
 
 import {
@@ -23,20 +24,23 @@ import {
     getDayPeriod,
     monoFont,
     type DayPeriod,
-    scenePalettes,
     ShiftOverlayRoot,
     ShiftScene,
     ShutterMessage,
     ShutterPanel,
     shutterDrop,
-    skylinePath,
     Worker,
 } from '../shift/shiftParts'
+import { buildWorkerCharacter, readAvatarSeed, type WorkerCharacter } from '../shift/workerCharacter'
+
+import { FactoryAvatar } from './FactoryAvatar'
 
 interface LogoutConfirmDialogProps {
     open: boolean
     username: string
     role?: string
+    /** Seed of the user's character; defaults to the stored one. */
+    avatarSeed?: string
     onCancel: () => void
     onConfirm: () => void
 }
@@ -48,6 +52,9 @@ interface LogoutConfirmDialogProps {
 // The gate in the dialog header closes first, then the full-screen
 // clock-out sequence takes over.
 const shutterStartAt = 600
+// The full-screen overlay is mounted (invisible) shortly after the click,
+// once the click feedback has painted, and revealed at shutterStartAt.
+const overlayMountAt = 80
 
 const gateDropDuration = 520
 const gateImpact = Math.round(gateDropDuration * 0.8)
@@ -74,11 +81,13 @@ const confirmAt = shutterStartAt + messageAt + messageFade + messageHold
 // =========================================================
 
 // Gate header: the shutter's hazard rail peeks out of the top edge.
-const gateHeight = 104
+const gateHeight = 180
 const gateRail = 10
 
+// Slide + fade only: scaling the paper would rasterize its content at
+// 90% and leave the character / text slightly blurry.
 const paperSpring = keyframes`
-    from { opacity: 0; transform: translateY(12px) scale(0.9); }
+    from { opacity: 0; transform: translateY(16px); }
     to { opacity: 1; transform: translateY(0) scale(1); }
 `
 
@@ -97,29 +106,16 @@ const gateRise = keyframes`
     100% { transform: translateY(calc(-100% + ${gateRail}px)); }
 `
 
-const smokeRise = keyframes`
-    0% { opacity: 0; transform: translate(0, 0) scale(0.4); }
-    20% { opacity: 0.8; }
-    100% { opacity: 0; transform: translate(12px, -36px) scale(1.6); }
+// Slow drone pan across the factory photo. Translation only: scaling a
+// GPU layer stretches the bitmap and makes the photo look blurry.
+const dronePan = keyframes`
+    from { transform: translateX(-3%); }
+    to { transform: translateX(3%); }
 `
 
 const cloudDrift = keyframes`
     from { transform: translateX(-120px); }
     to { transform: translateX(560px); }
-`
-
-const twinkle = keyframes`
-    0%, 100% { opacity: 0.25; }
-    50% { opacity: 1; }
-`
-
-const windowFlicker = keyframes`
-    0%, 100% { opacity: 1; }
-    45% { opacity: 1; }
-    50% { opacity: 0.35; }
-    55% { opacity: 1; }
-    70% { opacity: 0.6; }
-    72% { opacity: 1; }
 `
 
 const laneScroll = keyframes`
@@ -132,15 +128,26 @@ const lampBlink = keyframes`
     50% { opacity: 0.2; }
 `
 
-// Morning sun creeps up from behind the skyline.
-const sunRise = keyframes`
-    from { transform: translateY(12px); }
-    to { transform: translateY(-4px); }
+// Sun / moon glow breathing in a corner of the photo.
+const glowPulse = keyframes`
+    0%, 100% { opacity: 0.6; transform: scale(1); }
+    50% { opacity: 0.95; transform: scale(1.12); }
 `
 
-const raySpin = keyframes`
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+// Street lamps of the night photo.
+const lightTwinkle = keyframes`
+    0%, 100% { opacity: 0.35; }
+    50% { opacity: 1; }
+`
+
+// A vehicle on the factory road. The animated box is as tall as the lane,
+// so translateY(-100%) → 0 drives the vehicle drawn at its bottom edge
+// from the far end of the lane to the near end.
+const drive = keyframes`
+    0% { transform: translateY(-100%); opacity: 0; }
+    12% { opacity: 1; }
+    85% { opacity: 1; }
+    100% { transform: translateY(0); opacity: 0; }
 `
 
 const birdFly = keyframes`
@@ -153,14 +160,16 @@ const birdFlap = keyframes`
     to { transform: scaleY(0.35); }
 `
 
+// Moves a strip one tile wider than the button instead of animating
+// background-position (which repaints every frame).
+const hazardRun = keyframes`
+    from { transform: translateX(-8px); }
+    to { transform: translateX(0); }
+`
+
 const scanSweep = keyframes`
     from { transform: translateX(-140%) skewX(-20deg); }
     to { transform: translateX(300%) skewX(-20deg); }
-`
-
-const hazardRun = keyframes`
-    from { background-position: 0 0; }
-    to { background-position: 8px 0; }
 `
 
 const cardSink = keyframes`
@@ -188,102 +197,128 @@ const hazardTile = 'linear-gradient(45deg, #111827 25%, #f59e0b 25%, #f59e0b 50%
 // Opening (ms from dialog mount): shutter rolls up, worker walks in.
 const gateRiseDelay = 220
 const gateRiseDuration = 700
-const workerWalkIn = { dx: '132px', start: gateRiseDelay + 200, duration: gaitCycle * 2 }
+// Worker: walks in from off-frame and stops at workerRestX.
+const workerHeight = 64
+const workerStartX = -40
+const workerRestX = 96
+const workerWalkIn = { dx: `${workerRestX - workerStartX}px`, start: gateRiseDelay + 200, duration: gaitCycle * 2 }
 // Confirm: worker heads out while the shutter comes down.
 const workerWalkOut = { dx: '360px', start: 0, duration: gaitCycle * 2 }
+// Stable arrays / objects so a hover re-render does not restyle the worker.
+const walksOpen = [workerWalkIn]
+const walksClose = [workerWalkIn, workerWalkOut]
+const walksNone: typeof walksOpen = []
+const waveLoop = { start: 0, duration: waveDuration, iterations: 'infinite' as const }
 
-// Chimney tops of skylinePath (x / 1200), px above the scene bottom.
-const chimneys = [
-    { left: '28.96%', bottom: 50 },
-    { left: '73.9%', bottom: 53 },
-]
-const smokePuffs = [0, 0.9, 1.8]
+// The factory photo (same aerial view by day and by night). Overlays are
+// placed in % of the photo, so they stay on the road / lamps when it scales.
+const scenePhotos = {
+    day: { src: factoryDay, ratio: 1800 / 1005 },
+    night: { src: factoryNight, ratio: 1672 / 941 },
+}
 
-// Factory windows in skylinePath coordinates (viewBox 0 0 1200 160).
-const factoryWindows = [
-    [24, 110], [84, 110], [144, 110], [204, 110],
-    [432, 80], [462, 80], [492, 80],
-    [616, 106], [668, 106], [720, 106], [768, 106],
-    [972, 80], [1010, 80], [1048, 80],
-    [1106, 102], [1150, 102],
+// Part of the photo shown: the photo is wider than the header (zoomed in
+// on the factory), centered on the main road, and the frame starts this far
+// down the photo (factory roofs, the MISUMI bridge and the main road).
+const photoWidth = 'max(135%, 480px)'
+const photoCenterX = '-55%'
+const photoOffset = '-33%'
+
+// Two lanes of the main road under the MISUMI bridge (left in % of the photo).
+// Each lane runs two vehicles, offset by negative delays (s).
+const lanes = [
+    { left: 53.9, reverse: false, duration: 7, delays: [0, -3.6] },
+    { left: 55.3, reverse: true, duration: 8.5, delays: [-1.8, -6] },
 ] as const
 
-// [left %, top px]
-const stars = [[8, 14], [18, 32], [33, 10], [47, 24], [58, 8], [66, 30], [90, 14], [95, 36]] as const
+// Lamps along the main road in the night photo: [left %, top %]
+const roadLamps = [
+    [52, 47], [58.6, 50], [51.4, 69], [59.2, 69], [50.8, 80.8], [59.8, 80.8],
+] as const
 
-// Per time of day: where the sun / moon sits, how lit the factory is and
-// what lives in the sky. Birds fly to work in the morning, home in the afternoon.
+// Per time of day: tint over the photo, where the sun / moon glows,
+// and what lives in the sky. Birds fly to work in the morning, home in the afternoon.
 interface GatePalette {
-    orbLeft: string
-    orbBottom: number
-    windowLit: string
-    windowOpacity: number
-    smoke: string
+    photo: keyof typeof scenePhotos
+    tint: string
+    glow: { left: string; color: string; size: number }
+    moon?: boolean
     cloud: string | null
     birds: { color: string; reverse: boolean } | null
-    stars?: boolean
-    sunRays?: boolean
-    sunRise?: boolean
+    ground: string
 }
 
 const gatePalettes: Record<DayPeriod, GatePalette> = {
     morning: {
-        orbLeft: '9%',
-        orbBottom: 30,
-        windowLit: '#fde68a',
-        windowOpacity: 0.35,
-        smoke: 'rgba(100,116,139,0.45)',
-        cloud: 'rgba(255,241,242,0.8)',
+        photo: 'day',
+        tint: 'linear-gradient(180deg, rgba(251,207,232,0.26) 0%, rgba(254,215,170,0.1) 40%, transparent 70%)',
+        glow: { left: '6%', color: 'rgba(255,237,213,0.95)', size: 120 },
+        cloud: 'rgba(255,241,242,0.75)',
         birds: { color: '#334155', reverse: false },
-        sunRise: true,
+        ground: '#3f3f46',
     },
     noon: {
-        orbLeft: '52%',
-        orbBottom: 64,
-        windowLit: '#e0f2fe',
-        windowOpacity: 0.2,
-        smoke: 'rgba(148,163,184,0.5)',
-        cloud: 'rgba(255,255,255,0.92)',
+        photo: 'day',
+        tint: 'linear-gradient(180deg, rgba(186,230,253,0.2) 0%, transparent 45%)',
+        glow: { left: '50%', color: 'rgba(255,255,255,0.9)', size: 110 },
+        cloud: 'rgba(255,255,255,0.85)',
         birds: null,
-        sunRays: true,
+        ground: '#3f3f46',
     },
     afternoon: {
-        orbLeft: '84%',
-        orbBottom: 40,
-        windowLit: '#fde68a',
-        windowOpacity: 0.6,
-        smoke: 'rgba(120,113,108,0.55)',
-        cloud: 'rgba(255,237,213,0.6)',
+        photo: 'day',
+        tint: 'linear-gradient(180deg, rgba(251,146,60,0.32) 0%, rgba(234,88,12,0.14) 55%, rgba(124,45,18,0.18) 100%)',
+        glow: { left: '92%', color: 'rgba(253,186,116,0.95)', size: 130 },
+        cloud: 'rgba(255,237,213,0.55)',
         birds: { color: '#7c2d12', reverse: true },
+        ground: '#3b2f2a',
     },
     night: {
-        orbLeft: '84%',
-        orbBottom: 62,
-        windowLit: '#fbbf24',
-        windowOpacity: 0.95,
-        smoke: 'rgba(148,163,184,0.35)',
+        photo: 'night',
+        tint: 'linear-gradient(180deg, rgba(15,23,42,0.25) 0%, transparent 55%)',
+        glow: { left: '88%', color: 'rgba(226,232,240,0.55)', size: 70 },
+        moon: true,
         cloud: null,
         birds: null,
-        stars: true,
+        ground: '#111827',
     },
 }
 
 // [x, y, flap delay s] inside the flock
 const flock = [[0, 6, 0], [14, 0, 0.12], [26, 9, 0.24]] as const
 
-function GateScene({
+// Memoized: the dialog re-renders on every hover / focus of the buttons.
+const GateScene = memo(function GateScene({
+    period,
     warn,
     closing,
     reduceMotion,
+    character,
 }: {
+    period: DayPeriod
     warn: boolean
     closing: boolean
     reduceMotion: boolean
+    character: WorkerCharacter
 }) {
-    const [period] = useState(() => getDayPeriod(new Date()))
-    const palette = scenePalettes[period]
+    const { t } = useI18n()
     const gate = gatePalettes[period]
-    const orbSize = Math.round(palette.orbSize * 0.4)
+    const photo = scenePhotos[gate.photo]
+
+    // A new random line each time the hover starts (never the same twice in a row).
+    const byeLines = [...t.logout.byeLines, ...t.logout.byeByPeriod[period]]
+    const [byeIndex, setByeIndex] = useState(0)
+    const [prevWarn, setPrevWarn] = useState(warn)
+
+    if (warn !== prevWarn) {
+        setPrevWarn(warn)
+
+        if (warn) {
+            const next = Math.floor(Math.random() * (byeLines.length - 1))
+            setByeIndex(next >= byeIndex ? next + 1 : next)
+        }
+    }
+    const night = gate.photo === 'night'
     const animate = !reduceMotion
 
     // The factory "runs" until sign-out is confirmed.
@@ -302,56 +337,160 @@ function GateScene({
                 position: 'relative',
                 height: gateHeight,
                 overflow: 'hidden',
-                background: palette.sky,
+                bgcolor: night ? '#0b1330' : '#93c5fd',
+                // Keep the scene's repaints from spreading to the rest of the dialog
+                contain: 'paint',
+                isolation: 'isolate',
 
-                '& .gate-star': {
-                    position: 'absolute',
-                    width: 2,
-                    height: 2,
-                    borderRadius: '50%',
-                    bgcolor: '#f8fafc',
-                    animation: animate ? `${twinkle} 2.4s ease-in-out infinite` : 'none',
-                },
                 '& .gate-cloud': {
                     position: 'absolute',
                     left: 0,
-                    height: 10,
-                    borderRadius: 999,
-                    bgcolor: gate.cloud,
-                    filter: 'blur(2px)',
+                    height: 12,
+                    // Soft edge drawn by the gradient (an animated blur filter is costly)
+                    background: `radial-gradient(closest-side, ${gate.cloud} 55%, transparent)`,
+                    willChange: 'transform',
                     animation: animate ? `${cloudDrift} 28s linear infinite` : 'none',
-                },
-                '& .gate-smoke': {
-                    position: 'absolute',
-                    width: 9,
-                    height: 9,
-                    ml: '-4.5px',
-                    borderRadius: '50%',
-                    bgcolor: gate.smoke,
-                    opacity: 0,
-                    animation: animate ? `${smokeRise} 2.7s ease-out infinite` : 'none',
-                    animationPlayState: running,
-                },
-                '& .gate-window-flicker': {
-                    animation: animate ? `${windowFlicker} 3.2s steps(1, end) infinite` : 'none',
                 },
                 '& .gate-bird': {
                     transformOrigin: '50% 100%',
                     animation: animate ? `${birdFlap} 0.32s ease-in-out infinite alternate` : 'none',
                 },
+                '& .gate-lane': {
+                    position: 'absolute',
+                    top: '62%',
+                    height: '24%',
+                    width: '1.1%',
+                },
+                '& .gate-vehicle': {
+                    position: 'absolute',
+                    inset: 0,
+                    opacity: 0,
+                    willChange: 'transform, opacity',
+                    animation: animate ? `${drive} var(--drive-duration) linear var(--drive-delay) infinite` : 'none',
+                    animationPlayState: running,
+
+                    // The vehicle itself, at the near end of the lane box
+                    '&::after': {
+                        content: '""',
+                        position: 'absolute',
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        height: '13%',
+                        borderRadius: '1.5px',
+                        bgcolor: night ? '#cbd5e1' : '#f8fafc',
+                        boxShadow: night
+                            ? '0 3px 5px rgba(253,224,71,0.9)'
+                            : '0 1px 1px rgba(15,23,42,0.45)',
+                    },
+                },
+                '& .gate-vehicle-up': {
+                    animationDirection: 'reverse',
+                    '&::after': night ? { boxShadow: '0 3px 5px rgba(239,68,68,0.85)' } : {},
+                },
+                '& .gate-lamp': {
+                    position: 'absolute',
+                    width: '2.4%',
+                    aspectRatio: '1',
+                    ml: '-1.2%',
+                    mt: '-1.2%',
+                    borderRadius: '50%',
+                    background: 'radial-gradient(circle, rgba(253,224,71,0.95) 0%, rgba(253,224,71,0) 70%)',
+                    animation: animate ? `${lightTwinkle} 2.2s ease-in-out infinite` : 'none',
+                },
             }}
         >
-            {gate.stars && stars.map(([left, top], index) => (
+            {/* FACTORY PHOTO (slow drone pan) + things that move on it */}
+            <Box
+                sx={{
+                    position: 'absolute',
+                    top: 0,
+                    left: '50%',
+                    width: photoWidth,
+                    aspectRatio: `${photo.ratio}`,
+                    transform: `translate(${photoCenterX}, ${photoOffset})`,
+                }}
+            >
                 <Box
-                    key={`${left}-${top}`}
-                    className="gate-star"
-                    style={{ left: `${left}%`, top, animationDelay: `${index * 0.35}s` }}
+                    sx={{
+                        position: 'absolute',
+                        inset: 0,
+                        willChange: animate ? 'transform' : 'auto',
+                        animation: animate ? `${dronePan} 24s ease-in-out infinite alternate` : 'none',
+                        animationPlayState: running,
+                    }}
+                >
+                    <Box
+                        component="img"
+                        src={photo.src}
+                        alt=""
+                        decoding="async"
+                        draggable={false}
+                        sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }}
+                    />
+
+                    {lanes.map((lane) => (
+                        <Box key={lane.left} className="gate-lane" style={{ left: `${lane.left}%` }}>
+                            {lane.delays.map((delay) => (
+                                <Box
+                                    key={delay}
+                                    className={lane.reverse ? 'gate-vehicle gate-vehicle-up' : 'gate-vehicle'}
+                                    style={{
+                                        ['--drive-duration' as string]: `${lane.duration}s`,
+                                        ['--drive-delay' as string]: `${delay}s`,
+                                    }}
+                                />
+                            ))}
+                        </Box>
+                    ))}
+
+                    {night && roadLamps.map(([left, top], index) => (
+                        <Box
+                            key={`${left}-${top}`}
+                            className="gate-lamp"
+                            style={{ left: `${left}%`, top: `${top}%`, animationDelay: `${index * 0.37}s` }}
+                        />
+                    ))}
+                </Box>
+            </Box>
+
+            {/* TIME-OF-DAY TINT */}
+            <Box sx={{ position: 'absolute', inset: 0, background: gate.tint }} />
+
+            {/* SUN / MOON GLOW in a top corner */}
+            <Box
+                sx={{
+                    position: 'absolute',
+                    top: -gate.glow.size / 2,
+                    left: gate.glow.left,
+                    width: gate.glow.size,
+                    height: gate.glow.size,
+                    ml: `${-gate.glow.size / 2}px`,
+                    borderRadius: '50%',
+                    background: `radial-gradient(circle, ${gate.glow.color} 0%, transparent 65%)`,
+                    willChange: animate ? 'transform, opacity' : 'auto',
+                    animation: animate ? `${glowPulse} 4s ease-in-out infinite` : 'none',
+                }}
+            />
+            {gate.moon && (
+                <Box
+                    sx={{
+                        position: 'absolute',
+                        top: 8,
+                        left: gate.glow.left,
+                        width: 14,
+                        height: 14,
+                        ml: '-7px',
+                        borderRadius: '50%',
+                        bgcolor: '#e2e8f0',
+                        boxShadow: 'inset -3px -2px 0 rgba(148,163,184,0.6)',
+                    }}
                 />
-            ))}
+            )}
 
             {gate.cloud && [
-                { top: 16, width: 54, delay: -6 },
-                { top: 34, width: 38, delay: -19 },
+                { top: 10, width: 54, delay: -6 },
+                { top: 26, width: 38, delay: -19 },
             ].map((cloud) => (
                 <Box
                     key={cloud.top}
@@ -360,58 +499,16 @@ function GateScene({
                 />
             ))}
 
-            {/* SUN / MOON */}
-            <Box
-                sx={{
-                    position: 'absolute',
-                    left: gate.orbLeft,
-                    bottom: gate.orbBottom,
-                    width: orbSize,
-                    height: orbSize,
-                    ml: `${-orbSize / 2}px`,
-                    animation: gate.sunRise && animate ? `${sunRise} 14s ease-out both` : 'none',
-                }}
-            >
-                {/* Noon: slow-turning rays behind the sun */}
-                {gate.sunRays && (
-                    <Box
-                        sx={{
-                            position: 'absolute',
-                            top: '50%',
-                            left: '50%',
-                            width: orbSize * 3,
-                            height: orbSize * 3,
-                            mt: `${-orbSize * 1.5}px`,
-                            ml: `${-orbSize * 1.5}px`,
-                            borderRadius: '50%',
-                            background: `repeating-conic-gradient(${alpha(palette.orb, 0.5)} 0deg 8deg, transparent 8deg 30deg)`,
-                            WebkitMaskImage: 'radial-gradient(circle, #000 20%, transparent 70%)',
-                            maskImage: 'radial-gradient(circle, #000 20%, transparent 70%)',
-                            animation: animate ? `${raySpin} 24s linear infinite` : 'none',
-                        }}
-                    />
-                )}
-
-                <Box
-                    sx={{
-                        position: 'absolute',
-                        inset: 0,
-                        borderRadius: '50%',
-                        bgcolor: palette.orb,
-                        boxShadow: `0 0 28px ${alpha(palette.orb, 0.6)}`,
-                    }}
-                />
-            </Box>
-
             {/* BIRDS */}
             {gate.birds && (
                 <Box
                     sx={{
                         position: 'absolute',
-                        top: 22,
+                        top: 18,
                         left: 0,
                         width: 40,
                         height: 16,
+                        willChange: 'transform',
                         animation: animate
                             ? `${birdFly} 13s linear -3s infinite${gate.birds.reverse ? ' reverse' : ''}`
                             : 'none',
@@ -438,54 +535,28 @@ function GateScene({
                 </Box>
             )}
 
-            {/* CHIMNEY SMOKE */}
-            {chimneys.map((chimney) =>
-                smokePuffs.map((delay) => (
-                    <Box
-                        key={`${chimney.left}-${delay}`}
-                        className="gate-smoke"
-                        style={{ left: chimney.left, bottom: chimney.bottom, animationDelay: `${delay}s` }}
-                    />
-                )),
-            )}
+            {/* LIGHTS OUT on confirm: the factory goes dark behind the shutter */}
+            <Box
+                sx={{
+                    position: 'absolute',
+                    inset: 0,
+                    bgcolor: '#020617',
+                    opacity: closing ? 0.55 : 0,
+                    transition: animate ? 'opacity 500ms ease' : 'none',
+                }}
+            />
 
-            {/* FACTORY SKYLINE + WINDOWS (lights go out one by one on confirm) */}
-            <svg
-                viewBox="0 0 1200 160"
-                preserveAspectRatio="none"
-                style={{
+            {/* FOREGROUND GATE ROAD + MOVING LANE MARKING (the worker walks here) */}
+            <Box
+                sx={{
                     position: 'absolute',
                     left: 0,
+                    right: 0,
                     bottom: 12,
-                    width: '100%',
-                    height: 52,
-                    display: 'block',
+                    height: 26,
+                    background: 'linear-gradient(to bottom, transparent, rgba(2,6,23,0.45))',
                 }}
-            >
-                <path d={skylinePath} fill={palette.skyline} />
-
-                {factoryWindows.map(([x, y], index) => (
-                    <g
-                        key={`${x}-${y}`}
-                        style={{
-                            opacity: closing ? 0.06 : gate.windowOpacity,
-                            transition: animate ? `opacity 120ms ease ${index * 28}ms` : 'none',
-                        }}
-                    >
-                        <rect
-                            className={index % 5 === 2 ? 'gate-window-flicker' : undefined}
-                            x={x}
-                            y={y}
-                            width={22}
-                            height={12}
-                            rx={2}
-                            fill={gate.windowLit}
-                        />
-                    </g>
-                ))}
-            </svg>
-
-            {/* GROUND + MOVING LANE MARKING */}
+            />
             <Box
                 sx={{
                     position: 'absolute',
@@ -494,7 +565,7 @@ function GateScene({
                     bottom: 0,
                     height: 12,
                     overflow: 'hidden',
-                    bgcolor: palette.ground,
+                    bgcolor: gate.ground,
                 }}
             >
                 <Box
@@ -505,6 +576,7 @@ function GateScene({
                         right: 0,
                         height: 1.5,
                         backgroundImage: 'repeating-linear-gradient(90deg, rgba(250,204,21,0.7) 0 14px, transparent 14px 28px)',
+                        willChange: 'transform',
                         animation: animate ? `${laneScroll} 0.9s linear infinite` : 'none',
                         animationPlayState: running,
                     }}
@@ -513,13 +585,51 @@ function GateScene({
 
             {/* Walks in on open, waves goodbye on hover, walks out on confirm */}
             <Worker
-                startX={animate ? '-36px' : '96px'}
-                walks={!animate ? [] : closing ? [workerWalkIn, workerWalkOut] : [workerWalkIn]}
-                wave={warn && animate ? { start: 0, duration: waveDuration, iterations: 'infinite' } : undefined}
+                startX={animate ? `${workerStartX}px` : `${workerRestX}px`}
+                walks={!animate ? walksNone : closing ? walksClose : walksOpen}
+                wave={warn && animate ? waveLoop : undefined}
                 gaitCycle={gaitCycle}
-                height={56}
+                height={workerHeight}
                 bottom={6}
+                character={character}
             />
+
+            {/* Speech bubble above the worker while hovering Sign out */}
+            <Box
+                sx={{
+                    position: 'absolute',
+                    left: workerRestX + 6,
+                    bottom: 6 + workerHeight + 6,
+                    px: 1,
+                    py: 0.4,
+                    borderRadius: '10px',
+                    bgcolor: '#ffffff',
+                    color: '#111827',
+                    fontSize: 11,
+                    fontWeight: 800,
+                    lineHeight: 1.3,
+                    whiteSpace: 'nowrap',
+                    boxShadow: '0 4px 12px rgba(2,6,23,0.3)',
+                    pointerEvents: 'none',
+                    opacity: warn ? 1 : 0,
+                    transform: warn ? 'translateY(0)' : 'translateY(4px)',
+                    transition: animate ? 'opacity 160ms ease, transform 220ms cubic-bezier(.34,1.56,.64,1)' : 'none',
+
+                    // Tail pointing at the worker
+                    '&::after': {
+                        content: '""',
+                        position: 'absolute',
+                        left: 10,
+                        bottom: -4,
+                        width: 8,
+                        height: 8,
+                        bgcolor: '#ffffff',
+                        transform: 'rotate(45deg)',
+                    },
+                }}
+            >
+                {byeLines[byeIndex % byeLines.length]}
+            </Box>
 
             {/* SHUTTER: rolls up on open, dips while hovering Sign out, drops on confirm */}
             <Box
@@ -573,11 +683,11 @@ function GateScene({
 
             {animate && <DustBurst at={closing ? gateImpact : gateRiseDelay} key={closing ? 'close' : 'open'} />}
             {closing && animate && (
-                <Beacon tone="amber" start={0} duration={shutterStartAt + 200} />
+                <Beacon tone="amber" start={0} duration={shutterStartAt + 200} beam={180} />
             )}
         </Box>
     )
-}
+})
 
 // =========================================================
 // TIME CLOCK SLOT (confirm phase only)
@@ -680,20 +790,25 @@ function TimeClockSlot({
 function ShutterOverlay({
     username,
     checkoutTime,
+    character,
     onSkip,
 }: {
     username: string
     checkoutTime: string | null
+    character: WorkerCharacter
     onSkip: () => void
 }) {
     const { t } = useI18n()
     const [period] = useState(() => getDayPeriod(new Date()))
+    // Mounted early (overlayMountAt) and revealed at shutterStartAt:
+    // every time below is shifted by that lead.
+    const lead = shutterStartAt - overlayMountAt
 
     return (
-        <ShiftOverlayRoot onSkip={onSkip} shakeAt={shutterImpact}>
+        <ShiftOverlayRoot onSkip={onSkip} revealAt={lead} shakeAt={lead + shutterImpact}>
             <ShiftScene period={period} />
 
-            <ShutterPanel animation={`${shutterDrop} ${dropDuration}ms ${dropDelay}ms both`}>
+            <ShutterPanel animation={`${shutterDrop} ${dropDuration}ms ${lead + dropDelay}ms both`}>
                 <ShutterMessage
                     tone="amber"
                     label={t.shift.signedOut}
@@ -701,19 +816,20 @@ function ShutterOverlay({
                     subtitle={username}
                     timeLabel={t.shift.timeAt}
                     time={checkoutTime ?? undefined}
-                    delay={messageAt}
+                    delay={lead + messageAt}
                 />
             </ShutterPanel>
 
-            <DustBurst at={shutterImpact} />
-            <Beacon tone="amber" start={dropDelay} duration={shutterImpact - dropDelay + 250} />
+            <DustBurst at={lead + shutterImpact} />
+            <Beacon tone="amber" start={lead + dropDelay} duration={shutterImpact - dropDelay + 250} />
 
             {/* Walks out in front of the closing shutter */}
             <Worker
                 startX="68vw"
-                walks={[{ dx: '40vw', start: walkStart, duration: walkDuration }]}
-                wave={{ start: 0, duration: waveDuration }}
+                walks={[{ dx: '40vw', start: lead + walkStart, duration: walkDuration }]}
+                wave={{ start: lead, duration: waveDuration }}
                 gaitCycle={gaitCycle}
+                character={character}
             />
         </ShiftOverlayRoot>
     )
@@ -727,14 +843,25 @@ export function LogoutConfirmDialog({
     open,
     username,
     role,
+    avatarSeed,
     onCancel,
     onConfirm,
 }: LogoutConfirmDialogProps) {
     const { t } = useI18n()
+    const seed = avatarSeed ?? readAvatarSeed(username)
+    // Stable object so the memoized GateScene skips hover re-renders
+    const character = useMemo(() => buildWorkerCharacter(seed), [seed])
     const reduceMotion = useMediaQuery(
         '(prefers-reduced-motion: reduce)',
         { noSsr: true },
     )
+
+    // Time of day, taken again each time the dialog opens
+    const [period, setPeriod] = useState(() => getDayPeriod(new Date()))
+
+    useEffect(() => {
+        if (open) setPeriod(getDayPeriod(new Date()))
+    }, [open])
 
     const [stopped, setStopped] = useState(false)
     const [hovered, setHovered] = useState(false)
@@ -750,6 +877,14 @@ export function LogoutConfirmDialog({
     useEffect(() => {
         onConfirmRef.current = onConfirm
     }, [onConfirm])
+
+    // Warm the photo cache so the scene is ready the first time the dialog opens.
+    useEffect(() => {
+        for (const src of [factoryDay, factoryNight]) {
+            const image = new Image()
+            image.src = src
+        }
+    }, [])
 
     useEffect(() => {
         if (!open || confirmPendingRef.current) return
@@ -789,7 +924,7 @@ export function LogoutConfirmDialog({
 
         confirmPendingRef.current = true
         timersRef.current.push(
-            setTimeout(() => setShutterOn(true), shutterStartAt),
+            setTimeout(() => setShutterOn(true), overlayMountAt),
             setTimeout(() => {
                 confirmPendingRef.current = false
                 onConfirmRef.current()
@@ -834,18 +969,19 @@ export function LogoutConfirmDialog({
                                 : `${paperSpring} 420ms cubic-bezier(.34,1.56,.64,1) both`,
                         }),
                     },
+                    // No backdrop blur: the sidebar keeps animating underneath and a
+                    // full-screen blur would be recomputed on every frame (lag).
                     backdrop: {
-                        sx: {
-                            backdropFilter: 'blur(4px)',
-                            backgroundColor: 'rgba(8,18,32,0.45)',
-                        },
+                        sx: { backgroundColor: 'rgba(8,18,32,0.58)' },
                     },
                 }}
             >
                 <GateScene
+                    period={period}
                     warn={warn}
                     closing={stopped}
                     reduceMotion={reduceMotion}
+                    character={character}
                 />
 
                 <DialogContent sx={{ pt: 2.5, pb: 1.5, textAlign: 'center' }}>
@@ -883,11 +1019,12 @@ export function LogoutConfirmDialog({
                                 border: '1px solid',
                                 borderColor: 'divider',
                                 transformOrigin: '50% 100%',
+                                willChange: stopped ? 'transform, opacity' : 'auto',
                                 animation: stopped && !reduceMotion
                                     ? `${cardSink} ${shutterStartAt}ms cubic-bezier(.5,0,.75,0) forwards`
                                     : 'none',
 
-                                // Hi-vis stripe of the worker's uniform along the left edge
+                                // Hi-vis stripe in the color of the character's vest
                                 '&::before': {
                                     content: '""',
                                     position: 'absolute',
@@ -895,21 +1032,35 @@ export function LogoutConfirmDialog({
                                     bottom: 0,
                                     left: 0,
                                     width: 4,
-                                    bgcolor: '#fbbf24',
+                                    bgcolor: character.vest,
                                 },
                             })}
                         >
-                            <Avatar
-                                sx={{
-                                    width: 34,
-                                    height: 34,
-                                    fontSize: 14,
-                                    fontWeight: 800,
-                                    bgcolor: '#2563eb',
-                                }}
+                            {/* Same character as the sidebar and the walking worker; tips the hat on hover */}
+                            <Box
+                                sx={(theme) => ({
+                                    width: 36,
+                                    height: 36,
+                                    flexShrink: 0,
+                                    overflow: 'hidden',
+                                    borderRadius: '10px',
+                                    border: '1px solid',
+                                    borderColor: theme.palette.mode === 'dark'
+                                        ? 'rgba(255,255,255,0.14)'
+                                        : 'rgba(15,23,42,0.08)',
+                                    boxShadow: '0 4px 10px rgba(15,23,42,0.18)',
+                                    '&:hover .factory-avatar-hat': {
+                                        transform: 'translateY(-2.5px) rotate(-14deg)',
+                                    },
+                                })}
                             >
-                                {username.charAt(0).toUpperCase()}
-                            </Avatar>
+                                <FactoryAvatar
+                                    seed={seed}
+                                    size={36}
+                                    period={period}
+                                    animate={!reduceMotion}
+                                />
+                            </Box>
 
                             <Box sx={{ minWidth: 0 }}>
                                 <Typography noWrap sx={{ fontSize: 13, fontWeight: 700 }}>
@@ -1018,12 +1169,12 @@ export function LogoutConfirmDialog({
                                 transition: reduceMotion ? 'none' : 'opacity 150ms ease',
                             },
 
-                            // Hazard strip along the bottom edge.
+                            // Hazard strip along the bottom edge (one tile wider so it can slide).
                             '&::after': {
                                 content: '""',
                                 position: 'absolute',
                                 left: 0,
-                                right: 0,
+                                right: -8,
                                 bottom: 0,
                                 height: 3,
                                 pointerEvents: 'none',
@@ -1050,7 +1201,7 @@ export function LogoutConfirmDialog({
                             },
                         }}
                     >
-                        {t.logout.signOut}
+                        {stopped ? t.logout.signingOut : t.logout.signOut}
                     </Button>
                 </DialogActions>
             </Dialog>
@@ -1059,6 +1210,7 @@ export function LogoutConfirmDialog({
                 <ShutterOverlay
                     username={username}
                     checkoutTime={checkoutTime}
+                    character={character}
                     onSkip={handleSkip}
                 />
             )}

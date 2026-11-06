@@ -101,6 +101,27 @@ export const en = {
         description: 'You will need to sign in again to continue.',
         signOut: 'Sign out',
         checkOut: (time: string) => `Signed out at ${time}`,
+        signingOut: 'Signing out…',
+        // What the worker says while hovering Sign out (one picked at random)
+        byeLines: [
+            'See you!',
+            'Leaving already? 🥺',
+            'Get some rest!',
+            'See you tomorrow!',
+            'Take care out there!',
+            'Great work today!',
+            "I'll lock the gate!",
+            'Bye bye 👋',
+            'Stay a bit longer…',
+            "Don't forget your stuff!",
+        ],
+        // Extra lines for the time of day (keyed by DayPeriod)
+        byeByPeriod: {
+            morning: ['Leaving this early?', 'Have a great day!'],
+            noon: ['Lunch time? 🍜', 'Enjoy your meal!'],
+            afternoon: ['Shift done already?', 'Safe trip home!'],
+            night: ['Sleep well! 🌙', 'Working late, huh?'],
+        },
     },
 
     shift: {
