@@ -116,6 +116,7 @@ export const en = {
         signOut: 'Sign out',
         checkOut: (time: string) => `Signed out at ${time}`,
         signingOut: 'Signing out…',
+        beep: 'Beep!',
         // What the worker says while hovering Sign out (one picked at random)
         byeLines: [
             'See you!',

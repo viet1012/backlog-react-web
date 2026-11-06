@@ -96,6 +96,32 @@ const armWave = keyframes`
     100% { transform: rotate(0deg); }
 `
 
+// Badge swipe: the front arm comes up level with the chest, overshoots a
+// little, holds the badge out; lowering holds a beat first (the "beep").
+const armRaise = keyframes`
+    0% { transform: rotate(0deg); }
+    70% { transform: rotate(-86deg); }
+    100% { transform: rotate(-80deg); }
+`
+
+const armLower = keyframes`
+    0%, 40% { transform: rotate(-80deg); }
+    100% { transform: rotate(0deg); }
+`
+
+// Badge stays in hand while the arm holds, gone once it is on the way down
+// (also when 'lower' comes without a 'scan' first, e.g. a tap on touch screens)
+const badgeHide = keyframes`
+    0%, 50% { opacity: 1; }
+    100% { opacity: 0; }
+`
+
+// Badge taps the reader (along the arm, i.e. forward once it is raised)
+const badgeTap = keyframes`
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(1.6px); }
+`
+
 const limbSwing = keyframes`
     0% { transform: rotate(0deg); }
     25% { transform: rotate(26deg); }
@@ -335,6 +361,7 @@ export function Worker({
     startX,
     walks,
     wave,
+    badge,
     gaitCycle = 440,
     height = 'clamp(64px, 11vh, 112px)',
     bottom = 14,
@@ -343,6 +370,12 @@ export function Worker({
     startX: string
     walks: WorkerWalk[]
     wave?: { start: number; duration: number; iterations?: number | 'infinite' }
+    /**
+     * Employee badge in the front hand: 'scan' raises it to a card reader in
+     * front of the worker and taps it, 'lower' puts the arm back down.
+     * Takes over the wave while set.
+     */
+    badge?: 'scan' | 'lower'
     gaitCycle?: number
     height?: number | string
     bottom?: number
@@ -447,14 +480,23 @@ export function Worker({
                     )}
                 </svg>
 
-                {/* FRONT ARM (waves) */}
+                {/* FRONT ARM (waves / swipes the badge) */}
                 <Box className="worker-layer worker-wave">
-                    {part('worker-arm-front', (
-                        <>
+                    <Box className="worker-layer worker-arm-front">
+                        {/* Badge held below the glove (drawn hanging, turns with the arm) */}
+                        <Box className="worker-layer worker-badge">
+                            <svg viewBox="0 0 40 76" shapeRendering="geometricPrecision">
+                                <rect x="16.9" y="44" width="6.2" height="5.2" rx="0.8" fill="#f8fafc" {...outline} />
+                                <rect x="16.9" y="44" width="6.2" height="1.4" rx="0.6" fill={vest} />
+                                <rect x="17.7" y="46.1" width="1.7" height="2.1" rx="0.3" fill={skin} />
+                                <path d="M20.2 46.5 H22.4 M20.2 47.7 H21.8" stroke="#94a3b8" strokeWidth="0.5" />
+                            </svg>
+                        </Box>
+                        <svg viewBox="0 0 40 76" shapeRendering="geometricPrecision">
                             <rect x="17.5" y="26" width="5" height="16" rx="2.5" fill={shade(shirt, 0.12)} {...outline} />
                             <circle cx="20" cy="43.4" r="2.7" fill="#e2e8f0" {...outline} />
-                        </>
-                    ))}
+                        </svg>
+                    </Box>
                 </Box>
             </Box>
         </Box>
@@ -514,9 +556,23 @@ export function Worker({
                     transformOrigin: '50% 61.84%',
                 },
                 '& .worker-wave': {
-                    animation: wave
-                        ? `${armWave} ${wave.duration}ms ease-in-out ${wave.start}ms ${wave.iterations ?? 1}`
-                        : 'none',
+                    animation: badge === 'scan'
+                        ? `${armRaise} 280ms cubic-bezier(.3,.7,.4,1) forwards`
+                        : badge === 'lower'
+                            ? `${armLower} 380ms ease-in-out forwards`
+                            : wave
+                                ? `${armWave} ${wave.duration}ms ease-in-out ${wave.start}ms ${wave.iterations ?? 1}`
+                                : 'none',
+                },
+                '& .worker-badge': {
+                    willChange: 'transform, opacity',
+                    opacity: badge === 'scan' ? 1 : 0,
+                    transition: 'opacity 100ms ease',
+                    animation: badge === 'scan'
+                        ? `${badgeTap} 640ms ease-in-out 300ms infinite`
+                        : badge === 'lower'
+                            ? `${badgeHide} 380ms linear`
+                            : 'none',
                 },
                 '& .worker-arm-back': { animation: gait(limbSwing, gaitCycle) },
                 '& .worker-arm-front': { animation: gait(limbSwingAlt, gaitCycle) },

@@ -187,6 +187,30 @@ const ledDoubleBlink = keyframes`
     100% { opacity: 0; }
 `
 
+// Card reader: waiting LED, field waves toward the badge, accepted ping
+const readerBlink = keyframes`
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.25; }
+`
+
+const readerWave = keyframes`
+    0% { opacity: 0; transform: translateX(2px); }
+    40% { opacity: 1; }
+    100% { opacity: 0; transform: translateX(-3px); }
+`
+
+const readerPing = keyframes`
+    from { opacity: 0.9; transform: scale(0.4); }
+    to { opacity: 0; transform: scale(2.6); }
+`
+
+const beepPop = keyframes`
+    0% { opacity: 0; transform: translateY(5px) scale(0.6); }
+    30% { opacity: 1; transform: translateY(-2px) scale(1.06); }
+    45% { transform: translateY(0) scale(1); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+`
+
 // Diagonal amber/charcoal tile, same pair as the shutter's bottom rail.
 const hazardTile = 'linear-gradient(45deg, #111827 25%, #f59e0b 25%, #f59e0b 50%, #111827 50%, #111827 75%, #f59e0b 75%, #f59e0b)'
 
@@ -202,13 +226,29 @@ const workerHeight = 64
 const workerStartX = -40
 const workerRestX = 96
 const workerWalkIn = { dx: `${workerRestX - workerStartX}px`, start: gateRiseDelay + 200, duration: gaitCycle * 2 }
-// Confirm: worker heads out while the shutter comes down.
-const workerWalkOut = { dx: '360px', start: 0, duration: gaitCycle * 2 }
+// Confirm: the reader beeps, the worker lowers the badge and heads out,
+// then the shutter comes down (landing just before the full-screen overlay).
+const workerWalkOut = { dx: '360px', start: 320, duration: gaitCycle * 2 }
+const gateDropDelay = 160
 // Stable arrays / objects so a hover re-render does not restyle the worker.
 const walksOpen = [workerWalkIn]
 const walksClose = [workerWalkIn, workerWalkOut]
 const walksNone: typeof walksOpen = []
-const waveLoop = { start: 0, duration: waveDuration, iterations: 'infinite' as const }
+
+// Card reader post beside the gate (1 unit = 1px). Its scan face is where
+// the raised badge ends up: ~36px in front of the worker, ~44px above the
+// scene bottom (readerScanY inside the reader's box).
+const readerX = workerRestX + 36
+const readerHeight = 62
+const readerScanY = 23
+
+type ReaderState = 'idle' | 'scan' | 'ok'
+
+const readerTones: Record<ReaderState, { led: string; screen: string; icon: string; glow: string }> = {
+    idle: { led: '#475569', screen: '#0f172a', icon: '#64748b', glow: 'transparent' },
+    scan: { led: '#f59e0b', screen: '#2a1d05', icon: '#fbbf24', glow: 'rgba(245,158,11,0.8)' },
+    ok: { led: '#22c55e', screen: '#052e16', icon: '#4ade80', glow: 'rgba(34,197,94,0.85)' },
+}
 
 // The factory photo (same aerial view by day and by night). Overlays are
 // placed in % of the photo, so they stay on the road / lamps when it scales.
@@ -594,6 +634,160 @@ const GateBackdrop = memo(function GateBackdrop({ period, animate }: { period: D
     )
 })
 
+// Card reader post. Idle: dim. Scan (hovering Sign out): amber LED blinks,
+// contactless waves run toward the badge. OK (confirmed): green check,
+// ping rings and a "Beep!" tag. Moving parts are HTML layers (GPU only).
+function CardReader({ state, animate }: { state: ReaderState; animate: boolean }) {
+    const { t } = useI18n()
+    const tone = readerTones[state]
+    const screen = { left: 3.2, top: 15, width: 11.6, height: 10 }
+
+    return (
+        <Box
+            aria-hidden
+            sx={{
+                position: 'absolute',
+                left: readerX,
+                bottom: 6,
+                width: 18,
+                height: readerHeight,
+
+                '& svg': { display: 'block', overflow: 'visible' },
+                '& .reader-layer': { position: 'absolute' },
+            }}
+        >
+            <svg viewBox={`0 0 18 ${readerHeight}`} width={18} height={readerHeight} shapeRendering="geometricPrecision">
+                <ellipse cx={9} cy={61.4} rx={8.5} ry={1.4} fill="rgba(0,0,0,0.3)" />
+
+                {/* Post with a hazard band, on a base plate */}
+                <rect x={6.5} y={30} width={5} height={30} fill="#475569" stroke="#0f172a" strokeWidth={0.6} />
+                <rect x={7.2} y={30} width={1} height={30} fill="#94a3b8" opacity={0.55} />
+                <rect x={6.5} y={44} width={5} height={5} fill="#f59e0b" />
+                <path d="M6.5 46.5 L9 44 M6.5 49 L11.5 44 M9 49 L11.5 46.5" stroke="#111827" strokeWidth={1.1} />
+                <rect x={3} y={59} width={12} height={2.6} rx={1} fill="#334155" stroke="#0f172a" strokeWidth={0.6} />
+
+                {/* Head: housing, top highlight, screen, card slot */}
+                <rect x={1} y={10} width={16} height={21} rx={3} fill="#1f2937" stroke="#0f172a" strokeWidth={0.6} />
+                <rect x={2} y={10.8} width={14} height={1.8} rx={0.9} fill="#374151" />
+                <rect
+                    x={screen.left}
+                    y={screen.top}
+                    width={screen.width}
+                    height={screen.height}
+                    rx={1.4}
+                    fill={tone.screen}
+                    stroke="#0b1220"
+                    strokeWidth={0.5}
+                    style={{ transition: animate ? 'fill 160ms ease' : 'none' }}
+                />
+                <path d="M5 28 H13" stroke="#0b1220" strokeWidth={1.2} strokeLinecap="round" />
+            </svg>
+
+            {/* LED bar on top */}
+            <Box
+                className="reader-layer"
+                sx={{
+                    left: 3,
+                    top: 7.4,
+                    width: 12,
+                    height: 2.2,
+                    borderRadius: '2px',
+                    bgcolor: tone.led,
+                    boxShadow: state === 'idle' ? 'none' : `0 0 6px 1px ${tone.glow}`,
+                    animation: state === 'scan' && animate ? `${readerBlink} 0.5s steps(1, end) infinite` : 'none',
+                }}
+            />
+
+            {/* Screen icon: contactless symbol, or a check once accepted */}
+            <Box
+                className="reader-layer"
+                sx={{
+                    ...screen,
+                    display: 'grid',
+                    placeItems: 'center',
+                    animation: state === 'scan' && animate ? `${readerBlink} 1s ease-in-out infinite` : 'none',
+                }}
+            >
+                {state === 'ok' ? (
+                    <svg viewBox="0 0 12 10" width={9} height={7.5}>
+                        <path d="M2.4 5.2 L5 7.6 L9.6 2.4" fill="none" stroke={tone.icon} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                ) : (
+                    <svg viewBox="0 0 12 10" width={9} height={7.5}>
+                        <path
+                            d="M3 3.4 Q4.2 5 3 6.6 M5.4 2.2 Q7.3 5 5.4 7.8 M7.8 1 Q10.4 5 7.8 9"
+                            fill="none"
+                            stroke={tone.icon}
+                            strokeWidth={0.9}
+                            strokeLinecap="round"
+                        />
+                    </svg>
+                )}
+            </Box>
+
+            {/* Field waves running from the reader to the badge */}
+            {state === 'scan' && animate && [0, 0.18].map((delay) => (
+                <Box
+                    key={delay}
+                    className="reader-layer"
+                    sx={{
+                        left: -6,
+                        top: readerScanY - 5,
+                        width: 6,
+                        height: 10,
+                        opacity: 0,
+                        willChange: 'transform, opacity',
+                        animation: `${readerWave} 0.72s ease-out ${delay}s infinite`,
+                    }}
+                >
+                    <svg viewBox="0 0 6 10" width={6} height={10}>
+                        <path d="M4.6 2 Q2.6 5 4.6 8" fill="none" stroke="#fbbf24" strokeWidth={1} strokeLinecap="round" />
+                    </svg>
+                </Box>
+            ))}
+
+            {/* Accepted: two ping rings from the screen and a "Beep!" tag */}
+            {state === 'ok' && animate && [0, 0.14].map((delay) => (
+                <Box
+                    key={delay}
+                    className="reader-layer"
+                    sx={{
+                        left: 9 - 7,
+                        top: screen.top + screen.height / 2 - 7,
+                        width: 14,
+                        height: 14,
+                        borderRadius: '50%',
+                        border: `1.5px solid ${tone.icon}`,
+                        opacity: 0,
+                        animation: `${readerPing} 520ms ease-out ${delay}s forwards`,
+                    }}
+                />
+            ))}
+            {state === 'ok' && (
+                <Box className="reader-layer" sx={{ left: '50%', bottom: readerHeight + 4, transform: 'translateX(-50%)' }}>
+                    <Box
+                        sx={{
+                            px: 0.6,
+                            borderRadius: '6px',
+                            bgcolor: '#22c55e',
+                            color: '#052e16',
+                            fontFamily: monoFont,
+                            fontSize: 10,
+                            fontWeight: 700,
+                            lineHeight: '15px',
+                            whiteSpace: 'nowrap',
+                            boxShadow: '0 0 10px rgba(34,197,94,0.6)',
+                            animation: animate ? `${beepPop} 420ms ease-out both` : 'none',
+                        }}
+                    >
+                        {t.logout.beep}
+                    </Box>
+                </Box>
+            )}
+        </Box>
+    )
+}
+
 // Memoized: the dialog re-renders on every hover / focus of the buttons.
 const GateScene = memo(function GateScene({
     period,
@@ -615,6 +809,8 @@ const GateScene = memo(function GateScene({
     const byeLines = [...t.logout.byeLines, ...t.logout.byeByPeriod[period]]
     const [byeIndex, setByeIndex] = useState(0)
     const [prevWarn, setPrevWarn] = useState(warn)
+    // Once the badge has been raised, it is lowered (not snapped) on hover out
+    const [swiped, setSwiped] = useState(false)
 
     if (warn !== prevWarn) {
         setPrevWarn(warn)
@@ -622,6 +818,7 @@ const GateScene = memo(function GateScene({
         if (warn) {
             const next = Math.floor(Math.random() * (byeLines.length - 1))
             setByeIndex(next >= byeIndex ? next + 1 : next)
+            setSwiped(true)
         }
     }
     const night = gate.photo === 'night'
@@ -633,8 +830,17 @@ const GateScene = memo(function GateScene({
     const shutterAnimation = !animate
         ? 'none'
         : closing
-            ? `${gateDrop} ${gateDropDuration}ms both`
+            ? `${gateDrop} ${gateDropDuration}ms ${gateDropDelay}ms both`
             : `${gateRise} ${gateRiseDuration}ms ${gateRiseDelay}ms both`
+
+    // Hover: badge up to the reader. Confirm: beep, badge down (also on touch,
+    // where the button is tapped without a hover first).
+    const readerState: ReaderState = closing ? 'ok' : warn ? 'scan' : 'idle'
+    const badge = !animate
+        ? undefined
+        : warn
+            ? 'scan'
+            : swiped || closing ? 'lower' : undefined
 
     return (
         <Box
@@ -705,33 +911,38 @@ const GateScene = memo(function GateScene({
                 />
             </Box>
 
-            {/* Walks in on open, waves goodbye on hover, walks out on confirm */}
+            {/* Walks in on open, swipes the badge on hover, walks out on confirm */}
             <Worker
                 startX={animate ? `${workerStartX}px` : `${workerRestX}px`}
                 walks={!animate ? walksNone : closing ? walksClose : walksOpen}
-                wave={warn && animate ? waveLoop : undefined}
+                badge={badge}
                 gaitCycle={gaitCycle}
                 height={workerHeight}
                 bottom={6}
                 character={character}
             />
 
+            <CardReader state={readerState} animate={animate} />
+
             {/* Speech bubble above the worker while hovering Sign out */}
             <Box
-                sx={{
+                sx={(theme) => ({
                     position: 'absolute',
                     left: workerRestX + 6,
                     bottom: 6 + workerHeight + 6,
-                    px: 1,
-                    py: 0.4,
-                    borderRadius: '10px',
+                    px: 1.25,
+                    py: 0.5,
+                    borderRadius: '12px',
                     bgcolor: '#ffffff',
-                    color: '#111827',
-                    fontSize: 11,
-                    fontWeight: 800,
-                    lineHeight: 1.3,
+                    color: '#1e293b',
+                    // App font, regular weight: a heavy 11px line looked cramped
+                    fontFamily: theme.typography.fontFamily,
+                    fontSize: 12,
+                    fontWeight: 500,
+                    lineHeight: 1.35,
+                    letterSpacing: '0.01em',
                     whiteSpace: 'nowrap',
-                    boxShadow: '0 4px 12px rgba(2,6,23,0.3)',
+                    boxShadow: '0 4px 14px rgba(2,6,23,0.22), 0 0 0 1px rgba(15,23,42,0.06)',
                     pointerEvents: 'none',
                     opacity: warn ? 1 : 0,
                     transform: warn ? 'translateY(0)' : 'translateY(4px)',
@@ -748,7 +959,7 @@ const GateScene = memo(function GateScene({
                         bgcolor: '#ffffff',
                         transform: 'rotate(45deg)',
                     },
-                }}
+                })}
             >
                 {byeLines[byeIndex % byeLines.length]}
             </Box>
@@ -803,7 +1014,7 @@ const GateScene = memo(function GateScene({
                 }}
             />
 
-            {animate && <DustBurst at={closing ? gateImpact : gateRiseDelay} key={closing ? 'close' : 'open'} />}
+            {animate && <DustBurst at={closing ? gateDropDelay + gateImpact : gateRiseDelay} key={closing ? 'close' : 'open'} />}
             {closing && animate && (
                 <Beacon tone="amber" start={0} duration={shutterStartAt + 200} beam={180} />
             )}
