@@ -50,7 +50,6 @@ export interface MenuGroupConfig {
 export interface GroupAccent {
     light: string
     dark: string
-    glow: string
 }
 
 export type MenuItemAction =
@@ -332,61 +331,19 @@ export const menuGroups:
 // GROUP ACCENT
 // =========================================================
 
+// Solid group colors: group dot, active item tint and icon color.
 export const groupAccent:
-    Record<string, GroupAccent> = {
+    Record<MenuGroupId, GroupAccent> = {
+    production: { light: '#2563eb', dark: '#60a5fa' },
+    planning: { light: '#0284c7', dark: '#38bdf8' },
+    management: { light: '#7c3aed', dark: '#a78bfa' },
+    monitoring: { light: '#d97706', dark: '#fbbf24' },
+    setting: { light: '#059669', dark: '#34d399' },
+}
 
-    production: {
-        light:
-            'rgba(59,130,246,0.10)',
-
-        dark:
-            'rgba(96,165,250,0.10)',
-
-        glow:
-            'rgba(59,130,246,0.22)',
-    },
-
-    planning: {
-        light:
-            'rgba(14,165,233,0.10)',
-
-        dark:
-            'rgba(56,189,248,0.10)',
-
-        glow:
-            'rgba(14,165,233,0.22)',
-    },
-
-    management: {
-        light:
-            'rgba(139,92,246,0.09)',
-
-        dark:
-            'rgba(167,139,250,0.10)',
-
-        glow:
-            'rgba(139,92,246,0.20)',
-    },
-
-    monitoring: {
-        light:
-            'rgba(245,158,11,0.10)',
-
-        dark:
-            'rgba(251,191,36,0.10)',
-
-        glow:
-            'rgba(245,158,11,0.22)',
-    },
-
-    setting: {
-        light:
-            'rgba(16,185,129,0.09)',
-
-        dark:
-            'rgba(52,211,153,0.10)',
-
-        glow:
-            'rgba(16,185,129,0.20)',
-    },
+export function getGroupColor(
+    id: MenuGroupId,
+    mode: 'light' | 'dark',
+) {
+    return groupAccent[id][mode]
 }

@@ -66,6 +66,19 @@ export const vi: Messages = {
         signOut: 'Đăng xuất',
         fallbackUser: 'Người dùng',
         fallbackRole: 'Hệ thống sản xuất',
+        comingSoon: 'Sắp ra mắt',
+        online: 'Đang trực tuyến',
+        shuffleAvatar: 'Bấm để đổi nhân vật',
+        greeting: {
+            morning: 'Chào buổi sáng',
+            noon: 'Chào buổi trưa',
+            afternoon: 'Chào buổi chiều',
+            night: 'Chào buổi tối',
+        },
+        search: 'Tìm trang…',
+        searchAria: 'Tìm trang (Ctrl+K)',
+        searchNoResult: 'Không có trang phù hợp',
+        searchHint: '↑↓ để chọn · Enter để mở · Esc để đóng',
     },
 
     logout: {

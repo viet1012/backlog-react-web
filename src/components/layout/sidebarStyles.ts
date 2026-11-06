@@ -6,10 +6,6 @@ import type {
     SystemStyleObject,
 } from '@mui/system'
 
-import type {
-    GroupAccent,
-} from './sidebarConfig'
-
 
 // =========================================================
 // TRANSITIONS
@@ -318,118 +314,43 @@ export function getBrandCardSx(
 
 
 // =========================================================
+// HAZARD STRIPE (shared with the shutter rail of the
+// clock-in / clock-out animations)
+// =========================================================
+
+export const hazardStripe = (dark: boolean) =>
+    `repeating-linear-gradient(-45deg, #f59e0b 0 6px, ${dark ? '#0f172a' : '#374151'} 6px 12px)`
+
+
+// =========================================================
 // GROUP HEADER
 // =========================================================
 
 export function getGroupHeaderSx(
     theme: Theme,
     collapsed: boolean,
-    accent: GroupAccent,
 ): SystemStyleObject<Theme> {
 
     return {
-        minHeight:
-            collapsed
-                ? 0
-                : 36,
-
-        height:
-            collapsed
-                ? 0
-                : 36,
-
-        mx:
-            1,
-
-        mb:
-            0.55,
-
-        px:
-            1.25,
-
-        py:
-            collapsed
-                ? 0
-                : 0.5,
-
-        borderRadius:
-            '11px',
-
-        opacity:
-            collapsed
-                ? 0
-                : 1,
-
-        overflow:
-            'hidden',
-
-        pointerEvents:
-            collapsed
-                ? 'none'
-                : 'auto',
-
-        background:
-            theme.palette.mode === 'dark'
-                ? `
-          linear-gradient(
-            135deg,
-            ${accent.dark},
-            rgba(255,255,255,0.025)
-          )
-        `
-                : `
-          linear-gradient(
-            135deg,
-            ${accent.light},
-            rgba(255,255,255,0.54)
-          )
-        `,
-
-        border:
-            theme.palette.mode === 'dark'
-                ? '1px solid rgba(255,255,255,0.055)'
-                : '1px solid rgba(255,255,255,0.82)',
-
-        backdropFilter:
-            'blur(10px) saturate(130%)',
-
-        WebkitBackdropFilter:
-            'blur(10px) saturate(130%)',
-
-        boxShadow:
-            theme.palette.mode === 'dark'
-                ? '0 5px 18px rgba(0,0,0,0.08)'
-                : `
-          0 5px 18px rgba(15,23,42,0.035),
-          inset 0 1px 0 rgba(255,255,255,0.72)
-        `,
-
-        transform:
-            collapsed
-                ? 'translateX(-6px)'
-                : 'translateX(0)',
-
-        transition:
-            `
-        ${labelTransition},
-        background 160ms ease,
-        transform 160ms ease,
-        box-shadow 160ms ease
-      `,
+        minHeight: collapsed ? 0 : 30,
+        height: collapsed ? 0 : 30,
+        mx: 1,
+        mb: 0.25,
+        px: 1,
+        py: 0,
+        gap: 0.9,
+        borderRadius: '8px',
+        color: 'text.secondary',
+        opacity: collapsed ? 0 : 1,
+        overflow: 'hidden',
+        pointerEvents: collapsed ? 'none' : 'auto',
+        transition: `${labelTransition}, color 160ms ease, background-color 160ms ease`,
 
         '&:hover': {
-            transform:
-                collapsed
-                    ? 'translateX(-6px)'
-                    : 'translateX(2px)',
-
-            boxShadow:
-                theme.palette.mode === 'dark'
-                    ? `0 7px 20px ${accent.glow}`
-                    : `
-            0 7px 20px ${accent.glow},
-            inset 0 1px 0 rgba(255,255,255,0.88)
-          `,
+            color: 'text.primary',
+            bgcolor: theme.palette.mode === 'dark'
+                ? 'rgba(255,255,255,0.045)'
+                : 'rgba(15,23,42,0.04)',
         },
     }
 }
@@ -437,319 +358,101 @@ export function getGroupHeaderSx(
 
 // =========================================================
 // MENU ITEM
+// The active background is the shared sliding indicator in
+// LeftSidebar, so items themselves stay transparent.
 // =========================================================
 
 export function getMenuItemSx(
     theme: Theme,
     collapsed: boolean,
     active: boolean,
+    color: string,
 ): SystemStyleObject<Theme> {
 
     return {
-        position:
-            'relative',
-
-        minHeight:
-            40,
-
-        mx:
-            collapsed
-                ? 0
-                : 0.9,
-
-        mb:
-            0.42,
-
-        px:
-            collapsed
-                ? 0
-                : 1.15,
-
-        justifyContent:
-            collapsed
-                ? 'center'
-                : 'flex-start',
-
-        borderRadius:
-            '11px',
-
-        color:
-            active
-                ? 'primary.main'
-                : 'text.secondary',
-
-        background:
-            theme.palette.mode === 'dark'
-                ? 'rgba(255,255,255,0.018)'
-                : 'rgba(255,255,255,0.22)',
-
-        border:
-            '1px solid transparent',
-
-        transition:
-            `
-        transform 150ms ease,
-        background-color 160ms ease,
-        box-shadow 160ms ease,
-        color 160ms ease,
-        border-color 160ms ease
-      `,
-
-        // =====================================================
-        // ACTIVE LEFT INDICATOR
-        // =====================================================
-
-        '&::before': {
-            content:
-                '""',
-
-            position:
-                'absolute',
-
-            left:
-                0,
-
-            top:
-                8,
-
-            bottom:
-                8,
-
-            width:
-                3,
-
-            borderRadius:
-                '0 5px 5px 0',
-
-            background:
-                'linear-gradient(180deg, #2563eb 0%, #38bdf8 100%)',
-
-            opacity:
-                active
-                    ? 1
-                    : 0,
-
-            transform:
-                active
-                    ? 'scaleY(1)'
-                    : 'scaleY(0)',
-
-            transformOrigin:
-                'center',
-
-            transition:
-                'transform 180ms ease, opacity 180ms ease',
-
-            boxShadow:
-                active
-                    ? '0 0 12px rgba(59,130,246,0.55)'
-                    : 'none',
-        },
-
-        // =====================================================
-        // HOVER
-        // =====================================================
+        position: 'relative',
+        zIndex: 1,
+        minHeight: 38,
+        mx: collapsed ? 0 : 0.9,
+        mb: 0.35,
+        px: collapsed ? 0 : 1.15,
+        justifyContent: collapsed ? 'center' : 'flex-start',
+        borderRadius: '11px',
+        color: active ? color : 'text.secondary',
+        bgcolor: 'transparent',
+        transition: 'color 160ms ease, background-color 160ms ease',
 
         '&:hover': {
-            transform:
-                collapsed
-                    ? 'scale(1.05)'
-                    : 'translateX(3px)',
-
-            color:
-                active
-                    ? 'primary.main'
-                    : 'text.primary',
-
-            background:
-                theme.palette.mode === 'dark'
-                    ? 'rgba(255,255,255,0.065)'
-                    : 'rgba(255,255,255,0.66)',
-
-            borderColor:
-                theme.palette.mode === 'dark'
-                    ? 'rgba(255,255,255,0.075)'
-                    : 'rgba(255,255,255,0.88)',
-
-            boxShadow:
-                theme.palette.mode === 'dark'
-                    ? `
-            0 8px 24px rgba(0,0,0,0.15),
-            inset 0 1px 0 rgba(255,255,255,0.05)
-          `
-                    : `
-            0 8px 24px rgba(15,23,42,0.055),
-            inset 0 1px 0 rgba(255,255,255,0.88)
-          `,
+            color: active ? color : 'text.primary',
+            bgcolor: active
+                ? 'transparent'
+                : theme.palette.mode === 'dark'
+                    ? 'rgba(255,255,255,0.05)'
+                    : 'rgba(15,23,42,0.045)',
 
             '& .MuiListItemIcon-root svg': {
-                transform:
-                    'translateX(2px) scale(1.06)',
+                transform: collapsed ? 'scale(1.12)' : 'translateX(2px) scale(1.06)',
             },
         },
 
-        // =====================================================
-        // SELECTED / GLASS CARD
-        // =====================================================
-
-        '&.Mui-selected': {
-            color:
-                'primary.main',
-
-            background:
-                theme.palette.mode === 'dark'
-                    ? `
-            linear-gradient(
-              135deg,
-              rgba(59,130,246,0.22),
-              rgba(56,189,248,0.08)
-            )
-          `
-                    : `
-            linear-gradient(
-              135deg,
-              rgba(255,255,255,0.82),
-              rgba(219,234,254,0.50)
-            )
-          `,
-
-            border:
-                theme.palette.mode === 'dark'
-                    ? '1px solid rgba(96,165,250,0.20)'
-                    : '1px solid rgba(255,255,255,0.94)',
-
-            boxShadow:
-                theme.palette.mode === 'dark'
-                    ? `
-            0 10px 28px rgba(0,0,0,0.17),
-            0 0 18px rgba(59,130,246,0.06),
-            inset 0 1px 0 rgba(255,255,255,0.08)
-          `
-                    : `
-            0 10px 28px rgba(37,99,235,0.10),
-            0 0 18px rgba(59,130,246,0.055),
-            inset 0 1px 0 rgba(255,255,255,0.96)
-          `,
+        '&.Mui-selected, &.Mui-selected:hover, &.Mui-focusVisible': {
+            bgcolor: 'transparent',
         },
 
-        '&.Mui-selected:hover': {
-            background:
-                theme.palette.mode === 'dark'
-                    ? `
-            linear-gradient(
-              135deg,
-              rgba(59,130,246,0.27),
-              rgba(56,189,248,0.11)
-            )
-          `
-                    : `
-            linear-gradient(
-              135deg,
-              rgba(255,255,255,0.90),
-              rgba(219,234,254,0.62)
-            )
-          `,
-
-            boxShadow:
-                theme.palette.mode === 'dark'
-                    ? `
-            0 12px 30px rgba(0,0,0,0.18),
-            0 0 20px rgba(59,130,246,0.08),
-            inset 0 1px 0 rgba(255,255,255,0.10)
-          `
-                    : `
-            0 12px 30px rgba(37,99,235,0.12),
-            0 0 20px rgba(59,130,246,0.07),
-            inset 0 1px 0 rgba(255,255,255,0.98)
-          `,
+        '&.Mui-focusVisible': {
+            outline: '2px solid',
+            outlineColor: color,
+            outlineOffset: -2,
         },
     }
 }
 
 
 // =========================================================
-// FOOTER
+// FOOTER (employee badge)
 // =========================================================
 
 export function getFooterSx(
     theme: Theme,
+    collapsed: boolean,
 ): SystemStyleObject<Theme> {
 
-      return {
-          position:
-              'relative',
+    const dark = theme.palette.mode === 'dark'
 
-          overflow:
-              'hidden',
+    return {
+        position: 'relative',
+        overflow: 'hidden',
+        mx: 1,
+        mb: 1,
+        px: collapsed ? 0.5 : 1.1,
+        pt: collapsed ? 1 : 1.25,
+        pb: collapsed ? 0.75 : 1,
+        display: 'flex',
+        flexDirection: collapsed ? 'column' : 'row',
+        alignItems: 'center',
+        gap: collapsed ? 0.75 : 1,
+        borderRadius: '14px',
+        background: dark
+            ? 'linear-gradient(145deg, rgba(25,61,88,0.52), rgba(7,25,43,0.42))'
+            : 'linear-gradient(145deg, rgba(255,255,255,0.80), rgba(225,241,252,0.52))',
+        border: dark
+            ? '1px solid rgba(113,196,245,0.14)'
+            : '1px solid rgba(112,156,190,0.18)',
+        boxShadow: dark
+            ? '0 8px 22px rgba(0,0,0,0.16), inset 0 1px 0 rgba(220,245,255,0.07)'
+            : '0 8px 22px rgba(31,74,108,0.07), inset 0 1px 0 rgba(255,255,255,0.88)',
 
-          mx:
-              1,
-
-        mb:
-            1,
-
-          px:
-              1,
-
-          py:
-              0.75,
-
-          minHeight:
-              58,
-
-          borderRadius:
-              '14px',
-
-        background:
-              theme.palette.mode === 'dark'
-                  ? `
-            linear-gradient(
-              145deg,
-              rgba(25,61,88,0.52),
-              rgba(7,25,43,0.42)
-            )
-          `
-                  : `
-            linear-gradient(
-              145deg,
-              rgba(255,255,255,0.76),
-              rgba(225,241,252,0.48)
-            )
-          `,
-
-        border:
-              theme.palette.mode === 'dark'
-                  ? '1px solid rgba(113,196,245,0.14)'
-                  : '1px solid rgba(112,156,190,0.18)',
-
-        backdropFilter:
-              'blur(14px) saturate(140%)',
-
-        WebkitBackdropFilter:
-              'blur(14px) saturate(140%)',
-
-        boxShadow:
-              theme.palette.mode === 'dark'
-                  ? '0 8px 22px rgba(0,0,0,0.16), inset 0 1px 0 rgba(220,245,255,0.07)'
-                  : `
-            0 8px 22px rgba(31,74,108,0.07),
-            inset 0 1px 0 rgba(255,255,255,0.88)
-          `,
-
-          '&::before': {
-              content: '""',
-              position: 'absolute',
-              inset: 0,
-              pointerEvents: 'none',
-              borderRadius: 'inherit',
-              background: theme.palette.mode === 'dark'
-                  ? 'linear-gradient(135deg, rgba(220,247,255,0.07), transparent 42%)'
-                  : 'linear-gradient(135deg, rgba(255,255,255,0.52), transparent 46%)',
-          },
-
-          '& > *': {
-              position: 'relative',
-              zIndex: 1,
-          },
-      }
+        // Badge clip stripe
+        '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 4,
+            backgroundImage: hazardStripe(dark),
+            opacity: 0.85,
+        },
+    }
 }
+

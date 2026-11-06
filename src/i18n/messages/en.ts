@@ -94,6 +94,20 @@ export const en = {
         signOut: 'Sign out',
         fallbackUser: 'Production User',
         fallbackRole: 'Production System',
+        comingSoon: 'Coming soon',
+        online: 'Online',
+        shuffleAvatar: 'Click for a new character',
+        // Keyed by DayPeriod (shiftParts.getDayPeriod)
+        greeting: {
+            morning: 'Good morning',
+            noon: 'Good day',
+            afternoon: 'Good afternoon',
+            night: 'Good evening',
+        },
+        search: 'Search pages…',
+        searchAria: 'Search pages (Ctrl+K)',
+        searchNoResult: 'No matching page',
+        searchHint: '↑↓ to move · Enter to open · Esc to close',
     },
 
     logout: {
