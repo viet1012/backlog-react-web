@@ -34,6 +34,8 @@ export const en = {
         total: 'Total',
         today: 'Today',
         unknownError: 'Something went wrong. Please try again.',
+        loadErrorTitle: 'Could not load data',
+        loadErrorHint: 'The server did not respond as expected. Check your connection, then try again.',
         unknown: 'Unknown',
         exporting: 'Exporting...',
         exportExcel: 'Export Excel',

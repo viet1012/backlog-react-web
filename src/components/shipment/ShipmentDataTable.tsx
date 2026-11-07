@@ -21,9 +21,12 @@ function ShipmentToolbar() {
 interface ShipmentDataTableProps {
   rows: ProductionOrder[]
   loading: boolean
+  // Lỗi tải => cảnh lỗi API trong bảng
+  error?: string | null
+  onRetry?: () => void
 }
 
-export function ShipmentDataTable({ rows, loading }: ShipmentDataTableProps) {
+export function ShipmentDataTable({ rows, loading, error, onRetry }: ShipmentDataTableProps) {
   const { t } = useI18n()
   const columns = useMemo(() => createBacklogColumns(t), [t])
   const [page, setPage] = useState(0)
@@ -62,6 +65,8 @@ export function ShipmentDataTable({ rows, loading }: ShipmentDataTableProps) {
       onColumnHeaderClick={preventColumnHeaderSort}
       pageSizeOptions={[20, 50, 100]}
       toolbar={ShipmentToolbar}
+      error={error}
+      onRetry={onRetry}
     />
   )
 }

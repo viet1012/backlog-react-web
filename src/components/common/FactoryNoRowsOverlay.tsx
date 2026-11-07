@@ -1,203 +1,537 @@
-import { useId } from 'react'
-import { Box, Typography } from '@mui/material'
-import { alpha } from '@mui/material/styles'
+import { useId, type ReactNode } from 'react'
+import { Box, Button, GlobalStyles, Typography } from '@mui/material'
+import { keyframes } from '@mui/material/styles'
+import { RefreshRounded } from '@mui/icons-material'
 
 import { useI18n } from '../../i18n/useI18n'
+import { FACTORY_NAME, monoFont } from '../shift/shiftParts'
+import { HOME_FONT, homeFontFaces } from '../userHome/homeFonts'
+import { SegmentDisplay } from '../userHome/warehouse/SegmentDisplay'
 
-export function FactoryNoRowsOverlay() {
+/*
+ * Empty storage bay: the shutter rolls up (same move as the logout gate),
+ * the bay lamp flickers on over an empty pallet, the LED counter reads 000
+ * and a dashed "ghost crate" marks where goods would be.
+ * Same industrial palette as the logout dialog and the user home
+ * (steel shutter, amber hazard, LED board, carton wood).
+ *
+ * tone="error" (API failed): same bay, but the shutter jams half-way and
+ * throws sparks, the lamp and beacon flash red, a striped barrier blocks
+ * the bay and the LED board reads "API Err". Shows the error message and
+ * a Retry switch.
+ *
+ * variant="compact": LED board + text only, for small cells (chart cards,
+ * sub-tables) where several states can show at once.
+ */
+
+type Tone = 'empty' | 'error'
+
+const AMBER = '#f59e0b'
+const RED = '#ef4444'
+const LED_AMBER = '#ffbe5c'
+const LED_GREEN = '#52f59a'
+const LED_RED = '#ff6b6b'
+
+// Same amber/charcoal tile as the logout button's hazard strip
+const hazardTile = 'linear-gradient(45deg, #111827 25%, #f59e0b 25%, #f59e0b 50%, #111827 50%, #111827 75%, #f59e0b 75%, #f59e0b)'
+
+// Shutter travel (viewBox units): fully closed → bottom edge at y = 76
+const shutterLift = 74
+
+// Error: the shutter stops short and drops on its right side (pivot: top-left of the opening)
+const jamLift = 36
+const jamTilt = 2.5
+
+const shutterRise = keyframes`
+    0% { transform: translateY(0); animation-timing-function: ease-out; }
+    12% { transform: translateY(3px); animation-timing-function: cubic-bezier(.7,0,.3,1); }
+    100% { transform: translateY(-${shutterLift}px); }
+`
+
+const shutterJam = keyframes`
+    0% { transform: translateY(0) rotate(0deg); animation-timing-function: ease-out; }
+    10% { transform: translateY(3px) rotate(0deg); animation-timing-function: cubic-bezier(.7,0,.3,1); }
+    55% { transform: translateY(-52px) rotate(0deg); animation-timing-function: ease-in; }
+    66% { transform: translateY(-34px) rotate(3deg); animation-timing-function: ease-out; }
+    74% { transform: translateY(-39px) rotate(2deg); }
+    82% { transform: translateY(-35px) rotate(2.8deg); }
+    90% { transform: translateY(-37px) rotate(2.4deg); }
+    100% { transform: translateY(-${jamLift}px) rotate(${jamTilt}deg); }
+`
+
+const powerOn = keyframes`
+    0% { opacity: 0; }
+    10% { opacity: 0.8; }
+    16% { opacity: 0.1; }
+    30% { opacity: 0.9; }
+    36% { opacity: 0.3; }
+    100% { opacity: 1; }
+`
+
+const alarmPulse = keyframes`
+    0%, 100% { opacity: 0.25; }
+    50% { opacity: 1; }
+`
+
+const ledBlink = keyframes`
+    0%, 60% { opacity: 1; }
+    61%, 100% { opacity: 0.15; }
+`
+
+const fadeIn = keyframes`
+    from { opacity: 0; }
+    to { opacity: 1; }
+`
+
+const marchingAnts = keyframes`
+    to { stroke-dashoffset: -18; }
+`
+
+const chevronBob = keyframes`
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(3px); }
+`
+
+const dustFloat = keyframes`
+    0% { transform: translate(0, 0); opacity: 0; }
+    20% { opacity: 0.85; }
+    100% { transform: translate(6px, -34px); opacity: 0; }
+`
+
+// Short burst, then idle until the next one
+const sparkFly = keyframes`
+    0% { transform: translate(0, 0); opacity: 0; }
+    3% { opacity: 1; }
+    30% { transform: translate(var(--dx), var(--dy)); opacity: 0; }
+    100% { transform: translate(var(--dx), var(--dy)); opacity: 0; }
+`
+
+const beaconPulse = keyframes`
+    0%, 100% { opacity: 0.2; }
+    50% { opacity: 0.85; }
+`
+
+const spin = keyframes`
+    to { transform: rotate(360deg); }
+`
+
+// [cx, cy, r, delay s] inside the light cone
+const dust = [
+    [188, 138, 1.2, 0],
+    [211, 130, 1, -1.4],
+    [203, 112, 1.3, -2.6],
+    [182, 120, 0.9, -3.8],
+    [219, 142, 1.1, -4.9],
+] as const
+
+// [dx, dy, delay s] from the jammed corner of the shutter
+const sparks = [
+    [-10, 7, 0],
+    [-6, 12, 0.08],
+    [-13, 2, 0.16],
+    [-3, 14, 0.9],
+    [-11, 9, 1.0],
+] as const
+
+// LED board: stock counter (empty) or status code (error).
+// Every size is a multiple of --u so the board scales as one piece.
+function LedBoard({ unit, tone, sx }: { unit: string; tone: Tone; sx?: object }) {
+    const error = tone === 'error'
+
+    return (
+        <Box
+            aria-hidden
+            sx={{
+                '--u': unit,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 'var(--u)',
+                py: 'calc(var(--u) * 1.6)',
+                px: 'calc(var(--u) * 2.4)',
+                borderRadius: 'calc(var(--u) * 1.6)',
+                bgcolor: '#07090d',
+                border: '2px solid #2b333e',
+                boxShadow: '0 6px 14px rgba(0,0,0,0.3), inset 0 0 12px rgba(0,0,0,0.9)',
+                backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.035) 0.8px, transparent 1.2px)',
+                backgroundSize: '4px 4px',
+                ...sx,
+            }}
+        >
+            <Box
+                sx={{
+                    fontFamily: HOME_FONT,
+                    fontSize: 'calc(var(--u) * 2.3)',
+                    fontWeight: 800,
+                    lineHeight: 1,
+                    letterSpacing: '0.18em',
+                    color: LED_AMBER,
+                    textShadow: `0 0 8px ${LED_AMBER}55`,
+                }}
+            >
+                {error ? 'API' : 'QTY'}
+            </Box>
+            <Box className="nr-led-digits" sx={{ fontSize: 'calc(var(--u) * 5.6)', lineHeight: 1 }}>
+                <SegmentDisplay text={error ? 'Err' : '000'} color={error ? LED_RED : LED_GREEN} />
+            </Box>
+        </Box>
+    )
+}
+
+// Amber "switch" with a hazard strip, same family as the logout Sign out button
+function RetrySwitch({ onClick, retrying, compact }: { onClick: () => void; retrying: boolean; compact: boolean }) {
     const { t } = useI18n()
+
+    return (
+        <Button
+            variant="contained"
+            size={compact ? 'small' : 'medium'}
+            onClick={onClick}
+            disabled={retrying}
+            startIcon={(
+                <RefreshRounded
+                    sx={{
+                        animation: retrying ? `${spin} 0.9s linear infinite` : 'none',
+                        '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+                    }}
+                />
+            )}
+            sx={{
+                position: 'relative',
+                overflow: 'hidden',
+                minWidth: compact ? 96 : 132,
+                px: compact ? 1.5 : 2.25,
+                py: compact ? 0.4 : 0.75,
+                borderRadius: '10px',
+                fontWeight: 800,
+                textTransform: 'none',
+                color: '#111827',
+                bgcolor: AMBER,
+                boxShadow: 'none',
+                transition: 'transform 150ms ease, background-color 150ms ease, box-shadow 150ms ease',
+                '&:hover': {
+                    bgcolor: '#fbbf24',
+                    boxShadow: '0 6px 16px rgba(245,158,11,0.32)',
+                },
+                '&:active': { transform: 'scale(0.96)' },
+                '&::after': {
+                    content: '""',
+                    position: 'absolute',
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    height: 3,
+                    backgroundImage: hazardTile,
+                    backgroundSize: '8px 8px',
+                    pointerEvents: 'none',
+                },
+                '&.Mui-disabled': {
+                    color: '#111827',
+                    bgcolor: '#d97706',
+                    opacity: 0.85,
+                },
+            }}
+        >
+            {retrying ? t.common.loading : t.common.retry}
+        </Button>
+    )
+}
+
+interface FactoryNoRowsOverlayProps {
+    /** Defaults to "No data" / "Could not load data" */
+    title?: ReactNode
+    /** Defaults to the generic hint on the scene, none on compact; null hides it */
+    hint?: ReactNode | null
+    /** Button(s) under the text, e.g. Clear filters (pointer events re-enabled) */
+    action?: ReactNode
+    variant?: 'scene' | 'compact'
+    tone?: Tone
+    /** Error message from the API, shown as a code tag (tone="error") */
+    detail?: string | null
+    /** Shows the Retry switch (tone="error") */
+    onRetry?: () => void
+    retrying?: boolean
+    minHeight?: number | string
+}
+
+export function FactoryNoRowsOverlay({
+    title,
+    hint,
+    action,
+    variant = 'scene',
+    tone = 'empty',
+    detail,
+    onRetry,
+    retrying = false,
+    minHeight,
+}: FactoryNoRowsOverlayProps = {}) {
+    const { t } = useI18n()
+
+    const compact = variant === 'compact'
+    const error = tone === 'error'
+    const defaultHint = error ? t.common.loadErrorHint : t.status.noRowsHint
+    const hintText = hint === undefined ? (compact ? null : defaultHint) : hint
+
+    const text = (
+        <Box
+            role={error ? 'alert' : undefined}
+            sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', maxWidth: 460 }}
+        >
+            <Typography
+                sx={{
+                    mt: compact ? 1 : 1.5,
+                    fontFamily: HOME_FONT,
+                    fontSize: compact ? 13 : 15.5,
+                    fontWeight: 800,
+                    letterSpacing: '-0.01em',
+                    color: 'text.primary',
+                    textAlign: 'center',
+                }}
+            >
+                {title ?? (error ? t.common.loadErrorTitle : t.common.noData)}
+            </Typography>
+
+            {hintText && (
+                <Typography
+                    sx={{
+                        mt: 0.4,
+                        fontSize: compact ? 12 : 12.5,
+                        color: 'text.secondary',
+                        textAlign: 'center',
+                    }}
+                >
+                    {hintText}
+                </Typography>
+            )}
+
+            {/* Raw API message, printed like an error code tag */}
+            {error && detail && (
+                <Box
+                    component="code"
+                    title={detail}
+                    sx={(theme) => ({
+                        mt: 0.9,
+                        maxWidth: '100%',
+                        display: 'inline-flex',
+                        alignItems: 'baseline',
+                        gap: 0.75,
+                        px: 0.9,
+                        py: 0.3,
+                        borderRadius: '6px',
+                        border: '1px dashed',
+                        borderColor: theme.palette.mode === 'dark' ? 'rgba(248,113,113,0.45)' : 'rgba(220,38,38,0.35)',
+                        bgcolor: theme.palette.mode === 'dark' ? 'rgba(239,68,68,0.08)' : 'rgba(239,68,68,0.06)',
+                        fontFamily: monoFont,
+                        fontSize: 11,
+                        lineHeight: '17px',
+                        color: theme.palette.mode === 'dark' ? '#fca5a5' : '#b91c1c',
+                    })}
+                >
+                    <Box component="span" sx={{ flexShrink: 0, fontWeight: 800, letterSpacing: '0.08em' }}>
+                        ERR
+                    </Box>
+                    <Box
+                        component="span"
+                        sx={{
+                            minWidth: 0,
+                            overflow: 'hidden',
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            wordBreak: 'break-word',
+                        }}
+                    >
+                        {detail}
+                    </Box>
+                </Box>
+            )}
+
+            {(action || (error && onRetry)) && (
+                // DataGrid overlays block pointer events by default
+                <Box sx={{ mt: compact ? 1 : 1.25, display: 'flex', gap: 1, pointerEvents: 'auto' }}>
+                    {error && onRetry && <RetrySwitch onClick={onRetry} retrying={retrying} compact={compact} />}
+                    {action}
+                </Box>
+            )}
+        </Box>
+    )
+
+    if (compact) {
+        return (
+            <Box
+                sx={{
+                    width: '100%',
+                    height: '100%',
+                    minHeight: minHeight ?? 140,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    px: 2,
+                    py: 1.5,
+
+                    '& .nr-led-digits': {
+                        animation: error
+                            ? `${powerOn} 700ms ease-out 150ms both, ${ledBlink} 1.2s steps(1, end) 900ms infinite`
+                            : `${powerOn} 700ms ease-out 150ms both`,
+                    },
+                    '@media (prefers-reduced-motion: reduce)': {
+                        '& .nr-led-digits': { animation: 'none' },
+                    },
+                }}
+            >
+                <GlobalStyles styles={homeFontFaces} />
+                <LedBoard unit="4px" tone={tone} />
+                {text}
+            </Box>
+        )
+    }
+
+    return <FactoryScene tone={tone} minHeight={minHeight}>{text}</FactoryScene>
+}
+
+function FactoryScene({ tone, minHeight, children }: { tone: Tone; minHeight?: number | string; children: ReactNode }) {
+    const error = tone === 'error'
+    const lampColor = error ? '#ff4d4d' : '#fff4d6'
+    const beaconColor = error ? RED : AMBER
+
     const uid = useId().replace(/:/g, '')
-    const glassId = `factory-glass-${uid}`
-    const glassShineId = `factory-glass-shine-${uid}`
-    const machineFaceId = `factory-machine-face-${uid}`
-    const floorId = `factory-floor-${uid}`
-    const glowId = `factory-glow-${uid}`
-    const beltClipId = `factory-belt-${uid}`
-    const windowId = `factory-window-${uid}`
-    const machiningClipId = `factory-machining-${uid}`
+    const ribsId = `nr-ribs-${uid}`
+    const ribGradId = `nr-rib-grad-${uid}`
+    const hazardId = `nr-hazard-${uid}`
+    const barrierId = `nr-barrier-${uid}`
+    const coneId = `nr-cone-${uid}`
+    const lampGlowId = `nr-lamp-glow-${uid}`
+    const beaconGlowId = `nr-beacon-glow-${uid}`
+    const floorId = `nr-floor-${uid}`
+    const bayClipId = `nr-bay-${uid}`
 
     return (
         <Box
             sx={{
                 width: '100%',
                 height: '100%',
-                minHeight: 300,
+                minHeight: minHeight ?? 300,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
                 overflow: 'hidden',
                 px: 2,
-                color: 'text.secondary',
+                py: 1.5,
             }}
         >
+            <GlobalStyles styles={homeFontFaces} />
+
+            {/* FRAME: same paper as the logout dialog, hazard strip along the bottom */}
             <Box
-                sx={(theme) => ({
-                    width: 'min(440px, 100%)',
-                    aspectRatio: '440 / 230',
-                    position: 'relative',
-                    flexShrink: 0,
-                    overflow: 'hidden',
-                    borderRadius: 3,
-                    isolation: 'isolate',
+                sx={(theme) => {
+                    const dark = theme.palette.mode === 'dark'
 
-                    '--f-primary': theme.palette.primary.main,
-                    '--f-primary-soft': alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.22 : 0.14),
-                    '--f-primary-faint': alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.10 : 0.07),
-                    '--f-line': alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.17 : 0.13),
-                    '--f-line-strong': alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.34 : 0.25),
-                    '--f-surface': theme.palette.mode === 'dark'
-                        ? alpha(theme.palette.background.paper, 0.88)
-                        : alpha(theme.palette.background.paper, 0.98),
-                    '--f-surface-2': theme.palette.mode === 'dark'
-                        ? alpha(theme.palette.common.white, 0.065)
-                        : alpha(theme.palette.common.black, 0.032),
-                    '--f-surface-3': theme.palette.mode === 'dark'
-                        ? alpha(theme.palette.common.white, 0.11)
-                        : alpha(theme.palette.common.black, 0.055),
-                    '--f-worker': theme.palette.mode === 'dark'
-                        ? alpha(theme.palette.common.white, 0.88)
-                        : alpha(theme.palette.text.primary, 0.76),
-                    '--f-worker-dark': theme.palette.mode === 'dark'
-                        ? alpha(theme.palette.common.black, 0.36)
-                        : alpha(theme.palette.common.black, 0.22),
-                    '--f-glass': theme.palette.mode === 'dark'
-                        ? alpha(theme.palette.info.light, 0.16)
-                        : alpha(theme.palette.info.dark, 0.07),
-                    '--f-shadow': theme.palette.mode === 'dark'
-                        ? alpha(theme.palette.common.black, 0.38)
-                        : alpha(theme.palette.common.black, 0.10),
-                    '--f-success': theme.palette.success.main,
+                    return {
+                        width: 'min(420px, 100%)',
+                        aspectRatio: '400 / 190',
+                        position: 'relative',
+                        flexShrink: 0,
+                        overflow: 'hidden',
+                        borderRadius: '14px',
+                        border: '1px solid',
+                        borderColor: error
+                            ? dark ? 'rgba(248,113,113,0.32)' : 'rgba(220,38,38,0.28)'
+                            : dark ? 'rgba(110,195,245,0.16)' : 'rgba(92,146,190,0.16)',
+                        boxShadow: error
+                            ? dark ? '0 12px 30px rgba(0,0,0,0.38), 0 0 0 3px rgba(239,68,68,0.08)' : '0 12px 30px rgba(127,29,29,0.12), 0 0 0 3px rgba(239,68,68,0.06)'
+                            : dark ? '0 12px 30px rgba(0,0,0,0.38)' : '0 12px 30px rgba(30,60,100,0.12)',
+                        containerType: 'inline-size',
+                        isolation: 'isolate',
 
-                    '&::before': {
-                        content: '""',
-                        position: 'absolute',
-                        inset: '9% 7% 12%',
-                        borderRadius: '50%',
-                        background: `radial-gradient(circle, ${alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.13 : 0.08)} 0%, transparent 68%)`,
-                        filter: 'blur(18px)',
-                        pointerEvents: 'none',
-                        zIndex: -1,
-                    },
+                        '--nr-wall': dark ? '#1c232c' : '#e3e8ee',
+                        '--nr-seam': dark ? '#262e39' : '#cfd6de',
+                        '--nr-beam': dark ? '#2c3540' : '#b3bcc6',
+                        '--nr-steel': dark ? '#3b4552' : '#8f9aa6',
+                        '--nr-steel-edge': dark ? '#0f1318' : '#6b7682',
+                        '--nr-floor-top': dark ? '#1a2027' : '#d3d9e0',
+                        '--nr-floor-bottom': dark ? '#10151a' : '#bac2cb',
+                        '--nr-floor-line': dark ? 'rgba(255,255,255,0.05)' : 'rgba(15,23,42,0.08)',
+                        '--nr-interior': dark ? '#05080c' : '#18212b',
+                        '--nr-rack': dark ? '#2d3946' : '#3b4a5c',
+                        '--nr-shutter-text': dark ? 'rgba(229,231,235,0.7)' : 'rgba(31,41,55,0.65)',
+                        '--nr-rib-hi': dark ? '#6b7480' : '#e2e6ea',
+                        '--nr-rib-body': dark ? '#4b5360' : '#bfc6ce',
+                        '--nr-rib-shade': dark ? '#2a3038' : '#98a1ab',
+                        '--nr-rib-groove': dark ? '#181c21' : '#7b848e',
+                        '--nr-wood-top': dark ? '#c99a63' : '#e9c08c',
+                        '--nr-wood': dark ? '#a8763f' : '#c78d53',
+                        '--nr-wood-dark': dark ? '#6f4a26' : '#9c6b38',
+                        '--nr-shadow': dark ? 'rgba(0,0,0,0.5)' : 'rgba(15,23,42,0.2)',
 
-                    '& .operator-arm': {
-                        transformBox: 'fill-box',
-                        transformOrigin: '6px 7px',
-                        animation: 'operatorArm 6.8s cubic-bezier(.4,0,.2,1) infinite',
-                    },
-                    '& .operator-head': {
-                        transformBox: 'fill-box',
-                        transformOrigin: 'center bottom',
-                        animation: 'operatorHead 6.8s ease-in-out infinite',
-                    },
-                    '& .operator-body': {
-                        animation: 'operatorBody 6.8s ease-in-out infinite',
-                    },
-                    '& .spindle': {
-                        animation: 'spindleMotion 6.2s ease-in-out infinite',
-                    },
-                    '& .workpiece': {
-                        transformBox: 'fill-box',
-                        transformOrigin: 'center',
-                        animation: 'workpieceSpin 5.6s linear infinite',
-                    },
-                    '& .machine-glow': {
-                        animation: 'machineGlow 6.2s ease-in-out infinite',
-                    },
-                    '& .panel-screen': {
-                        animation: 'panelGlow 6.8s ease-in-out infinite',
-                    },
-                    '& .panel-scan': {
-                        animation: 'panelScan 3.8s ease-in-out infinite',
-                    },
-                    '& .status-light': {
-                        animation: 'statusGlow 5.8s ease-in-out infinite',
-                    },
-                    '& .belt-parts': {
-                        animation: 'beltMove 7.6s linear infinite',
-                    },
-                    '& .belt-highlight': {
-                        animation: 'beltHighlight 4.8s ease-in-out infinite',
-                    },
-                    '& .glass-shine': {
-                        animation: 'glassShine 7.2s ease-in-out infinite',
-                    },
-                    '& .fan': {
-                        transformBox: 'fill-box',
-                        transformOrigin: 'center',
-                        animation: 'fanSpin 7s linear infinite',
-                    },
-
-                    '@keyframes operatorArm': {
-                        '0%, 16%, 100%': { transform: 'rotate(0deg)' },
-                        '30%': { transform: 'rotate(-9deg)' },
-                        '44%': { transform: 'rotate(2deg)' },
-                        '58%': { transform: 'rotate(-6deg)' },
-                        '74%': { transform: 'rotate(0deg)' },
-                    },
-                    '@keyframes operatorHead': {
-                        '0%, 22%, 100%': { transform: 'rotate(0deg)' },
-                        '36%, 58%': { transform: 'rotate(2deg)' },
-                        '72%': { transform: 'rotate(-1deg)' },
-                    },
-                    '@keyframes operatorBody': {
-                        '0%, 100%': { transform: 'translateY(0)' },
-                        '45%': { transform: 'translateY(-0.8px)' },
-                    },
-                    '@keyframes spindleMotion': {
-                        '0%, 12%, 100%': { transform: 'translateY(0)' },
-                        '30%, 60%': { transform: 'translateY(10px)' },
-                        '78%': { transform: 'translateY(3px)' },
-                    },
-                    '@keyframes workpieceSpin': {
-                        from: { transform: 'rotate(0deg)' },
-                        to: { transform: 'rotate(360deg)' },
-                    },
-                    '@keyframes machineGlow': {
-                        '0%, 100%': { opacity: 0.18 },
-                        '38%, 68%': { opacity: 0.46 },
-                    },
-                    '@keyframes panelGlow': {
-                        '0%, 100%': { opacity: 0.78 },
-                        '42%, 66%': { opacity: 1 },
-                    },
-                    '@keyframes panelScan': {
-                        '0%, 18%': { transform: 'translateY(-7px)', opacity: 0 },
-                        '32%': { opacity: 0.65 },
-                        '70%': { opacity: 0.35 },
-                        '86%, 100%': { transform: 'translateY(8px)', opacity: 0 },
-                    },
-                    '@keyframes statusGlow': {
-                        '0%, 100%': { opacity: 0.58, filter: 'drop-shadow(0 0 0 transparent)' },
-                        '45%, 70%': { opacity: 1, filter: 'drop-shadow(0 0 4px var(--f-success))' },
-                    },
-                    '@keyframes beltMove': {
-                        from: { transform: 'translateX(0)' },
-                        to: { transform: 'translateX(48px)' },
-                    },
-                    '@keyframes beltHighlight': {
-                        '0%, 100%': { opacity: 0.12 },
-                        '50%': { opacity: 0.35 },
-                    },
-                    '@keyframes glassShine': {
-                        '0%, 12%': { transform: 'translateX(-45px)', opacity: 0 },
-                        '28%': { opacity: 0.45 },
-                        '45%': { transform: 'translateX(95px)', opacity: 0 },
-                        '100%': { transform: 'translateX(95px)', opacity: 0 },
-                    },
-                    '@keyframes fanSpin': {
-                        from: { transform: 'rotate(0deg)' },
-                        to: { transform: 'rotate(360deg)' },
-                    },
-                    '@media (prefers-reduced-motion: reduce)': {
-                        '& .operator-arm, & .operator-head, & .operator-body, & .spindle, & .workpiece, & .machine-glow, & .panel-screen, & .panel-scan, & .status-light, & .belt-parts, & .belt-highlight, & .glass-shine, & .fan': {
-                            animation: 'none',
+                        '&::after': {
+                            content: '""',
+                            position: 'absolute',
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            height: 4,
+                            backgroundImage: hazardTile,
+                            backgroundSize: '8px 8px',
+                            pointerEvents: 'none',
                         },
-                    },
-                })}
+
+                        // Base styles are the end state, so reduced motion shows the final scene
+                        '& .nr-shutter': error
+                            ? {
+                                transformBox: 'view-box',
+                                transformOrigin: '110px 40px',
+                                transform: `translateY(-${jamLift}px) rotate(${jamTilt}deg)`,
+                                animation: `${shutterJam} 1400ms 250ms both`,
+                            }
+                            : {
+                                transform: `translateY(-${shutterLift}px)`,
+                                animation: `${shutterRise} 1000ms 250ms both`,
+                            },
+                        '& .nr-lamp': {
+                            animation: error
+                                ? `${alarmPulse} 1.1s ease-in-out 1300ms infinite both`
+                                : `${powerOn} 700ms ease-out 1100ms both`,
+                        },
+                        '& .nr-led-digits': {
+                            animation: error
+                                ? `${powerOn} 700ms ease-out 700ms both, ${ledBlink} 1.2s steps(1, end) 1400ms infinite`
+                                : `${powerOn} 700ms ease-out 700ms both`,
+                        },
+                        '& .nr-ghost': {
+                            animation: `${fadeIn} 400ms ease 1600ms both`,
+                        },
+                        '& .nr-ghost-line': {
+                            animation: `${marchingAnts} 1.2s linear infinite`,
+                        },
+                        '& .nr-chevron': {
+                            animation: `${chevronBob} 1.4s ease-in-out infinite`,
+                        },
+                        '& .nr-dust': {
+                            animation: `${dustFloat} 6s ease-in-out infinite`,
+                        },
+                        '& .nr-spark': {
+                            opacity: 0,
+                            animation: `${sparkFly} 2.2s ease-out infinite`,
+                        },
+                        '& .nr-beacon': {
+                            animation: `${beaconPulse} ${error ? '0.9s' : '2.4s'} ease-in-out infinite`,
+                        },
+                        '& .nr-alarm': {
+                            animation: `${alarmPulse} 0.9s ease-in-out infinite`,
+                        },
+                        '@media (prefers-reduced-motion: reduce)': {
+                            '& .nr-shutter, & .nr-lamp, & .nr-led-digits, & .nr-ghost, & .nr-ghost-line, & .nr-chevron, & .nr-beacon, & .nr-alarm': {
+                                animation: 'none',
+                            },
+                            '& .nr-dust, & .nr-spark': { display: 'none' },
+                        },
+                    }
+                }}
             >
                 <svg
-                    viewBox="0 0 440 230"
+                    viewBox="0 0 400 190"
                     width="100%"
                     height="100%"
                     role="presentation"
@@ -206,239 +540,199 @@ export function FactoryNoRowsOverlay() {
                     style={{ display: 'block' }}
                 >
                     <defs>
-                        <linearGradient id={glassId} x1="0" y1="0" x2="1" y2="1">
-                            <stop offset="0%" stopColor="var(--f-glass)" />
-                            <stop offset="55%" stopColor="var(--f-primary-faint)" />
-                            <stop offset="100%" stopColor="transparent" />
+                        <linearGradient id={ribGradId} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="var(--nr-rib-hi)" />
+                            <stop offset="30%" stopColor="var(--nr-rib-body)" />
+                            <stop offset="80%" stopColor="var(--nr-rib-shade)" />
+                            <stop offset="84%" stopColor="var(--nr-rib-groove)" />
+                            <stop offset="100%" stopColor="var(--nr-rib-groove)" />
                         </linearGradient>
-                        <linearGradient id={glassShineId} x1="0" y1="0" x2="1" y2="0">
-                            <stop offset="0%" stopColor="transparent" />
-                            <stop offset="50%" stopColor="var(--f-primary-soft)" />
-                            <stop offset="100%" stopColor="transparent" />
+                        <pattern id={ribsId} patternUnits="userSpaceOnUse" x="0" y="40" width="180" height="11">
+                            <rect width="180" height="11" fill={`url(#${ribGradId})`} />
+                        </pattern>
+                        <pattern id={hazardId} patternUnits="userSpaceOnUse" width="10" height="10" patternTransform="rotate(45)">
+                            <rect width="5" height="10" fill={AMBER} />
+                            <rect x="5" width="5" height="10" fill="#111827" />
+                        </pattern>
+                        <pattern id={barrierId} patternUnits="userSpaceOnUse" width="12" height="12" patternTransform="rotate(45)">
+                            <rect width="6" height="12" fill="#dc2626" />
+                            <rect x="6" width="6" height="12" fill="#f8fafc" />
+                        </pattern>
+                        <linearGradient id={coneId} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={lampColor} stopOpacity={error ? 0.4 : 0.55} />
+                            <stop offset="100%" stopColor={lampColor} stopOpacity="0" />
                         </linearGradient>
-                        <linearGradient id={machineFaceId} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="var(--f-surface)" />
-                            <stop offset="100%" stopColor="var(--f-surface-2)" />
-                        </linearGradient>
-                        <linearGradient id={floorId} x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="var(--f-surface-2)" />
-                            <stop offset="100%" stopColor="transparent" />
-                        </linearGradient>
-                        <radialGradient id={glowId} cx="50%" cy="50%" r="50%">
-                            <stop offset="0%" stopColor="var(--f-primary-soft)" />
-                            <stop offset="100%" stopColor="transparent" />
+                        <radialGradient id={lampGlowId}>
+                            <stop offset="0%" stopColor={lampColor} stopOpacity="0.9" />
+                            <stop offset="100%" stopColor={lampColor} stopOpacity="0" />
                         </radialGradient>
-                        <linearGradient id={windowId} x1="0" y1="0" x2="1" y2="1">
-                            <stop offset="0%" stopColor="var(--f-glass)" />
-                            <stop offset="100%" stopColor="var(--f-primary-faint)" />
+                        <radialGradient id={beaconGlowId}>
+                            <stop offset="0%" stopColor={beaconColor} stopOpacity="0.9" />
+                            <stop offset="100%" stopColor={beaconColor} stopOpacity="0" />
+                        </radialGradient>
+                        <linearGradient id={floorId} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="var(--nr-floor-top)" />
+                            <stop offset="100%" stopColor="var(--nr-floor-bottom)" />
                         </linearGradient>
-                        <clipPath id={beltClipId}>
-                            <path d="M281 151H405L397 174H273Z" />
-                        </clipPath>
-                        <clipPath id={machiningClipId}>
-                            <rect x="151" y="101" width="72" height="59" rx="4" />
+                        <clipPath id={bayClipId}>
+                            <rect x="110" y="40" width="180" height="110" />
                         </clipPath>
                     </defs>
 
-                    {/* Ambient backdrop */}
-                    <ellipse cx="222" cy="178" rx="176" ry="24" fill={`url(#${glowId})`} opacity="0.58" />
-
-                    {/* Factory shell */}
-                    <path d="M25 54H415V190H25Z" fill="var(--f-surface-2)" />
-                    <path d="M25 190H415" stroke="var(--f-line-strong)" strokeWidth="1.5" />
-                    <path d="M25 54H415M25 54V190M415 54V190" stroke="var(--f-line)" strokeWidth="1.1" />
-
-                    {/* Roof trusses */}
-                    <path
-                        d="M38 54L83 31L128 54M135 54L180 31L225 54M232 54L277 31L322 54M329 54L374 31L410 50"
-                        fill="none"
-                        stroke="var(--f-line)"
-                        strokeWidth="1.25"
-                    />
-                    <path d="M83 31H374" stroke="var(--f-line)" strokeWidth="1.1" />
-                    {[83, 180, 277, 374].map((x) => (
-                        <path key={x} d={`M${x} 31V54`} stroke="var(--f-line)" strokeWidth="0.8" opacity="0.8" />
+                    {/* WALL: cladding seams + roof beam */}
+                    <rect width="400" height="150" fill="var(--nr-wall)" />
+                    {[40, 80, 120, 280, 320, 360].map((x) => (
+                        <path key={x} d={`M${x} 12V150`} stroke="var(--nr-seam)" strokeWidth="1.2" />
+                    ))}
+                    <rect y="6" width="400" height="6" fill="var(--nr-beam)" />
+                    {[20, 100, 180, 260, 340].map((x) => (
+                        <circle key={x} cx={x} cy="9" r="1.1" fill="var(--nr-steel-edge)" opacity="0.6" />
                     ))}
 
-                    {/* Windows */}
-                    {[43, 101, 159, 217, 275, 333].map((x) => (
-                        <g key={x}>
-                            <rect x={x} y="67" width="42" height="27" rx="2.5" fill={`url(#${windowId})`} stroke="var(--f-line)" />
-                            <path d={`M${x + 21} 67V94M${x} 80.5H${x + 42}`} stroke="var(--f-line)" strokeWidth="0.7" />
+                    {/* BAY INTERIOR: an empty rack in the dark */}
+                    <rect x="110" y="40" width="180" height="110" fill="var(--nr-interior)" />
+                    <g opacity="0.75">
+                        <path d="M132 46V150M268 46V150" stroke="var(--nr-rack)" strokeWidth="4" />
+                        <path d="M132 84H268M132 118H268" stroke="#d9772b" strokeWidth="3" opacity="0.55" />
+                        <path d="M132 84L268 118M132 118L268 84" stroke="var(--nr-rack)" strokeWidth="0.8" opacity="0.5" />
+                    </g>
+
+                    {/* GHOST CRATE: where the goods would sit */}
+                    {!error && (
+                        <g className="nr-ghost">
+                            <g fill="none" stroke={AMBER} strokeWidth="1.4" strokeLinejoin="round">
+                                <path className="nr-ghost-line" d="M168 100L174 95H238L232 100" strokeDasharray="5 4" />
+                                <path className="nr-ghost-line" d="M232 100L238 95V138L232 143" strokeDasharray="5 4" />
+                                <rect className="nr-ghost-line" x="168" y="100" width="64" height="43" rx="1.5" fill={AMBER} fillOpacity="0.07" strokeDasharray="5 4" />
+                            </g>
+                            <g className="nr-chevron">
+                                <path d="M194 81L200 87L206 81" fill="none" stroke={AMBER} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </g>
                         </g>
+                    )}
+
+                    {/* SHUTTER: rolls up on mount (jams half-way on error), clipped to the opening */}
+                    <g clipPath={`url(#${bayClipId})`}>
+                        <g className="nr-shutter">
+                            <rect x="104" y="0" width="192" height="150" fill={`url(#${ribsId})`} />
+                            <rect x="110" y="40" width="180" height="110" fill="none" stroke="rgba(0,0,0,0.18)" strokeWidth="6" />
+                            {/* Same label as the logout gate shutter; sits on the part left showing once raised */}
+                            <text
+                                x="200"
+                                y="134"
+                                textAnchor="middle"
+                                fontFamily={monoFont}
+                                fontSize="9"
+                                fontWeight="800"
+                                letterSpacing="2.9"
+                                fill="var(--nr-shutter-text)"
+                            >
+                                {FACTORY_NAME}
+                            </text>
+                            <rect x="104" y="143" width="192" height="7" fill={`url(#${hazardId})`} />
+                            <path d="M104 143H296" stroke="var(--nr-steel-edge)" strokeWidth="1.5" />
+                        </g>
+                    </g>
+
+                    {/* BAY FRAME: header, jambs with hazard guards */}
+                    <rect x="100" y="30" width="200" height="10" fill="var(--nr-steel)" />
+                    <rect x="100" y="40" width="10" height="110" fill="var(--nr-steel)" />
+                    <rect x="290" y="40" width="10" height="110" fill="var(--nr-steel)" />
+                    <rect x="100" y="112" width="10" height="38" fill={`url(#${hazardId})`} />
+                    <rect x="290" y="112" width="10" height="38" fill={`url(#${hazardId})`} />
+                    <path d="M100 30H300V150M100 30V150M110 40H290M110 40V150M290 40V150" fill="none" stroke="var(--nr-steel-edge)" strokeWidth="0.8" opacity="0.7" />
+
+                    {/* SPARKS where the shutter jammed against the right jamb */}
+                    {error && (
+                        <g>
+                            {sparks.map(([dx, dy, delay]) => (
+                                <circle
+                                    key={`${dx}-${dy}`}
+                                    className="nr-spark"
+                                    cx="288"
+                                    cy="121"
+                                    r="1.1"
+                                    fill="#fde047"
+                                    style={{
+                                        ['--dx' as string]: `${dx}px`,
+                                        ['--dy' as string]: `${dy}px`,
+                                        animationDelay: `${1.65 + delay}s`,
+                                    }}
+                                />
+                            ))}
+                        </g>
+                    )}
+
+                    {/* FLOOR: concrete, bay lane lines */}
+                    <rect y="150" width="400" height="40" fill={`url(#${floorId})`} />
+                    <path d="M0 150H400" stroke="var(--nr-steel-edge)" strokeWidth="1" opacity="0.5" />
+                    <path d="M60 150L22 190M160 150L152 190M240 150L248 190M340 150L378 190" stroke="var(--nr-floor-line)" strokeWidth="1" />
+                    <path d="M110 150L94 190M290 150L306 190" stroke="#f5b301" strokeWidth="3" opacity="0.85" />
+
+                    {/* EMPTY PALLET at the threshold */}
+                    <ellipse cx="200" cy="166" rx="54" ry="4" fill="var(--nr-shadow)" />
+                    <path d="M160 143H240L246 150H154Z" fill="var(--nr-wood-top)" />
+                    <path d="M180 143L178 150M200 143V150M220 143L222 150" stroke="var(--nr-wood-dark)" strokeWidth="0.9" />
+                    <rect x="154" y="150" width="92" height="4" fill="var(--nr-wood)" />
+                    <rect x="154" y="154" width="92" height="7" fill="var(--nr-interior)" opacity="0.55" />
+                    {[154, 195, 236].map((x) => (
+                        <rect key={x} x={x} y="154" width="10" height="7" fill="var(--nr-wood-dark)" />
                     ))}
+                    <rect x="154" y="161" width="92" height="3" fill="var(--nr-wood)" />
 
-                    {/* Utility pipe + ventilation */}
-                    <path d="M41 107H112V99H146" fill="none" stroke="var(--f-line-strong)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-                    <circle cx="69" cy="107" r="4.8" fill="var(--f-surface)" stroke="var(--f-line-strong)" />
-                    <circle cx="98" cy="107" r="4.8" fill="var(--f-surface)" stroke="var(--f-line-strong)" />
-                    <g transform="translate(374 105)">
-                        <circle r="12" fill="var(--f-surface)" stroke="var(--f-line-strong)" />
-                        <g className="fan">
-                            <path d="M0-8C4-8 5-3 2 0C-1 2-3 0-3-2C-3-5-2-7 0-8Z" fill="var(--f-line-strong)" />
-                            <path d="M8 0C8 4 3 5 0 2C-2-1 0-3 2-3C5-3 7-2 8 0Z" fill="var(--f-line-strong)" />
-                            <path d="M0 8C-4 8-5 3-2 0C1-2 3 0 3 2C3 5 2 7 0 8Z" fill="var(--f-line-strong)" />
-                            <path d="M-8 0C-8-4-3-5 0-2C2 1 0 3-2 3C-5 3-7 2-8 0Z" fill="var(--f-line-strong)" />
+                    {/* BARRIER across the bay, with its flashing lamp */}
+                    {error && (
+                        <g>
+                            <ellipse cx="200" cy="182" rx="78" ry="3" fill="var(--nr-shadow)" />
+                            <path d="M138 160L132 180M138 160L144 180M262 160L256 180M262 160L268 180" stroke="#374151" strokeWidth="2.5" strokeLinecap="round" />
+                            <rect x="124" y="154" width="152" height="9" rx="1.5" fill={`url(#${barrierId})`} stroke="#7f1d1d" strokeWidth="0.8" />
+                            <rect x="127" y="148" width="6" height="6" rx="1" fill="#1f2937" />
+                            <circle cx="130" cy="148" r="3" fill={RED} />
+                            <circle className="nr-alarm" cx="130" cy="148" r="11" fill={`url(#${beaconGlowId})`} />
                         </g>
-                        <circle r="2" fill="var(--f-primary)" opacity="0.7" />
-                    </g>
+                    )}
 
-                    {/* Perspective floor */}
-                    <path d="M25 190L105 135H415V190Z" fill={`url(#${floorId})`} />
-                    <path d="M70 190L137 142M137 190L185 142M204 190L233 142M271 190L281 142M338 190L329 142" stroke="var(--f-line)" strokeWidth="0.75" />
-                    <path d="M60 176H405" stroke="var(--f-line)" strokeWidth="0.75" opacity="0.7" />
-                    <path d="M46 185H400" stroke="var(--f-primary)" strokeWidth="1.5" strokeDasharray="14 9" opacity="0.28" />
+                    {/* TRAFFIC CONE */}
+                    <ellipse cx="342" cy="182" rx="13" ry="2.5" fill="var(--nr-shadow)" />
+                    <path d="M336 179L342 156L348 179Z" fill="#f97316" />
+                    <path d="M338.9 168H345.1L345.9 171.5H338.1Z" fill="#f8fafc" />
+                    <rect x="332" y="179" width="20" height="3" rx="1" fill="#c2410c" />
 
-                    {/* Machine shadow */}
-                    <ellipse cx="205" cy="183" rx="78" ry="8" fill="var(--f-shadow)" />
+                    {/* BEACON on its wall bracket: amber when idle, red on error */}
+                    <path d="M322 60H340" stroke="var(--nr-steel-edge)" strokeWidth="2" />
+                    <rect x="324" y="55" width="12" height="5" rx="1" fill="#1f2937" />
+                    <path d="M325 55A5 6 0 0 1 335 55Z" fill={beaconColor} />
+                    <circle className="nr-beacon" cx="330" cy="52" r="16" fill={`url(#${beaconGlowId})`} />
 
-                    {/* CNC 2.5D body */}
-                    <g>
-                        {/* right side face */}
-                        <path d="M253 92L266 101V167L253 176Z" fill="var(--f-surface-3)" stroke="var(--f-line-strong)" strokeWidth="1.2" />
-                        {/* top face */}
-                        <path d="M140 92L153 82H253L266 101L253 106H140Z" fill="var(--f-primary-faint)" stroke="var(--f-line)" strokeWidth="1" />
-                        {/* front */}
-                        <path d="M140 92H253V176H140Z" fill={`url(#${machineFaceId})`} stroke="var(--f-line-strong)" strokeWidth="1.5" />
-                        <path d="M140 92H253V99H140Z" fill="var(--f-primary-faint)" />
-
-                        {/* CNC door */}
-                        <rect x="150" y="101" width="73" height="59" rx="4" fill={`url(#${glassId})`} stroke="var(--f-line-strong)" strokeWidth="1.2" />
-                        <path d="M186.5 101V160" stroke="var(--f-line)" strokeWidth="1" />
-                        <path d="M154 105H218" stroke="var(--f-primary)" strokeWidth="0.8" opacity="0.35" />
-
-                        {/* moving glass sheen */}
-                        <g clipPath={`url(#${machiningClipId})`}>
-                            <rect className="glass-shine" x="146" y="98" width="28" height="67" transform="skewX(-15)" fill={`url(#${glassShineId})`} opacity="0" />
-                        </g>
-
-                        {/* machining zone */}
-                        <g clipPath={`url(#${machiningClipId})`}>
-                            <ellipse className="machine-glow" cx="180" cy="144" rx="29" ry="13" fill="var(--f-primary-soft)" opacity="0.2" />
-                            <g className="spindle">
-                                <rect x="174" y="106" width="9" height="18" rx="2" fill="var(--f-worker)" />
-                                <path d="M172 123H185L181 132H176Z" fill="var(--f-primary)" opacity="0.9" />
-                            </g>
-                            <g className="workpiece">
-                                <circle cx="179" cy="145" r="9" fill="none" stroke="var(--f-primary)" strokeWidth="2.2" strokeDasharray="5 3" />
-                                <circle cx="179" cy="145" r="3" fill="var(--f-line-strong)" />
-                            </g>
-                            <rect x="164" y="154" width="31" height="4" rx="2" fill="var(--f-line-strong)" />
-                            <path d="M161 157H198" stroke="var(--f-line)" strokeWidth="1" />
-                        </g>
-
-                        {/* control panel */}
-                        <path d="M228 104H247L252 108V149H228Z" fill="var(--f-surface-2)" stroke="var(--f-line-strong)" />
-                        <rect className="panel-screen" x="232" y="110" width="15" height="11" rx="1.8" fill="var(--f-primary-soft)" stroke="var(--f-primary)" strokeWidth="0.8" />
-                        <rect className="panel-scan" x="233.5" y="113" width="12" height="1.3" rx="0.65" fill="var(--f-primary)" opacity="0.5" />
-                        <circle cx="233.5" cy="130" r="2.3" fill="var(--f-success)" opacity="0.8" />
-                        <circle cx="241" cy="130" r="2.3" fill="var(--f-line-strong)" />
-                        <circle cx="247" cy="138" r="2.6" fill="var(--f-primary)" opacity="0.78" />
-                        <rect x="233" y="141.5" width="12" height="3" rx="1.5" fill="var(--f-line-strong)" />
-
-                        {/* lower housing */}
-                        <path d="M148 164H245V172H148Z" fill="var(--f-surface-3)" />
-                        <rect x="154" y="172" width="20" height="7" rx="1.5" fill="var(--f-line)" />
-                        <rect x="222" y="172" width="20" height="7" rx="1.5" fill="var(--f-line)" />
-
-                        {/* status tower */}
-                        <rect x="245" y="72" width="5" height="12" rx="1" fill="var(--f-line-strong)" />
-                        <rect x="243.5" y="66" width="8" height="8" rx="2" fill="var(--f-surface-3)" stroke="var(--f-line)" />
-                        <circle className="status-light" cx="247.5" cy="70" r="3.2" fill="var(--f-success)" />
-                    </g>
-
-                    {/* Operator shadow */}
-                    <ellipse cx="105" cy="181" rx="24" ry="5" fill="var(--f-shadow)" />
-
-                    {/* Operator with PPE */}
-                    <g className="operator-body">
-                        <g className="operator-head">
-                            <circle cx="106" cy="111" r="8" fill="var(--f-worker)" />
-                            <path d="M97 109Q106 98 116 109V112H97Z" fill="var(--f-primary)" />
-                            <path d="M98 108H116" stroke="var(--f-primary)" strokeWidth="2" strokeLinecap="round" />
-                            <path d="M113 111Q116 113 115 117" fill="none" stroke="var(--f-worker-dark)" strokeWidth="1.2" strokeLinecap="round" />
-                        </g>
-
-                        {/* torso / vest */}
-                        <path d="M94 122Q105 116 117 123L115 153H96Z" fill="var(--f-worker)" />
-                        <path d="M96 126H116L115 141H97Z" fill="var(--f-primary-soft)" />
-                        <path d="M103 123V151M110 123V151" stroke="var(--f-primary)" strokeWidth="1.6" opacity="0.65" />
-                        <path d="M97 137H115" stroke="var(--f-primary)" strokeWidth="2.4" opacity="0.72" />
-
-                        {/* left arm */}
-                        <path d="M96 126L86 142" fill="none" stroke="var(--f-worker)" strokeWidth="6" strokeLinecap="round" />
-                        <circle cx="85" cy="143" r="3.2" fill="var(--f-worker)" />
-
-                        {/* right operating arm */}
-                        <g className="operator-arm">
-                            <path d="M115 126L128 137L141 131" fill="none" stroke="var(--f-worker)" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-                            <circle cx="142" cy="131" r="3.2" fill="var(--f-worker)" />
-                        </g>
-
-                        {/* legs */}
-                        <path d="M101 152L97 176M111 152L115 176" stroke="var(--f-worker)" strokeWidth="6.5" strokeLinecap="round" />
-                        <path d="M91 177H100M112 177H121" stroke="var(--f-line-strong)" strokeWidth="5.5" strokeLinecap="round" />
-                    </g>
-
-                    {/* Conveyor shadow */}
-                    <ellipse cx="337" cy="183" rx="72" ry="7" fill="var(--f-shadow)" />
-
-                    {/* Perspective conveyor */}
-                    <g>
-                        <path d="M276 146H407L399 178H267Z" fill="var(--f-surface)" stroke="var(--f-line-strong)" strokeWidth="1.3" />
-                        <path d="M281 151H405L397 174H273Z" fill="var(--f-surface-2)" />
-                        <path className="belt-highlight" d="M279 154H402" stroke="var(--f-primary)" strokeWidth="1" opacity="0.18" />
-                        <path d="M276 166H401" stroke="var(--f-line)" strokeWidth="1" />
-
-                        {[286, 307, 328, 349, 370, 391].map((x) => (
-                            <ellipse key={x} cx={x} cy="165" rx="6.4" ry="4.2" fill="none" stroke="var(--f-line-strong)" strokeWidth="1.1" />
+                    {/* BAY LAMP: flickers on once the shutter is up (alarm red on error) */}
+                    <rect x="188" y="19" width="24" height="7" rx="2" fill="#1f2937" />
+                    <g className="nr-lamp">
+                        <polygon points="192,26 208,26 264,170 136,170" fill={`url(#${coneId})`} />
+                        <ellipse cx="200" cy="27" rx="24" ry="8" fill={`url(#${lampGlowId})`} />
+                        <rect x="191" y="25" width="18" height="2" rx="1" fill={lampColor} />
+                        {!error && dust.map(([cx, cy, r, delay]) => (
+                            <circle
+                                key={cx}
+                                className="nr-dust"
+                                cx={cx}
+                                cy={cy}
+                                r={r}
+                                fill="#fff4d6"
+                                style={{ animationDelay: `${delay}s` }}
+                            />
                         ))}
-
-                        <g clipPath={`url(#${beltClipId})`}>
-                            <g className="belt-parts">
-                                {[-48, 0, 48, 96, 144].map((offset) => (
-                                    <g key={offset} transform={`translate(${274 + offset} 0)`}>
-                                        <path d="M0 153H22L19 166H-3Z" fill="var(--f-primary-soft)" stroke="var(--f-primary)" strokeWidth="1" />
-                                        <circle cx="9" cy="160" r="3.2" fill="var(--f-surface)" stroke="var(--f-primary)" strokeWidth="1" />
-                                    </g>
-                                ))}
-                            </g>
-                        </g>
-
-                        <path d="M282 178L278 187M392 178L396 187" stroke="var(--f-line-strong)" strokeWidth="3" strokeLinecap="round" />
                     </g>
-
-                    {/* Foreground floor accents */}
-                    <path d="M47 194H392" stroke="var(--f-line)" strokeWidth="0.9" opacity="0.55" />
-                    <circle cx="64" cy="194" r="2" fill="var(--f-primary)" opacity="0.38" />
-                    <circle cx="383" cy="194" r="2" fill="var(--f-primary)" opacity="0.38" />
                 </svg>
+
+                {/* LED BOARD on the left wall (DOM: reuses the home 7-segment digits) */}
+                <LedBoard
+                    unit="1cqw"
+                    tone={tone}
+                    sx={{ position: 'absolute', left: '4.5%', top: '27%', width: '18.5%', px: 0 }}
+                />
             </Box>
 
-            <Typography
-                sx={{
-                    mt: 0.85,
-                    fontSize: 15,
-                    fontWeight: 750,
-                    letterSpacing: '-0.01em',
-                    color: 'text.primary',
-                    textAlign: 'center',
-                }}
-            >
-                {t.common.noData}
-            </Typography>
-
-            <Typography
-                variant="caption"
-                sx={{
-                    mt: 0.25,
-                    color: 'text.secondary',
-                    textAlign: 'center',
-                    opacity: 0.78,
-                }}
-            >
-                {t.status.noRowsHint}
-            </Typography>
+            {children}
         </Box>
     )
 }

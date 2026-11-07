@@ -1087,7 +1087,8 @@ export function BacklogPage({
       />
 
 
-      {error && (
+      {/* Bảng trống thì lỗi hiện ngay trong bảng (cảnh lỗi API), chỉ còn dòng cũ mới cần thanh báo */}
+      {error && data.length > 0 && (
         <Alert
           severity="error"
 
@@ -1185,6 +1186,14 @@ export function BacklogPage({
 
           onPaginationChange={
             handlePaginationChange
+          }
+
+          error={
+            error
+          }
+
+          onRetry={
+            handleRefresh
           }
         />
       </Card>

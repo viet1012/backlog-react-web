@@ -208,6 +208,12 @@ interface FacConfirmDataTableProps {
 
   onSaved?:
   () => void
+
+  // Lỗi tải: bảng trống => cảnh lỗi API + nút Thử lại
+  error?: string | null
+
+  onRetry?:
+  () => void
 }
 // =========================================================
 // TOOLBAR
@@ -351,6 +357,8 @@ export function FacConfirmDataTable({
   onColumnOrderChange,
   onColumnWidthChange,
   onSaved,
+  error,
+  onRetry,
 }: FacConfirmDataTableProps) {
 
   // =======================================================
@@ -1613,6 +1621,14 @@ export function FacConfirmDataTable({
 
           noRowsOverlay={
             noRowsOverlay
+          }
+
+          error={
+            error
+          }
+
+          onRetry={
+            onRetry
           }
 
           paginationMode="server"

@@ -3,15 +3,14 @@ import { CanvasTexture, RepeatWrapping, SRGBColorSpace, type Texture } from 'thr
 import { C, INK } from '../factoryScene/primitives'
 
 /*
- * Texture vẽ bằng canvas cho kệ / thùng 3D: không tải gì từ mạng, chữ dùng font hệ thống (có dấu tiếng Việt).
+ * Texture vẽ bằng canvas cho kệ / thùng 3D (không tải gì từ mạng).
+ * Chỉ vẽ phần hình (giấy, vạch màu, băng keo, mã vạch...); CHỮ vẽ bằng SDF (FitText) đặt chồng lên,
+ * vì chữ trong texture bị mờ khi thu nhỏ trên màn hình. Các hằng *_LAYOUT là toạ độ (tỉ lệ 0..1 tính từ
+ * mép trái / mép trên) để component đặt chữ khớp với hình.
  * Texture riêng từng thùng do component tự dispose; texture dùng chung (carton, sàn kệ, trụ, lưới) tạo 1 lần.
  */
-const SANS = '"Segoe UI", system-ui, Roboto, Arial, sans-serif'
-const MARKER = '"Segoe Print", "Comic Sans MS", "Segoe UI", cursive'
-const STAMP = '"Arial Black", "Segoe UI Black", Arial, sans-serif'
-const MONO = 'ui-monospace, Consolas, "Courier New", monospace'
 const TAU = Math.PI * 2
-// Nhãn có chữ vẽ gấp đôi độ phân giải (toạ độ vẽ giữ nguyên) để chữ nét khi camera lại gần
+// Vẽ gấp đôi độ phân giải (toạ độ vẽ giữ nguyên) để nét viền / icon không bị bết
 const LABEL_SCALE = 2
 
 function createCanvas(width: number, height: number, scale = 1) {
@@ -29,20 +28,6 @@ function toTexture(canvas: HTMLCanvasElement, color = true) {
   if (color) texture.colorSpace = SRGBColorSpace
   texture.anisotropy = 4
   return texture
-}
-
-// Thu nhỏ chữ tới `min`, vẫn tràn thì cắt "…"; trả về chuỗi sẽ vẽ (ctx.font đã đặt sẵn)
-function fitText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, size: number, min: number, weight: number, family: string) {
-  let s = size
-  ctx.font = `${weight} ${s}px ${family}`
-  while (s > min && ctx.measureText(text).width > maxWidth) {
-    s -= 2
-    ctx.font = `${weight} ${s}px ${family}`
-  }
-  if (ctx.measureText(text).width <= maxWidth) return text
-  let cut = text
-  while (cut.length > 1 && ctx.measureText(`${cut}…`).width > maxWidth) cut = cut.slice(0, -1)
-  return `${cut}…`
 }
 
 // Icon SVG (đen) -> canvas tô màu
@@ -65,20 +50,23 @@ function rand(n: number) {
 // THÙNG HÀNG
 // =========================================================
 
-export const STICKER_ASPECT = 3
+export const STICKER_ASPECT = 2.3
 
-interface StickerOptions {
-  title: string
-  hint?: string
-  action: string
-  group: string
-  color: string
+export const STICKER_LAYOUT = {
+  // Mép trái vùng chữ / mép phải vùng chữ
+  left: 0.08,
+  right: 0.95,
+  // Vùng tên trang (từ trên xuống)
+  titleTop: 0.08,
+  titleBottom: 0.62,
+  // Vạch đứt ngăn cách; dòng nhóm + hành động nằm giữa vạch và mép dưới
+  divider: 0.66,
 }
 
-// Nhãn dán thùng "dùng ngay": tên trang, mô tả, nhóm, đèn xanh + VIEW/INPUT
-export function readyStickerTexture({ title, hint, action, group, color }: StickerOptions) {
-  const W = 768
-  const H = W / STICKER_ASPECT
+// Nhãn dán thùng "dùng ngay": giấy + vạch màu nhóm + vạch đứt (chữ đặt chồng bằng SDF)
+export function readyStickerTexture(color: string) {
+  const W = 512
+  const H = Math.round(W / STICKER_ASPECT)
   const { canvas, ctx } = createCanvas(W, H, LABEL_SCALE)
 
   const paper = ctx.createLinearGradient(0, 0, 0, H)
@@ -87,41 +75,20 @@ export function readyStickerTexture({ title, hint, action, group, color }: Stick
   ctx.fillStyle = paper
   ctx.fillRect(0, 0, W, H)
   ctx.fillStyle = color
-  ctx.fillRect(0, 0, 22, H)
+  ctx.fillRect(0, 0, W * 0.035, H)
 
-  ctx.textBaseline = 'alphabetic'
-  ctx.fillStyle = '#1d2733'
-  ctx.fillText(fitText(ctx, title, W - 90, 76, 40, 800, SANS), 52, 96)
-
-  if (hint) {
-    ctx.fillStyle = '#5b6774'
-    ctx.fillText(fitText(ctx, hint, W - 90, 40, 26, 500, SANS), 52, 152)
-  }
-
-  ctx.strokeStyle = 'rgba(29, 39, 51, 0.2)'
-  ctx.lineWidth = 3
-  ctx.setLineDash([12, 9])
+  ctx.strokeStyle = 'rgba(29, 39, 51, 0.22)'
+  ctx.lineWidth = 2
+  ctx.setLineDash([8, 6])
   ctx.beginPath()
-  ctx.moveTo(52, 184)
-  ctx.lineTo(W - 30, 184)
+  ctx.moveTo(W * STICKER_LAYOUT.left, H * STICKER_LAYOUT.divider)
+  ctx.lineTo(W * STICKER_LAYOUT.right, H * STICKER_LAYOUT.divider)
   ctx.stroke()
   ctx.setLineDash([])
 
-  ctx.fillStyle = color
-  ctx.fillText(fitText(ctx, group, W * 0.55, 30, 20, 800, SANS), 52, 230)
-
-  ctx.font = `800 28px ${SANS}`
-  const actionWidth = ctx.measureText(action).width
-  ctx.fillStyle = '#5b6774'
-  ctx.fillText(action, W - 30 - actionWidth, 230)
-  ctx.beginPath()
-  ctx.arc(W - 30 - actionWidth - 22, 220, 10, 0, TAU)
-  ctx.fillStyle = '#2ec46a'
-  ctx.fill()
-
   ctx.strokeStyle = 'rgba(0, 0, 0, 0.14)'
-  ctx.lineWidth = 4
-  ctx.strokeRect(2, 2, W - 4, H - 4)
+  ctx.lineWidth = 3
+  ctx.strokeRect(1.5, 1.5, W - 3, H - 3)
 
   return toTexture(canvas)
 }
@@ -134,40 +101,49 @@ export function printedIconTexture(img: HTMLImageElement, color: string) {
   return toTexture(canvas)
 }
 
-// Mặt trước thùng "sắp ra mắt": tên viết bút lông + băng keo vàng ghi trạng thái (nền trong suốt)
-export function upcomingFaceTexture(title: string, status: string) {
-  const W = 512
-  const H = 394
+// Mặt trước thùng (tỉ lệ = CRATE_RATIO)
+const FACE_W = 512
+const FACE_H = 394
+
+export const UPCOMING_LAYOUT = {
+  // Tâm dòng tên viết tay
+  titleY: 0.32,
+  titleTilt: -0.05,
+  // Băng keo vàng ghi trạng thái
+  tapeY: 0.68,
+  tapeHeight: 0.2,
+  tapeTilt: -0.035,
+}
+
+// Mặt trước thùng "sắp ra mắt": băng keo vàng viền mực (nền trong suốt; tên + trạng thái đặt chồng bằng SDF)
+export function upcomingFaceTexture() {
+  const W = FACE_W
+  const H = FACE_H
   const { canvas, ctx } = createCanvas(W, H, LABEL_SCALE)
+  const tapeH = H * UPCOMING_LAYOUT.tapeHeight
 
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-
-  ctx.save()
-  ctx.translate(W / 2, H * 0.32)
-  ctx.rotate(-0.05)
-  ctx.fillStyle = 'rgba(50, 28, 8, 0.82)'
-  ctx.fillText(fitText(ctx, title, W * 0.86, 80, 34, 700, MARKER), 0, 0)
-  ctx.restore()
-
-  ctx.save()
-  ctx.translate(W / 2, H * 0.68)
-  ctx.rotate(-0.035)
+  ctx.translate(W / 2, H * UPCOMING_LAYOUT.tapeY)
+  ctx.rotate(UPCOMING_LAYOUT.tapeTilt)
   ctx.fillStyle = C.yellow
-  ctx.fillRect(-W * 0.6, -H * 0.1, W * 1.2, H * 0.2)
+  ctx.fillRect(-W * 0.6, -tapeH / 2, W * 1.2, tapeH)
   ctx.fillStyle = INK
-  ctx.fillRect(-W * 0.6, -H * 0.1, W * 1.2, 5)
-  ctx.fillRect(-W * 0.6, H * 0.1 - 5, W * 1.2, 5)
-  ctx.fillText(fitText(ctx, status.toUpperCase(), W * 0.86, 46, 22, 900, STAMP), 0, 2)
-  ctx.restore()
+  ctx.fillRect(-W * 0.6, -tapeH / 2, W * 1.2, 5)
+  ctx.fillRect(-W * 0.6, tapeH / 2 - 5, W * 1.2, 5)
 
   return toTexture(canvas)
 }
 
-// Mặt trước thùng nhựa "cần quyền": gân thùng, lỗ tay cầm, thẻ tên (nền trong suốt)
-export function lockedFaceTexture(title: string, img: HTMLImageElement | undefined) {
-  const W = 512
-  const H = 394
+export const LOCKED_LAYOUT = {
+  // Tâm tên trang trên thẻ tên / chiều cao vùng chữ
+  titleY: 0.73,
+  titleHeight: 0.26,
+  titleWidth: 0.68,
+}
+
+// Mặt trước thùng nhựa "cần quyền": gân thùng, lỗ tay cầm, thẻ tên + icon (nền trong suốt)
+export function lockedFaceTexture(img: HTMLImageElement | undefined) {
+  const W = FACE_W
+  const H = FACE_H
   const { canvas, ctx } = createCanvas(W, H, LABEL_SCALE)
 
   ctx.fillStyle = 'rgba(255, 255, 255, 0.07)'
@@ -184,22 +160,23 @@ export function lockedFaceTexture(title: string, img: HTMLImageElement | undefin
   ctx.fill()
 
   if (img) {
-    const size = H * 0.22
-    ctx.drawImage(tintedIcon(img, '#6b7684', Math.round(size * LABEL_SCALE)), W / 2 - size / 2, H * 0.35, size, size)
+    const size = H * 0.2
+    ctx.drawImage(tintedIcon(img, '#6b7684', Math.round(size * LABEL_SCALE)), W / 2 - size / 2, H * 0.36, size, size)
   }
-
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillStyle = '#3d4753'
-  ctx.fillText(fitText(ctx, title, W * 0.68, 46, 22, 800, SANS), W / 2, H * 0.76)
 
   return toTexture(canvas)
 }
 
 export const TAG_ASPECT = 2
 
-// Thẻ đỏ treo trên thùng khoá: ổ khoá + vai trò cần có
-export function roleTagTexture(roles: string) {
+export const TAG_LAYOUT = {
+  // Chữ vai trò bắt đầu sau ổ khoá
+  textLeft: 0.38,
+  textRight: 0.94,
+}
+
+// Thẻ đỏ treo trên thùng khoá: lỗ xỏ dây + ổ khoá (vai trò đặt chồng bằng SDF)
+export function roleTagTexture() {
   const W = 256
   const H = W / TAG_ASPECT
   const { canvas, ctx } = createCanvas(W, H, LABEL_SCALE)
@@ -227,9 +204,6 @@ export function roleTagTexture(roles: string) {
   ctx.stroke()
   ctx.fillRect(48, H / 2 - 8, 36, 30)
 
-  ctx.textBaseline = 'middle'
-  ctx.fillText(fitText(ctx, roles, W - 112, 44, 20, 900, SANS), 98, H / 2 + 2)
-
   return toTexture(canvas)
 }
 
@@ -241,8 +215,18 @@ export const PLATE_ASPECT = 8
 
 const BARCODE = Array.from({ length: 30 }, (_, i) => 2 + Math.floor(rand(i + 1) * 4))
 
-// Nhãn vị trí kho trên thanh ngang: mã ô, tên tầng, số lượng, mã vạch
-export function tierPlateTexture(code: string, label: string, count: number) {
+export const PLATE_LAYOUT = {
+  codeLeft: 0.028,
+  // Vạch ngăn sau mã ô
+  divider: 0.2,
+  labelLeft: 0.225,
+  // Số lượng canh phải sát trước mã vạch
+  countRight: 0.77,
+  barcodeLeft: 0.79,
+}
+
+// Nhãn vị trí kho trên thanh ngang: viền, vạch ngăn, mã vạch (mã ô, tên tầng, số lượng đặt chồng bằng SDF)
+export function tierPlateTexture() {
   const W = 1024
   const H = W / PLATE_ASPECT
   const { canvas, ctx } = createCanvas(W, H, LABEL_SCALE)
@@ -253,34 +237,14 @@ export function tierPlateTexture(code: string, label: string, count: number) {
   ctx.lineWidth = 6
   ctx.strokeRect(3, 3, W - 6, H - 6)
 
-  ctx.textBaseline = 'middle'
-  ctx.fillStyle = INK
-  ctx.font = `900 56px ${MONO}`
-  ctx.fillText(code, 26, H / 2 + 2)
-  const codeEnd = 26 + ctx.measureText(code).width + 22
-
   ctx.fillStyle = 'rgba(20, 18, 31, 0.3)'
-  ctx.fillRect(codeEnd, 22, 3, H - 44)
-
-  const barcodeWidth = 190
-  const countText = String(count)
-  ctx.font = `900 52px ${SANS}`
-  const countWidth = ctx.measureText(countText).width
-  const labelMax = W - codeEnd - 30 - countWidth - 30 - barcodeWidth - 30
+  ctx.fillRect(W * PLATE_LAYOUT.divider, 22, 3, H - 44)
 
   ctx.fillStyle = INK
-  const labelText = fitText(ctx, label.toUpperCase(), labelMax, 50, 28, 800, SANS)
-  ctx.fillText(labelText, codeEnd + 24, H / 2 + 2)
-  const labelEnd = codeEnd + 24 + ctx.measureText(labelText).width
-
-  ctx.font = `900 52px ${SANS}`
-  ctx.fillStyle = '#ef7424'
-  ctx.fillText(countText, labelEnd + 26, H / 2 + 2)
-
-  ctx.fillStyle = INK
-  let x = W - 30 - barcodeWidth
+  let x = W * PLATE_LAYOUT.barcodeLeft
   BARCODE.forEach((width, i) => {
-    if (i % 2 === 0) ctx.fillRect(x, 26, width * 2, H - 52)
+    // Không vẽ đè viền phải
+    if (i % 2 === 0 && x + width * 2 <= W - 26) ctx.fillRect(x, 26, width * 2, H - 52)
     x += width * 2 + 2
   })
 

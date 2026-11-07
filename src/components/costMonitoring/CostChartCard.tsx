@@ -16,6 +16,7 @@ import { CostChartStats } from './CostChartStats'
 import { COST_SERIES, TABULAR_NUMS, formatK, seriesColor } from './costChartConfig'
 import { buildRows, buildXTicks, buildYAxis } from './costChartUtils'
 import { useI18n } from '../../i18n/useI18n'
+import { FactoryNoRowsOverlay } from '../common/FactoryNoRowsOverlay'
 
 interface CostChartCardProps {
   // "2026-10" – dùng để dựng đủ ngày trong tháng cho trục X
@@ -25,12 +26,11 @@ interface CostChartCardProps {
   loading: boolean
 }
 
+// Bản compact (chỉ bảng LED) vì 9 ô chart có thể cùng trống
 function EmptyState({ text }: { text: string }) {
   return (
     <Box sx={{ flex: 1, minHeight: 0, display: 'grid', placeItems: 'center' }}>
-      <Typography color="text.secondary" sx={{ fontSize: 12.5 }}>
-        {text}
-      </Typography>
+      <FactoryNoRowsOverlay variant="compact" title={text} minHeight={0} />
     </Box>
   )
 }

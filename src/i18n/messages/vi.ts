@@ -33,6 +33,8 @@ export const vi: Messages = {
         total: 'Tổng',
         today: 'Hôm nay',
         unknownError: 'Đã có lỗi xảy ra. Vui lòng thử lại.',
+        loadErrorTitle: 'Không tải được dữ liệu',
+        loadErrorHint: 'Máy chủ không phản hồi như mong đợi. Kiểm tra kết nối mạng rồi thử lại.',
         unknown: 'Không rõ',
         exporting: 'Đang xuất...',
         exportExcel: 'Xuất Excel',
