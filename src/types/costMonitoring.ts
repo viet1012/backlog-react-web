@@ -28,6 +28,17 @@ export interface CostMonitoringChartResponse {
     charts: CostChart[]
 }
 
+// GET /api/cost-monitoring/pl-weeks?month=yyyy-MM
+export interface CostPlWeeksResponse {
+    month: string
+    // tuần Simu có số trong tháng, tăng dần; rỗng = chưa có PL simulation
+    weeks: Exclude<CostSimuWeek, ''>[]
+    // tuần "Mới nhất (tự động)" đang dùng; null nếu weeks rỗng
+    latestWeek: Exclude<CostSimuWeek, ''> | null
+    // true: các khung dùng tuần khác nhau (khung thiếu số tuần mới nhất lấy tuần cũ hơn)
+    latestMixed: boolean
+}
+
 // '' = Latest (không gửi simuWeek)
 export type CostSimuWeek =
     | ''

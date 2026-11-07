@@ -3,6 +3,8 @@ import { alpha } from '@mui/material/styles'
 import type { CostChart } from '../../types/costMonitoring'
 import {
   COST_SERIES,
+  PACE_AHEAD_BADGE,
+  PACE_AHEAD_BADGE_DARK_FG,
   STATUS_BADGE,
   STATUS_BADGE_DARK_FG,
   TABULAR_NUMS,
@@ -10,7 +12,7 @@ import {
   seriesColor,
   type CostSeriesKey,
 } from './costChartConfig'
-import { getCostStatus, lastValue, type CostChartRow } from './costChartUtils'
+import { getCostPace, getCostStatus, lastValue, type CostChartRow } from './costChartUtils'
 import { useI18n } from '../../i18n/useI18n'
 
 interface CostChartStatsProps {
@@ -40,13 +42,25 @@ export function CostChartStats({ rows, chart, ratioDigits = 0 }: CostChartStatsP
   let badge = null
 
   if (status) {
+    // OK nhưng % đã dùng > tiến độ chuẩn + PACE_TOLERANCE → vàng cam thay vì xanh
+    const pace = status.level === 'ok' ? getCostPace(chart, rows) : null
+    const palette = pace?.ahead
+      ? { fg: dark ? PACE_AHEAD_BADGE_DARK_FG : PACE_AHEAD_BADGE.fg, bg: PACE_AHEAD_BADGE.bg }
+      : { fg: dark ? STATUS_BADGE_DARK_FG[status.level] : STATUS_BADGE[status.level].fg, bg: STATUS_BADGE[status.level].bg }
+
     // pill: nền nhạt + viền + chữ màu; nền tối dùng alpha của màu chữ
-    const fg = dark ? STATUS_BADGE_DARK_FG[status.level] : STATUS_BADGE[status.level].fg
-    const bg = dark ? alpha(fg, 0.14) : STATUS_BADGE[status.level].bg
+    const fg = palette.fg
+    const bg = dark ? alpha(fg, 0.14) : palette.bg
+
+    const title = status.level === 'noActual'
+      ? t.costGuide.hints.noActual
+      : pace
+        ? t.costGuide.hints.pace(Math.round(pace.usedPct), Math.round(pace.elapsedPct))
+        : t.costGuide.hints.badge
 
     badge = (
       <Tooltip
-        title={status.level === 'noActual' ? t.costGuide.hints.noActual : t.costGuide.hints.badge}
+        title={title}
         arrow
         enterTouchDelay={0}
       >

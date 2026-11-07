@@ -1,0 +1,220 @@
+/* Mascot dùng chung – góc dưới phải, ẩn trên màn nhỏ / khi in.
+   --mascot-h / --mascot-w do Mascot.tsx set từ MASCOT_HEIGHT. */
+.root {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  /* trên nội dung trang nhưng dưới Drawer (1200) / Modal / Tooltip của MUI */
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.body,
+.avatar,
+.minimize {
+  pointer-events: auto;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.body {
+  display: block;
+  background: none;
+}
+
+.body:focus-visible,
+.avatar:focus-visible,
+.minimize:focus-visible {
+  outline: 2px solid #378add;
+  outline-offset: 3px;
+}
+
+.body:focus-visible {
+  border-radius: 12px;
+}
+
+.svg {
+  display: block;
+  width: var(--mascot-w, 112px);
+  height: var(--mascot-h, 140px);
+  overflow: visible;
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.18));
+  animation: bob 2.4s ease-in-out infinite;
+}
+
+.eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: blink 4s infinite;
+}
+
+.arm {
+  transform-box: view-box;
+  /* xoay quanh vai phải */
+  transform-origin: 103px 110px;
+}
+
+.waving {
+  animation: wave 0.55s ease-in-out var(--wave-count, 2);
+}
+
+/* Nút thu nhỏ – góc trên phải, chỉ hiện khi hover / focus */
+.minimize {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  color: #37474f;
+  border: 1px solid #d0d7e2;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.minimize svg {
+  width: 12px;
+  height: 12px;
+}
+
+.root:hover .minimize,
+.root:focus-within .minimize {
+  opacity: 1;
+}
+
+/* Avatar tròn 40px khi thu nhỏ */
+.avatar {
+  display: block;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #dbeafb;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease;
+}
+
+.avatar:hover {
+  transform: scale(1.08);
+}
+
+.avatarSvg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Chat panel – bên trái mascot, đáy ngang chân mascot.
+   Cao theo nội dung, tối đa 70vh (chế độ rộng: 85vh); không vượt màn hình */
+.panel {
+  position: absolute;
+  right: calc(var(--mascot-w, 112px) + 8px);
+  bottom: 0;
+  width: 420px;
+  max-height: min(70vh, calc(100vh - 32px));
+  pointer-events: auto;
+  animation: pop 0.18s ease-out;
+}
+
+.panelWide {
+  width: 720px;
+  max-height: min(85vh, calc(100vh - 32px));
+}
+
+/* Màn < 900px: panel chiếm gần hết bề ngang, nằm trên mascot (không lấn ra mép trái) */
+@media (max-width: 899.98px) {
+  .panel,
+  .panelWide {
+    position: fixed;
+    right: 16px;
+    bottom: calc(16px + var(--mascot-h, 140px) + 8px);
+    width: calc(100vw - 32px);
+  }
+
+  .panel {
+    max-height: min(70vh, calc(100vh - var(--mascot-h, 140px) - 56px));
+  }
+
+  .panelWide {
+    max-height: min(85vh, calc(100vh - var(--mascot-h, 140px) - 56px));
+  }
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes blink {
+  0%,
+  94%,
+  100% {
+    transform: scaleY(1);
+  }
+  97% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes wave {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  30% {
+    transform: rotate(-18deg);
+  }
+  70% {
+    transform: rotate(14deg);
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .root {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .svg,
+  .eyes,
+  .waving,
+  .panel {
+    animation: none;
+  }
+
+  .minimize,
+  .avatar {
+    transition: none;
+  }
+}
+
+@media print {
+  .root {
+    display: none;
+  }
+}
