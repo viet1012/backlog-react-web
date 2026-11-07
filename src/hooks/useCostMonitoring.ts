@@ -5,11 +5,13 @@ import {
 } from 'react'
 import type {
   CostMonitoringChartResponse,
+  CostPlWeeksResponse,
   CostSimuWeek,
 } from '../types/costMonitoring'
 import {
   getCostMonitoringChart,
   getCostMonitoringMonths,
+  getCostMonitoringPlWeeks,
   toApiMonth,
 } from '../services/costMonitoringService'
 import { getMessages } from '../i18n/i18nContext'
@@ -33,6 +35,18 @@ export function useCostMonitoring() {
 
   const [data, setData] =
     useState<CostMonitoringChartResponse | null>(null)
+
+  // null = chưa tải / lỗi → dropdown không khóa tuần nào
+  const [plWeeks, setPlWeeks] =
+    useState<CostPlWeeksResponse | null>(null)
+
+  // đổi tháng → bỏ danh sách tuần của tháng cũ ngay (tránh khóa nhầm tuần)
+  const [plWeeksMonth, setPlWeeksMonth] =
+    useState(month)
+  if (plWeeksMonth !== month) {
+    setPlWeeksMonth(month)
+    setPlWeeks(null)
+  }
 
   const [monthsLoading, setMonthsLoading] =
     useState(true)
@@ -99,6 +113,30 @@ export function useCostMonitoring() {
     }
   }, [refreshKey])
 
+  // ---------- tuần PL simulation có số (không chặn chart; lỗi → null = chưa biết) ----------
+  useEffect(() => {
+    if (!month) {
+      return
+    }
+
+    const controller =
+      new AbortController()
+
+    getCostMonitoringPlWeeks(toApiMonth(month), controller.signal)
+      .then((response) => {
+        setPlWeeks(response)
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setPlWeeks(null)
+        }
+      })
+
+    return () => {
+      controller.abort()
+    }
+  }, [month, refreshKey])
+
   // ---------- chart ----------
   useEffect(() => {
     if (!month) {
@@ -149,6 +187,7 @@ export function useCostMonitoring() {
     setMonth,
     simuWeek,
     setSimuWeek,
+    plWeeks,
     data,
     loading: monthsLoading || chartLoading,
     error,

@@ -4,6 +4,7 @@ import {
 
 import type {
     CostMonitoringChartResponse,
+    CostPlWeeksResponse,
     CostSimuWeek,
 } from '../types/costMonitoring'
 
@@ -119,6 +120,55 @@ export async function getCostMonitoringChart(
     }
 
     return result
+}
+
+
+// =========================================================
+// PL SIMULATION WEEKS – month dạng "2026-10"
+// =========================================================
+
+function isPlWeeksResponse(
+    value: unknown,
+): value is CostPlWeeksResponse {
+
+    if (
+        typeof value !== 'object'
+        || value === null
+    ) {
+        return false
+    }
+
+    const item =
+        value as Record<string, unknown>
+
+    return (
+        Array.isArray(item.weeks)
+        && item.weeks.every((w) => typeof w === 'string')
+        && (item.latestWeek === null || typeof item.latestWeek === 'string')
+    )
+}
+
+export async function getCostMonitoringPlWeeks(
+    month: string,
+    signal?: AbortSignal,
+): Promise<CostPlWeeksResponse> {
+
+    const result =
+        await getJson(
+            `${API_URL}/pl-weeks?${new URLSearchParams({ month })}`,
+            signal,
+        )
+
+    if (!isPlWeeksResponse(result)) {
+        throw new Error(
+            'Invalid Cost Monitoring PL weeks response',
+        )
+    }
+
+    return {
+        ...result,
+        latestMixed: result.latestMixed === true,
+    }
 }
 
 

@@ -4,6 +4,7 @@ import { Box, LinearProgress } from '@mui/material'
 import { alpha, keyframes } from '@mui/material/styles'
 import { Outlet } from 'react-router-dom'
 
+import { Mascot, MascotProvider } from '../mascot'
 import { clockInTimeline, useClockInRun } from '../shift/clockInStore'
 
 import { LeftSidebar } from './LeftSidebar'
@@ -81,21 +82,26 @@ export function MainLayout() {
         }),
       })}
     >
-      <LeftSidebar />
-      <Box
-        component="main"
-        sx={{
-          display: 'flex',
-          flex: 1,
-          minWidth: 0,
-          minHeight: 0,
-          overflow: 'hidden',
-        }}
-      >
-        <Suspense fallback={<PageFallback />}>
-          <Outlet />
-        </Suspense>
-      </Box>
+      <MascotProvider>
+        <LeftSidebar />
+        <Box
+          component="main"
+          sx={{
+            display: 'flex',
+            flex: 1,
+            minWidth: 0,
+            minHeight: 0,
+            overflow: 'hidden',
+          }}
+        >
+          <Suspense fallback={<PageFallback />}>
+            <Outlet />
+          </Suspense>
+        </Box>
+
+        {/* đặt ngoài Outlet → không re-mount khi chuyển trang */}
+        <Mascot />
+      </MascotProvider>
     </Box>
   )
 }

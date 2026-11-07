@@ -521,7 +521,12 @@ export const en = {
         month: 'Month',
         plTgtBy: 'PL TGT by',
         latestAuto: 'Latest (auto)',
+        latestWeek: (week: number) => `Latest (Week ${week})`,
+        usingWeek: (week: number) => `Using Week ${week}`,
+        latestChip: 'latest',
         week: (week: number) => `Week ${week}`,
+        weekUnavailable: 'no data',
+        noPlSimulation: 'No PL simulation for this month yet',
         printLine: (month: string, updated: string) => `Month ${month} · Updated ${updated}`,
         noData: 'No Cost Monitoring data',
         chartEmpty: 'No data yet',
@@ -533,6 +538,74 @@ export const en = {
         },
         monthsLoadFailed: 'Unable to load Cost Monitoring months',
         chartLoadFailed: 'Unable to load Cost Monitoring chart',
+    },
+
+    mascot: {
+        minimize: 'Minimize mascot',
+        expand: 'Show mascot',
+        lines: {
+            default: [
+                'Hi there!',
+                'Have a productive day!',
+                'Remember to take a short break!',
+                'Ask me anything!',
+            ] as string[],
+            costMonitoring: [
+                'Hi there!',
+                "Don't forget to check T&SL!",
+                'Ask me anything!',
+            ] as string[],
+        },
+        screens: {
+            costMonitoring: {
+                name: 'Cost Monitoring',
+                greeting: 'Hi there! Ask me about costs.',
+                suggestions: [
+                    'Is cost over target this month?',
+                    'Which item is the most over budget?',
+                    'Compare actual with PL TGT',
+                    'Explain T&SL to me',
+                ] as string[],
+            },
+        },
+        chat: {
+            title: 'Anh Vê',
+            open: 'Open chat with Anh Vê',
+            close: 'Close chat',
+            expand: 'Expand',
+            collapse: 'Shrink',
+            newConversation: 'New conversation',
+            dynamicSuggestion: "Suggested from this period's data",
+            placeholder: 'Ask Anh Vê… (Enter to send, Shift+Enter for new line)',
+            send: 'Send',
+            thinking: 'Anh Vê is thinking…',
+            thinkingLong: 'Anh Vê is thinking hard, hang on…',
+            viewing: (screen: string) => `Viewing: ${screen}`,
+            showMonth: (month: string) => `Show ${month} on screen`,
+            notSupported: "Chat isn't available on this page yet.",
+            networkError: 'Network error',
+            timeout: (seconds: number) => `Timeout after ${seconds}s`,
+            sources: {
+                looked: (label: string) => `Looked up: ${label}`,
+                screenData: 'Answered from on-screen data',
+                // key = tên tool backend trả trong sources[].tool
+                tools: {
+                    explain_variance: 'Variance analysis',
+                    get_top_items: 'Top materials',
+                    get_daily_series: 'By day',
+                    compare_previous_month: 'Vs last month',
+                } as Record<string, string>,
+            },
+            errors: {
+                LLM_BUSY: 'Anh Vê is busy right now, please try again in a moment.',
+                LLM_ERROR: "Anh Vê can't connect right now, please try again later.",
+                LLM_TRUNCATED: 'The answer was too long, try a shorter question.',
+                LLM_EMPTY: "Anh Vê couldn't come up with an answer, please try again.",
+                RATE_LIMITED: 'Too many questions in a short time. Please wait a bit.',
+                BAD_REQUEST: 'The question is invalid or too long.',
+                INTERNAL: 'Something went wrong. Please try again later.',
+            },
+        },
     },
 
     costGuide: {
@@ -668,6 +741,7 @@ export const en = {
             simuWeek: 'Choose which weekly plan (Simulation) is used as the PL TGT line. By default the latest week with data is used.',
             badge: 'Compares the final value (Estimate, otherwise Actual) with the target (Fluctuating, otherwise FC): ≤100% OK · 100–105% Watch · >105% Over.',
             noActual: 'There is no Actual data for this month yet, so it cannot be evaluated; only the target and plan are shown.',
+            pace: (used: number, elapsed: number) => `Used ${used}% of Fluct, ${elapsed}% of the month has passed`,
         },
 
         example: {

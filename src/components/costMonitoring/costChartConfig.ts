@@ -62,6 +62,10 @@ export const STATUS_BADGE_DARK_FG: Record<CostBadgeLevel, string> = {
   noActual: '#94A3B8',
 }
 
+// Badge OK nhưng chi tiêu đi nhanh hơn tiến độ tháng → vàng cam cảnh báo
+export const PACE_AHEAD_BADGE = { bg: '#FFF7ED', fg: '#C2410C' }
+export const PACE_AHEAD_BADGE_DARK_FG = '#FB923C'
+
 export const TABULAR_NUMS = { fontVariantNumeric: 'tabular-nums' } as const
 
 export function seriesColor(series: CostSeriesConfig, dark: boolean) {

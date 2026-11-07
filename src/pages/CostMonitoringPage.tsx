@@ -1,9 +1,13 @@
 import {
   Alert,
   Box,
+  Chip,
+  Divider,
   FormControl,
   GlobalStyles,
   InputLabel,
+  ListItemText,
+  ListSubheader,
   MenuItem,
   Select,
   Stack,
@@ -24,6 +28,7 @@ import { CostMonitoringGrid } from '../components/costMonitoring/CostMonitoringG
 import { CostMonitoringGuideDrawer } from '../components/costMonitoring/CostMonitoringGuideDrawer'
 import { SIMU_WEEK_OPTIONS } from '../components/costMonitoring/costChartConfig'
 import type { GuideTabId } from '../components/costMonitoring/costMonitoringGuide'
+import { useMascotMonthControl, useMascotParams } from '../components/mascot'
 import { useCostMonitoring } from '../hooks/useCostMonitoring'
 import { toApiMonth } from '../services/costMonitoringService'
 import type { CostSimuWeek } from '../types/costMonitoring'
@@ -62,6 +67,11 @@ const printStyles = (
   />
 )
 
+// "Simu_W2" -> 2
+function weekNumber(simuWeek: string) {
+  return Number(simuWeek.slice(-1))
+}
+
 interface CostMonitoringPageProps {
   mode: PaletteMode
   onToggleMode: () => void
@@ -79,12 +89,28 @@ export function CostMonitoringPage({
     setMonth,
     simuWeek,
     setSimuWeek,
+    plWeeks,
     data,
     loading,
     error,
     lastUpdated,
     refresh,
   } = useCostMonitoring()
+
+  // context cho chat của mascot (Anh Vê): tháng + tuần PL TGT đang chọn
+  useMascotParams({
+    month: month ? toApiMonth(month) : null,
+    // "Mới nhất" ('') → không gửi key simuWeek
+    ...(simuWeek ? { simuWeek } : {}),
+  })
+
+  // nút "Xem tháng … trên màn hình" của mascot; tháng dạng "YYYY.MM" như danh sách months
+  useMascotMonthControl({
+    months,
+    select: (m) => {
+      if (months.includes(m)) setMonth(m)
+    },
+  })
 
   const [guideOpen, setGuideOpen] =
     useState(() => loadPreference(GUIDE_SEEN_KEY) !== true)
@@ -96,6 +122,14 @@ export function CostMonitoringPage({
     setGuideOpen(false)
     savePreference(GUIDE_SEEN_KEY, true)
   }
+
+  // Tooltip "PL TGT theo" ẩn khi menu đang mở (không đè lên danh sách tuần)
+  const [simuTipHover, setSimuTipHover] = useState(false)
+  const [simuMenuOpen, setSimuMenuOpen] = useState(false)
+
+  // null khi chưa tải / lỗi danh sách tuần
+  const latestWeek = plWeeks?.latestWeek ?? null
+  const noPlWeeks = plWeeks !== null && plWeeks.weeks.length === 0
 
   const noMonths = !loading && !error && months.length === 0
   const apiFailed = !loading && Boolean(error) && !data
@@ -149,7 +183,15 @@ export function CostMonitoringPage({
                   </Select>
                 </FormControl>
 
-                <Tooltip title={t.costGuide.hints.simuWeek} arrow placement="bottom" enterTouchDelay={0}>
+                <Tooltip
+                  title={t.costGuide.hints.simuWeek}
+                  arrow
+                  placement="top"
+                  enterTouchDelay={0}
+                  open={simuTipHover && !simuMenuOpen}
+                  onOpen={() => setSimuTipHover(true)}
+                  onClose={() => setSimuTipHover(false)}
+                >
                   <FormControl size="small" sx={{ width: 175, flexShrink: 0 }}>
                     {/* Mới nhất = '' → cần shrink/notched để nhãn không đè lên chữ của option */}
                     <InputLabel shrink>{t.cost.plTgtBy}</InputLabel>
@@ -160,14 +202,73 @@ export function CostMonitoringPage({
                       displayEmpty
                       notched
                       onChange={(event) => setSimuWeek(event.target.value)}
+                      onOpen={() => setSimuMenuOpen(true)}
+                      onClose={() => setSimuMenuOpen(false)}
+                      // ô đóng: gọn 1 dòng "Mới nhất (Tuần 4)" / "Tuần 2"
+                      renderValue={(value) => {
+                        if (value) return t.cost.week(weekNumber(value))
+                        return latestWeek
+                          ? t.cost.latestWeek(weekNumber(latestWeek))
+                          : t.cost.latestAuto
+                      }}
+                      MenuProps={{ slotProps: { paper: { sx: { minWidth: 210 } } } }}
                     >
-                      {SIMU_WEEK_OPTIONS.map((option) => (
-                        <MenuItem key={option.value || 'latest'} value={option.value}>
-                          {option.value
-                            ? t.cost.week(Number(option.value.slice(-1)))
-                            : t.cost.latestAuto}
-                        </MenuItem>
-                      ))}
+                      {/* tháng không có tuần nào → chỉ báo, không chọn được */}
+                      {noPlWeeks && (
+                        <ListSubheader
+                          sx={{ fontSize: 12, lineHeight: '28px', color: 'text.secondary' }}
+                        >
+                          {t.cost.noPlSimulation}
+                        </ListSubheader>
+                      )}
+
+                      <MenuItem value="" disabled={noPlWeeks}>
+                        <ListItemText
+                          primary={t.cost.latestAuto}
+                          secondary={latestWeek ? t.cost.usingWeek(weekNumber(latestWeek)) : undefined}
+                          slotProps={{
+                            primary: { sx: { fontSize: 14 } },
+                            secondary: { sx: { fontSize: 11.5 } },
+                          }}
+                          sx={{ my: 0 }}
+                        />
+                      </MenuItem>
+
+                      <Divider />
+
+                      {SIMU_WEEK_OPTIONS.filter((option) => option.value).map((option) => {
+                        const week = option.value
+                        // chưa tải được danh sách tuần → không khóa tuần nào
+                        const unavailable = plWeeks !== null && !(plWeeks.weeks as string[]).includes(week)
+                        const isLatest = week === latestWeek
+
+                        return (
+                          <MenuItem
+                            key={week}
+                            value={week}
+                            disabled={unavailable}
+                            sx={{ display: 'flex', gap: 1 }}
+                          >
+                            <Box sx={{ flex: 1 }}>{t.cost.week(weekNumber(week))}</Box>
+
+                            {isLatest && (
+                              <Chip
+                                label={t.cost.latestChip}
+                                size="small"
+                                color="primary"
+                                variant="outlined"
+                                sx={{ height: 18, fontSize: 10.5, '& .MuiChip-label': { px: 0.75 } }}
+                              />
+                            )}
+
+                            {unavailable && (
+                              <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
+                                {t.cost.weekUnavailable}
+                              </Typography>
+                            )}
+                          </MenuItem>
+                        )
+                      })}
                     </Select>
                   </FormControl>
                 </Tooltip>
@@ -188,7 +289,7 @@ export function CostMonitoringPage({
                 {t.cost.printLine(month ?? '–', lastUpdated ? dayjs(lastUpdated).format('DD/MM/YYYY HH:mm') : '–')}
               </Typography>
 
-              <CostChartLegend />
+              <CostChartLegend plUnavailable={noPlWeeks} />
             </>
           }
           mode={mode}

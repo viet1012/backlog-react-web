@@ -128,3 +128,32 @@ export function getCostStatus(chart: CostChart, rows: CostChartRow[]): CostStatu
 
   return { ratio, level }
 }
+
+/** % đã dùng vượt tiến độ chuẩn quá ngưỡng này (điểm %) → badge OK đổi màu cảnh báo */
+export const PACE_TOLERANCE = 3
+
+export interface CostPace {
+  /** Actual mới nhất / target (Fluct, không có thì FC) × 100 */
+  usedPct: number
+  /** tiến độ chuẩn: ngày có actual mới nhất / số ngày trong tháng × 100 */
+  elapsedPct: number
+  ahead: boolean
+}
+
+// Tiến độ chi tiêu so với thời gian đã qua trong tháng
+export function getCostPace(chart: CostChart, rows: CostChartRow[]): CostPace | null {
+  const lastAct = lastIndexOf(rows, 'actMtd')
+  if (lastAct < 0) return null
+
+  const used = rows[lastAct].actMtd
+  const target = lastValue(rows, 'fluctTgt') ?? chart.fcTgt
+  if (used == null || target == null || target <= 0) return null
+
+  const day = dayjs(rows[lastAct].date)
+  if (!day.isValid()) return null
+
+  const usedPct = (used / target) * 100
+  const elapsedPct = (day.date() / day.daysInMonth()) * 100
+
+  return { usedPct, elapsedPct, ahead: usedPct > elapsedPct + PACE_TOLERANCE }
+}

@@ -430,7 +430,12 @@ export const vi: Messages = {
         month: 'Tháng',
         plTgtBy: 'PL TGT theo',
         latestAuto: 'Mới nhất (tự động)',
+        latestWeek: (week) => `Mới nhất (Tuần ${week})`,
+        usingWeek: (week) => `Đang dùng Tuần ${week}`,
+        latestChip: 'mới nhất',
         week: (week) => `Tuần ${week}`,
+        weekUnavailable: 'chưa có',
+        noPlSimulation: 'Chưa có PL simulation tháng này',
         printLine: (month, updated) => `Tháng ${month} · Cập nhật ${updated}`,
         noData: 'Không có dữ liệu Cost Monitoring',
         chartEmpty: 'Chưa có dữ liệu',
@@ -442,6 +447,73 @@ export const vi: Messages = {
         },
         monthsLoadFailed: 'Không tải được danh sách tháng Cost Monitoring',
         chartLoadFailed: 'Không tải được biểu đồ Cost Monitoring',
+    },
+
+    mascot: {
+        minimize: 'Thu nhỏ linh vật',
+        expand: 'Hiện linh vật',
+        lines: {
+            default: [
+                'Chào bạn!',
+                'Chúc bạn làm việc hiệu quả!',
+                'Nhớ nghỉ giải lao chút nhé!',
+                'Có gì cứ hỏi tôi!',
+            ],
+            costMonitoring: [
+                'Chào bạn!',
+                'Nhớ check T&SL nhé!',
+                'Có gì cứ hỏi tôi!',
+            ],
+        },
+        screens: {
+            costMonitoring: {
+                name: 'Cost Monitoring',
+                greeting: 'Chào bạn! Hỏi tôi về chi phí nhé.',
+                suggestions: [
+                    'Tháng này chi phí có vượt target không?',
+                    'Hạng mục nào đang vượt nhiều nhất?',
+                    'So sánh actual với PL TGT',
+                    'Giải thích T&SL giúp tôi',
+                ],
+            },
+        },
+        chat: {
+            title: 'Anh Vê',
+            open: 'Mở chat với Anh Vê',
+            close: 'Đóng chat',
+            expand: 'Mở rộng',
+            collapse: 'Thu nhỏ',
+            newConversation: 'Cuộc trò chuyện mới',
+            dynamicSuggestion: 'Gợi ý theo dữ liệu kỳ đang xem',
+            placeholder: 'Hỏi Anh Vê… (Enter để gửi, Shift+Enter xuống dòng)',
+            send: 'Gửi',
+            thinking: 'Anh Vê đang suy nghĩ…',
+            thinkingLong: 'Anh Vê đang suy nghĩ kỹ, chờ chút nhé…',
+            viewing: (screen) => `Đang xem: ${screen}`,
+            showMonth: (month) => `Xem tháng ${month} trên màn hình`,
+            notSupported: 'Trang này chưa hỗ trợ hỏi đáp.',
+            networkError: 'Network error',
+            timeout: (seconds) => `Timeout sau ${seconds}s`,
+            sources: {
+                looked: (label) => `Đã tra: ${label}`,
+                screenData: 'Trả lời từ dữ liệu màn hình',
+                tools: {
+                    explain_variance: 'Phân tích chênh lệch',
+                    get_top_items: 'Top vật tư',
+                    get_daily_series: 'Theo ngày',
+                    compare_previous_month: 'So tháng trước',
+                },
+            },
+            errors: {
+                LLM_BUSY: 'Anh Vê đang bận, bạn thử lại sau ít phút nhé.',
+                LLM_ERROR: 'Anh Vê đang mất kết nối, bạn thử lại sau nhé.',
+                LLM_TRUNCATED: 'Câu trả lời quá dài, bạn hỏi ngắn gọn hơn nhé.',
+                LLM_EMPTY: 'Anh Vê chưa nghĩ ra câu trả lời, bạn thử hỏi lại nhé.',
+                RATE_LIMITED: 'Bạn hỏi hơi nhanh, chờ chút rồi hỏi tiếp nhé.',
+                BAD_REQUEST: 'Câu hỏi không hợp lệ hoặc quá dài.',
+                INTERNAL: 'Có lỗi xảy ra, bạn thử lại sau nhé.',
+            },
+        },
     },
 
     costGuide: {
@@ -576,6 +648,7 @@ export const vi: Messages = {
             simuWeek: 'Chọn bản kế hoạch (Simulation) theo tuần dùng làm đường PL TGT. Mặc định lấy tuần mới nhất có số liệu.',
             badge: 'So giá trị cuối (Estimate, không có thì Actual) với target (Fluctuating, không có thì FC): ≤100% OK · 100–105% Theo dõi · >105% Vượt.',
             noActual: 'Tháng này chưa có số liệu Actual nên chưa đánh giá được; chỉ xem được target và kế hoạch.',
+            pace: (used, elapsed) => `Đã dùng ${used}% Fluct, đã qua ${elapsed}% thời gian tháng`,
         },
 
         example: {
