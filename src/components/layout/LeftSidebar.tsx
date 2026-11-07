@@ -38,7 +38,7 @@ import {
   WbSunnyRounded,
   WbTwilightRounded,
 } from '@mui/icons-material'
-import logo from '../../assets/logo.png'
+import logo from '../../assets/logo.webp'
 
 import {
   NavLink,
@@ -587,7 +587,6 @@ export function LeftSidebar() {
   return (
     <Box
       component="aside"
-      data-ambient={logoutOpen ? 'paused' : undefined}
       sx={(th) => getSidebarSx(th, collapsed)}
     >
 

@@ -28,6 +28,23 @@ export function getDayPeriod(date: Date): DayPeriod {
     return 'night'
 }
 
+// The full clock-in / clock-out sequence plays on the user's first sign-in /
+// sign-out of the day, a short one afterwards. Without storage it is
+// always the full one.
+export function takeFirstRunToday(kind: 'clock-in' | 'clock-out', username: string) {
+    const key = `shiftReplay:${kind}:${username}`
+    const today = new Date().toDateString()
+
+    try {
+        if (localStorage.getItem(key) === today) return false
+        localStorage.setItem(key, today)
+    } catch {
+        // Full sequence every time
+    }
+
+    return true
+}
+
 // =========================================================
 // KEYFRAMES (transform / opacity only)
 // =========================================================
@@ -52,13 +69,6 @@ export const shutterDrop = keyframes`
     80% { transform: translateY(0); animation-timing-function: ease-out; }
     90% { transform: translateY(-6px); animation-timing-function: ease-in; }
     100% { transform: translateY(0); }
-`
-
-// Mirror of the drop: a small unlatch dip, then the roll up.
-export const shutterRise = keyframes`
-    0% { transform: translateY(0); animation-timing-function: ease-out; }
-    10% { transform: translateY(6px); animation-timing-function: cubic-bezier(.7,0,.3,1); }
-    100% { transform: translateY(-100%); }
 `
 
 // Only shifts right/down: the overlay overhangs the viewport on those sides.
@@ -153,14 +163,13 @@ const walkStep = keyframes`
 export function ShiftOverlayRoot({
     onSkip,
     shakeAt,
-    fadeIn = false,
     revealAt,
     fadeOutAt,
+    hintAt = (revealAt ?? 0) + 600,
     children,
 }: {
     onSkip: () => void
     shakeAt?: number
-    fadeIn?: boolean
     /**
      * Mount the overlay early but keep it invisible until this time (ms):
      * the mount / first paint cost then lands before the animation starts
@@ -168,6 +177,8 @@ export function ShiftOverlayRoot({
      */
     revealAt?: number
     fadeOutAt?: number
+    /** When the "click / Esc to skip" hint shows (ms). */
+    hintAt?: number
     children: ReactNode
 }) {
     const { t } = useI18n()
@@ -187,7 +198,6 @@ export function ShiftOverlayRoot({
     }, [])
 
     const animations = [
-        fadeIn && `${sceneFade} 280ms ease-out both`,
         revealAt !== undefined && `${sceneFade} 200ms ease-out ${revealAt}ms both`,
         shakeAt !== undefined && `${screenShake} 120ms linear ${shakeAt}ms`,
         fadeOutAt !== undefined && `${overlayFadeOut} 300ms ease-in ${fadeOutAt}ms forwards`,
@@ -198,7 +208,6 @@ export function ShiftOverlayRoot({
             <Box
                 role="status"
                 aria-live="polite"
-                title={t.shift.skip}
                 onClick={onSkip}
                 sx={(theme) => ({
                     position: 'fixed',
@@ -215,6 +224,53 @@ export function ShiftOverlayRoot({
                 })}
             >
                 {children}
+
+                {/* Skip hint: the click / Esc skip was only a tooltip before */}
+                <Box
+                    aria-hidden
+                    sx={{
+                        position: 'absolute',
+                        top: 28,
+                        left: 0,
+                        right: 0,
+                        display: 'flex',
+                        justifyContent: 'center',
+                        pointerEvents: 'none',
+                    }}
+                >
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.75,
+                            px: 1.25,
+                            py: 0.5,
+                            borderRadius: 999,
+                            bgcolor: 'rgba(2,6,23,0.55)',
+                            color: 'rgba(226,232,240,0.85)',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            letterSpacing: '0.04em',
+                            whiteSpace: 'nowrap',
+                            animation: `${fadeUp} 300ms ease-out ${hintAt}ms both`,
+                        }}
+                    >
+                        {t.shift.skip}
+                        <Box
+                            component="kbd"
+                            sx={{
+                                px: 0.6,
+                                borderRadius: '4px',
+                                border: '1px solid rgba(226,232,240,0.35)',
+                                fontFamily: monoFont,
+                                fontSize: 10.5,
+                                lineHeight: '16px',
+                            }}
+                        >
+                            Esc
+                        </Box>
+                    </Box>
+                </Box>
             </Box>
         </Portal>
     )
@@ -581,6 +637,215 @@ export function Worker({
             }}
         >
             {moved}
+        </Box>
+    )
+}
+
+// =========================================================
+// CARD READER
+// =========================================================
+
+// Waiting LED, field waves toward the badge, accepted ping
+const readerBlink = keyframes`
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.25; }
+`
+
+const readerWave = keyframes`
+    0% { opacity: 0; transform: translateX(2px); }
+    40% { opacity: 1; }
+    100% { opacity: 0; transform: translateX(-3px); }
+`
+
+const readerPing = keyframes`
+    from { opacity: 0.9; transform: scale(0.4); }
+    to { opacity: 0; transform: scale(2.6); }
+`
+
+const beepPop = keyframes`
+    0% { opacity: 0; transform: translateY(5px) scale(0.6); }
+    30% { opacity: 1; transform: translateY(-2px) scale(1.06); }
+    45% { transform: translateY(0) scale(1); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+`
+
+export type ReaderState = 'idle' | 'scan' | 'ok'
+
+const readerTones: Record<ReaderState, { led: string; screen: string; icon: string; glow: string }> = {
+    idle: { led: '#475569', screen: '#0f172a', icon: '#64748b', glow: 'transparent' },
+    scan: { led: '#f59e0b', screen: '#2a1d05', icon: '#fbbf24', glow: 'rgba(245,158,11,0.8)' },
+    ok: { led: '#22c55e', screen: '#052e16', icon: '#4ade80', glow: 'rgba(34,197,94,0.85)' },
+}
+
+// Drawn in reader units: 18 × 62, sized for a 64px-tall worker (1 unit = 1px).
+// The scan face (y 23) is where that worker's raised badge ends up when the
+// reader stands 36 units in front of them, on the same ground line.
+const readerHeight = 62
+const readerScanY = 23
+
+// Card reader post. Idle: dim. Scan: amber LED blinks, contactless waves
+// run toward the badge. OK: green check, ping rings and a "Beep!" tag.
+// Moving parts are HTML layers (GPU only). `unit` scales it with the worker
+// (e.g. 'clamp(1px, 11vh / 64, 1.75px)' next to a clamp(64px, 11vh, 112px) one).
+export function CardReader({
+    state,
+    animate,
+    left,
+    bottom,
+    unit = '1px',
+}: {
+    state: ReaderState
+    animate: boolean
+    left: number | string
+    bottom: number | string
+    unit?: string
+}) {
+    const { t } = useI18n()
+    const tone = readerTones[state]
+    const screen = { left: 3.2, top: 15, width: 11.6, height: 10 }
+    const u = (value: number) => `calc(var(--reader-unit) * ${value})`
+    const box = (rect: { left: number; top: number; width: number; height: number }) => ({
+        left: u(rect.left),
+        top: u(rect.top),
+        width: u(rect.width),
+        height: u(rect.height),
+    })
+    const iconSize = { width: u(9), height: u(7.5) }
+
+    return (
+        <Box
+            aria-hidden
+            sx={{
+                '--reader-unit': unit,
+                position: 'absolute',
+                left,
+                bottom,
+                width: u(18),
+                height: u(readerHeight),
+
+                '& svg': { display: 'block', overflow: 'visible' },
+                '& .reader-layer': { position: 'absolute' },
+            }}
+        >
+            <svg viewBox={`0 0 18 ${readerHeight}`} width="100%" height="100%" shapeRendering="geometricPrecision">
+                <ellipse cx={9} cy={61.4} rx={8.5} ry={1.4} fill="rgba(0,0,0,0.3)" />
+
+                {/* Post with a hazard band, on a base plate */}
+                <rect x={6.5} y={30} width={5} height={30} fill="#475569" stroke="#0f172a" strokeWidth={0.6} />
+                <rect x={7.2} y={30} width={1} height={30} fill="#94a3b8" opacity={0.55} />
+                <rect x={6.5} y={44} width={5} height={5} fill="#f59e0b" />
+                <path d="M6.5 46.5 L9 44 M6.5 49 L11.5 44 M9 49 L11.5 46.5" stroke="#111827" strokeWidth={1.1} />
+                <rect x={3} y={59} width={12} height={2.6} rx={1} fill="#334155" stroke="#0f172a" strokeWidth={0.6} />
+
+                {/* Head: housing, top highlight, screen, card slot */}
+                <rect x={1} y={10} width={16} height={21} rx={3} fill="#1f2937" stroke="#0f172a" strokeWidth={0.6} />
+                <rect x={2} y={10.8} width={14} height={1.8} rx={0.9} fill="#374151" />
+                <rect
+                    x={screen.left}
+                    y={screen.top}
+                    width={screen.width}
+                    height={screen.height}
+                    rx={1.4}
+                    fill={tone.screen}
+                    stroke="#0b1220"
+                    strokeWidth={0.5}
+                    style={{ transition: animate ? 'fill 160ms ease' : 'none' }}
+                />
+                <path d="M5 28 H13" stroke="#0b1220" strokeWidth={1.2} strokeLinecap="round" />
+            </svg>
+
+            {/* LED bar on top */}
+            <Box
+                className="reader-layer"
+                sx={{
+                    ...box({ left: 3, top: 7.4, width: 12, height: 2.2 }),
+                    borderRadius: u(2),
+                    bgcolor: tone.led,
+                    boxShadow: state === 'idle' ? 'none' : `0 0 6px 1px ${tone.glow}`,
+                    animation: state === 'scan' && animate ? `${readerBlink} 0.5s steps(1, end) infinite` : 'none',
+                }}
+            />
+
+            {/* Screen icon: contactless symbol, or a check once accepted */}
+            <Box
+                className="reader-layer"
+                sx={{
+                    ...box(screen),
+                    display: 'grid',
+                    placeItems: 'center',
+                    animation: state === 'scan' && animate ? `${readerBlink} 1s ease-in-out infinite` : 'none',
+                }}
+            >
+                {state === 'ok' ? (
+                    <svg viewBox="0 0 12 10" style={iconSize}>
+                        <path d="M2.4 5.2 L5 7.6 L9.6 2.4" fill="none" stroke={tone.icon} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                ) : (
+                    <svg viewBox="0 0 12 10" style={iconSize}>
+                        <path
+                            d="M3 3.4 Q4.2 5 3 6.6 M5.4 2.2 Q7.3 5 5.4 7.8 M7.8 1 Q10.4 5 7.8 9"
+                            fill="none"
+                            stroke={tone.icon}
+                            strokeWidth={0.9}
+                            strokeLinecap="round"
+                        />
+                    </svg>
+                )}
+            </Box>
+
+            {/* Field waves running from the reader to the badge */}
+            {state === 'scan' && animate && [0, 0.18].map((delay) => (
+                <Box
+                    key={delay}
+                    className="reader-layer"
+                    sx={{
+                        ...box({ left: -6, top: readerScanY - 5, width: 6, height: 10 }),
+                        opacity: 0,
+                        willChange: 'transform, opacity',
+                        animation: `${readerWave} 0.72s ease-out ${delay}s infinite`,
+                    }}
+                >
+                    <svg viewBox="0 0 6 10" width="100%" height="100%">
+                        <path d="M4.6 2 Q2.6 5 4.6 8" fill="none" stroke="#fbbf24" strokeWidth={1} strokeLinecap="round" />
+                    </svg>
+                </Box>
+            ))}
+
+            {/* Accepted: two ping rings from the screen and a "Beep!" tag */}
+            {state === 'ok' && animate && [0, 0.14].map((delay) => (
+                <Box
+                    key={delay}
+                    className="reader-layer"
+                    sx={{
+                        ...box({ left: 9 - 7, top: screen.top + screen.height / 2 - 7, width: 14, height: 14 }),
+                        borderRadius: '50%',
+                        border: `${u(1.5)} solid ${tone.icon}`,
+                        opacity: 0,
+                        animation: `${readerPing} 520ms ease-out ${delay}s forwards`,
+                    }}
+                />
+            ))}
+            {state === 'ok' && (
+                <Box className="reader-layer" sx={{ left: '50%', bottom: u(readerHeight + 4), transform: 'translateX(-50%)' }}>
+                    <Box
+                        sx={{
+                            px: u(4.8),
+                            borderRadius: u(6),
+                            bgcolor: '#22c55e',
+                            color: '#052e16',
+                            fontFamily: monoFont,
+                            fontSize: u(10),
+                            fontWeight: 700,
+                            lineHeight: u(15),
+                            whiteSpace: 'nowrap',
+                            boxShadow: '0 0 10px rgba(34,197,94,0.6)',
+                            animation: animate ? `${beepPop} 420ms ease-out both` : 'none',
+                        }}
+                    >
+                        {t.logout.beep}
+                    </Box>
+                </Box>
+            )}
         </Box>
     )
 }

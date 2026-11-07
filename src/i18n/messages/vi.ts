@@ -147,7 +147,7 @@ export const vi: Messages = {
         capsLockOn: 'Đang bật Caps Lock',
         rememberMe: 'Ghi nhớ đăng nhập',
         signIn: 'Đăng nhập',
-        signingIn: 'Đang đăng nhập...',
+        signingIn: 'Đang quẹt thẻ…',
         sPatrolHint: 'Đã dùng S-Patrol? Đăng nhập bằng cùng mã nhân viên và mật khẩu.',
         noAccount: 'Chưa có tài khoản?',
         createAccount: 'Tạo tài khoản',

@@ -21,27 +21,29 @@ import { ProtectedRoute } from './components/auth/ProtectedRoute'
 import { RoleRoute } from './components/auth/RoleRoute'
 import { ClockInOverlay } from './components/shift/ClockInOverlay'
 
-import { BacklogPage } from './pages/BacklogPage'
-import { AsakaiPage } from './pages/AsakaiPage'
-import { BosbPage } from './pages/BosbPage'
-import { CostMonitoringPage } from './pages/CostMonitoringPage'
-import { DeadstockPage } from './pages/DeadstockPage'
-import { ExportListPage } from './pages/ExportListPage'
-import { FacConfirmPage } from './pages/FacConfirmPage'
-import { KpiPage } from './pages/KpiPage'
 import { LoginPage } from './pages/LoginPage'
-import { MachineLocatorPage } from './pages/MachineLocatorPage'
-import { MachineMonitorPage } from './pages/MachineMonitorPage'
-import { UserHomePage } from './pages/UserHomePage'
-import { OdbfPage } from './pages/OdbfPage'
-import { OtPage } from './pages/OtPage'
-import { PackingListPage } from './pages/PackingListPage'
-import { PlPage } from './pages/PlPage'
-import { RemainPoControlPage } from './pages/RemainPoControlPage'
-import { SalesStatusPage } from './pages/SalesStatusPage'
-import { ShipmentPage } from './pages/ShipmentPage'
-import { SphPage } from './pages/SphPage'
-import { PcTrainingPage } from './pages/training/PcTrainingPage'
+import {
+  AsakaiPage,
+  BacklogPage,
+  BosbPage,
+  CostMonitoringPage,
+  DeadstockPage,
+  ExportListPage,
+  FacConfirmPage,
+  KpiPage,
+  MachineLocatorPage,
+  MachineMonitorPage,
+  OdbfPage,
+  OtPage,
+  PackingListPage,
+  PcTrainingPage,
+  PlPage,
+  RemainPoControlPage,
+  SalesStatusPage,
+  ShipmentPage,
+  SphPage,
+  UserHomePage,
+} from './pages/lazyPages'
 
 import {
   createDashboardTheme,

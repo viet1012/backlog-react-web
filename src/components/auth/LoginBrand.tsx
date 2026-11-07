@@ -1,5 +1,5 @@
 import { Box, Typography } from '@mui/material'
-import logo from '../../assets/logo.png'
+import logo from '../../assets/logo.webp'
 import { v } from './loginStyles'
 
 export function LoginBrand() {

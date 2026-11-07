@@ -219,12 +219,6 @@ export function getSidebarSx(
                 1,
         },
 
-        // Looping animations (avatar, LED, online dot) rest while a modal
-        // (logout) plays its own animation on top.
-        '&[data-ambient="paused"] *': {
-            animationPlayState: 'paused !important',
-        },
-
         '@media (prefers-reduced-motion: reduce)': {
             transition:
                 'none',

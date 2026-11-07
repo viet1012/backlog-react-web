@@ -179,7 +179,7 @@ export const en = {
         capsLockOn: 'Caps Lock is on',
         rememberMe: 'Remember me',
         signIn: 'Sign In',
-        signingIn: 'Signing in...',
+        signingIn: 'Scanning badge…',
         sPatrolHint: 'Already using S-Patrol? Sign in with the same Employee ID and password.',
         noAccount: 'Don’t have an account?',
         createAccount: 'Create account',

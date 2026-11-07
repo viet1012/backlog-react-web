@@ -1,7 +1,7 @@
 import { Box, Typography } from '@mui/material'
 import type { ReactNode } from 'react'
 
-import logo from '../../assets/logo.png'
+import logo from '../../assets/logo.webp'
 import { v } from './loginStyles'
 
 interface AuthCardHeaderProps {

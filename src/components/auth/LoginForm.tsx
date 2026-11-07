@@ -3,22 +3,24 @@ import {
   Box,
   Button,
   Checkbox,
-  CircularProgress,
   FormControlLabel,
   IconButton,
   InputAdornment,
   Typography,
 } from '@mui/material'
 
+import { keyframes } from '@mui/material/styles'
+
 import {
   ArrowForwardRounded,
+  ContactlessRounded,
   LockOutlined,
   PersonOutlineRounded,
   VisibilityOffOutlined,
   VisibilityOutlined,
 } from '@mui/icons-material'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
 
 import { useI18n } from '../../i18n/useI18n'
@@ -36,6 +38,26 @@ import {
   passwordToggleFieldSx,
 } from './loginStyles'
 
+// Badge being read while the request runs
+const scanPulse = keyframes`
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.88); }
+`
+
+// Rejected sign-in. Two keyframes (emotion would merge identical ones into
+// one name), alternated so each new failure replays the shake.
+const shakeSteps = `
+  15% { transform: translateX(-8px); }
+  30% { transform: translateX(7px); }
+  45% { transform: translateX(-5px); }
+  60% { transform: translateX(4px); }
+  75% { transform: translateX(-2px); }
+`
+const shakes = [
+  keyframes`0%, 100% { transform: translateX(0); } ${shakeSteps}`,
+  keyframes`0%, 100% { transform: none; } ${shakeSteps}`,
+]
+
 interface LoginFormProps {
   employeeId: string
   password: string
@@ -43,6 +65,8 @@ interface LoginFormProps {
   showPassword: boolean
   loading: boolean
   error: string
+  /** Number of failed sign-ins so far */
+  failCount: number
 
   onEmployeeIdChange: (value: string) => void
   onPasswordChange: (value: string) => void
@@ -59,6 +83,7 @@ export function LoginForm({
   showPassword,
   loading,
   error,
+  failCount,
   onEmployeeIdChange,
   onPasswordChange,
   onRememberChange,
@@ -74,6 +99,17 @@ export function LoginForm({
     setCapsLockOn(event.getModifierState('CapsLock'))
   }
 
+  // Wrong password: select it, ready to be typed again
+  useEffect(() => {
+    if (failCount === 0) return
+
+    const input = document.getElementById('login-password')
+    if (input instanceof HTMLInputElement) {
+      input.focus()
+      input.select()
+    }
+  }, [failCount])
+
   return (
     <Box
       component="form"
@@ -82,6 +118,8 @@ export function LoginForm({
         display: 'flex',
         flexDirection: 'column',
         gap: 2,
+        animation: failCount > 0 ? `${shakes[failCount % 2]} 420ms ease-out` : 'none',
+        '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
       }}
     >
       {/* MSNV */}
@@ -231,9 +269,12 @@ export function LoginForm({
             component="span"
             sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}
           >
-            <CircularProgress
-              size={16}
-              color="inherit"
+            <ContactlessRounded
+              sx={{
+                fontSize: 18,
+                animation: `${scanPulse} 0.9s ease-in-out infinite`,
+                '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+              }}
             />
             {t.auth.signingIn}
           </Box>

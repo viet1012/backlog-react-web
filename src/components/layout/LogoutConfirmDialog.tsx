@@ -6,6 +6,7 @@ import {
     Dialog,
     DialogActions,
     DialogContent,
+    GlobalStyles,
     Typography,
     useMediaQuery,
 } from '@mui/material'
@@ -19,16 +20,19 @@ import { useI18n } from '../../i18n/useI18n'
 
 import {
     Beacon,
+    CardReader,
     DustBurst,
     formatClock,
     getDayPeriod,
     monoFont,
     type DayPeriod,
+    type ReaderState,
     ShiftOverlayRoot,
     ShiftScene,
     ShutterMessage,
     ShutterPanel,
     shutterDrop,
+    takeFirstRunToday,
     Worker,
 } from '../shift/shiftParts'
 import { buildWorkerCharacter, readAvatarSeed, type WorkerCharacter } from '../shift/workerCharacter'
@@ -62,22 +66,33 @@ const overlayMountAt = 80
 const gateDropDuration = 520
 const gateImpact = Math.round(gateDropDuration * 0.8)
 
-// Relative to overlay mount (600ms): the worker waves, walks out,
-// and the shutter lands just before they leave the frame.
+// Relative to the overlay reveal (600ms). Full (first sign-out of the day):
+// the worker waves, walks out, and the shutter lands just before they leave
+// the frame. Short: they already walked out of the dialog's gate, so the
+// shutter comes straight down.
 const waveDuration = 500
 const walkStart = waveDuration
 const walkDuration = 950
 const gaitCycle = 440
-const dropDelay = 400
-const dropDuration = 1150
-const shutterImpact = dropDelay + Math.round(dropDuration * 0.8)
-
-// Farewell text fades in after impact, then holds long enough to read.
-const messageAt = shutterImpact + 60
 const messageFade = 450
-const messageHold = 900
 
-const confirmAt = shutterStartAt + messageAt + messageFade + messageHold
+function clockOutTimeline(full: boolean) {
+    const dropDelay = full ? 400 : 0
+    const dropDuration = full ? 1150 : 800
+    const shutterImpact = dropDelay + Math.round(dropDuration * 0.8)
+
+    // Farewell text fades in after impact, then holds long enough to read.
+    const messageAt = shutterImpact + 60
+    const messageHold = full ? 750 : 650
+
+    return {
+        dropDelay,
+        dropDuration,
+        shutterImpact,
+        messageAt,
+        confirmAt: shutterStartAt + messageAt + messageFade + messageHold,
+    }
+}
 
 // =========================================================
 // KEYFRAMES (transform / opacity only, except the hazard stripes)
@@ -189,29 +204,17 @@ const ledDoubleBlink = keyframes`
     100% { opacity: 0; }
 `
 
-// Card reader: waiting LED, field waves toward the badge, accepted ping
-const readerBlink = keyframes`
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.25; }
-`
-
-const readerWave = keyframes`
-    0% { opacity: 0; transform: translateX(2px); }
-    40% { opacity: 1; }
-    100% { opacity: 0; transform: translateX(-3px); }
-`
-
-const readerPing = keyframes`
-    from { opacity: 0.9; transform: scale(0.4); }
-    to { opacity: 0; transform: scale(2.6); }
-`
-
-const beepPop = keyframes`
-    0% { opacity: 0; transform: translateY(5px) scale(0.6); }
-    30% { opacity: 1; transform: translateY(-2px) scale(1.06); }
-    45% { transform: translateY(0) scale(1); }
-    100% { opacity: 1; transform: translateY(0) scale(1); }
-`
+// While the dialog is open the page behind it (#root; the dialog and the
+// overlay are portaled out of it) rests: looping animations pause and backdrop
+// blurs (glass cards, MuiCard) are dropped. A blur under the dialog is
+// recomputed on every frame the gate scene moves, which made it stutter.
+const pageAtRest = {
+    '#root *, #root *::before, #root *::after': {
+        animationPlayState: 'paused !important',
+        backdropFilter: 'none !important',
+        WebkitBackdropFilter: 'none !important',
+    },
+}
 
 // Diagonal amber/charcoal tile, same pair as the shutter's bottom rail.
 const hazardTile = 'linear-gradient(45deg, #111827 25%, #f59e0b 25%, #f59e0b 50%, #111827 50%, #111827 75%, #f59e0b 75%, #f59e0b)'
@@ -237,20 +240,9 @@ const walksOpen = [workerWalkIn]
 const walksClose = [workerWalkIn, workerWalkOut]
 const walksNone: typeof walksOpen = []
 
-// Card reader post beside the gate (1 unit = 1px). Its scan face is where
-// the raised badge ends up: ~36px in front of the worker, ~44px above the
-// scene bottom (readerScanY inside the reader's box).
+// Card reader post beside the gate, its scan face where the raised badge
+// ends up: ~36px in front of the worker.
 const readerX = workerRestX + 36
-const readerHeight = 62
-const readerScanY = 23
-
-type ReaderState = 'idle' | 'scan' | 'ok'
-
-const readerTones: Record<ReaderState, { led: string; screen: string; icon: string; glow: string }> = {
-    idle: { led: '#475569', screen: '#0f172a', icon: '#64748b', glow: 'transparent' },
-    scan: { led: '#f59e0b', screen: '#2a1d05', icon: '#fbbf24', glow: 'rgba(245,158,11,0.8)' },
-    ok: { led: '#22c55e', screen: '#052e16', icon: '#4ade80', glow: 'rgba(34,197,94,0.85)' },
-}
 
 // The factory photo (same aerial view by day and by night). Overlays are
 // placed in % of the photo, so they stay on the road / lamps when it scales.
@@ -636,160 +628,6 @@ const GateBackdrop = memo(function GateBackdrop({ period, animate }: { period: D
     )
 })
 
-// Card reader post. Idle: dim. Scan (hovering Sign out): amber LED blinks,
-// contactless waves run toward the badge. OK (confirmed): green check,
-// ping rings and a "Beep!" tag. Moving parts are HTML layers (GPU only).
-function CardReader({ state, animate }: { state: ReaderState; animate: boolean }) {
-    const { t } = useI18n()
-    const tone = readerTones[state]
-    const screen = { left: 3.2, top: 15, width: 11.6, height: 10 }
-
-    return (
-        <Box
-            aria-hidden
-            sx={{
-                position: 'absolute',
-                left: readerX,
-                bottom: 6,
-                width: 18,
-                height: readerHeight,
-
-                '& svg': { display: 'block', overflow: 'visible' },
-                '& .reader-layer': { position: 'absolute' },
-            }}
-        >
-            <svg viewBox={`0 0 18 ${readerHeight}`} width={18} height={readerHeight} shapeRendering="geometricPrecision">
-                <ellipse cx={9} cy={61.4} rx={8.5} ry={1.4} fill="rgba(0,0,0,0.3)" />
-
-                {/* Post with a hazard band, on a base plate */}
-                <rect x={6.5} y={30} width={5} height={30} fill="#475569" stroke="#0f172a" strokeWidth={0.6} />
-                <rect x={7.2} y={30} width={1} height={30} fill="#94a3b8" opacity={0.55} />
-                <rect x={6.5} y={44} width={5} height={5} fill="#f59e0b" />
-                <path d="M6.5 46.5 L9 44 M6.5 49 L11.5 44 M9 49 L11.5 46.5" stroke="#111827" strokeWidth={1.1} />
-                <rect x={3} y={59} width={12} height={2.6} rx={1} fill="#334155" stroke="#0f172a" strokeWidth={0.6} />
-
-                {/* Head: housing, top highlight, screen, card slot */}
-                <rect x={1} y={10} width={16} height={21} rx={3} fill="#1f2937" stroke="#0f172a" strokeWidth={0.6} />
-                <rect x={2} y={10.8} width={14} height={1.8} rx={0.9} fill="#374151" />
-                <rect
-                    x={screen.left}
-                    y={screen.top}
-                    width={screen.width}
-                    height={screen.height}
-                    rx={1.4}
-                    fill={tone.screen}
-                    stroke="#0b1220"
-                    strokeWidth={0.5}
-                    style={{ transition: animate ? 'fill 160ms ease' : 'none' }}
-                />
-                <path d="M5 28 H13" stroke="#0b1220" strokeWidth={1.2} strokeLinecap="round" />
-            </svg>
-
-            {/* LED bar on top */}
-            <Box
-                className="reader-layer"
-                sx={{
-                    left: 3,
-                    top: 7.4,
-                    width: 12,
-                    height: 2.2,
-                    borderRadius: '2px',
-                    bgcolor: tone.led,
-                    boxShadow: state === 'idle' ? 'none' : `0 0 6px 1px ${tone.glow}`,
-                    animation: state === 'scan' && animate ? `${readerBlink} 0.5s steps(1, end) infinite` : 'none',
-                }}
-            />
-
-            {/* Screen icon: contactless symbol, or a check once accepted */}
-            <Box
-                className="reader-layer"
-                sx={{
-                    ...screen,
-                    display: 'grid',
-                    placeItems: 'center',
-                    animation: state === 'scan' && animate ? `${readerBlink} 1s ease-in-out infinite` : 'none',
-                }}
-            >
-                {state === 'ok' ? (
-                    <svg viewBox="0 0 12 10" width={9} height={7.5}>
-                        <path d="M2.4 5.2 L5 7.6 L9.6 2.4" fill="none" stroke={tone.icon} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                ) : (
-                    <svg viewBox="0 0 12 10" width={9} height={7.5}>
-                        <path
-                            d="M3 3.4 Q4.2 5 3 6.6 M5.4 2.2 Q7.3 5 5.4 7.8 M7.8 1 Q10.4 5 7.8 9"
-                            fill="none"
-                            stroke={tone.icon}
-                            strokeWidth={0.9}
-                            strokeLinecap="round"
-                        />
-                    </svg>
-                )}
-            </Box>
-
-            {/* Field waves running from the reader to the badge */}
-            {state === 'scan' && animate && [0, 0.18].map((delay) => (
-                <Box
-                    key={delay}
-                    className="reader-layer"
-                    sx={{
-                        left: -6,
-                        top: readerScanY - 5,
-                        width: 6,
-                        height: 10,
-                        opacity: 0,
-                        willChange: 'transform, opacity',
-                        animation: `${readerWave} 0.72s ease-out ${delay}s infinite`,
-                    }}
-                >
-                    <svg viewBox="0 0 6 10" width={6} height={10}>
-                        <path d="M4.6 2 Q2.6 5 4.6 8" fill="none" stroke="#fbbf24" strokeWidth={1} strokeLinecap="round" />
-                    </svg>
-                </Box>
-            ))}
-
-            {/* Accepted: two ping rings from the screen and a "Beep!" tag */}
-            {state === 'ok' && animate && [0, 0.14].map((delay) => (
-                <Box
-                    key={delay}
-                    className="reader-layer"
-                    sx={{
-                        left: 9 - 7,
-                        top: screen.top + screen.height / 2 - 7,
-                        width: 14,
-                        height: 14,
-                        borderRadius: '50%',
-                        border: `1.5px solid ${tone.icon}`,
-                        opacity: 0,
-                        animation: `${readerPing} 520ms ease-out ${delay}s forwards`,
-                    }}
-                />
-            ))}
-            {state === 'ok' && (
-                <Box className="reader-layer" sx={{ left: '50%', bottom: readerHeight + 4, transform: 'translateX(-50%)' }}>
-                    <Box
-                        sx={{
-                            px: 0.6,
-                            borderRadius: '6px',
-                            bgcolor: '#22c55e',
-                            color: '#052e16',
-                            fontFamily: monoFont,
-                            fontSize: 10,
-                            fontWeight: 700,
-                            lineHeight: '15px',
-                            whiteSpace: 'nowrap',
-                            boxShadow: '0 0 10px rgba(34,197,94,0.6)',
-                            animation: animate ? `${beepPop} 420ms ease-out both` : 'none',
-                        }}
-                    >
-                        {t.logout.beep}
-                    </Box>
-                </Box>
-            )}
-        </Box>
-    )
-}
-
 // Memoized: the dialog re-renders on every hover / focus of the buttons.
 const GateScene = memo(function GateScene({
     period,
@@ -924,7 +762,7 @@ const GateScene = memo(function GateScene({
                 character={character}
             />
 
-            <CardReader state={readerState} animate={animate} />
+            <CardReader state={readerState} animate={animate} left={readerX} bottom={6} />
 
             {/* Speech bubble above the worker while hovering Sign out */}
             <Box
@@ -1140,15 +978,18 @@ function ShutterOverlay({
     username,
     checkoutTime,
     character,
+    full,
     onSkip,
 }: {
     username: string
     checkoutTime: string | null
     character: WorkerCharacter
+    full: boolean
     onSkip: () => void
 }) {
     const { t } = useI18n()
     const [period] = useState(() => getDayPeriod(new Date()))
+    const { dropDelay, dropDuration, shutterImpact, messageAt } = clockOutTimeline(full)
     // Mounted early (overlayMountAt) and revealed at shutterStartAt:
     // every time below is shifted by that lead.
     const lead = shutterStartAt - overlayMountAt
@@ -1173,13 +1014,15 @@ function ShutterOverlay({
             <Beacon tone="amber" start={lead + dropDelay} duration={shutterImpact - dropDelay + 250} />
 
             {/* Walks out in front of the closing shutter */}
-            <Worker
-                startX="68vw"
-                walks={[{ dx: '40vw', start: lead + walkStart, duration: walkDuration }]}
-                wave={{ start: lead, duration: waveDuration }}
-                gaitCycle={gaitCycle}
-                character={character}
-            />
+            {full && (
+                <Worker
+                    startX="68vw"
+                    walks={[{ dx: '40vw', start: lead + walkStart, duration: walkDuration }]}
+                    wave={{ start: lead, duration: waveDuration }}
+                    gaitCycle={gaitCycle}
+                    character={character}
+                />
+            )}
         </ShiftOverlayRoot>
     )
 }
@@ -1218,6 +1061,7 @@ export function LogoutConfirmDialog({
     const [focused, setFocused] = useState(false)
     const [checkoutTime, setCheckoutTime] = useState<string | null>(null)
     const [shutterOn, setShutterOn] = useState(false)
+    const [fullRun, setFullRun] = useState(true)
 
     const stoppedRef = useRef(false)
     const confirmPendingRef = useRef(false)
@@ -1274,13 +1118,16 @@ export function LogoutConfirmDialog({
             return
         }
 
+        const full = takeFirstRunToday('clock-out', username)
+        setFullRun(full)
+
         confirmPendingRef.current = true
         timersRef.current.push(
             setTimeout(() => setShutterOn(true), overlayMountAt),
             setTimeout(() => {
                 confirmPendingRef.current = false
                 onConfirmRef.current()
-            }, confirmAt),
+            }, clockOutTimeline(full).confirmAt),
         )
     }
 
@@ -1296,6 +1143,8 @@ export function LogoutConfirmDialog({
 
     return (
         <>
+            {open && <GlobalStyles styles={pageAtRest} />}
+
             <Dialog
                 open={open}
                 onClose={stopped ? undefined : onCancel}
@@ -1597,6 +1446,7 @@ export function LogoutConfirmDialog({
                     username={username}
                     checkoutTime={checkoutTime}
                     character={character}
+                    full={fullRun}
                     onSkip={handleSkip}
                 />
             )}

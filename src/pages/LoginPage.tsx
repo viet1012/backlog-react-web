@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 
-import dayBackground from '../assets/bg-day.png'
-import factoryBackground from '../assets/login-factory-bg.png'
+import dayBackground from '../assets/login-scene-day.webp'
+// Same night photo as the logout gate scene (one download for both)
+import factoryBackground from '../assets/logout-scene-night.webp'
 import { AuthCardHeader } from '../components/auth/AuthCardHeader'
 import { LoginBrand } from '../components/auth/LoginBrand'
 import { LoginForm } from '../components/auth/LoginForm'
@@ -34,6 +35,7 @@ import { useI18n } from '../i18n/useI18n'
 import { LanguageToggleButton } from '../components/common/LanguageToggleButton'
 import { CLOCK_IN_COVER_MS, startClockIn } from '../components/shift/clockInStore'
 import { randomAvatarSeed, writeAvatarSeed } from '../components/shift/workerCharacter'
+import { preloadRoute } from './lazyPages'
 
 type AuthMode = 'login' | 'register'
 
@@ -51,6 +53,8 @@ export function LoginPage() {
   const [showRegisterPassword, setShowRegisterPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  // Bumped on every failed sign-in (replays the form's shake)
+  const [failCount, setFailCount] = useState(0)
   const isDaytime = useIsDaytime()
 
   // Bật fade màu cho toàn trang trong lúc chuyển ngày/đêm (khớp với fade background)
@@ -89,6 +93,9 @@ export function LoginPage() {
       const target = getDefaultAuthRoute(session)
       const username = getAuthenticatedUsername() ?? employeeId.trim()
 
+      // Download the landing page while the shutter is down
+      preloadRoute(target)
+
       // New random factory character on every sign-in (sidebar, logout, animations)
       writeAvatarSeed(username, randomAvatarSeed())
 
@@ -109,6 +116,7 @@ export function LoginPage() {
             ? requestError.message
             : t.auth.invalidCredentials,
       )
+      setFailCount((count) => count + 1)
       setLoading(false)
     }
   }
@@ -227,6 +235,7 @@ export function LoginPage() {
                 showPassword={showPassword}
                 loading={loading}
                 error={error}
+                failCount={failCount}
                 onEmployeeIdChange={(value) => {
                   setEmployeeId(value)
                   setError('')

@@ -1,9 +1,63 @@
-import { Box } from '@mui/material'
-import { alpha } from '@mui/material/styles'
+import { Suspense, useState } from 'react'
+
+import { Box, LinearProgress } from '@mui/material'
+import { alpha, keyframes } from '@mui/material/styles'
 import { Outlet } from 'react-router-dom'
+
+import { clockInTimeline, useClockInRun } from '../shift/clockInStore'
+
 import { LeftSidebar } from './LeftSidebar'
 
+// Clock-in: the app is mounted under the shutter, then the sidebar and the
+// page come up as it rolls up ("lights on"). Dim, not invisible, while
+// waiting, so the page is already drawn when the shutter reveals it.
+const sidebarIn = keyframes`
+  from { opacity: 0.35; transform: translateX(-16px); }
+  to { opacity: 1; transform: none; }
+`
+
+const pageIn = keyframes`
+  from { opacity: 0.35; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+`
+
+const revealEase = 'cubic-bezier(.2,.8,.2,1)'
+
+const fadeIn = keyframes`
+  from { opacity: 0; }
+  to { opacity: 1; }
+`
+
+// A page chunk still downloading (first visit): a thin bar along the top,
+// shown only when it takes a moment so fast loads do not flash.
+function PageFallback() {
+  return (
+    <Box sx={{ position: 'relative', flex: 1 }}>
+      <LinearProgress
+        sx={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 2,
+          animation: `${fadeIn} 200ms ease-out 250ms both`,
+        }}
+      />
+    </Box>
+  )
+}
+
 export function MainLayout() {
+  const run = useClockInRun()
+
+  // ms from mount until the shutter starts rolling up; null when not signing in
+  const [riseDelay] = useState(() => run
+    ? Math.max(0, run.startedAt.getTime() + clockInTimeline(run.full).riseAt - Date.now())
+    : null)
+
+  // Skipped (or finished): come in right away
+  const delay = run ? riseDelay ?? 0 : 0
+
   return (
     <Box
       sx={(theme) => ({
@@ -18,6 +72,13 @@ export function MainLayout() {
           linear-gradient(145deg, ${alpha(theme.palette.background.default, 0.98)}, ${alpha(theme.palette.background.paper, 0.72)})
         `,
         backgroundAttachment: 'fixed',
+
+        // Fill backwards only: a transform kept after the end would make
+        // these the containing block of every position: fixed inside.
+        ...(riseDelay !== null && {
+          '& > aside': { animation: `${sidebarIn} 560ms ${revealEase} ${delay + 120}ms backwards` },
+          '& > main': { animation: `${pageIn} 640ms ${revealEase} ${delay + 220}ms backwards` },
+        }),
       })}
     >
       <LeftSidebar />
@@ -31,7 +92,9 @@ export function MainLayout() {
           overflow: 'hidden',
         }}
       >
-        <Outlet />
+        <Suspense fallback={<PageFallback />}>
+          <Outlet />
+        </Suspense>
       </Box>
     </Box>
   )

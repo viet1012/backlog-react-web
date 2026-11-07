@@ -1,7 +1,7 @@
 import { Box, Typography } from '@mui/material'
 import type { PaletteMode } from '@mui/material/styles'
 
-import factoryBackground from '../assets/login-factory-bg.png'
+import factoryBackground from '../assets/logout-scene-night.webp'
 import { PageHeader } from '../components/common/PageHeader'
 import { PageShell } from '../components/common/PageShell'
 import { UserHomeFactoryScene } from '../components/userHome/UserHomeFactoryScene'
