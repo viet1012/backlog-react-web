@@ -11,6 +11,9 @@ import { defaultWorkerCharacter, shade, type WorkerCharacter } from './workerCha
 
 export const monoFont = 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace'
 
+// Site name printed on the shutters and the home LED board
+export const FACTORY_NAME = 'F2 FACTORY'
+
 export function formatClock(date: Date) {
     const hh = String(date.getHours()).padStart(2, '0')
     const mm = String(date.getMinutes()).padStart(2, '0')

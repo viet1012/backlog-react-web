@@ -5,10 +5,12 @@ import { DoubleSide } from 'three'
 
 import { useI18n } from '../../../i18n/useI18n'
 import { INK } from '../factoryScene/primitives'
+import { FitText } from './FitText'
 import {
   deckTexture,
   meshAlphaTexture,
   PLATE_ASPECT,
+  PLATE_LAYOUT,
   tierPlateTexture,
   uprightTexture,
 } from './labelTextures'
@@ -77,18 +79,40 @@ function braceSegments(height: number): BraceSegment[] {
 function TierPlate({ tier, label }: { tier: TierLayout; label: string }) {
   const anisotropy = useThree((state) => state.gl.capabilities.getMaxAnisotropy())
   const texture = useMemo(() => {
-    const plate = tierPlateTexture(tier.spec.code, label, tier.count)
+    const plate = tierPlateTexture()
     plate.anisotropy = anisotropy
     return plate
-  }, [tier.spec.code, label, tier.count, anisotropy])
+  }, [anisotropy])
   useEffect(() => () => texture.dispose(), [texture])
 
   const width = PLATE_HEIGHT * PLATE_ASPECT
+  const at = (fraction: number) => -width / 2 + width * fraction
+  const textZ = 0.002
+
   return (
-    <mesh position={[-halfW + RACK.post + 0.14 + width / 2, beamCenterY(tier.deckY), BEAM_PROUD + 0.003]}>
-      <planeGeometry args={[width, PLATE_HEIGHT]} />
-      <meshStandardMaterial map={texture} roughness={0.55} toneMapped={false} polygonOffset polygonOffsetFactor={-2} />
-    </mesh>
+    <group position={[-halfW + RACK.post + 0.14 + width / 2, beamCenterY(tier.deckY), BEAM_PROUD + 0.003]}>
+      <mesh>
+        <planeGeometry args={[width, PLATE_HEIGHT]} />
+        <meshStandardMaterial map={texture} roughness={0.55} toneMapped={false} polygonOffset polygonOffsetFactor={-2} />
+      </mesh>
+      <FitText position={[at(PLATE_LAYOUT.codeLeft), 0, textZ]} anchorX="left" fontSize={PLATE_HEIGHT * 0.5} letterSpacing={0.02} color={INK}>
+        {tier.spec.code}
+      </FitText>
+      <FitText
+        position={[at(PLATE_LAYOUT.labelLeft), 0, textZ]}
+        anchorX="left"
+        fontSize={PLATE_HEIGHT * 0.42}
+        letterSpacing={0.04}
+        whiteSpace="nowrap"
+        fitWidth={width * (PLATE_LAYOUT.countRight - PLATE_LAYOUT.labelLeft - 0.07)}
+        color={INK}
+      >
+        {label.toUpperCase()}
+      </FitText>
+      <FitText position={[at(PLATE_LAYOUT.countRight), 0, textZ]} anchorX="right" fontSize={PLATE_HEIGHT * 0.5} color="#ef7424">
+        {String(tier.count)}
+      </FitText>
+    </group>
   )
 }
 

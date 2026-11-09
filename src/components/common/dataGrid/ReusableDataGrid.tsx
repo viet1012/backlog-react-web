@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 
 import {
   DataGrid,
@@ -125,6 +125,11 @@ export interface ReusableDataGridProps<
   // Thay overlay rỗng mặc định (FactoryNoRowsOverlay)
   noRowsOverlay?:
   GridSlotsComponent['noRowsOverlay']
+
+  // Lỗi API: bảng không có dòng => cảnh lỗi (thay cho overlay rỗng) + nút Thử lại.
+  // Còn dòng cũ thì DataGrid không hiện overlay, trang tự báo lỗi.
+  error?: string | null
+  onRetry?: () => void
 }
 
 
@@ -185,7 +190,51 @@ export function ReusableDataGrid<
   loadingOverlayVariant,
   noRowsOverlay,
 
+  error,
+  onRetry,
+
 }: ReusableDataGridProps<T>) {
+
+  // =====================================================
+  // ERROR OVERLAY
+  //
+  // Component ổn định theo (error, có onRetry): callback đổi
+  // mỗi render không làm overlay mount lại (chạy lại hoạt cảnh).
+  // =====================================================
+
+  const onRetryRef =
+    useRef(onRetry)
+
+  useEffect(() => {
+    onRetryRef.current = onRetry
+  }, [onRetry])
+
+  const canRetry =
+    Boolean(onRetry)
+
+  const errorOverlay =
+    useMemo(
+      () => error
+        ? function ErrorRowsOverlay() {
+          return (
+            <FactoryNoRowsOverlay
+              tone="error"
+              detail={error}
+              onRetry={
+                canRetry
+                  ? () => onRetryRef.current?.()
+                  : undefined
+              }
+            />
+          )
+        }
+        : undefined,
+      [
+        error,
+        canRetry,
+      ],
+    )
+
 
   // =====================================================
   // COLUMN PREFERENCES
@@ -369,7 +418,8 @@ export function ReusableDataGrid<
         toolbar,
         columnMenu,
         noRowsOverlay:
-          noRowsOverlay
+          errorOverlay
+          ?? noRowsOverlay
           ?? FactoryNoRowsOverlay,
       }}
 

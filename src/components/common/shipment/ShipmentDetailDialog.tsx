@@ -27,6 +27,8 @@ interface ShipmentDetailDialogProps {
     data: ProductionOrder[]
     loading: boolean
     error: string | null
+    // Tải lại chi tiết (nút Thử lại trong cảnh lỗi API)
+    onRetry?: () => void
     onClose: () => void
 }
 
@@ -37,6 +39,7 @@ export function ShipmentDetailDialog({
     data,
     loading,
     error,
+    onRetry,
     onClose,
 }: ShipmentDetailDialogProps) {
     const { t } = useI18n()
@@ -142,7 +145,8 @@ export function ShipmentDetailDialog({
                 }}
             >
 
-                {error && (
+                {/* Bảng trống thì lỗi hiện ngay trong bảng (cảnh lỗi API) */}
+                {error && data.length > 0 && (
                     <Box
                         sx={{
                             px: 2,
@@ -182,7 +186,7 @@ export function ShipmentDetailDialog({
                         }}
                     >
 
-                        <ShipmentDataTable rows={data} loading={loading} />
+                        <ShipmentDataTable rows={data} loading={loading} error={error} onRetry={onRetry} />
 
                     </Box>
 

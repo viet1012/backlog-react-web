@@ -15,6 +15,7 @@ import {
 } from '../../utils/odbfSummaryMatrix'
 import { appScrollbarSx } from '../../theme/scrollbarStyle'
 import { useI18n } from '../../i18n/useI18n'
+import { FactoryNoRowsOverlay } from '../common/FactoryNoRowsOverlay'
 
 interface OdbfSummaryTableProps {
     title: string
@@ -354,9 +355,8 @@ export function OdbfSummaryTable({
                 </TableState>
             ) : matrix.products.length === 0 ? (
                 <TableState minHeight={120}>
-                    <Typography color="text.secondary" sx={{ fontSize: 12.5 }}>
-                        {t.odbf.noData}
-                    </Typography>
+                    <FactoryNoRowsOverlay variant="compact" title={t.odbf.noData} />
+
                 </TableState>
             ) : (
                 <Box

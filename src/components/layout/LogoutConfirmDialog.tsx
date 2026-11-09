@@ -22,6 +22,7 @@ import {
     Beacon,
     CardReader,
     DustBurst,
+    FACTORY_NAME,
     formatClock,
     getDayPeriod,
     monoFont,
@@ -831,7 +832,7 @@ const GateScene = memo(function GateScene({
                                 color: theme.palette.mode === 'dark' ? 'rgba(229,231,235,0.7)' : 'rgba(31,41,55,0.65)',
                             })}
                         >
-                            F2 FACTORY
+                            {FACTORY_NAME}
                         </Typography>
                     </ShutterPanel>
                 </Box>

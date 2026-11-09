@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { Box } from '@mui/material'
@@ -30,6 +30,10 @@ const PARALLAX = { x: 0.45, y: 0.22 }
 const PROBE_SECONDS = 1.2
 // Bỏ qua khoảng nghỉ giữa các lần vẽ ở chế độ demand
 const PROBE_MAX_DELTA = 0.5
+// Chặn delta frame đầu sau lúc đứng yên (demand) để chuyển động không nhảy cóc
+const MAX_DELTA = 1 / 30
+// Sau cảnh thả hàng thêm ngần này giây thì đóng băng bóng sàn
+const INTRO_TAIL = 1.2
 
 // Ẩn khỏi màn hình nhưng vẫn focus được bằng bàn phím / đọc được bằng trình đọc màn hình
 const visuallyHidden: CSSProperties = {
@@ -114,6 +118,35 @@ function RenderSizeReporter({ onChange }: { onChange: (size: RenderSize) => void
   return null
 }
 
+/*
+ * Bóng đổ chỉ vẽ lại khi hàng di chuyển (Crate3D bật needsUpdate), không vẽ lại mỗi frame
+ * lúc camera lệch theo chuột: đèn + vật đứng yên thì bóng không đổi. Đặt trong Suspense để
+ * lần vẽ bóng đầu tiên đã có kệ + thùng.
+ */
+function ShadowControl() {
+  const first = useRef(true)
+
+  useFrame((state) => {
+    state.gl.shadowMap.autoUpdate = false
+    if (first.current) {
+      state.gl.shadowMap.needsUpdate = true
+      first.current = false
+    }
+  })
+
+  return null
+}
+
+// Báo khi cảnh thả hàng đã xong (onDone phải ổn định, vd. setState)
+function IntroTimer({ seconds, onDone }: { seconds: number; onDone: (done: boolean) => void }) {
+  useEffect(() => {
+    const id = window.setTimeout(() => onDone(true), seconds * 1000)
+    return () => window.clearTimeout(id)
+  }, [seconds, onDone])
+
+  return null
+}
+
 // Đặt camera vừa khít kệ theo tỉ lệ khung; lệch nhẹ theo chuột (parallax)
 function CameraRig({ rackHeight }: { rackHeight: number }) {
   const { size, gl, invalidate } = useThree()
@@ -143,7 +176,8 @@ function CameraRig({ rackHeight }: { rackHeight: number }) {
 
   useEffect(() => invalidate(), [fit, invalidate])
 
-  useFrame((state, delta) => {
+  useFrame((state, frameDelta) => {
+    const delta = Math.min(frameDelta, MAX_DELTA)
     const cam = state.camera as PerspectiveCamera
     const goalX = fit.base.x + pointer.current.x * PARALLAX.x
     const goalY = fit.base.y - pointer.current.y * PARALLAX.y
@@ -178,7 +212,7 @@ function HoverSpot({ placement, dark }: { placement: CratePlacement | null; dark
       target.position.set(placement.x, placement.y, placement.z)
       target.updateMatrixWorld()
     }
-    l.intensity = MathUtils.damp(l.intensity, goal, 8, delta)
+    l.intensity = MathUtils.damp(l.intensity, goal, 8, Math.min(delta, MAX_DELTA))
     if (Math.abs(l.intensity - goal) > 0.05) state.invalidate()
   })
 
@@ -198,7 +232,7 @@ const tooltipStyle: CSSProperties = {
   borderRadius: 8,
   background: 'rgba(17, 24, 34, 0.94)',
   color: '#f2f6fb',
-  fontFamily: '"Segoe UI", system-ui, sans-serif',
+  fontFamily: 'inherit',
   fontSize: 12,
   lineHeight: 1.45,
   boxShadow: '0 8px 22px rgba(0, 0, 0, 0.35)',
@@ -252,6 +286,9 @@ export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeas
   const [hovered, setHovered] = useState<number | null>(null)
   const [focused, setFocused] = useState<number | null>(null)
   const [picked, setPicked] = useState<number | null>(null)
+  // Bóng sàn chỉ cập nhật liên tục trong cảnh thả hàng; sau đó chụp lại khi cảnh vẽ lại (đổi thùng được chọn)
+  const [introDone, setIntroDone] = useState(!intro)
+  const introSeconds = Math.max(0, ...layout.crates.map((crate) => crate.delay)) + INTRO_TAIL
   const timerRef = useRef(0)
 
   const quality: CrateQuality = {
@@ -265,7 +302,6 @@ export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeas
 
   const active = hovered ?? focused
   const activeCrate = active === null ? null : layout.crates[active]
-  const mode = dark ? 'dark' : 'light'
 
   const texts: CrateTexts[] = layout.crates.map(({ entry }) => {
     const { item } = entry
@@ -288,14 +324,15 @@ export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeas
     timerRef.current = window.setTimeout(() => navigate(crate.entry.item.path), PICK_MS)
   }
 
-  const tooltip = active !== null && activeCrate && activeCrate.kind !== 'ready'
-    ? {
-      placement: activeCrate,
-      title: texts[active].title,
-      lines: activeCrate.kind === 'locked'
-        ? [t.userHome.requires(texts[active].roles), t.userHome.lockedNote]
-        : [texts[active].status],
-    }
+  function tooltipLines(index: number, crate: CratePlacement) {
+    if (crate.kind === 'locked') return [t.userHome.requires(texts[index].roles), t.userHome.lockedNote]
+    if (crate.kind === 'upcoming') return [texts[index].status]
+    return texts[index].hint ? [texts[index].hint] : []
+  }
+
+  // Thùng dùng ngay: mô tả trang (không in trên nhãn vì quá nhỏ); ẩn khi đã bấm chọn
+  const tooltip = active !== null && activeCrate && picked === null
+    ? { placement: activeCrate, title: texts[active].title, lines: tooltipLines(active, activeCrate) }
     : null
 
   return (
@@ -327,33 +364,40 @@ export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeas
         <RenderSizeReporter onChange={onRenderSize} />
         <SceneLights dark={dark} profile={profile} />
         <CameraRig rackHeight={layout.height} />
-        <Rack3D layout={layout} outlines={profile.outlines} />
+        {/* Chờ font chữ SDF tải xong (vài trăm ms) rồi mới dựng kệ + thùng, tránh chữ hiện chậm hơn hàng */}
+        <Suspense fallback={null}>
+          <ShadowControl />
+          {!introDone && <IntroTimer seconds={introSeconds} onDone={setIntroDone} />}
+          <Rack3D layout={layout} outlines={profile.outlines} />
 
-        {layout.crates.map((placement, index) => (
-          <Crate3D
-            key={placement.entry.item.path}
-            placement={placement}
-            index={index}
-            texts={texts[index]}
-            color={getGroupColor(placement.entry.groupId, mode)}
-            icon={images.get(placement.entry.item.path)}
-            highlighted={active === index}
-            picked={picked === index}
-            dark={dark}
-            quality={quality}
-            intro={intro}
-            onHover={setHovered}
-            onPick={pick}
-          />
-        ))}
+          {layout.crates.map((placement, index) => (
+            <Crate3D
+              key={placement.entry.item.path}
+              placement={placement}
+              index={index}
+              texts={texts[index]}
+              // In trên giấy trắng: luôn dùng màu bản sáng cho đủ tương phản
+              color={getGroupColor(placement.entry.groupId, 'light')}
+              icon={images.get(placement.entry.item.path)}
+              highlighted={active === index}
+              picked={picked === index}
+              dark={dark}
+              quality={quality}
+              intro={intro}
+              onHover={setHovered}
+              onPick={pick}
+            />
+          ))}
+        </Suspense>
 
         <HoverSpot placement={activeCrate} dark={dark} />
         <ContactShadows
           position={[0, 0.002, -0.3]}
           scale={[9, 4]}
           resolution={profile.contactResolution}
-          // Thấp: chụp bóng 1 lần (tĩnh); còn lại cập nhật theo thùng
-          frames={profile.contactShadow === 'baked' ? 1 : Infinity}
+          // Thấp: chụp 1 lần. Còn lại: cập nhật liên tục lúc thả hàng, sau đó chụp 1 lần mỗi khi đổi thùng được chọn
+          // (không tốn thêm 1 lượt vẽ cả cảnh + làm mờ cho mỗi frame camera lệch theo chuột)
+          frames={profile.contactShadow === 'live' && !introDone ? Infinity : 1}
           blur={2.4}
           far={2.5}
           opacity={dark ? 0.75 : 0.5}

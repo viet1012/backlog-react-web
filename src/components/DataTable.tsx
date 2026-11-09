@@ -41,6 +41,9 @@ interface DataTableProps {
   onExcelFiltersChange: (filters: BacklogFilterItem[]) => void
   onSortChange: (model: GridSortModel) => void
   onPaginationChange: (model: GridPaginationModel) => void
+  // Lỗi tải => cảnh lỗi API trong bảng + nút Thử lại
+  error?: string | null
+  onRetry?: () => void
 }
 
 function BacklogToolbar() {
@@ -86,6 +89,8 @@ export function DataTable({
   onExcelFiltersChange,
   onSortChange,
   onPaginationChange,
+  error,
+  onRetry,
 }: DataTableProps) {
   const { t } = useI18n()
   const columns = useMemo(() => createBacklogColumns(t), [t])
@@ -121,6 +126,8 @@ export function DataTable({
         toolbar={BacklogToolbar}
         columnMenu={ExcelColumnMenu}
         onColumnHeaderClick={preventColumnHeaderSort}
+        error={error}
+        onRetry={onRetry}
       />
     </ExcelColumnFilterProvider>
   )

@@ -1,5 +1,6 @@
 import { Alert, Box, CircularProgress } from '@mui/material'
 import { useMemo, useState } from 'react'
+import { FactoryNoRowsOverlay } from '../components/common/FactoryNoRowsOverlay'
 import { PageHeader } from '../components/common/PageHeader'
 import { PageShell } from '../components/common/PageShell'
 import { RefreshButton } from '../components/common/RefreshButton'
@@ -115,13 +116,16 @@ export function ShipmentPage({
         onApply={handleApplyDate} onReset={handleResetTwoWeeks}
       />
 
-      {error && <Alert severity="error">{error}</Alert>}
+      {/* Lỗi API khi chưa có dữ liệu => cảnh lỗi thay cho heatmap; còn dữ liệu cũ thì chỉ báo trên thanh */}
+      {(validationError || (dataError && data.length > 0)) && <Alert severity="error">{error}</Alert>}
 
       <Box sx={{ flex: 1, minWidth: 0, minHeight: 0, position: 'relative' }}>
         {loading && data.length === 0 ? (
           <Box sx={{ height: '100%', display: 'grid', placeItems: 'center' }}>
             <CircularProgress size={28} />
           </Box>
+        ) : dataError && data.length === 0 ? (
+          <FactoryNoRowsOverlay tone="error" detail={dataError} onRetry={handleRefresh} />
         ) : (
           <ShipmentHeatmap
             dates={dates} rows={rows}
@@ -135,6 +139,7 @@ export function ShipmentPage({
       <ShipmentDetailDialog
         open={detailOpen} filter={detailFilter} data={detailData}
         loading={detailLoading} error={detailError} onClose={handleCloseDetail}
+        onRetry={detailFilter ? () => void openShipmentDetail(detailFilter) : undefined}
       />
     </PageShell>
   )

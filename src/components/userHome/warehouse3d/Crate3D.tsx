@@ -4,14 +4,20 @@ import { Edges, RoundedBox } from '@react-three/drei'
 import { MathUtils, type Group, type MeshStandardMaterial, type Texture } from 'three'
 
 import { INK } from '../factoryScene/primitives'
+import { FitText } from './FitText'
+import { FONT } from './fonts'
 import {
   cartonTexture,
+  LOCKED_LAYOUT,
   lockedFaceTexture,
   printedIconTexture,
   readyStickerTexture,
   roleTagTexture,
   STICKER_ASPECT,
+  STICKER_LAYOUT,
   TAG_ASPECT,
+  TAG_LAYOUT,
+  UPCOMING_LAYOUT,
   upcomingFaceTexture,
 } from './labelTextures'
 import type { CratePlacement } from './rackModel'
@@ -23,6 +29,7 @@ import type { CratePlacement } from './rackModel'
  */
 export interface CrateTexts {
   title: string
+  // Chỉ hiện ở tooltip khi rê chuột (trên nhãn dán quá nhỏ để đọc)
   hint?: string
   action: string
   group: string
@@ -66,6 +73,28 @@ const DROP_SECONDS = 0.75
 // Khoảng thùng nhô ra / nhích lên khi được chọn
 const HOVER_PULL = 0.26
 const HOVER_LIFT = 0.035
+// Thời gian "trượt" tới vị trí (giây): rê chuột / bấm chọn
+const HOVER_SMOOTH = 0.11
+const PICK_SMOOTH = 0.16
+// frameloop="demand": frame đầu sau lúc đứng yên có delta = cả khoảng nghỉ -> chặn lại để thùng không nhảy cóc
+const MAX_DELTA = 1 / 30
+
+interface Axis {
+  value: number
+  velocity: number
+}
+
+// Lò xo giảm chấn tới hạn (smooth damp): tăng tốc rồi hãm êm, giữ vận tốc khi đổi đích giữa chừng
+function stepAxis(axis: Axis, target: number, smoothTime: number, dt: number) {
+  const omega = 2 / smoothTime
+  const x = omega * dt
+  const decay = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x)
+  const change = axis.value - target
+  const temp = (axis.velocity + omega * change) * dt
+  axis.velocity = (axis.velocity - omega * temp) * decay
+  axis.value = target + (change + temp) * decay
+  return Math.abs(axis.value - target) < 0.0005 && Math.abs(axis.velocity) < 0.005
+}
 
 // Mesh hiển thị không nhận chuột; chỉ khối bắt chuột đứng yên nhận (tránh vào/ra liên tục ở mép khi thùng nhô ra)
 const noRaycast = () => null
@@ -108,25 +137,29 @@ export function Crate3D({ placement, index, texts, color, icon, highlighted, pic
   const group = useRef<Group>(null)
   const led = useRef<MeshStandardMaterial>(null)
   const startRef = useRef<number | null>(null)
-  const motion = useRef({ y: 0, z: 0, rx: 0 })
+  const motion = useRef<Record<'y' | 'z' | 'rx', Axis>>({
+    y: { value: 0, velocity: 0 },
+    z: { value: 0, velocity: 0 },
+    rx: { value: 0, velocity: 0 },
+  })
   const anisotropy = useThree((state) => state.gl.capabilities.getMaxAnisotropy())
 
-  // Texture riêng của thùng; dựng lại khi đổi ngôn ngữ / icon tải xong
+  // Texture riêng của thùng (chỉ phần hình, chữ là SDF); dựng lại khi icon tải xong
   const textures = useMemo((): CrateTextures => {
     if (kind === 'ready') {
       return {
         kind,
-        sticker: sharpen(readyStickerTexture({ title: texts.title, hint: texts.hint, action: texts.action, group: texts.group, color }), anisotropy),
+        sticker: sharpen(readyStickerTexture(color), anisotropy),
         icon: icon ? sharpen(printedIconTexture(icon, color), anisotropy) : null,
       }
     }
-    if (kind === 'upcoming') return { kind, face: sharpen(upcomingFaceTexture(texts.title, texts.status), anisotropy) }
+    if (kind === 'upcoming') return { kind, face: sharpen(upcomingFaceTexture(), anisotropy) }
     return {
       kind,
-      face: sharpen(lockedFaceTexture(texts.title, icon), anisotropy),
-      tag: sharpen(roleTagTexture(texts.roles), anisotropy),
+      face: sharpen(lockedFaceTexture(icon), anisotropy),
+      tag: sharpen(roleTagTexture(), anisotropy),
     }
-  }, [kind, texts.title, texts.hint, texts.action, texts.group, texts.status, texts.roles, color, icon, anisotropy])
+  }, [kind, color, icon, anisotropy])
 
   useEffect(() => () => {
     if (textures.kind === 'ready') {
@@ -153,19 +186,22 @@ export function Crate3D({ placement, index, texts, color, icon, highlighted, pic
     g.visible = u >= 0
     const dropY = u < 1 ? DROP_HEIGHT * (1 - easeOutBounce(MathUtils.clamp(u, 0, 1))) : 0
 
-    const goalZ = picked ? 1.3 : highlighted ? HOVER_PULL : 0
-    const goalY = picked ? 0.14 : highlighted ? HOVER_LIFT : 0
-    const goalRx = picked ? -0.07 : 0
+    const dt = Math.min(delta, MAX_DELTA)
+    const smooth = picked ? PICK_SMOOTH : HOVER_SMOOTH
     const m = motion.current
-    m.z = MathUtils.damp(m.z, goalZ, 9, delta)
-    m.y = MathUtils.damp(m.y, goalY, 9, delta)
-    m.rx = MathUtils.damp(m.rx, goalRx, 9, delta)
+    // Gọi đủ cả 3 trục (không dùng && để khỏi bỏ qua trục sau)
+    const zDone = stepAxis(m.z, picked ? 1.3 : highlighted ? HOVER_PULL : 0, smooth, dt)
+    const yDone = stepAxis(m.y, picked ? 0.14 : highlighted ? HOVER_LIFT : 0, smooth, dt)
+    const rxDone = stepAxis(m.rx, picked ? -0.07 : 0, smooth, dt)
 
-    g.position.set(placement.x, placement.y + dropY + m.y, placement.z + m.z)
-    g.rotation.x = m.rx
+    g.position.set(placement.x, placement.y + dropY + m.y.value, placement.z + m.z.value)
+    g.rotation.x = m.rx.value
 
-    const settled = u >= 1 && Math.abs(m.z - goalZ) < 0.001 && Math.abs(m.y - goalY) < 0.001 && Math.abs(m.rx - goalRx) < 0.001
-    if (!settled) state.invalidate()
+    if (u < 1 || !zDone || !yDone || !rxDone) {
+      // Bóng đổ chỉ vẽ lại khi hàng di chuyển (camera lệch theo chuột thì không cần)
+      state.gl.shadowMap.needsUpdate = true
+      state.invalidate()
+    }
   })
 
   function handleOver(event: ThreeEvent<PointerEvent>) {
@@ -193,9 +229,22 @@ export function Crate3D({ placement, index, texts, color, icon, highlighted, pic
     />
   )
 
-  const stickerW = w * 0.84
+  // Nhãn dán chiếm nửa dưới mặt trước; toạ độ chữ tính theo STICKER_LAYOUT (tỉ lệ từ mép trái / mép trên)
+  const stickerW = w * 0.9
   const stickerH = stickerW / STICKER_ASPECT
+  const stickerY = -h / 2 + h * 0.07 + stickerH / 2
+  const stickerX = (fraction: number) => -stickerW / 2 + stickerW * fraction
+  const stickerRow = (fromTop: number) => stickerH / 2 - stickerH * fromTop
+  const ledRadius = stickerH * 0.045
+  const iconSize = h * 0.26
+  const iconY = stickerY + stickerH / 2 + h * 0.03 + iconSize / 2
+  // Mặt in kín (thùng sắp ra mắt / cần quyền)
+  const faceW = w * 0.98
+  const faceH = h * 0.98
+  const faceRow = (fromTop: number) => faceH / 2 - faceH * fromTop
   const tagW = MathUtils.clamp(w * 0.4, 0.16, 0.26)
+  const tagH = tagW / TAG_ASPECT
+  const textZ = 0.002
 
   return (
     <>
@@ -232,8 +281,8 @@ export function Crate3D({ placement, index, texts, color, icon, highlighted, pic
               <planeGeometry args={[w * 0.18, d + 0.004]} />
               <meshStandardMaterial color="#e9d5aa" roughness={0.28} polygonOffset polygonOffsetFactor={-2} />
             </mesh>
-            <mesh position={[0, h / 2 - h * 0.11, frontZ]} raycast={noRaycast}>
-              <planeGeometry args={[w * 0.18, h * 0.22]} />
+            <mesh position={[0, h / 2 - h * 0.06, frontZ]} raycast={noRaycast}>
+              <planeGeometry args={[w * 0.18, h * 0.12]} />
               <meshStandardMaterial color="#e9d5aa" roughness={0.28} polygonOffset polygonOffsetFactor={-2} />
             </mesh>
           </>
@@ -242,20 +291,88 @@ export function Crate3D({ placement, index, texts, color, icon, highlighted, pic
         {textures.kind === 'ready' && (
           <>
             {textures.icon && (
-              <DecalPlane map={textures.icon} width={h * 0.36} height={h * 0.36} position={[0, h * 0.1, frontZ + 0.0005]} roughness={0.9} />
+              <DecalPlane map={textures.icon} width={iconSize} height={iconSize} position={[0, iconY, frontZ + 0.0005]} roughness={0.9} />
             )}
-            <DecalPlane map={textures.sticker} width={stickerW} height={stickerH} position={[0, -h / 2 + h * 0.08 + stickerH / 2, frontZ + 0.001]} roughness={0.5} />
-            {/* Đèn LED xanh trên nhãn */}
-            <mesh position={[stickerW / 2 - stickerH * 0.14, -h / 2 + h * 0.08 + stickerH * 0.12, frontZ + 0.006]} raycast={noRaycast}>
-              <sphereGeometry args={[Math.max(0.008, w * 0.011), 12, 12]} />
-              <meshStandardMaterial ref={led} color="#2ec46a" emissive="#3ee07a" emissiveIntensity={2.2} toneMapped={false} />
-            </mesh>
+            <group position={[0, stickerY, frontZ + 0.001]}>
+              <DecalPlane map={textures.sticker} width={stickerW} height={stickerH} position={[0, 0, 0]} roughness={0.5} />
+              {/* Tên trang: tối đa 2 dòng, dài quá thì thu nhỏ */}
+              <FitText
+                position={[stickerX(STICKER_LAYOUT.left), stickerRow((STICKER_LAYOUT.titleTop + STICKER_LAYOUT.titleBottom) / 2), textZ]}
+                anchorX="left"
+                fontSize={stickerH * 0.25}
+                minFontSize={stickerH * 0.15}
+                lineHeight={1.08}
+                maxWidth={stickerW * (STICKER_LAYOUT.right - STICKER_LAYOUT.left)}
+                overflowWrap="break-word"
+                fitHeight={stickerH * (STICKER_LAYOUT.titleBottom - STICKER_LAYOUT.titleTop)}
+                color="#1d2733"
+              >
+                {texts.title}
+              </FitText>
+              <FitText
+                position={[stickerX(STICKER_LAYOUT.left), stickerRow((STICKER_LAYOUT.divider + 1) / 2), textZ]}
+                anchorX="left"
+                fontSize={stickerH * 0.15}
+                letterSpacing={0.04}
+                whiteSpace="nowrap"
+                fitWidth={stickerW * 0.55}
+                color={color}
+              >
+                {texts.group.toUpperCase()}
+              </FitText>
+              <FitText
+                position={[stickerX(STICKER_LAYOUT.right) - ledRadius * 2 - stickerH * 0.05, stickerRow((STICKER_LAYOUT.divider + 1) / 2), textZ]}
+                anchorX="right"
+                fontSize={stickerH * 0.14}
+                letterSpacing={0.05}
+                whiteSpace="nowrap"
+                color="#5b6774"
+              >
+                {texts.action}
+              </FitText>
+              {/* Đèn LED xanh cạnh chữ hành động */}
+              <mesh position={[stickerX(STICKER_LAYOUT.right) - ledRadius, stickerRow((STICKER_LAYOUT.divider + 1) / 2), 0.005]} raycast={noRaycast}>
+                <sphereGeometry args={[ledRadius, 12, 12]} />
+                <meshStandardMaterial ref={led} color="#2ec46a" emissive="#3ee07a" emissiveIntensity={2.2} toneMapped={false} />
+              </mesh>
+            </group>
           </>
         )}
 
         {textures.kind === 'upcoming' && (
           <>
-            <DecalPlane map={textures.face} width={w * 0.98} height={h * 0.98} position={[0, 0, frontZ + 0.001]} roughness={0.75} />
+            <group position={[0, 0, frontZ + 0.001]}>
+              <DecalPlane map={textures.face} width={faceW} height={faceH} position={[0, 0, 0]} roughness={0.75} />
+              {/* Tên viết tay hơi nghiêng */}
+              <FitText
+                position={[0, faceRow(UPCOMING_LAYOUT.titleY), textZ]}
+                rotation-z={UPCOMING_LAYOUT.titleTilt}
+                font={FONT.medium}
+                textAlign="center"
+                fontSize={h * 0.15}
+                minFontSize={h * 0.09}
+                lineHeight={1.05}
+                maxWidth={faceW * 0.86}
+                overflowWrap="break-word"
+                fitHeight={faceH * 0.4}
+                color="#3a2210"
+                fillOpacity={0.9}
+              >
+                {texts.title}
+              </FitText>
+              {/* Trạng thái in trên băng keo vàng */}
+              <FitText
+                position={[0, faceRow(UPCOMING_LAYOUT.tapeY), textZ]}
+                rotation-z={UPCOMING_LAYOUT.tapeTilt}
+                fontSize={faceH * UPCOMING_LAYOUT.tapeHeight * 0.5}
+                letterSpacing={0.08}
+                whiteSpace="nowrap"
+                fitWidth={faceW * 0.86}
+                color={INK}
+              >
+                {texts.status.toUpperCase()}
+              </FitText>
+            </group>
             {/* Màng co bọc ngoài: chỉ phản chiếu môi trường, không đổ bóng */}
             {quality.film && (
               <RoundedBox args={[w + 0.022, h + 0.022, d + 0.022]} radius={radius + 0.01} smoothness={quality.smoothness} raycast={noRaycast}>
@@ -267,20 +384,41 @@ export function Crate3D({ placement, index, texts, color, icon, highlighted, pic
 
         {textures.kind === 'locked' && (
           <>
-            <DecalPlane map={textures.face} width={w * 0.98} height={h * 0.98} position={[0, 0, frontZ + 0.001]} roughness={0.55} />
+            <group position={[0, 0, frontZ + 0.001]}>
+              <DecalPlane map={textures.face} width={faceW} height={faceH} position={[0, 0, 0]} roughness={0.55} />
+              <FitText
+                position={[0, faceRow(LOCKED_LAYOUT.titleY), textZ]}
+                textAlign="center"
+                fontSize={h * 0.1}
+                minFontSize={h * 0.065}
+                lineHeight={1.05}
+                maxWidth={faceW * LOCKED_LAYOUT.titleWidth}
+                overflowWrap="break-word"
+                fitHeight={faceH * LOCKED_LAYOUT.titleHeight}
+                color="#3d4753"
+              >
+                {texts.title}
+              </FitText>
+            </group>
             {/* Dây + thẻ đỏ treo góc */}
             <mesh position={[w / 2 - tagW * 0.55, h / 2 - 0.01, frontZ + 0.012]} rotation-z={0.5} raycast={noRaycast}>
               <cylinderGeometry args={[0.0025, 0.0025, 0.07, 6]} />
               <meshStandardMaterial color="#efe6d2" />
             </mesh>
-            <DecalPlane
-              map={textures.tag}
-              width={tagW}
-              height={tagW / TAG_ASPECT}
-              position={[w / 2 - tagW * 0.2, h / 2 - 0.04 - tagW / TAG_ASPECT / 2, frontZ + 0.02]}
-              rotation={-0.16}
-              roughness={0.45}
-            />
+            <group position={[w / 2 - tagW * 0.2, h / 2 - 0.04 - tagH / 2, frontZ + 0.02]} rotation-z={-0.16}>
+              <DecalPlane map={textures.tag} width={tagW} height={tagH} position={[0, 0, 0]} roughness={0.45} />
+              <FitText
+                position={[-tagW / 2 + tagW * TAG_LAYOUT.textLeft, 0, textZ]}
+                anchorX="left"
+                fontSize={tagH * 0.36}
+                whiteSpace="nowrap"
+                fitWidth={tagW * (TAG_LAYOUT.textRight - TAG_LAYOUT.textLeft)}
+                minFontSize={tagH * 0.2}
+                color="#ffffff"
+              >
+                {texts.roles}
+              </FitText>
+            </group>
           </>
         )}
       </group>

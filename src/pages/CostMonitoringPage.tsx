@@ -17,6 +17,7 @@ import {
 import type { PaletteMode } from '@mui/material'
 import dayjs from 'dayjs'
 import { useState } from 'react'
+import { FactoryNoRowsOverlay } from '../components/common/FactoryNoRowsOverlay'
 import { GuideButton } from '../components/common/GuideButton'
 import { PageHeader } from '../components/common/PageHeader'
 import { PageShell } from '../components/common/PageShell'
@@ -148,6 +149,7 @@ export function CostMonitoringPage({
   const noPlWeeks = plWeeks !== null && plWeeks.weeks.length === 0
 
   const noMonths = !loading && !error && months.length === 0
+  const apiFailed = !loading && Boolean(error) && !data
 
   return (
     <PageShell>
@@ -311,7 +313,8 @@ export function CostMonitoringPage({
           onToggleMode={onToggleMode}
         />
 
-        {error && (
+        {/* Còn chart cũ thì chỉ báo trên thanh; không có gì để hiện thì 1 cảnh lỗi (không phải 9 ô "Chưa có dữ liệu") */}
+        {error && data && (
           <Alert severity="error" className="cost-no-print" sx={{ flexShrink: 0 }}>
             {error}
           </Alert>
@@ -327,7 +330,21 @@ export function CostMonitoringPage({
           />
         )}
 
-        {noMonths ? (
+        {apiFailed ? (
+          <Box
+            sx={(theme) => ({
+              flex: 1,
+              minHeight: 0,
+              display: 'grid',
+              placeItems: 'center',
+              border: `1px solid ${theme.palette.divider}`,
+              borderRadius: 1.5,
+              bgcolor: theme.palette.background.paper,
+            })}
+          >
+            <FactoryNoRowsOverlay tone="error" detail={error} onRetry={refresh} />
+          </Box>
+        ) : noMonths ? (
           <Box
             sx={(theme) => ({
               minHeight: 120,
@@ -338,9 +355,7 @@ export function CostMonitoringPage({
               bgcolor: theme.palette.background.paper,
             })}
           >
-            <Typography color="text.secondary" sx={{ fontSize: 12.5 }}>
-              {t.cost.noData}
-            </Typography>
+            <FactoryNoRowsOverlay title={t.cost.noData} />
           </Box>
         ) : (
           <CostMonitoringGrid

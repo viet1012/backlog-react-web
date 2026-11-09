@@ -995,8 +995,8 @@ export function FacConfirmPage({
       />
 
 
-      {/* Lỗi tải: dữ liệu cũ vẫn giữ trên bảng */}
-      {error && (
+      {/* Lỗi tải: dữ liệu cũ vẫn giữ trên bảng. Bảng trống thì lỗi hiện ngay trong bảng (cảnh lỗi API) */}
+      {error && rows.length > 0 && (
         <Alert
           severity="error"
           action={
@@ -1075,6 +1075,8 @@ export function FacConfirmPage({
             preferences.setColumnWidth
           }
           onSaved={handleRefreshAll}
+          error={error}
+          onRetry={handleRefresh}
         />
       </Box>
 
