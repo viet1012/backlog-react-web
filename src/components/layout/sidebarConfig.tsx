@@ -23,6 +23,7 @@ import {
     HomeOutlined,
     MapOutlined,
     MonitorHeartOutlined,
+    SmartToyOutlined,
 } from '@mui/icons-material'
 import type { UserRole } from '../../services/authService'
 import type { Messages } from '../../i18n/messages/en'
@@ -320,6 +321,17 @@ export const menuGroups:
                     roles: ['ADMIN'],
                     icon: (
                         <MapOutlined />
+                    ),
+                },
+
+                {
+                    labelKey: 'aiLogs',
+                    path: '/settings/ai-logs',
+                    status: 'ready',
+                    action: 'view',
+                    roles: ['ADMIN'],
+                    icon: (
+                        <SmartToyOutlined />
                     ),
                 },
             ],

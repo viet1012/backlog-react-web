@@ -9,7 +9,8 @@ function lazyPage<P>(load: () => Promise<ComponentType<P>>) {
   return Object.assign(lazy(preload), { preload })
 }
 
-export const AsakaiPage = lazyPage(() => import('./AsakaiPage').then((m) => m.AsakaiPage))
+export const AiLogsPage = lazyPage(() => import('./AiLogsPage').then((m) => m.AiLogsPage))
+export const AsakaiPage =lazyPage(() => import('./AsakaiPage').then((m) => m.AsakaiPage))
 export const BacklogPage = lazyPage(() => import('./BacklogPage').then((m) => m.BacklogPage))
 export const BosbPage = lazyPage(() => import('./BosbPage').then((m) => m.BosbPage))
 export const CostMonitoringPage = lazyPage(() => import('./CostMonitoringPage').then((m) => m.CostMonitoringPage))

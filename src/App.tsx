@@ -23,6 +23,7 @@ import { ClockInOverlay } from './components/shift/ClockInOverlay'
 
 import { LoginPage } from './pages/LoginPage'
 import {
+  AiLogsPage,
   AsakaiPage,
   BacklogPage,
   BosbPage,
@@ -301,6 +302,18 @@ function App() {
                     />
                   }
                 />
+
+                <Route element={<RoleRoute roles={['ADMIN']} />}>
+                  <Route
+                    path="settings/ai-logs"
+                    element={
+                      <AiLogsPage
+                        mode={mode}
+                        onToggleMode={toggleThemeMode}
+                      />
+                    }
+                  />
+                </Route>
 
                 {/* route cũ, giữ để link đã chia sẻ (kèm #mã máy) vẫn mở được */}
                 <Route
