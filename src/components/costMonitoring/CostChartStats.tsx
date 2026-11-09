@@ -1,3 +1,4 @@
+import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded'
 import { Box, Stack, Tooltip, Typography, useTheme } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import type { CostChart } from '../../types/costMonitoring'
@@ -39,7 +40,31 @@ export function CostChartStats({ rows, chart, ratioDigits = 0 }: CostChartStatsP
 
   const status = getCostStatus(chart, rows)
 
+  // cảnh báo theo trạng thái BE (forecast.status), không tự tính ở FE
+  const forecast = chart.forecast
+  const warnText = forecast?.status === 'WILL_EXCEED'
+    ? t.cost.forecastWarn.willExceed(
+        formatK(forecast.estimateOver),
+        t.cost.forecastBase[forecast.estimateBase ?? 'PL'],
+      )
+    : forecast?.status === 'OVER'
+      ? t.cost.forecastWarn.over(formatK(forecast.actualPctOfFluct))
+      : null
+  const warnColor = theme.palette.error.main
+
+  const warnIcon = warnText && (
+    <WarningAmberRoundedIcon sx={{ fontSize: 14, color: warnColor, mr: 0.25, verticalAlign: '-2px' }} />
+  )
+
   let badge = null
+
+  if (!status && warnText) {
+    badge = (
+      <Tooltip title={warnText} arrow enterTouchDelay={0}>
+        <Box sx={{ display: 'flex', flexShrink: 0, cursor: 'help' }}>{warnIcon}</Box>
+      </Tooltip>
+    )
+  }
 
   if (status) {
     // OK nhưng % đã dùng > tiến độ chuẩn + PACE_TOLERANCE → vàng cam thay vì xanh
@@ -60,7 +85,11 @@ export function CostChartStats({ rows, chart, ratioDigits = 0 }: CostChartStatsP
 
     badge = (
       <Tooltip
-        title={title}
+        title={
+          warnText
+            ? <><Box component="span" sx={{ display: 'block', fontWeight: 700 }}>{warnText}</Box>{title}</>
+            : title
+        }
         arrow
         enterTouchDelay={0}
       >
@@ -77,9 +106,11 @@ export function CostChartStats({ rows, chart, ratioDigits = 0 }: CostChartStatsP
             cursor: 'help',
             color: fg,
             bgcolor: bg,
-            border: `1px solid ${alpha(fg, 0.3)}`,
+            // dự báo / đã vượt theo BE → viền đỏ đậm + icon
+            border: warnText ? `1.5px solid ${warnColor}` : `1px solid ${alpha(fg, 0.3)}`,
           }}
         >
+          {warnIcon}
           {status.level === 'noActual'
             ? t.cost.noActual
             : `${t.cost.status[status.level]} ${status.ratio.toFixed(ratioDigits)}%`}

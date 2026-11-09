@@ -25,12 +25,14 @@ import { UpdatedStatus } from '../components/common/UpdatedStatus'
 import { CostChartLegend } from '../components/costMonitoring/CostChartLegend'
 import { CostMonitoringGrid } from '../components/costMonitoring/CostMonitoringGrid'
 import { CostMonitoringGuideDrawer } from '../components/costMonitoring/CostMonitoringGuideDrawer'
-import { SIMU_WEEK_OPTIONS } from '../components/costMonitoring/costChartConfig'
+import { CostDetailDrawer } from '../components/costMonitoring/CostDetailDrawer'
+import { CostForecastBanner } from '../components/costMonitoring/CostForecastBanner'
+import { COST_ROWS, SIMU_WEEK_OPTIONS } from '../components/costMonitoring/costChartConfig'
 import type { GuideTabId } from '../components/costMonitoring/costMonitoringGuide'
-import { useMascotMonthControl, useMascotParams } from '../components/mascot'
-import { useCostMonitoring } from '../hooks/useCostMonitoring'
+import { useMascotMonthControl, useMascotOpenChat, useMascotParams } from '../components/mascot'
+import { useCostMonitoring, useCostMonitoringDetail } from '../hooks/useCostMonitoring'
 import { toApiMonth } from '../services/costMonitoringService'
-import type { CostSimuWeek } from '../types/costMonitoring'
+import type { CostDetailTarget, CostSimuWeek } from '../types/costMonitoring'
 import { uiTokens } from '../theme/uiTokens'
 import { loadPreference, savePreference } from '../utils/uiPreferences'
 import { useI18n } from '../i18n/useI18n'
@@ -94,13 +96,28 @@ export function CostMonitoringPage({
     error,
     lastUpdated,
     refresh,
+    refreshKey,
   } = useCostMonitoring()
 
-  // context cho chat của mascot (Anh Vê): tháng + tuần PL TGT đang chọn
+  // Drawer chi tiết 1 khung; giữ target khi đóng để nội dung không mất trong lúc trượt ra
+  const [detailOpen, setDetailOpen] = useState(false)
+  const [detailTarget, setDetailTarget] = useState<CostDetailTarget | null>(null)
+
+  const detail = useCostMonitoringDetail(month, detailTarget, simuWeek, refreshKey, detailOpen)
+
+  const detailLabel = detailTarget
+    ? `${COST_ROWS.find((r) => r.div === detailTarget.div)?.label ?? detailTarget.div} · ${detailTarget.chart}`
+    : ''
+
+  const openMascotChat = useMascotOpenChat()
+
+  // context cho chat của mascot: tháng + tuần PL TGT đang chọn
+  // + khung đang mở drawer (div = xưởng, cost = hạng mục) để hỏi đúng khung
   useMascotParams({
     month: month ? toApiMonth(month) : null,
     // "Mới nhất" ('') → không gửi key simuWeek
     ...(simuWeek ? { simuWeek } : {}),
+    ...(detailOpen && detailTarget ? { div: detailTarget.div, cost: detailTarget.chart } : {}),
   })
 
   // nút "Xem tháng … trên màn hình" của mascot; tháng dạng "YYYY.MM" như danh sách months
@@ -300,6 +317,16 @@ export function CostMonitoringPage({
           </Alert>
         )}
 
+        {data && (
+          <CostForecastBanner
+            charts={data.charts}
+            onOpenDetail={(target) => {
+              setDetailTarget(target)
+              setDetailOpen(true)
+            }}
+          />
+        )}
+
         {noMonths ? (
           <Box
             sx={(theme) => ({
@@ -321,9 +348,32 @@ export function CostMonitoringPage({
             month={data ? toApiMonth(data.month) : month && toApiMonth(month)}
             data={data}
             loading={loading}
+            onOpenDetail={(target) => {
+              setDetailTarget(target)
+              setDetailOpen(true)
+            }}
           />
         )}
       </Box>
+
+      <CostDetailDrawer
+        open={detailOpen}
+        frameLabel={detailLabel}
+        month={month}
+        target={detailTarget}
+        simuWeek={simuWeek}
+        data={detail.data}
+        // dự báo chính / trạng thái lấy từ /chart (detail không có)
+        forecast={
+          detailTarget
+            ? data?.charts.find((c) => c.div === detailTarget.div && c.chart === detailTarget.chart)?.forecast ?? null
+            : null
+        }
+        loading={detail.loading}
+        error={detail.error}
+        onClose={() => setDetailOpen(false)}
+        onAskMascot={openMascotChat}
+      />
 
       <CostMonitoringGuideDrawer
         open={guideOpen}

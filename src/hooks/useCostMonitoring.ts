@@ -1,15 +1,22 @@
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from 'react'
 import type {
+  CostDetailResponse,
+  CostDetailTarget,
+  CostDetailTransactionPage,
+  CostDetailTxQuery,
   CostMonitoringChartResponse,
   CostPlWeeksResponse,
   CostSimuWeek,
 } from '../types/costMonitoring'
 import {
   getCostMonitoringChart,
+  getCostMonitoringDetail,
+  getCostMonitoringDetailTransactions,
   getCostMonitoringMonths,
   getCostMonitoringPlWeeks,
   toApiMonth,
@@ -19,6 +26,182 @@ import { getMessages } from '../i18n/i18nContext'
 
 function toErrorMessage(err: unknown, fallback: string) {
   return err instanceof Error ? err.message : fallback
+}
+
+
+// ---------- detail 1 khung (drawer) – target null hoặc open = false → không gọi API ----------
+export function useCostMonitoringDetail(
+  // dạng "2026.10"
+  month: string | null,
+  target: CostDetailTarget | null,
+  simuWeek: CostSimuWeek,
+  refreshKey = 0,
+  // drawer đang mở; đóng thì giữ data (nội dung không mất lúc trượt ra) nhưng không tải lại
+  open = true,
+) {
+  const [data, setData] =
+    useState<CostDetailResponse | null>(null)
+
+  const [loading, setLoading] =
+    useState(false)
+
+  const [error, setError] =
+    useState<string | null>(null)
+
+  const div = target?.div
+  const chart = target?.chart
+
+  // đổi khung / tháng → bỏ số của khung cũ ngay (không hiện nhầm trong lúc tải)
+  const requestKey = month && div && chart ? `${month}|${div}|${chart}|${simuWeek}` : null
+  const [loadedKey, setLoadedKey] =
+    useState(requestKey)
+  if (loadedKey !== requestKey) {
+    setLoadedKey(requestKey)
+    setData(null)
+    setError(null)
+  }
+
+  // refreshKey đã xử lý (tải xong với refresh=true, hoặc bấm ↻ lúc drawer đóng → bỏ qua)
+  const refreshedKey =
+    useRef(refreshKey)
+
+  // "requestKey|refreshKey" của lần tải thành công gần nhất → mở lại drawer không gọi API thừa
+  const loadedFor =
+    useRef<string | null>(null)
+
+  useEffect(() => {
+    // bấm ↻ khi drawer đóng: không gửi refresh ở lần mở sau (chart đã refresh rồi)
+    if (!open) {
+      refreshedKey.current = refreshKey
+      return
+    }
+
+    if (!month || !div || !chart) {
+      return
+    }
+
+    const loadKey = `${month}|${div}|${chart}|${simuWeek}|${refreshKey}`
+    if (loadedFor.current === loadKey) {
+      return
+    }
+
+    // chỉ lượt do nút ↻ (khi drawer đang mở) mới gửi refresh=true
+    const forceRefresh =
+      refreshKey !== refreshedKey.current
+
+    const controller =
+      new AbortController()
+
+    setLoading(true)
+    setError(null)
+
+    // trang giao dịch đầu (cả kỳ) đi kèm luôn → không gọi API lần 2 khi vừa mở
+    getCostMonitoringDetail(
+      toApiMonth(month),
+      { div, chart },
+      simuWeek,
+      { date: null, page: 0, size: COST_TX_DEFAULT_PAGE_SIZE },
+      controller.signal,
+      forceRefresh,
+    )
+      .then((response) => {
+        refreshedKey.current = refreshKey
+        loadedFor.current = loadKey
+        setData(response)
+      })
+      .catch((err: unknown) => {
+        if (!controller.signal.aborted) {
+          setData(null)
+          setError(toErrorMessage(err, getMessages().costDetail.loadFailed))
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setLoading(false)
+        }
+      })
+
+    return () => {
+      controller.abort()
+    }
+  }, [month, div, chart, simuWeek, refreshKey, open])
+
+  return { data, loading, error }
+}
+
+
+// số dòng / trang mặc định = mặc định của BE
+export const COST_TX_DEFAULT_PAGE_SIZE = 50
+
+// ---------- trang giao dịch (server-side: lọc ngày + phân trang) ----------
+// query trùng trang đầu mặc định → dùng luôn initial (đã có trong response detail), không gọi API
+export function useCostDetailTransactions(
+  // dạng "2026.10"
+  month: string | null,
+  target: CostDetailTarget | null,
+  simuWeek: CostSimuWeek,
+  query: CostDetailTxQuery,
+  initial: CostDetailTransactionPage | null,
+) {
+  const [fetched, setFetched] =
+    useState<CostDetailTransactionPage | null>(null)
+
+  const [loading, setLoading] =
+    useState(false)
+
+  const [error, setError] =
+    useState<string | null>(null)
+
+  const useInitial =
+    query.date === null && query.page === 0 && query.size === COST_TX_DEFAULT_PAGE_SIZE
+
+  const div = target?.div
+  const chart = target?.chart
+  const { date, page, size } = query
+
+  useEffect(() => {
+    if (useInitial || !month || !div || !chart || !initial) {
+      return
+    }
+
+    const controller =
+      new AbortController()
+
+    setLoading(true)
+    setError(null)
+
+    getCostMonitoringDetailTransactions(
+      toApiMonth(month),
+      { div, chart },
+      simuWeek,
+      { date, page, size },
+      controller.signal,
+    )
+      .then((response) => {
+        setFetched(response)
+      })
+      .catch((err: unknown) => {
+        if (!controller.signal.aborted) {
+          setError(toErrorMessage(err, getMessages().costDetail.loadFailed))
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setLoading(false)
+        }
+      })
+
+    return () => {
+      controller.abort()
+    }
+    // initial đổi (refresh / đổi khung) → tải lại trang đang xem
+  }, [useInitial, month, div, chart, simuWeek, date, page, size, initial])
+
+  return {
+    data: useInitial ? initial : fetched,
+    loading: useInitial ? false : loading,
+    error: useInitial ? null : error,
+  }
 }
 
 
@@ -69,6 +252,11 @@ export function useCostMonitoring() {
         (value) => value + 1,
       )
     }, [])
+
+  // refreshKey đã tải xong với refresh=true; khác refreshKey hiện tại = lượt này do nút ↻
+  // (chỉ cập nhật khi tải thành công → request bị hủy giữa chừng thì lượt sau vẫn gửi refresh)
+  const chartRefreshedKey =
+    useRef(0)
 
   // ---------- months ----------
   useEffect(() => {
@@ -146,6 +334,9 @@ export function useCostMonitoring() {
     const controller =
       new AbortController()
 
+    const forceRefresh =
+      refreshKey !== chartRefreshedKey.current
+
     async function load(selectedMonth: string) {
       setChartLoading(true)
       setError(null)
@@ -156,8 +347,10 @@ export function useCostMonitoring() {
             toApiMonth(selectedMonth),
             simuWeek,
             controller.signal,
+            forceRefresh,
           )
 
+        chartRefreshedKey.current = refreshKey
         setData(response)
         setLastUpdated(new Date())
       } catch (err) {
@@ -193,5 +386,7 @@ export function useCostMonitoring() {
     error,
     lastUpdated,
     refresh,
+    // cho drawer detail tải lại cùng nút Refresh
+    refreshKey,
   }
 }

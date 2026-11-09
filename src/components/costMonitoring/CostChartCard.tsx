@@ -23,6 +23,8 @@ interface CostChartCardProps {
   chart: CostChart | undefined
   title: string
   loading: boolean
+  // có → bấm ô mở drawer chi tiết
+  onOpenDetail?: () => void
 }
 
 function EmptyState({ text }: { text: string }) {
@@ -35,7 +37,7 @@ function EmptyState({ text }: { text: string }) {
   )
 }
 
-export function CostChartCard({ month, chart, title, loading }: CostChartCardProps) {
+export function CostChartCard({ month, chart, title, loading, onOpenDetail }: CostChartCardProps) {
   const { t } = useI18n()
 
   const theme = useTheme()
@@ -155,18 +157,38 @@ export function CostChartCard({ month, chart, title, loading }: CostChartCardPro
     )
   }
 
+  // chỉ mở được khi đã có khung từ API (OT chưa actual vẫn mở để xem KPI)
+  const clickable = Boolean(chart && onOpenDetail)
+
   return (
     <Box
+      role={clickable ? 'button' : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      title={clickable ? t.cost.openDetail : undefined}
+      aria-label={clickable ? `${title} – ${t.cost.openDetail}` : undefined}
+      onClick={clickable ? onOpenDetail : undefined}
+      onKeyDown={clickable
+        ? (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            onOpenDetail?.()
+          }
+        }
+        : undefined}
       sx={{
         p: 0.75,
+        ...(clickable && {
+          cursor: 'pointer',
+          borderRadius: 1,
+          '&:hover': { bgcolor: 'action.hover' },
+          '&:focus-visible': { outline: `2px solid ${theme.palette.primary.main}`, outlineOffset: -2 },
+        }),
         display: 'flex',
         flexDirection: 'column',
         minWidth: 0,
         minHeight: 0,
         // md+: cao theo ô lưới (giãn vừa trang) – dải chip ~28px, phần còn lại cho chart
         height: { xs: 325, md: '100%' },
-        // nền do ô lưới quyết định (MOLD có tint xen kẽ)
-        bgcolor: 'transparent',
         opacity: chart && loading ? 0.6 : 1,
         transition: 'opacity 120ms',
       }}

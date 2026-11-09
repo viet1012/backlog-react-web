@@ -22,6 +22,8 @@ export function buildExampleDemo(day: number) {
     bp,
     actMtdLatest: act,
     estMonthEnd: estEnd,
+    // chart minh họa: không có trạng thái BE
+    forecast: null,
     points: Array.from({ length: n }, (_, i) => {
       const x = i + 1
 

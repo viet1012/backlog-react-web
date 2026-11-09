@@ -1,6 +1,6 @@
 import { Box, Typography } from '@mui/material'
 import type { Theme } from '@mui/material/styles'
-import type { CostMonitoringChartResponse } from '../../types/costMonitoring'
+import type { CostDetailTarget, CostMonitoringChartResponse } from '../../types/costMonitoring'
 import { CostChartCard } from './CostChartCard'
 import { COST_COLUMNS, COST_ROWS } from './costChartConfig'
 
@@ -9,6 +9,7 @@ interface CostMonitoringGridProps {
   month: string | null
   data: CostMonitoringChartResponse | null
   loading: boolean
+  onOpenDetail?: (target: CostDetailTarget) => void
 }
 
 const headerSx = {
@@ -51,7 +52,7 @@ const cellSx = (rowIndex: number, column: number) => (theme: Theme) => ({
 
 // Bảng 3 hàng (PRESS / MOLD / GUIDE) × 3 cột (OT / T&SL / RM) như Excel.
 // Màn nhỏ xếp 1 cột, nhãn hàng/cột ẩn và tiêu đề nằm trong từng ô.
-export function CostMonitoringGrid({ month, data, loading }: CostMonitoringGridProps) {
+export function CostMonitoringGrid({ month, data, loading, onOpenDetail }: CostMonitoringGridProps) {
   return (
     <Box
       sx={{
@@ -132,6 +133,7 @@ export function CostMonitoringGrid({ month, data, loading }: CostMonitoringGridP
                 chart={data?.charts.find((c) => c.div === row.div && c.chart === column)}
                 title={`${row.label} · ${column}`}
                 loading={loading}
+                onOpenDetail={onOpenDetail && (() => onOpenDetail({ div: row.div, chart: column }))}
               />
             </Box>
           )),
