@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef } from 'react'
+import { useI18n } from '../../i18n/useI18n'
 import type { AssistantParams } from '../../services/assistantService'
 
 /** Trang đăng ký để mascot đổi bộ lọc tháng (tháng dạng "YYYY.MM") */
@@ -9,20 +10,55 @@ export interface MascotMonthControl {
 }
 
 export interface MascotContextValue {
+  /** tên mascot từ GET /api/assistant/info; null → đang tải / lỗi (dùng tên mặc định trong i18n) */
+  name: string | null
   /** context của trang hiện tại gửi kèm câu hỏi (vd month, simuWeek) */
   params: AssistantParams
   setParams: (params: AssistantParams) => void
   /** null → trang hiện tại không cho đổi tháng */
   monthControl: MascotMonthControl | null
   setMonthControl: (control: MascotMonthControl | null) => void
+  /** tăng mỗi lần trang yêu cầu mở chat (vd nút "Hỏi … về khung này") */
+  openChatSeq: number
+  openChat: () => void
+  /** true: mascot nổi trên Drawer/Modal của MUI (đang mở drawer có nút hỏi mascot) */
+  elevated: boolean
+  setElevated: (elevated: boolean) => void
 }
 
 export const MascotContext = createContext<MascotContextValue>({
+  name: null,
   params: {},
   setParams: () => {},
   monthControl: null,
   setMonthControl: () => {},
+  openChatSeq: 0,
+  openChat: () => {},
+  elevated: false,
+  setElevated: () => {},
 })
+
+/** Trả hàm mở chat của mascot (bỏ thu nhỏ nếu đang thu nhỏ) */
+export function useMascotOpenChat() {
+  return useContext(MascotContext).openChat
+}
+
+/** Khi active: mascot nổi trên Drawer để chat được trong lúc drawer mở; unmount → hạ lại */
+export function useMascotElevated(active: boolean) {
+  const { setElevated } = useContext(MascotContext)
+
+  useEffect(() => {
+    setElevated(active)
+    return () => setElevated(false)
+  }, [active, setElevated])
+}
+
+/** Tên mascot để truyền vào i18n: tên từ API, chưa có / lỗi → tên mặc định theo ngôn ngữ */
+export function useMascotName() {
+  const { name } = useContext(MascotContext)
+  const { t } = useI18n()
+  return name ?? t.mascot.defaultName
+}
 
 export function useMascotContext() {
   return useContext(MascotContext)

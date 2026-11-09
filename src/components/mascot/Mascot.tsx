@@ -7,7 +7,7 @@ import type { AssistantChatTurn } from '../../services/assistantService'
 import { loadPreference, savePreference } from '../../utils/uiPreferences'
 import { MascotChatPanel } from './MascotChatPanel'
 import type { ChatItem } from './MascotChatPanel'
-import { useMascotContext } from './mascotContext'
+import { useMascotContext, useMascotName } from './mascotContext'
 import { getMascotScreen } from './mascotMessages'
 import { MASCOT_VIEWBOX, MascotSvg } from './MascotSvg'
 import { useMascotSuggestions } from './useMascotSuggestions'
@@ -37,7 +37,8 @@ function prefersReducedMotion() {
 export function Mascot() {
   const { t, language } = useI18n()
   const { pathname } = useLocation()
-  const { params, monthControl } = useMascotContext()
+  const { params, monthControl, openChatSeq, elevated } = useMascotContext()
+  const name = useMascotName()
   // tháng đang xem trên màn hình, dạng "YYYY.MM"
   const viewingMonth = normalizeMonth(params.month)
   const screen = getMascotScreen(pathname, t)
@@ -75,6 +76,17 @@ export function Mascot() {
           : base
       })
     }
+  }
+
+  // Trang yêu cầu mở chat (vd nút "Hỏi … về khung này") → bỏ thu nhỏ + mở panel
+  const [prevOpenChatSeq, setPrevOpenChatSeq] = useState(openChatSeq)
+  if (openChatSeq !== prevOpenChatSeq) {
+    setPrevOpenChatSeq(openChatSeq)
+    if (minimized) {
+      setMinimized(false)
+      savePreference(MINIMIZED_KEY, false)
+    }
+    setOpen(true)
   }
 
   useEffect(() => () => {
@@ -184,9 +196,12 @@ export function Mascot() {
       ? suggestions.followUpFor(last.id)
       : null
 
+  // nổi trên Drawer (1200) / Modal (1300) của MUI khi trang bật elevated
+  const elevatedStyle: CSSProperties | undefined = elevated ? { zIndex: 1350 } : undefined
+
   if (minimized) {
     return (
-      <div className={styles.root}>
+      <div className={styles.root} style={elevatedStyle}>
         <button
           type="button"
           className={styles.avatar}
@@ -204,6 +219,7 @@ export function Mascot() {
     '--mascot-h': `${MASCOT_HEIGHT}px`,
     '--mascot-w': `${MASCOT_WIDTH}px`,
     '--wave-count': waveCount || 1,
+    ...elevatedStyle,
   } as CSSProperties
 
   return (
@@ -245,7 +261,7 @@ export function Mascot() {
         ref={bodyRef}
         type="button"
         className={styles.body}
-        aria-label={open ? t.mascot.chat.close : t.mascot.chat.open}
+        aria-label={open ? t.mascot.chat.close : t.mascot.chat.open(name)}
         aria-expanded={open}
         aria-controls={open ? PANEL_ID : undefined}
         onMouseEnter={handleMouseEnter}

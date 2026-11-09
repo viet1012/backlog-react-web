@@ -32,6 +32,7 @@ import { MascotMarkdown } from './MascotMarkdown'
 import { MascotSvg } from './MascotSvg'
 import { getScreenName } from './mascotMessages'
 import type { MascotScreen, ScreenId } from './mascotMessages'
+import { useMascotName } from './mascotContext'
 import type { MascotMonthControl } from './mascotContext'
 import styles from './Mascot.module.css'
 
@@ -87,6 +88,7 @@ export function MascotChatPanel({
   onClose,
 }: MascotChatPanelProps) {
   const { t } = useI18n()
+  const name = useMascotName()
   const chatEnabled = Boolean(screen.screenKey)
   const [draft, setDraft] = useState('')
   // chế độ rộng 720px × 85vh, nhớ qua localStorage
@@ -143,7 +145,7 @@ export function MascotChatPanel({
       className={`${styles.panel} ${wide ? styles.panelWide : ''}`}
       elevation={8}
       role="dialog"
-      aria-label={t.mascot.chat.title}
+      aria-label={name}
       sx={{ borderRadius: 3, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
     >
       {/* Header */}
@@ -171,7 +173,7 @@ export function MascotChatPanel({
           <MascotSvg waving={false} headOnly className={styles.avatarSvg} />
         </Box>
         <Typography sx={{ fontWeight: 700, fontSize: 14, flex: 1 }}>
-          {t.mascot.chat.title}
+          {name}
         </Typography>
         {chatEnabled && (
           <IconButton
@@ -244,7 +246,7 @@ export function MascotChatPanel({
               : undefined
             return (
               <Box key={item.id} sx={{ alignSelf: 'flex-start', maxWidth: '85%' }}>
-                <Bubble from="error" nested>{t.mascot.chat.errors[item.code]}</Bubble>
+                <Bubble from="error" nested>{t.mascot.chat.errors[item.code](name)}</Bubble>
                 {devLine && (
                   <Typography
                     color="text.disabled"
@@ -298,7 +300,7 @@ export function MascotChatPanel({
           <Stack direction="row" sx={{ alignItems: 'center', gap: 1, px: 0.5 }}>
             <CircularProgress size={14} />
             <Typography color="text.secondary" sx={{ fontSize: 12.5 }}>
-              {slow ? t.mascot.chat.thinkingLong : t.mascot.chat.thinking}
+              {slow ? t.mascot.chat.thinkingLong(name) : t.mascot.chat.thinking(name)}
             </Typography>
           </Stack>
         )}
@@ -345,7 +347,7 @@ export function MascotChatPanel({
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={t.mascot.chat.placeholder}
+            placeholder={t.mascot.chat.placeholder(name)}
             multiline
             maxRows={4}
             size="small"

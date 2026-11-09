@@ -1,3 +1,9 @@
 export { Mascot } from './Mascot'
 export { MascotProvider } from './MascotProvider'
-export { useMascotMonthControl, useMascotParams } from './mascotContext'
+export {
+  useMascotElevated,
+  useMascotMonthControl,
+  useMascotName,
+  useMascotOpenChat,
+  useMascotParams,
+} from './mascotContext'

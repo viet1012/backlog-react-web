@@ -1,4 +1,15 @@
 import { API_BASE_URL } from '../config/api'
+import { getCurrentEmployeeId } from './authService'
+
+/**
+ * Header chung cho mọi request /api/assistant/*: kèm X-Employee-Id (MSNV user đang đăng nhập,
+ * cùng nguồn session với LogoutConfirmDialog). Chưa đăng nhập / không có MSNV → không gửi header.
+ * Đọc lúc gửi (không cache) để đúng user sau khi đăng nhập lại.
+ */
+function assistantHeaders(headers: Record<string, string>): Record<string, string> {
+  const employeeId = getCurrentEmployeeId()
+  return employeeId ? { ...headers, 'X-Employee-Id': employeeId } : headers
+}
 
 // =========================================================
 // ASSISTANT CHAT – API backlog-be (/api/assistant/chat)
@@ -259,11 +270,47 @@ export async function getAssistantSuggestions(
 
   try {
     const response = await fetch(`${SUGGESTIONS_URL}?${query}`, {
-      headers: { Accept: 'application/json' },
+      headers: assistantHeaders({ Accept: 'application/json' }),
       signal: controller.signal,
     })
     if (!response.ok) throw new Error(`Suggestions HTTP ${response.status}`)
     return readSuggestions(await response.json())
+  } finally {
+    window.clearTimeout(timer)
+    signal?.removeEventListener('abort', onExternalAbort)
+  }
+}
+
+// =========================================================
+// THÔNG TIN TRỢ LÝ – GET /api/assistant/info
+// =========================================================
+
+const INFO_URL =
+  `${API_BASE_URL.replace(/\/$/, '')}/api/assistant/config`
+
+const INFO_TIMEOUT_MS = 10_000
+
+export interface AssistantInfo {
+  /** tên hiển thị của mascot; undefined khi backend không trả */
+  name?: string
+}
+
+/** Lỗi (mạng, HTTP, timeout) → ném Error; nơi gọi tự fallback về tên mặc định. */
+export async function getAssistantInfo(signal?: AbortSignal): Promise<AssistantInfo> {
+  const controller = new AbortController()
+  const timer = window.setTimeout(() => controller.abort(), INFO_TIMEOUT_MS)
+  const onExternalAbort = () => controller.abort()
+  signal?.addEventListener('abort', onExternalAbort)
+  if (signal?.aborted) controller.abort()
+
+  try {
+    const response = await fetch(INFO_URL, {
+      headers: assistantHeaders({ Accept: 'application/json' }),
+      signal: controller.signal,
+    })
+    if (!response.ok) throw new Error(`Assistant info HTTP ${response.status}`)
+    const body = asRecord(await response.json())
+    return { name: body ? readString(body, 'name') : undefined }
   } finally {
     window.clearTimeout(timer)
     signal?.removeEventListener('abort', onExternalAbort)
@@ -293,10 +340,10 @@ export async function postAssistantChat(
     try {
       response = await fetch(CHAT_URL, {
         method: 'POST',
-        headers: {
+        headers: assistantHeaders({
           'Content-Type': 'application/json',
           Accept: 'application/json',
-        },
+        }),
         body: JSON.stringify({ ...request, params: compactParams(request.params) }),
         signal: controller.signal,
       })
