@@ -19,6 +19,7 @@ import type {
   AiLogSummary,
 } from '../../types/assistantLogs'
 import { useI18n } from '../../i18n/useI18n'
+import { getScreenNameByKey } from '../mascot/mascotMessages'
 import {
   AI_LOGS_PAGE_SIZES,
   hasDetail,
@@ -38,6 +39,8 @@ interface AiLogsTableProps {
   onQueryChange: (next: AiLogListQuery) => void
   selectedRid: string | null
   onSelect: (rid: string) => void
+  // hiện chip màn hình mỗi dòng (tab con "Tất cả")
+  showScreen: boolean
 }
 
 const cellSx = { ...TABULAR_NUMS, fontSize: 12.5, py: 0.75, px: 1 } as const
@@ -51,6 +54,7 @@ export function AiLogsTable({
   onQueryChange,
   selectedRid,
   onSelect,
+  showScreen,
 }: AiLogsTableProps) {
   const { t } = useI18n()
   const labels = t.aiLogs.table
@@ -156,10 +160,24 @@ export function AiLogsTable({
                     >
                       {row.question || '–'}
                     </Typography>
-                    {row.screenKey && (
-                      <Typography sx={{ fontSize: 11, color: 'text.secondary' }} noWrap>
-                        {row.screenKey}
-                      </Typography>
+                    {/* tab "Tất cả" → ghi rõ màn hình của từng dòng; tab 1 màn hình thì thừa */}
+                    {showScreen && (
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        label={row.screenKey ? getScreenNameByKey(row.screenKey, t) : t.aiLogs.screenTabs.none}
+                        title={row.screenKey ?? undefined}
+                        sx={{
+                          mt: 0.375,
+                          height: 18,
+                          maxWidth: '100%',
+                          fontSize: 10.5,
+                          fontWeight: 600,
+                          color: row.screenKey ? 'text.secondary' : 'text.disabled',
+                          bgcolor: 'transparent',
+                          '& .MuiChip-label': { px: 0.75 },
+                        }}
+                      />
                     )}
                   </TableCell>
 

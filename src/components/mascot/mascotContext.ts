@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useRef } from 'react'
 import { useI18n } from '../../i18n/useI18n'
 import type { AssistantParams } from '../../services/assistantService'
+import { DEFAULT_SKIN } from './mascotSkin'
+import type { MascotSkin } from './mascotSkin'
 
 /** Trang đăng ký để mascot đổi bộ lọc tháng (tháng dạng "YYYY.MM") */
 export interface MascotMonthControl {
@@ -19,6 +21,12 @@ export interface MascotContextValue {
   /** tên mascot từ API (hoặc tên đã lưu lần trước); null → chưa từng có (dùng tên mặc định trong i18n) */
   name: string | null
   status: MascotStatus
+  /** trang phục mascot đang áp dụng (từ backend / cache) */
+  skin: MascotSkin
+  /** admin vừa lưu skin → áp dụng ngay cho mascot trên máy này */
+  applySkin: (skin: MascotSkin) => void
+  /** offline: mốc (ms epoch) sẽ tự kiểm tra lại kết nối; null khi không offline */
+  nextRetryAt: number | null
   /** gọi lại /config để kiểm tra kết nối (bỏ qua khi đang tải) */
   retry: () => void
   /** chat gọi được / không gọi được API → cập nhật trạng thái mà không cần chờ retry */
@@ -40,6 +48,9 @@ export interface MascotContextValue {
 export const MascotContext = createContext<MascotContextValue>({
   name: null,
   status: 'loading',
+  skin: DEFAULT_SKIN,
+  applySkin: () => {},
+  nextRetryAt: null,
   retry: () => {},
   reportStatus: () => {},
   params: {},
@@ -72,6 +83,11 @@ export function useMascotName() {
   const { name } = useContext(MascotContext)
   const { t } = useI18n()
   return name ?? t.mascot.defaultName
+}
+
+/** Skin mascot đang áp dụng */
+export function useMascotSkin() {
+  return useContext(MascotContext).skin
 }
 
 export function useMascotContext() {

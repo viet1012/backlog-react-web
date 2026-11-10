@@ -1,6 +1,11 @@
 import { COST_COLUMNS, COST_ROWS } from '../costMonitoring/costChartConfig'
-import type { AiTestCase, AiTestRun } from '../../types/aiTestSuite'
+import { DEFAULT_TEST_SCREEN_KEY, type AiTestCase, type AiTestRun } from '../../types/aiTestSuite'
 import type { CostChartType, CostDiv } from '../../types/costMonitoring'
+
+// drawer (div/cost) và simuWeek chỉ có ý nghĩa ở màn hình Cost Monitoring
+export function isCostScreen(screenKey: string) {
+  return screenKey === DEFAULT_TEST_SCREEN_KEY
+}
 
 // drawer lưu dạng "div|cost" trong ô select; '' = không mở drawer
 export const DRAWER_OPTIONS = COST_ROWS.flatMap((row) =>

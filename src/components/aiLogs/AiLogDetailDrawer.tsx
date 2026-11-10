@@ -22,6 +22,7 @@ import { useState, type ReactNode } from 'react'
 import type { AiLogDetail, AiLogToolRun } from '../../types/assistantLogs'
 import { useI18n } from '../../i18n/useI18n'
 import { MascotMarkdown } from '../mascot/MascotMarkdown'
+import { getScreenNameByKey } from '../mascot/mascotMessages'
 import { AiLogTimeline } from './AiLogTimeline'
 import {
   TABULAR_NUMS,
@@ -74,7 +75,13 @@ function Meta({ detail, rid }: { detail: AiLogDetail; rid: string }) {
   const items: { label: string; value: ReactNode }[] = [
     { label: labels.time, value: formatDateTime(detail.timestamp) },
     { label: labels.user, value: detail.userId ?? '–' },
-    { label: labels.screen, value: detail.screenKey ?? '–' },
+    {
+      label: labels.screen,
+      // tên thân thiện; screenKey gốc để ở tooltip
+      value: detail.screenKey
+        ? <span title={detail.screenKey}>{getScreenNameByKey(detail.screenKey, t)}</span>
+        : '–',
+    },
     {
       label: labels.total,
       value: (

@@ -6,14 +6,20 @@
 import type { AssistantErrorCode, AssistantSource } from '../services/assistantService'
 import type { CostChartType, CostDiv } from './costMonitoring'
 
+// màn hình mặc định của câu test – dữ liệu cũ (chưa có screenKey) đều thuộc Cost Monitoring
+export const DEFAULT_TEST_SCREEN_KEY = 'cost-monitoring'
+
 export interface AiTestCase {
   id: string
+  // screenKey gửi lên /api/assistant/chat (khớp ASSISTANT_SCREENS trong mascotMessages.ts)
+  screenKey: string
   // nhóm hiển thị, vd "1. Top máy / cost center"
   group: string
   question: string
   // mô tả kết quả mong đợi – người test đối chiếu và chấm Đạt / Không đạt
   expected: string
   // drawer đang mở trên Cost Monitoring → gửi params div + cost; null = không mở drawer
+  // (chỉ dùng khi screenKey = cost-monitoring)
   drawer: { div: CostDiv; cost: CostChartType } | null
   // thời gian tối đa (giây); vượt → cảnh báo; null = không giới hạn
   maxSec: number | null
@@ -39,7 +45,7 @@ export interface AiTestRun {
 export interface AiTestRunConfig {
   // "YYYY-MM"
   month: string
-  // '' = mới nhất
+  // '' = mới nhất; chỉ gửi cho màn hình Cost Monitoring
   simuWeek: string
   // số request tối đa / 60 s phía client; BE cho 10 / phút / IP (AssistantRateLimiter) → chừa chỗ cho mascot
   perMinute: number

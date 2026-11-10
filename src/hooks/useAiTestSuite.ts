@@ -1,29 +1,40 @@
 import dayjs from 'dayjs'
 import { useEffect, useRef, useState } from 'react'
 import { DEFAULT_AI_TEST_CASES } from '../components/aiLogs/aiTestDefaults'
+import { isCostScreen } from '../components/aiLogs/aiTestUtils'
 import { useI18n } from '../i18n/useI18n'
 import {
   AssistantApiError,
   postAssistantChat,
   type AssistantParams,
 } from '../services/assistantService'
-import type {
-  AiTestCase,
-  AiTestRun,
-  AiTestRunConfig,
-  AiTestSuiteFile,
-  AiTestSuiteState,
-  AiTestVerdict,
+import {
+  DEFAULT_TEST_SCREEN_KEY,
+  type AiTestCase,
+  type AiTestRun,
+  type AiTestRunConfig,
+  type AiTestSuiteFile,
+  type AiTestSuiteState,
+  type AiTestVerdict,
 } from '../types/aiTestSuite'
 
 // =========================================================
 // Bộ test trợ lý AI – lưu localStorage của trình duyệt (chưa có API BE)
 // =========================================================
 
+// giữ nguyên key khi thêm screenKey – migrate tại chỗ để không mất dữ liệu cũ
 const STORAGE_KEY = 'aiTestSuite.v1'
 
-// cùng screenKey mascot gửi ở /cost-monitoring (mascotMessages.ts)
-const SCREEN_KEY = 'cost-monitoring'
+// dữ liệu cũ / file JSON cũ chưa có screenKey → thuộc Cost Monitoring
+function normalizeCase(c: Partial<AiTestCase> & Pick<AiTestCase, 'id' | 'question' | 'expected'>): AiTestCase {
+  return {
+    ...c,
+    screenKey: typeof c.screenKey === 'string' && c.screenKey.trim() ? c.screenKey : DEFAULT_TEST_SCREEN_KEY,
+    group: c.group ?? '',
+    drawer: c.drawer ?? null,
+    maxSec: c.maxSec ?? null,
+  }
+}
 
 function loadState(): AiTestSuiteState {
   try {
@@ -31,7 +42,7 @@ function loadState(): AiTestSuiteState {
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<AiTestSuiteState>
       if (Array.isArray(parsed.cases)) {
-        return { cases: parsed.cases, runs: parsed.runs ?? {} }
+        return { cases: parsed.cases.filter(isCase).map(normalizeCase), runs: parsed.runs ?? {} }
       }
     }
   } catch {
@@ -52,7 +63,8 @@ export function newCaseId() {
   return `case-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
 }
 
-function isCase(value: unknown): value is AiTestCase {
+// chỉ kiểm tra trường bắt buộc; trường thiếu (screenKey, group…) do normalizeCase bù
+function isCase(value: unknown): value is Partial<AiTestCase> & Pick<AiTestCase, 'id' | 'question' | 'expected'> {
   const c = value as Partial<AiTestCase> | null
   return typeof c === 'object' && c !== null
     && typeof c.id === 'string'
@@ -62,16 +74,11 @@ function isCase(value: unknown): value is AiTestCase {
 
 // Lỗi định dạng → ném Error
 export function parseSuiteFile(text: string): AiTestSuiteState {
-  const data = JSON.parse(text) as Partial<AiTestSuiteFile> | AiTestCase[]
-  const list = Array.isArray(data) ? data : data.cases
+  const data = JSON.parse(text) as Partial<AiTestSuiteFile> | unknown[]
+  const list: unknown = Array.isArray(data) ? data : data.cases
   if (!Array.isArray(list) || !list.every(isCase)) throw new Error('Invalid test suite file')
 
-  const cases = list.map((c) => ({
-    ...c,
-    group: c.group ?? '',
-    drawer: c.drawer ?? null,
-    maxSec: c.maxSec ?? null,
-  }))
+  const cases = list.map(normalizeCase)
   const runs = !Array.isArray(data) && data.runs ? data.runs : {}
   return { cases, runs }
 }
@@ -89,11 +96,13 @@ function downloadJson(fileName: string, data: unknown) {
 }
 
 function buildParams(testCase: AiTestCase, config: AiTestRunConfig): AssistantParams {
+  // simuWeek / drawer (factory + category) chỉ có ở Cost Monitoring; màn hình khác chỉ gửi month
+  const cost = isCostScreen(testCase.screenKey)
   return {
     month: config.month || null,
     // '' = mới nhất → không gửi key simuWeek (giống CostMonitoringPage)
-    ...(config.simuWeek ? { simuWeek: config.simuWeek } : {}),
-    ...(testCase.drawer ? { factory: testCase.drawer.div, category: testCase.drawer.cost } : {}),
+    ...(cost && config.simuWeek ? { simuWeek: config.simuWeek } : {}),
+    ...(cost && testCase.drawer ? { factory: testCase.drawer.div, category: testCase.drawer.cost } : {}),
   }
 }
 
@@ -158,7 +167,7 @@ async function runCase(
   try {
     const res = await postAssistantChat(
       {
-        screenKey: SCREEN_KEY,
+        screenKey: testCase.screenKey,
         params: buildParams(testCase, config),
         question: testCase.question,
         history: [],

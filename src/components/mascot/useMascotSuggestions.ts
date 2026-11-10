@@ -118,6 +118,14 @@ export function useMascotSuggestions({ active, screenKey, params, lang, staticSu
       })
   }
 
+  /** bộ initial hiện tại đang dùng gợi ý tĩnh vì API lỗi */
+  const initialFailed = initialState?.key === initialKey && initialState.list === 'fallback'
+
+  /** gọi lại API bộ initial (vd vừa kết nối lại sau khi lỗi), giữ nguyên follow-up */
+  function reloadInitial() {
+    setRefreshToken((value) => value + 1)
+  }
+
   /** cuộc trò chuyện mới → bỏ gợi ý follow-up, lấy bộ 4 gợi ý mới */
   function newConversation() {
     followUpAbort.current?.abort()
@@ -129,6 +137,8 @@ export function useMascotSuggestions({ active, screenKey, params, lang, staticSu
   return {
     initial,
     initialLoading,
+    initialFailed,
+    reloadInitial,
     greeting,
     followUpFor,
     isFollowUpLoading,

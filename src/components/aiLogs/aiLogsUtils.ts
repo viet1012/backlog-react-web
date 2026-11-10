@@ -59,7 +59,13 @@ export function defaultFilters(): AiLogFilters {
     ok: '',
     source: 'chat',
     slowerThanSec: null,
+    screenKey: '',
   }
+}
+
+// screenKey hợp lệ để lưu/khôi phục tab con (chặn giá trị rác trong localStorage)
+export function isValidScreenKey(value: unknown): value is string {
+  return typeof value === 'string' && (value === '' || /^[\w.-]{1,64}$/.test(value))
 }
 
 export type StepKind = 'context' | 'askedMonths' | 'prefetch' | 'prefetchTool' | 'llm' | 'tool'

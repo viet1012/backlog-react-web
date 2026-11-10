@@ -1,6 +1,6 @@
-import type { AiTestCase } from '../../types/aiTestSuite'
+import { DEFAULT_TEST_SCREEN_KEY, type AiTestCase } from '../../types/aiTestSuite'
 
-// Bộ test khởi tạo (lần đầu mở tab / "Khôi phục mặc định")
+// Bộ test khởi tạo (lần đầu mở tab / "Khôi phục mặc định") – hiện chỉ có màn hình Cost Monitoring
 const G1 = '1. Top máy / cost center / category'
 const G2 = '2. Rút gọn và tốc độ'
 const G3 = '3. Không được nhầm'
@@ -21,11 +21,13 @@ const c = (
   expected: string,
   drawer: AiTestCase['drawer'] = null,
   maxSec: number | null = null,
-): AiTestCase => ({ id, group, question, expected, drawer, maxSec })
+  screenKey: string = DEFAULT_TEST_SCREEN_KEY,
+): AiTestCase => ({ id, screenKey, group, question, expected, drawer, maxSec })
 
 export const DEFAULT_AI_TEST_CASES: AiTestCase[] = [
   {
     id: 'seed-01',
+    screenKey: DEFAULT_TEST_SCREEN_KEY,
     group: G1,
     question: 'Máy nào chi nhiều nhất?',
     expected: 'Có 3 khối PRESS, MOLD, GUIDE T&SL, mỗi khối top 3 tên máy (MA-xxxx). Không có RM.',
@@ -34,6 +36,7 @@ export const DEFAULT_AI_TEST_CASES: AiTestCase[] = [
   },
   {
     id: 'seed-02',
+    screenKey: DEFAULT_TEST_SCREEN_KEY,
     group: G1,
     question: 'Máy nào chi nhiều nhất ở PRESS T&SL?',
     expected: 'Top 5 máy của PRESS T&SL.',
@@ -42,6 +45,7 @@ export const DEFAULT_AI_TEST_CASES: AiTestCase[] = [
   },
   {
     id: 'seed-03',
+    screenKey: DEFAULT_TEST_SCREEN_KEY,
     group: G1,
     question: 'cost center nào tốn nhất của guide',
     expected: '2 khối GUIDE T&SL và GUIDE RM, có ghi "không cộng T&SL với RM". Không còn số 36.3 K$.',
@@ -50,6 +54,7 @@ export const DEFAULT_AI_TEST_CASES: AiTestCase[] = [
   },
   {
     id: 'seed-04',
+    screenKey: DEFAULT_TEST_SCREEN_KEY,
     group: G1,
     question: 'Category nào lớn nhất ở MOLD RM?',
     expected: 'Top 5 Category kèm K$ và % Actual. Không có dấu cách thừa.',
@@ -58,6 +63,7 @@ export const DEFAULT_AI_TEST_CASES: AiTestCase[] = [
   },
   {
     id: 'seed-05',
+    screenKey: DEFAULT_TEST_SCREEN_KEY,
     group: G1,
     question: 'loại vật tư nào chi nhiều nhất',
     expected: 'Category lớn nhất của 6 khung, mỗi khung 1 dòng.',
@@ -66,6 +72,7 @@ export const DEFAULT_AI_TEST_CASES: AiTestCase[] = [
   },
   {
     id: 'seed-06',
+    screenKey: DEFAULT_TEST_SCREEN_KEY,
     group: G2,
     question: 'HÔM QUA CÓ GÌ BẤT THƯỜNG KO ?',
     expected: 'Phần "Tình hình cả tháng" chỉ còn câu tóm tắt và nhóm vượt Fluct, có dòng gợi ý hỏi thêm.',
@@ -74,6 +81,7 @@ export const DEFAULT_AI_TEST_CASES: AiTestCase[] = [
   },
   {
     id: 'seed-07',
+    screenKey: DEFAULT_TEST_SCREEN_KEY,
     group: G2,
     question: 'Có gì bất thường trong tháng này?',
     expected: 'Vẫn hiện tổng quan đầy đủ, không có phần "Dữ liệu mới nhất".',
@@ -82,6 +90,7 @@ export const DEFAULT_AI_TEST_CASES: AiTestCase[] = [
   },
   {
     id: 'seed-08',
+    screenKey: DEFAULT_TEST_SCREEN_KEY,
     group: G2,
     question: 'vật tư lớn',
     expected: 'Nhanh hơn 24 s so với lần trước. Category không còn dấu cách thừa.',
@@ -90,6 +99,7 @@ export const DEFAULT_AI_TEST_CASES: AiTestCase[] = [
   },
   {
     id: 'seed-09',
+    screenKey: DEFAULT_TEST_SCREEN_KEY,
     group: G3,
     question: 'tháng này còn mấy ngày?',
     expected: 'Không trả về danh sách máy ("mấy" khác "máy").',
@@ -98,6 +108,7 @@ export const DEFAULT_AI_TEST_CASES: AiTestCase[] = [
   },
   {
     id: 'seed-10',
+    screenKey: DEFAULT_TEST_SCREEN_KEY,
     group: G3,
     question: 'Ngày nào PRESS T&SL chi nhiều nhất?',
     expected: 'Vẫn trả ngày chi nhiều nhất như cũ, không nhầm sang câu hỏi về máy.',
@@ -106,6 +117,7 @@ export const DEFAULT_AI_TEST_CASES: AiTestCase[] = [
   },
   {
     id: 'seed-11',
+    screenKey: DEFAULT_TEST_SCREEN_KEY,
     group: G3,
     question: 'Vì sao PRESS T&SL dự báo vượt?',
     expected: 'Vẫn qua LLM.',
@@ -114,6 +126,7 @@ export const DEFAULT_AI_TEST_CASES: AiTestCase[] = [
   },
   {
     id: 'seed-12',
+    screenKey: DEFAULT_TEST_SCREEN_KEY,
     group: G3,
     question: 'máy nào chi nhiều nhất hôm qua',
     expected: 'Qua LLM, vì câu hỏi về một ngày cụ thể. Ghi lại xem trả lời có đúng không.',
@@ -122,6 +135,7 @@ export const DEFAULT_AI_TEST_CASES: AiTestCase[] = [
   },
   {
     id: 'seed-13',
+    screenKey: DEFAULT_TEST_SCREEN_KEY,
     group: G3,
     question: 'Máy nào chi nhiều nhất ở PRESS RM?',
     expected: 'Báo RM không ghi nhận theo máy.',
@@ -130,6 +144,7 @@ export const DEFAULT_AI_TEST_CASES: AiTestCase[] = [
   },
   {
     id: 'seed-14',
+    screenKey: DEFAULT_TEST_SCREEN_KEY,
     group: G4,
     question: 'máy nào tốn nhất?',
     expected: 'Chỉ top máy của MOLD T&SL.',
@@ -138,6 +153,7 @@ export const DEFAULT_AI_TEST_CASES: AiTestCase[] = [
   },
   {
     id: 'seed-15',
+    screenKey: DEFAULT_TEST_SCREEN_KEY,
     group: G4,
     question: 'cost center nào lớn nhất?',
     expected: 'Chỉ cost center của GUIDE RM.',

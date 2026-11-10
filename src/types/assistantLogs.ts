@@ -27,6 +27,8 @@ export interface AiLogFilters {
   source: '' | AiLogSource
   // chậm hơn N giây → gửi minMs = N × 1000; null = không lọc
   slowerThanSec: number | null
+  // màn hình trợ lý (screenKey) – '' = mọi màn hình; chọn bằng tab con, không thuộc thanh lọc
+  screenKey: string
 }
 
 export interface AiLogListQuery {
@@ -93,6 +95,14 @@ export interface AiLogStats {
   byDay: AiLogDayStat[]
   topUsers: AiLogUserStat[]
   slowest: AiLogSummary[]
+  // số câu hỏi theo màn hình – BE có thể chưa trả → luôn kiểm tra trước khi dùng
+  byScreen?: AiLogScreenStat[]
+}
+
+// AssistantLogStats.ScreenStat (tuỳ chọn) – screenKey null = log không rõ màn hình
+export interface AiLogScreenStat {
+  screenKey: string | null
+  count: number
 }
 
 // AssistantAuditTrace.LlmCall – finishReason = "error" khi lần gọi lỗi

@@ -16,6 +16,24 @@ const ROUTES: Record<string, RouteConfig> = {
   '/cost-monitoring': { id: 'costMonitoring', screenKey: 'cost-monitoring' },
 }
 
+export interface AssistantScreenDef {
+  screenKey: string
+  screenId: ScreenId
+  /** route của trang (tiền tố) */
+  route: string
+}
+
+/** Mọi màn hình có chat trợ lý – dùng cho tab theo màn hình ở AI Logs (Logs / Bộ test) */
+export const ASSISTANT_SCREENS: AssistantScreenDef[] = Object.entries(ROUTES).map(
+  ([route, { id, screenKey }]) => ({ route, screenId: id, screenKey }),
+)
+
+/** Tên hiển thị của screenKey; screenKey lạ (chưa khai báo) → trả nguyên screenKey */
+export function getScreenNameByKey(screenKey: string, t: Messages): string {
+  const def = ASSISTANT_SCREENS.find((s) => s.screenKey === screenKey)
+  return def ? t.mascot.screens[def.screenId].name : screenKey
+}
+
 export interface MascotScreen {
   lines: string[]
   /** undefined → trang chưa hỗ trợ chat */

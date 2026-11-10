@@ -1,5 +1,7 @@
 import { API_BASE_URL } from '../config/api'
 import { getCurrentEmployeeId } from './authService'
+import { normalizeSkin } from '../components/mascot/mascotSkin'
+import type { MascotSkin } from '../components/mascot/mascotSkin'
 
 /**
  * Header chung cho mọi request /api/assistant/*: kèm X-Employee-Id (MSNV user đang đăng nhập,
@@ -299,6 +301,8 @@ const INFO_TIMEOUT_MS = 10_000
 export interface AssistantInfo {
   /** tên hiển thị của mascot; undefined khi backend không trả */
   name?: string
+  /** trang phục mascot; undefined khi backend không trả (→ giữ skin đang dùng / mặc định) */
+  skin?: MascotSkin
 }
 
 /** Lỗi (mạng, HTTP, timeout) → ném Error; nơi gọi tự fallback về tên mặc định. */
@@ -316,10 +320,57 @@ export async function getAssistantInfo(signal?: AbortSignal): Promise<AssistantI
     })
     if (!response.ok) throw new Error(`Assistant info HTTP ${response.status}`)
     const body = asRecord(await response.json())
-    return { name: body ? readString(body, 'name') : undefined }
+    return {
+      name: body ? readString(body, 'name') : undefined,
+      skin: body?.skin && typeof body.skin === 'object' ? normalizeSkin(body.skin) : undefined,
+    }
   } finally {
     window.clearTimeout(timer)
     signal?.removeEventListener('abort', onExternalAbort)
+  }
+}
+
+// =========================================================
+// SKIN MASCOT – PUT /api/assistant/config/skin (admin, Phòng thay đồ)
+// =========================================================
+
+const SKIN_URL = `${INFO_URL}/skin`
+
+/** Lỗi lưu skin; `unsupported` = backend chưa có endpoint (404/405/501) */
+export class AssistantSkinError extends Error {
+  readonly status?: number
+  readonly unsupported: boolean
+
+  constructor(message: string, status?: number) {
+    super(message)
+    this.name = 'AssistantSkinError'
+    this.status = status
+    this.unsupported = status === 404 || status === 405 || status === 501
+  }
+}
+
+/** Lưu skin cho mọi người dùng; backend trả skin đã lưu (hoặc rỗng → dùng skin vừa gửi). */
+export async function saveAssistantSkin(skin: MascotSkin): Promise<MascotSkin> {
+  let response: Response
+  try {
+    response = await fetch(SKIN_URL, {
+      method: 'PUT',
+      headers: assistantHeaders({ Accept: 'application/json', 'Content-Type': 'application/json' }),
+      body: JSON.stringify(skin),
+    })
+  } catch (error) {
+    throw new AssistantSkinError(error instanceof Error ? error.message : 'Network error')
+  }
+  if (!response.ok) throw new AssistantSkinError(`HTTP ${response.status}`, response.status)
+
+  const text = await response.text()
+  if (!text) return skin
+  try {
+    const body = asRecord(JSON.parse(text))
+    const saved = body?.skin ?? body
+    return saved && typeof saved === 'object' ? normalizeSkin(saved) : skin
+  } catch {
+    return skin
   }
 }
 

@@ -61,7 +61,8 @@ async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
 }
 
 // =========================================================
-// QUERY – AssistantLogFilter: from, to, userId, q, ok, source, minMs
+// QUERY – AssistantLogFilter: from, to, userId, q, ok, source, minMs, screenKey
+// screenKey: BE cũ có thể bỏ qua tham số này → trang AI Logs tự phát hiện và cảnh báo
 // =========================================================
 
 function filterParams(filters: AiLogFilters): URLSearchParams {
@@ -74,6 +75,7 @@ function filterParams(filters: AiLogFilters): URLSearchParams {
   if (filters.q.trim()) params.set('q', filters.q.trim())
   if (filters.ok) params.set('ok', filters.ok)
   if (filters.source) params.set('source', filters.source)
+  if (filters.screenKey) params.set('screenKey', filters.screenKey)
   if (filters.slowerThanSec != null && filters.slowerThanSec > 0) {
     params.set('minMs', String(Math.round(filters.slowerThanSec * 1000)))
   }

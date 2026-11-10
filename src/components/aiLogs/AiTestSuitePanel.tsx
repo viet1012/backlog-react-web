@@ -25,19 +25,21 @@ import {
   MenuItem,
   Snackbar,
   Stack,
+  Tab,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
+  Tabs,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
   Tooltip,
   Typography,
 } from '@mui/material'
-import { alpha } from '@mui/material/styles'
+import { alpha, keyframes } from '@mui/material/styles'
 import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined'
 import FileUploadOutlinedIcon from '@mui/icons-material/FileUploadOutlined'
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded'
@@ -46,25 +48,185 @@ import PlaylistAddRoundedIcon from '@mui/icons-material/PlaylistAddRounded'
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { SIMU_WEEK_OPTIONS } from '../costMonitoring/costChartConfig'
 import { MascotMarkdown } from '../mascot/MascotMarkdown'
+import { ASSISTANT_SCREENS, getScreenNameByKey } from '../mascot/mascotMessages'
 import {
   MAX_PER_MINUTE,
   parseSuiteFile,
   useAiTestSuite,
   type AiTestProgress,
 } from '../../hooks/useAiTestSuite'
-import type { AiTestCase, AiTestRun, AiTestVerdict } from '../../types/aiTestSuite'
+import {
+  DEFAULT_TEST_SCREEN_KEY,
+  type AiTestCase,
+  type AiTestRun,
+  type AiTestVerdict,
+} from '../../types/aiTestSuite'
 import { uiTokens } from '../../theme/uiTokens'
+import { loadPreference, savePreference } from '../../utils/uiPreferences'
 import type { Messages } from '../../i18n/i18nContext'
 import { useI18n } from '../../i18n/useI18n'
 import { AiTestCaseDialog } from './AiTestCaseDialog'
 import { TABULAR_NUMS, formatDateTime, formatSec } from './aiLogsUtils'
-import { drawerLabel, groupCases, isOverLimit } from './aiTestUtils'
+import { drawerLabel, groupCases, isCostScreen, isOverLimit } from './aiTestUtils'
 
 const cellSx = { ...TABULAR_NUMS, fontSize: 12.5, py: 0.75, px: 1, verticalAlign: 'top' } as const
 const headSx = { ...cellSx, fontWeight: 700, whiteSpace: 'nowrap', bgcolor: 'background.paper' } as const
 const COLS = 6
 
 type Labels = Messages['aiLogs']['tests']
+
+// tab màn hình đang chọn – nhớ qua các lần mở trang
+const PREF_SCREEN_TAB = 'ai-logs:tests:screen'
+
+function loadScreenTab(): string | null {
+  const stored = loadPreference(PREF_SCREEN_TAB)
+  return typeof stored === 'string' ? stored : null
+}
+
+// =========================================================
+// Hàng tab con theo màn hình (screenKey) – dạng pill, nhẹ hơn tab chính của trang
+// =========================================================
+
+const pulse = keyframes`
+  0% { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
+  70% { box-shadow: 0 0 0 5px transparent; opacity: 0.6; }
+  100% { box-shadow: 0 0 0 0 transparent; opacity: 1; }
+`
+
+interface ScreenTabStat {
+  screenKey: string
+  total: number
+  pass: number
+  fail: number
+}
+
+function ScreenTabs({
+  stats,
+  value,
+  runningKey,
+  onChange,
+}: {
+  stats: ScreenTabStat[]
+  value: string
+  runningKey: string | null
+  onChange: (screenKey: string) => void
+}) {
+  const { t } = useI18n()
+
+  return (
+    <Tabs
+      value={value}
+      onChange={(_, v: string) => onChange(v)}
+      variant="scrollable"
+      scrollButtons="auto"
+      aria-label={t.aiLogs.screenTabs.ariaLabel}
+      sx={{
+        flexShrink: 0,
+        minHeight: 32,
+        '& .MuiTabs-indicator': { display: 'none' },
+        // MUI v9: container của tab là .MuiTabs-list (không còn .MuiTabs-flexContainer)
+        '& .MuiTabs-list': { gap: 0.75, alignItems: 'center', height: 32 },
+        '& .MuiTabs-scrollButtons': { width: 28 },
+      }}
+    >
+      {stats.map(({ screenKey, total, pass, fail }) => (
+        <Tab
+          key={screenKey}
+          value={screenKey}
+          // tên màn hình + ý nghĩa con số cho trình đọc màn hình (tooltip chỉ hiện khi hover)
+          aria-label={`${getScreenNameByKey(screenKey, t)} – ${t.aiLogs.screenTabs.countTooltip(total, pass, fail)}`}
+          label={(
+            <Tooltip describeChild title={t.aiLogs.screenTabs.countTooltip(total, pass, fail)}>
+              <Stack direction="row" component="span" sx={{ alignItems: 'center', gap: 0.75 }}>
+                {runningKey === screenKey && (
+                  <Box
+                    component="span"
+                    sx={{
+                      width: 7,
+                      height: 7,
+                      borderRadius: '50%',
+                      bgcolor: 'warning.main',
+                      color: 'warning.main',
+                      animation: `${pulse} 1.4s ease-out infinite`,
+                    }}
+                  />
+                )}
+                <span>{getScreenNameByKey(screenKey, t)}</span>
+                <Box
+                  component="span"
+                  sx={(theme) => ({
+                    ...TABULAR_NUMS,
+                    minWidth: 18,
+                    px: 0.625,
+                    borderRadius: 999,
+                    fontSize: 10.5,
+                    fontWeight: 700,
+                    lineHeight: '16px',
+                    textAlign: 'center',
+                    bgcolor: alpha(theme.palette.text.primary, 0.08),
+                    color: 'text.secondary',
+                  })}
+                >
+                  {total}
+                </Box>
+              </Stack>
+            </Tooltip>
+          )}
+          sx={(theme) => ({
+            // đồng bộ với tab màn hình ở tab Logs (AiLogsPage)
+            minHeight: 26,
+            minWidth: 0,
+            py: 0.25,
+            px: 1.25,
+            borderRadius: 999,
+            border: 1,
+            borderColor: 'divider',
+            textTransform: 'none',
+            fontSize: 12.5,
+            fontWeight: 600,
+            color: 'text.secondary',
+            transition: 'background-color 120ms, border-color 120ms',
+            '&:hover': { bgcolor: 'action.hover' },
+            '&.Mui-selected': {
+              color: 'primary.main',
+              borderColor: alpha(theme.palette.primary.main, 0.45),
+              bgcolor: alpha(theme.palette.primary.main, 0.1),
+            },
+            '&.Mui-focusVisible': {
+              outline: `2px solid ${theme.palette.primary.main}`,
+              outlineOffset: 1,
+            },
+          })}
+        />
+      ))}
+    </Tabs>
+  )
+}
+
+// =========================================================
+// Màn hình chưa có câu test
+// =========================================================
+
+function EmptyScreen({ name, onAdd }: { name: string; onAdd: () => void }) {
+  const { t } = useI18n()
+  return (
+    <Stack sx={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 1.5, py: 6, px: 2, textAlign: 'center' }}>
+      <PlaylistAddRoundedIcon sx={{ fontSize: 40, color: 'text.disabled' }} />
+      <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+        {t.aiLogs.screenTabs.emptyScreen(name)}
+      </Typography>
+      <Button
+        size="small"
+        variant="contained"
+        startIcon={<AddRoundedIcon />}
+        onClick={onAdd}
+        sx={{ textTransform: 'none' }}
+      >
+        {t.aiLogs.screenTabs.addFirstCase}
+      </Button>
+    </Stack>
+  )
+}
 
 // =========================================================
 // Đếm ngược thời gian đợi (giãn nhịp / 429 / 503)
@@ -272,26 +434,68 @@ export function AiTestSuitePanel() {
   const [message, setMessage] = useState<{ severity: 'success' | 'error'; text: string } | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
 
-  const grouped = useMemo(() => groupCases(cases), [cases])
-  const groupNames = useMemo(() => grouped.map((g) => g.group).filter(Boolean), [grouped])
+  // ---- tab theo màn hình: màn hình đã khai báo + screenKey lạ có trong bộ test ----
+  const screenStats = useMemo<ScreenTabStat[]>(() => {
+    const keys = [...new Set([...ASSISTANT_SCREENS.map((s) => s.screenKey), ...cases.map((c) => c.screenKey)])]
+    return keys.map((key) => {
+      const own = cases.filter((c) => c.screenKey === key)
+      return {
+        screenKey: key,
+        total: own.length,
+        pass: own.filter((c) => runs[c.id]?.verdict === 'pass').length,
+        fail: own.filter((c) => runs[c.id]?.verdict === 'fail').length,
+      }
+    })
+  }, [cases, runs])
+
+  const [storedScreen, setStoredScreen] = useState(loadScreenTab)
+  // tab đã lưu không còn (màn hình bị gỡ / xóa hết câu của screenKey lạ) → tab đầu tiên (suy ra khi render)
+  const screenKey = screenStats.find((s) => s.screenKey === storedScreen)?.screenKey
+    ?? screenStats[0]?.screenKey
+    ?? DEFAULT_TEST_SCREEN_KEY
+  const costScreen = isCostScreen(screenKey)
+
+  function selectScreen(key: string) {
+    setStoredScreen(key)
+    savePreference(PREF_SCREEN_TAB, key)
+  }
+
+  // màn hình của câu đang chạy → chấm nhấp nháy trên tab
+  const runningScreenKey = progress?.currentId
+    ? cases.find((c) => c.id === progress.currentId)?.screenKey ?? null
+    : null
+
+  const screenCases = useMemo(() => cases.filter((c) => c.screenKey === screenKey), [cases, screenKey])
+  const grouped = useMemo(() => groupCases(screenCases), [screenCases])
+
+  // gợi ý ô "Nhóm" trong dialog theo màn hình đang chọn ở dialog
+  const groupsByScreen = useMemo(() => {
+    const map: Record<string, string[]> = {}
+    for (const c of cases) {
+      if (!c.group) continue
+      const list = (map[c.screenKey] ??= [])
+      if (!list.includes(c.group)) list.push(c.group)
+    }
+    return map
+  }, [cases])
 
   const summary = useMemo(() => {
-    const ran = cases.map((c) => runs[c.id]).filter((r): r is AiTestRun => r != null)
+    const ran = screenCases.map((c) => runs[c.id]).filter((r): r is AiTestRun => r != null)
     const timed = ran.filter((r) => r.ok)
     return {
-      total: cases.length,
+      total: screenCases.length,
       ran: ran.length,
       pass: ran.filter((r) => r.verdict === 'pass').length,
       fail: ran.filter((r) => r.verdict === 'fail').length,
       unrated: ran.filter((r) => r.verdict == null).length,
       errors: ran.filter((r) => !r.ok).length,
-      slow: cases.filter((c) => isOverLimit(c, runs[c.id])).length,
+      slow: screenCases.filter((c) => isOverLimit(c, runs[c.id])).length,
       avgMs: timed.length ? timed.reduce((s, r) => s + r.ms, 0) / timed.length : null,
     }
-  }, [cases, runs])
+  }, [screenCases, runs])
 
-  // chưa chạy / lỗi / Không đạt / vượt thời gian
-  const retryIds = cases
+  // chưa chạy / lỗi / Không đạt / vượt thời gian – chỉ trong màn hình đang chọn
+  const retryIds = screenCases
     .filter((c) => {
       const r = runs[c.id]
       return !r || !r.ok || r.verdict === 'fail' || isOverLimit(c, r)
@@ -330,6 +534,13 @@ export function AiTestSuitePanel() {
 
   return (
     <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: uiTokens.page.gap }}>
+      <ScreenTabs
+        stats={screenStats}
+        value={screenKey}
+        runningKey={runningScreenKey}
+        onChange={selectScreen}
+      />
+
       {/* thanh công cụ – pt chừa chỗ cho label nổi của ô outlined (wrapper overflow: auto cắt mất) */}
       <Stack direction="row" sx={{ alignItems: 'center', gap: 1, flexWrap: 'wrap', flexShrink: 0, pt: 1 }}>
         <TextField
@@ -343,19 +554,22 @@ export function AiTestSuitePanel() {
           slotProps={{ inputLabel: { shrink: true } }}
         />
 
-        <TextField
-          select
-          size="small"
-          label={labels.simuWeek}
-          value={suite.config.simuWeek}
-          onChange={(e) => suite.setConfig({ ...suite.config, simuWeek: e.target.value })}
-          disabled={suite.running}
-          sx={{ width: 170 }}
-        >
-          {SIMU_WEEK_OPTIONS.map((o) => (
-            <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
-          ))}
-        </TextField>
+        {/* simuWeek chỉ có ở Cost Monitoring */}
+        {costScreen && (
+          <TextField
+            select
+            size="small"
+            label={labels.simuWeek}
+            value={suite.config.simuWeek}
+            onChange={(e) => suite.setConfig({ ...suite.config, simuWeek: e.target.value })}
+            disabled={suite.running}
+            sx={{ width: 170 }}
+          >
+            {SIMU_WEEK_OPTIONS.map((o) => (
+              <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
+            ))}
+          </TextField>
+        )}
 
         <Tooltip title={labels.perMinuteHelp(MAX_PER_MINUTE)}>
           <TextField
@@ -387,11 +601,11 @@ export function AiTestSuitePanel() {
               size="small"
               variant="contained"
               startIcon={<PlayArrowRoundedIcon />}
-              disabled={cases.length === 0}
-              onClick={() => void suite.run(cases.map((c) => c.id))}
+              disabled={screenCases.length === 0}
+              onClick={() => void suite.run(screenCases.map((c) => c.id))}
               sx={{ textTransform: 'none' }}
             >
-              {labels.runAll(cases.length)}
+              {labels.runAll(screenCases.length)}
             </Button>
             <Button
               size="small"
@@ -509,192 +723,196 @@ export function AiTestSuitePanel() {
           overflow: 'hidden',
         }}
       >
-        <TableContainer sx={{ flex: 1, minHeight: 0 }}>
-          <Table size="small" stickyHeader>
-            <TableHead>
-              <TableRow>
-                <TableCell sx={{ ...headSx, width: 36 }} />
-                <TableCell sx={{ ...headSx, width: '28%' }}>{labels.table.question}</TableCell>
-                <TableCell sx={headSx}>{labels.table.expected}</TableCell>
-                <TableCell sx={{ ...headSx, width: 140 }}>{labels.table.result}</TableCell>
-                <TableCell sx={{ ...headSx, width: 96 }}>{labels.table.verdict}</TableCell>
-                <TableCell sx={{ ...headSx, width: 112 }} align="right">{labels.table.actions}</TableCell>
-              </TableRow>
-            </TableHead>
-
-            <TableBody>
-              {cases.length === 0 ? (
+        {screenCases.length === 0 ? (
+          <EmptyScreen
+            name={getScreenNameByKey(screenKey, t)}
+            onAdd={() => setDialog({ open: true, initial: null })}
+          />
+        ) : (
+          <TableContainer sx={{ flex: 1, minHeight: 0 }}>
+            <Table size="small" stickyHeader>
+              <TableHead>
                 <TableRow>
-                  <TableCell colSpan={COLS} align="center" sx={{ ...cellSx, py: 4, color: 'text.secondary' }}>
-                    {labels.table.empty}
-                  </TableCell>
+                  <TableCell sx={{ ...headSx, width: 36 }} />
+                  <TableCell sx={{ ...headSx, width: '28%' }}>{labels.table.question}</TableCell>
+                  <TableCell sx={headSx}>{labels.table.expected}</TableCell>
+                  <TableCell sx={{ ...headSx, width: 140 }}>{labels.table.result}</TableCell>
+                  <TableCell sx={{ ...headSx, width: 96 }}>{labels.table.verdict}</TableCell>
+                  <TableCell sx={{ ...headSx, width: 112 }} align="right">{labels.table.actions}</TableCell>
                 </TableRow>
-              ) : grouped.map(({ group, items }) => (
-                <Fragment key={group || '__none'}>
-                  {group && (
-                    <TableRow>
-                      <TableCell
-                        colSpan={COLS}
-                        sx={(theme) => ({
-                          ...cellSx,
-                          fontWeight: 800,
-                          bgcolor: alpha(theme.palette.primary.main, 0.06),
-                        })}
-                      >
-                        {group}
-                      </TableCell>
-                    </TableRow>
-                  )}
+              </TableHead>
 
-                  {items.map((testCase) => {
-                    const run = runs[testCase.id]
-                    const state = rowState(testCase.id)
-                    const open = expanded.has(testCase.id) && run != null
-                    const drawer = drawerLabel(testCase.drawer)
-                    const index = cases.indexOf(testCase) + 1
-
-                    return (
-                      <Fragment key={testCase.id}>
-                        <TableRow
-                          hover
-                          onClick={() => run && toggleExpanded(testCase.id)}
+              <TableBody>
+                {grouped.map(({ group, items }) => (
+                  <Fragment key={group || '__none'}>
+                    {group && (
+                      <TableRow>
+                        <TableCell
+                          colSpan={COLS}
                           sx={(theme) => ({
-                            cursor: run ? 'pointer' : 'default',
-                            '& > td': { borderBottom: open ? 0 : undefined },
-                            ...(run?.verdict === 'fail' && { bgcolor: alpha(theme.palette.error.main, 0.04) }),
+                            ...cellSx,
+                            fontWeight: 800,
+                            bgcolor: alpha(theme.palette.primary.main, 0.06),
                           })}
                         >
-                          <TableCell sx={{ ...cellSx, color: 'text.secondary' }}>
-                            <Stack direction="row" sx={{ alignItems: 'center' }}>
-                              {run ? (
-                                open
-                                  ? <KeyboardArrowDownRoundedIcon sx={{ fontSize: 16 }} />
-                                  : <KeyboardArrowRightRoundedIcon sx={{ fontSize: 16 }} />
-                              ) : <Box sx={{ width: 16 }} />}
-                              {index}
-                            </Stack>
-                          </TableCell>
+                          {group}
+                        </TableCell>
+                      </TableRow>
+                    )}
 
-                          <TableCell sx={cellSx}>
-                            <Typography sx={{ fontSize: 13, fontWeight: 600 }}>{testCase.question}</Typography>
-                            <Stack direction="row" sx={{ gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
-                              {drawer && (
-                                <Chip
-                                  size="small"
-                                  color="info"
-                                  variant="outlined"
-                                  label={labels.table.drawerChip(drawer)}
-                                  sx={{ height: 18, fontSize: 10.5 }}
-                                />
-                              )}
-                              {testCase.maxSec != null && (
-                                <Chip
-                                  size="small"
-                                  variant="outlined"
-                                  label={labels.table.maxSecChip(testCase.maxSec)}
-                                  sx={{ height: 18, fontSize: 10.5 }}
-                                />
-                              )}
-                            </Stack>
-                          </TableCell>
+                    {items.map((testCase) => {
+                      const run = runs[testCase.id]
+                      const state = rowState(testCase.id)
+                      const open = expanded.has(testCase.id) && run != null
+                      const drawer = drawerLabel(testCase.drawer)
+                      const index = screenCases.indexOf(testCase) + 1
 
-                          <TableCell sx={{ ...cellSx, color: 'text.secondary', whiteSpace: 'pre-wrap' }}>
-                            {testCase.expected || '–'}
-                          </TableCell>
+                      return (
+                        <Fragment key={testCase.id}>
+                          <TableRow
+                            hover
+                            onClick={() => run && toggleExpanded(testCase.id)}
+                            sx={(theme) => ({
+                              cursor: run ? 'pointer' : 'default',
+                              '& > td': { borderBottom: open ? 0 : undefined },
+                              ...(run?.verdict === 'fail' && { bgcolor: alpha(theme.palette.error.main, 0.04) }),
+                            })}
+                          >
+                            <TableCell sx={{ ...cellSx, color: 'text.secondary' }}>
+                              <Stack direction="row" sx={{ alignItems: 'center' }}>
+                                {run ? (
+                                  open
+                                    ? <KeyboardArrowDownRoundedIcon sx={{ fontSize: 16 }} />
+                                    : <KeyboardArrowRightRoundedIcon sx={{ fontSize: 16 }} />
+                                ) : <Box sx={{ width: 16 }} />}
+                                {index}
+                              </Stack>
+                            </TableCell>
 
-                          <TableCell sx={cellSx}>
-                            <RunStatus
-                              testCase={testCase}
-                              run={run}
-                              state={state}
-                              progress={progress}
-                              labels={labels}
-                            />
-                          </TableCell>
+                            <TableCell sx={cellSx}>
+                              <Typography sx={{ fontSize: 13, fontWeight: 600 }}>{testCase.question}</Typography>
+                              <Stack direction="row" sx={{ gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
+                                {drawer && (
+                                  <Chip
+                                    size="small"
+                                    color="info"
+                                    variant="outlined"
+                                    label={labels.table.drawerChip(drawer)}
+                                    sx={{ height: 18, fontSize: 10.5 }}
+                                  />
+                                )}
+                                {testCase.maxSec != null && (
+                                  <Chip
+                                    size="small"
+                                    variant="outlined"
+                                    label={labels.table.maxSecChip(testCase.maxSec)}
+                                    sx={{ height: 18, fontSize: 10.5 }}
+                                  />
+                                )}
+                              </Stack>
+                            </TableCell>
 
-                          <TableCell sx={cellSx} onClick={(e) => e.stopPropagation()}>
-                            <ToggleButtonGroup
-                              size="small"
-                              exclusive
-                              disabled={!run}
-                              value={run?.verdict ?? null}
-                              onChange={(_, v: AiTestVerdict | null) => suite.setVerdict(testCase.id, v)}
-                            >
-                              <ToggleButton value="pass" color="success" sx={{ p: 0.25 }} aria-label={labels.pass}>
-                                <Tooltip title={labels.pass}><CheckRoundedIcon sx={{ fontSize: 18 }} /></Tooltip>
-                              </ToggleButton>
-                              <ToggleButton value="fail" color="error" sx={{ p: 0.25 }} aria-label={labels.fail}>
-                                <Tooltip title={labels.fail}><CloseRoundedIcon sx={{ fontSize: 18 }} /></Tooltip>
-                              </ToggleButton>
-                            </ToggleButtonGroup>
-                          </TableCell>
+                            <TableCell sx={{ ...cellSx, color: 'text.secondary', whiteSpace: 'pre-wrap' }}>
+                              {testCase.expected || '–'}
+                            </TableCell>
 
-                          <TableCell sx={{ ...cellSx, whiteSpace: 'nowrap' }} align="right" onClick={(e) => e.stopPropagation()}>
-                            <Tooltip title={labels.run}>
-                              <span>
-                                <IconButton
-                                  size="small"
-                                  disabled={suite.running}
-                                  onClick={() => void suite.run([testCase.id])}
-                                >
-                                  <PlayArrowRoundedIcon fontSize="small" />
+                            <TableCell sx={cellSx}>
+                              <RunStatus
+                                testCase={testCase}
+                                run={run}
+                                state={state}
+                                progress={progress}
+                                labels={labels}
+                              />
+                            </TableCell>
+
+                            <TableCell sx={cellSx} onClick={(e) => e.stopPropagation()}>
+                              <ToggleButtonGroup
+                                size="small"
+                                exclusive
+                                disabled={!run}
+                                value={run?.verdict ?? null}
+                                onChange={(_, v: AiTestVerdict | null) => suite.setVerdict(testCase.id, v)}
+                              >
+                                <ToggleButton value="pass" color="success" sx={{ p: 0.25 }} aria-label={labels.pass}>
+                                  <Tooltip title={labels.pass}><CheckRoundedIcon sx={{ fontSize: 18 }} /></Tooltip>
+                                </ToggleButton>
+                                <ToggleButton value="fail" color="error" sx={{ p: 0.25 }} aria-label={labels.fail}>
+                                  <Tooltip title={labels.fail}><CloseRoundedIcon sx={{ fontSize: 18 }} /></Tooltip>
+                                </ToggleButton>
+                              </ToggleButtonGroup>
+                            </TableCell>
+
+                            <TableCell sx={{ ...cellSx, whiteSpace: 'nowrap' }} align="right" onClick={(e) => e.stopPropagation()}>
+                              <Tooltip title={labels.run}>
+                                <span>
+                                  <IconButton
+                                    size="small"
+                                    disabled={suite.running}
+                                    onClick={() => void suite.run([testCase.id])}
+                                  >
+                                    <PlayArrowRoundedIcon fontSize="small" />
+                                  </IconButton>
+                                </span>
+                              </Tooltip>
+                              <Tooltip title={labels.edit}>
+                                <IconButton size="small" onClick={() => setDialog({ open: true, initial: testCase })}>
+                                  <EditOutlinedIcon fontSize="small" />
                                 </IconButton>
-                              </span>
-                            </Tooltip>
-                            <Tooltip title={labels.edit}>
-                              <IconButton size="small" onClick={() => setDialog({ open: true, initial: testCase })}>
-                                <EditOutlinedIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title={labels.delete}>
-                              <span>
-                                <IconButton
-                                  size="small"
-                                  disabled={state !== null}
-                                  onClick={() => {
-                                    if (window.confirm(labels.deleteConfirm(testCase.question))) {
-                                      suite.deleteCase(testCase.id)
-                                    }
-                                  }}
-                                >
-                                  <DeleteOutlineRoundedIcon fontSize="small" />
-                                </IconButton>
-                              </span>
-                            </Tooltip>
-                          </TableCell>
-                        </TableRow>
-
-                        {run && (
-                          <TableRow>
-                            <TableCell colSpan={COLS} sx={{ p: 0, borderBottom: open ? undefined : 0 }}>
-                              <Collapse in={open} unmountOnExit>
-                                <RunDetail
-                                  run={run}
-                                  labels={labels}
-                                  onNote={(note) => suite.setNote(testCase.id, note)}
-                                />
-                              </Collapse>
+                              </Tooltip>
+                              <Tooltip title={labels.delete}>
+                                <span>
+                                  <IconButton
+                                    size="small"
+                                    disabled={state !== null}
+                                    onClick={() => {
+                                      if (window.confirm(labels.deleteConfirm(testCase.question))) {
+                                        suite.deleteCase(testCase.id)
+                                      }
+                                    }}
+                                  >
+                                    <DeleteOutlineRoundedIcon fontSize="small" />
+                                  </IconButton>
+                                </span>
+                              </Tooltip>
                             </TableCell>
                           </TableRow>
-                        )}
-                      </Fragment>
-                    )
-                  })}
-                </Fragment>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+
+                          {run && (
+                            <TableRow>
+                              <TableCell colSpan={COLS} sx={{ p: 0, borderBottom: open ? undefined : 0 }}>
+                                <Collapse in={open} unmountOnExit>
+                                  <RunDetail
+                                    run={run}
+                                    labels={labels}
+                                    onNote={(note) => suite.setNote(testCase.id, note)}
+                                  />
+                                </Collapse>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </Fragment>
+                      )
+                    })}
+                  </Fragment>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
       </Box>
 
       <AiTestCaseDialog
         open={dialog.open}
         initial={dialog.initial}
-        groups={groupNames}
+        defaultScreenKey={screenKey}
+        groupsByScreen={groupsByScreen}
         onClose={() => setDialog((d) => ({ ...d, open: false }))}
         onSave={(testCase) => {
           suite.saveCase(testCase)
           setDialog((d) => ({ ...d, open: false }))
+          // lưu sang màn hình khác → chuyển tab để thấy ngay câu vừa lưu
+          if (testCase.screenKey !== screenKey) selectScreen(testCase.screenKey)
         }}
       />
 

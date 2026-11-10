@@ -89,6 +89,109 @@
   opacity: 1;
 }
 
+/* Nút kết nối lại – góc trên trái mascot, chỉ hiện khi mất kết nối.
+   Bình thường: icon mây gạch; hover / đang kết nối: icon reload (xoay khi đang kết nối). */
+.reconnect {
+  position: absolute;
+  top: 6px;
+  left: -2px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1.5px solid #f2b440;
+  background: #fff8e8;
+  color: #b7740f;
+  box-shadow: 0 2px 8px rgba(183, 116, 15, 0.28);
+  cursor: pointer;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+  animation: popIn 0.25s ease-out;
+  transition: transform 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+/* vòng sáng lan ra để gây chú ý */
+.reconnect::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 2px solid #f2b440;
+  animation: ping 1.8s ease-out infinite;
+  pointer-events: none;
+}
+
+.reconnect:hover {
+  transform: scale(1.1);
+  background: #f2b440;
+  color: #fff;
+}
+
+.reconnect:active {
+  transform: scale(0.95);
+}
+
+.reconnect:focus-visible {
+  outline: 2px solid #378add;
+  outline-offset: 3px;
+}
+
+.reconnect svg {
+  grid-area: 1 / 1;
+  width: 18px;
+  height: 18px;
+  transition: opacity 0.15s ease, transform 0.3s ease;
+}
+
+.reconnectAction {
+  opacity: 0;
+  transform: rotate(-90deg);
+}
+
+.reconnect:hover .reconnectIdle,
+.reconnect:focus-visible .reconnectIdle,
+.reconnecting .reconnectIdle {
+  opacity: 0;
+}
+
+.reconnect:hover .reconnectAction,
+.reconnect:focus-visible .reconnectAction {
+  opacity: 1;
+  transform: none;
+}
+
+/* đang kết nối lại: icon reload xoay, tắt vòng ping */
+.reconnecting .reconnectAction {
+  opacity: 1;
+  animation: spin 0.9s linear infinite;
+}
+
+.reconnecting::before {
+  animation: none;
+  opacity: 0;
+}
+
+/* chấm vàng trên avatar thu nhỏ khi mất kết nối */
+.avatarDot {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #f2b440;
+  border: 2px solid #fff;
+  pointer-events: none;
+}
+
+/* icon xoay (nút "Thử lại" trong panel khi đang kết nối) */
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+
 /* Avatar tròn 40px khi thu nhỏ */
 .avatar {
   display: block;
@@ -96,7 +199,7 @@
   height: 40px;
   border-radius: 50%;
   overflow: hidden;
-  background: #dbeafb;
+  background: var(--mascot-avatar-bg, #dbeafb);
   border: 2px solid #fff;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   transition: transform 0.15s ease;
@@ -129,6 +232,75 @@
   max-height: min(85vh, calc(100vh - 32px));
 }
 
+/* Đuôi bong bóng chỉ về đầu mascot (bên phải panel).
+   Ô vuông xoay 45°: viền trên + phải tạo thành mũi nhọn hướng sang phải. */
+.tail {
+  position: absolute;
+  right: -7px;
+  bottom: calc(var(--mascot-h, 140px) - 52px);
+  width: 13px;
+  height: 13px;
+  transform: rotate(45deg);
+  border-top: 1px solid var(--tail-border);
+  border-right: 1px solid var(--tail-border);
+  border-top-right-radius: 3px;
+  pointer-events: none;
+}
+
+/* Thanh gợi ý cuộn ngang phía trên ô nhập – ẩn scrollbar */
+.suggestionStrip {
+  scrollbar-width: none;
+}
+
+.suggestionStrip::-webkit-scrollbar {
+  display: none;
+}
+
+/* Biểu cảm "đang suy nghĩ": chấm suy nghĩ nhấp nháy */
+.thoughtDot {
+  animation: thought 1.4s ease-in-out infinite;
+}
+
+/* Biểu cảm "buồn": giọt mồ hôi rơi nhẹ */
+.sweat {
+  animation: sweat 1.8s ease-in-out infinite;
+}
+
+/* "Đang suy nghĩ": chữ có dải sáng chạy qua (màu set qua --shimmer-base / --shimmer-hi) */
+.shimmerText {
+  color: var(--shimmer-base);
+  background: linear-gradient(
+    90deg,
+    var(--shimmer-base) 0%,
+    var(--shimmer-base) 35%,
+    var(--shimmer-hi) 50%,
+    var(--shimmer-base) 65%,
+    var(--shimmer-base) 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 2.2s linear infinite, fadeIn 0.25s ease-out;
+}
+
+/* dòng skeleton lấp lánh (màu qua --line-base / --line-hi) */
+.shimmerLine {
+  background: linear-gradient(90deg, var(--line-base) 25%, var(--line-hi) 50%, var(--line-base) 75%);
+  background-size: 250% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+/* avatar có vòng sáng lan ra khi đang suy nghĩ */
+.avatarPulse {
+  animation: avatarPulse 1.6s ease-out infinite;
+}
+
+/* Màn chào: avatar nhún nhẹ */
+.welcomeAvatar {
+  animation: bob 2.4s ease-in-out infinite;
+}
+
 /* Màn < 900px: panel chiếm gần hết bề ngang, nằm trên mascot (không lấn ra mép trái) */
 @media (max-width: 899.98px) {
   .panel,
@@ -141,6 +313,17 @@
 
   .panel {
     max-height: min(70vh, calc(100vh - var(--mascot-h, 140px) - 56px));
+  }
+
+  /* panel nằm trên mascot → đuôi chỉ xuống (viền phải + dưới) */
+  .tail {
+    right: calc(var(--mascot-w, 112px) / 2 - 7px);
+    bottom: -7px;
+    border-top: 0;
+    border-right: 1px solid var(--tail-border);
+    border-bottom: 1px solid var(--tail-border);
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 3px;
   }
 
   .panelWide {
@@ -221,6 +404,75 @@
   }
 }
 
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -150% 0;
+  }
+}
+
+@keyframes avatarPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(55, 138, 221, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 0 8px rgba(55, 138, 221, 0);
+  }
+}
+
+@keyframes ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  80%,
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes thought {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes sweat {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.9;
+  }
+  50% {
+    transform: translateY(2px);
+    opacity: 0.6;
+  }
+}
+
 @keyframes pop {
   from {
     opacity: 0;
@@ -244,8 +496,22 @@
   .waving,
   .panel,
   .fadeIn,
-  .typingDot {
+  .typingDot,
+  .thoughtDot,
+  .sweat,
+  .welcomeAvatar,
+  .reconnect,
+  .reconnect::before,
+  .shimmerText,
+  .shimmerLine,
+  .avatarPulse {
     animation: none;
+  }
+
+  /* vẫn xoay chậm để biết đang xử lý */
+  .reconnecting .reconnectAction,
+  .spin {
+    animation-duration: 2.5s;
   }
 
   .minimize,

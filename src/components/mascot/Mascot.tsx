@@ -1,3 +1,5 @@
+import CloudOffRoundedIcon from '@mui/icons-material/CloudOffRounded'
+import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import { useEffect, useRef, useState } from 'react'
 import type { AnimationEvent, CSSProperties } from 'react'
 import { useLocation } from 'react-router-dom'
@@ -10,6 +12,7 @@ import type { ChatItem } from './MascotChatPanel'
 import { useMascotContext, useMascotName } from './mascotContext'
 import { getMascotScreen } from './mascotMessages'
 import { MASCOT_VIEWBOX, MascotSvg } from './MascotSvg'
+import type { MascotMood } from './MascotSvg'
 import { FOLLOW_UP_COUNT, INITIAL_COUNT, useMascotSuggestions } from './useMascotSuggestions'
 import styles from './Mascot.module.css'
 
@@ -37,8 +40,11 @@ function prefersReducedMotion() {
 export function Mascot() {
   const { t, language } = useI18n()
   const { pathname } = useLocation()
-  const { params, monthControl, openChatSeq, elevated, status, retry, reportStatus } = useMascotContext()
+  const { params, monthControl, openChatSeq, elevated, status, retry, reportStatus, skin } = useMascotContext()
   const offline = status === 'offline'
+  const reconnecting = status === 'reconnecting'
+  // UI coi "đang kết nối lại" như offline (không nháy giữa 2 trạng thái)
+  const offlineUi = offline || reconnecting
   const name = useMascotName()
   // tháng đang xem trên màn hình, dạng "YYYY.MM"
   const viewingMonth = normalizeMonth(params.month)
@@ -57,6 +63,16 @@ export function Mascot() {
     staticSuggestions: screen.suggestions,
   })
   const [greetIdx, setGreetIdx] = useState(0)
+
+  // vừa kết nối lại → mascot vẫy tay báo hiệu + tải lại gợi ý nếu lần trước bị lỗi
+  const [prevStatus, setPrevStatus] = useState(status)
+  if (status !== prevStatus) {
+    setPrevStatus(status)
+    if (status === 'online' && (prevStatus === 'offline' || prevStatus === 'reconnecting')) {
+      if (!prefersReducedMotion()) setWaveCount(CLICK_WAVES)
+      if (suggestions.initialFailed) suggestions.reloadInitial()
+    }
+  }
 
   // Lịch sử chat tách theo screenKey, sống cùng Mascot (ở layout) → mỗi màn chỉ thấy chat của màn đó,
   // quay lại vẫn còn; mất khi reload
@@ -259,8 +275,15 @@ export function Mascot() {
       ?? (suggestions.initialLoading && !offline ? null : screen.greeting ?? screen.lines[0])
     : screen.lines[greetIdx % screen.lines.length]
 
+  // biểu cảm: đang chờ trả lời → suy nghĩ; mất kết nối / câu cuối lỗi → buồn
+  const mood: MascotMood = pending ? 'thinking' : offlineUi || last?.kind === 'error' ? 'sad' : 'idle'
+
   // nổi trên Drawer (1200) / Modal (1300) của MUI khi trang bật elevated
-  const elevatedStyle: CSSProperties | undefined = elevated ? { zIndex: 1350 } : undefined
+  const elevatedStyle = {
+    ...(elevated && { zIndex: 1350 }),
+    // nền avatar tròn khi thu nhỏ theo skin
+    '--mascot-avatar-bg': skin.avatarBg,
+  } as CSSProperties
 
   if (minimized) {
     return (
@@ -272,8 +295,10 @@ export function Mascot() {
           title={t.mascot.expand}
           onClick={() => toggleMinimized(false)}
         >
-          <MascotSvg waving={false} headOnly className={styles.avatarSvg} />
+          <MascotSvg waving={false} headOnly mood={offlineUi ? 'sad' : 'idle'} className={styles.avatarSvg} />
         </button>
+        {/* thu nhỏ mà mất kết nối → chấm vàng báo hiệu */}
+        {offlineUi && <span className={styles.avatarDot} aria-hidden="true" />}
       </div>
     )
   }
@@ -294,6 +319,7 @@ export function Mascot() {
           screen={screen}
           items={items}
           pending={pending}
+          mood={mood}
           suggestions={visibleSuggestions ?? []}
           suggestionSkeletons={suggestionSkeletons}
           viewingMonth={viewingMonth}
@@ -318,6 +344,21 @@ export function Mascot() {
         </svg>
       </button>
 
+      {/* Mất kết nối → nút tròn trên đầu mascot: bấm để kết nối lại (không cần mở panel) */}
+      {offlineUi && (
+        <button
+          type="button"
+          className={`${styles.reconnect} ${reconnecting ? styles.reconnecting : ''}`}
+          aria-label={t.mascot.reconnect(name)}
+          title={t.mascot.reconnect(name)}
+          aria-busy={reconnecting}
+          onClick={retry}
+        >
+          <CloudOffRoundedIcon className={styles.reconnectIdle} />
+          <RefreshRoundedIcon className={styles.reconnectAction} />
+        </button>
+      )}
+
       <button
         ref={bodyRef}
         type="button"
@@ -330,7 +371,7 @@ export function Mascot() {
         onClick={handleClick}
         onAnimationEnd={handleAnimationEnd}
       >
-        <MascotSvg waving={waveCount > 0} className={styles.svg} />
+        <MascotSvg waving={waveCount > 0} mood={mood} className={styles.svg} />
       </button>
     </div>
   )
