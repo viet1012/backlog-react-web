@@ -154,18 +154,36 @@ export function Mascot() {
     setWaveCount(0)
   }
 
-  async function send(question: string) {
+  /**
+   * Gửi câu hỏi. `retryOf` = item lỗi cần thử lại: bỏ item lỗi, gửi lại câu hỏi của nó
+   * (không thêm bubble user mới, history chỉ tính các lượt trước câu đó).
+   */
+  async function send(question: string, retryOf?: Extract<ChatItem, { kind: 'error' }>) {
     const screenKey = screen.screenKey
     if (!screenKey || pending || !question) return
 
-    const history: AssistantChatTurn[] = items
+    const userIndex = retryOf?.userId !== undefined
+      ? items.findIndex((item) => item.id === retryOf.userId)
+      : -1
+    const before = userIndex >= 0 ? items.slice(0, userIndex) : items
+
+    const history: AssistantChatTurn[] = before
       .filter((item): item is Extract<ChatItem, { kind: 'user' | 'assistant' }> =>
         item.kind === 'user' || item.kind === 'assistant')
       .slice(-HISTORY_SIZE)
       .map((item) => ({ role: item.kind, content: item.text }))
 
-    appendItem(screenKey, { kind: 'user', text: question })
-    suggestions.recordAsked(question)
+    let userId: number
+    if (retryOf && userIndex >= 0) {
+      userId = retryOf.userId!
+      setItemsByScreen((prev) => ({
+        ...prev,
+        [screenKey]: (prev[screenKey] ?? []).filter((item) => item.id !== retryOf.id),
+      }))
+    } else {
+      userId = appendItem(screenKey, { kind: 'user', text: question })
+      suggestions.recordAsked(question)
+    }
     setScreenPending(screenKey, true)
 
     // chuyển màn khi đang chờ → câu trả lời vẫn ghi vào lịch sử của màn đã hỏi
@@ -174,9 +192,11 @@ export function Mascot() {
 
     try {
       const { answer, sources, answeredMonth } = await postAssistantChat(
-        { screenKey, params, question, history },
+        { screenKey, params, question, history, lang: language },
         controller.signal,
       )
+      // service đã ném LLM_EMPTY khi answer rỗng; chặn thêm ở đây để không bao giờ có bubble trống
+      if (!answer.trim()) throw new AssistantApiError('LLM_EMPTY', { kind: 'http' })
       const answerId = appendItem(screenKey, { kind: 'assistant', text: answer, sources, answeredMonth })
       suggestions.requestFollowUp(answerId, screenKey)
       reportStatus('online')
@@ -185,14 +205,27 @@ export function Mascot() {
       // không gọi được server → chuyển offline (lỗi HTTP / timeout: server vẫn sống)
       if (error instanceof AssistantApiError && error.detail.kind === 'network') reportStatus('offline')
       appendItem(screenKey, error instanceof AssistantApiError
-        ? { kind: 'error', code: error.code, detail: error.detail }
-        : { kind: 'error', code: 'INTERNAL' })
+        ? { kind: 'error', code: error.code, detail: error.detail, question, userId }
+        : { kind: 'error', code: 'INTERNAL', question, userId })
     } finally {
       if (!controller.signal.aborted) {
         setScreenPending(screenKey, false)
         delete abortRef.current[screenKey]
       }
     }
+  }
+
+  // Hủy câu đang chờ ở màn hiện tại; câu hỏi vẫn giữ trong lịch sử, có thể gửi lại
+  function cancelPending() {
+    abortRef.current[currentKey]?.abort()
+    delete abortRef.current[currentKey]
+    setScreenPending(currentKey, false)
+  }
+
+  function retryError(errorId: number) {
+    const item = items.find((i): i is Extract<ChatItem, { kind: 'error' }> =>
+      i.kind === 'error' && i.id === errorId)
+    if (item?.question) void send(item.question, item)
   }
 
   function startNewConversation() {
@@ -266,6 +299,8 @@ export function Mascot() {
           viewingMonth={viewingMonth}
           monthControl={monthControl}
           onSend={send}
+          onCancel={cancelPending}
+          onRetry={retryError}
           onNewConversation={startNewConversation}
           onClose={() => setOpen(false)}
         />

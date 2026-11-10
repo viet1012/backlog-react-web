@@ -674,6 +674,7 @@ export const en = {
             dynamicSuggestion: "Suggested from this period's data",
             placeholder: (name: string) => `Ask ${name}… (Enter to send, Shift+Enter for new line)`,
             send: 'Send',
+            cancel: 'Stop',
             thinking: (name: string) => `${name} is thinking…`,
             thinkingLong: (name: string) => `${name} is thinking hard, hang on…`,
             viewing: (screen: string) => `Viewing: ${screen}`,

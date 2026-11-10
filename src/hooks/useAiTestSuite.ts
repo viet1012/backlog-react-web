@@ -1,6 +1,7 @@
 import dayjs from 'dayjs'
 import { useEffect, useRef, useState } from 'react'
 import { DEFAULT_AI_TEST_CASES } from '../components/aiLogs/aiTestDefaults'
+import { useI18n } from '../i18n/useI18n'
 import {
   AssistantApiError,
   postAssistantChat,
@@ -92,7 +93,7 @@ function buildParams(testCase: AiTestCase, config: AiTestRunConfig): AssistantPa
     month: config.month || null,
     // '' = mới nhất → không gửi key simuWeek (giống CostMonitoringPage)
     ...(config.simuWeek ? { simuWeek: config.simuWeek } : {}),
-    ...(testCase.drawer ? { div: testCase.drawer.div, cost: testCase.drawer.cost } : {}),
+    ...(testCase.drawer ? { factory: testCase.drawer.div, category: testCase.drawer.cost } : {}),
   }
 }
 
@@ -143,6 +144,7 @@ async function runCase(
   testCase: AiTestCase,
   config: AiTestRunConfig,
   previousNote: string,
+  lang: string,
   signal: AbortSignal,
 ): Promise<{ run: AiTestRun; retryAfterSec?: number } | null> {
   const start = performance.now()
@@ -160,6 +162,7 @@ async function runCase(
         params: buildParams(testCase, config),
         question: testCase.question,
         history: [],
+        lang,
       },
       signal,
     )
@@ -204,6 +207,7 @@ export interface AiTestProgress {
 }
 
 export function useAiTestSuite() {
+  const { language } = useI18n()
   const [state, setState] = useState<AiTestSuiteState>(loadState)
   const [config, setConfig] = useState<AiTestRunConfig>(() => ({
     month: dayjs().format('YYYY-MM'),
@@ -302,6 +306,7 @@ export function useAiTestSuite() {
             testCase,
             config,
             stateRef.current.runs[testCase.id]?.note ?? '',
+            language,
             signal,
           )
           if (!outcome) break

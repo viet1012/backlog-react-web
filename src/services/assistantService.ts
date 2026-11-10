@@ -74,6 +74,8 @@ export interface AssistantChatRequest {
   params: AssistantParams
   question: string
   history: AssistantChatTurn[]
+  /** ngôn ngữ UI hiện tại ('vi' | 'en'…) – BE trả lời theo ngôn ngữ này */
+  lang: string
 }
 
 /** http: server trả lỗi · network: không gọi được · timeout: quá ASSISTANT_TIMEOUT_MS */
@@ -171,8 +173,8 @@ function readSources(value: unknown): AssistantSource[] {
     if (!tool) continue
     const source: AssistantSource = {
       tool,
-      div: readString(record, 'div', 'DIV'),
-      cost: readString(record, 'cost', 'COST', 'costType', 'cost_type'),
+      div: readString(record, 'factory', 'div', 'DIV'),
+      cost: readString(record, 'category', 'cost', 'COST', 'costType', 'cost_type'),
       month: normalizeMonth(readString(record, 'month')),
     }
 

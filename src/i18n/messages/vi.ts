@@ -580,6 +580,7 @@ export const vi: Messages = {
             dynamicSuggestion: 'Gợi ý theo dữ liệu kỳ đang xem',
             placeholder: (name) => `Hỏi ${name}… (Enter để gửi, Shift+Enter xuống dòng)`,
             send: 'Gửi',
+            cancel: 'Hủy',
             thinking: (name) => `${name} đang suy nghĩ…`,
             thinkingLong: (name) => `${name} đang suy nghĩ kỹ, chờ chút nhé…`,
             viewing: (screen) => `Đang xem: ${screen}`,

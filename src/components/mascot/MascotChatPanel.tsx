@@ -3,7 +3,9 @@ import CloseFullscreenRoundedIcon from '@mui/icons-material/CloseFullscreenRound
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import OpenInFullRoundedIcon from '@mui/icons-material/OpenInFullRounded'
+import ReplayRoundedIcon from '@mui/icons-material/ReplayRounded'
 import SendRoundedIcon from '@mui/icons-material/SendRounded'
+import StopRoundedIcon from '@mui/icons-material/StopRounded'
 import TipsAndUpdatesOutlinedIcon from '@mui/icons-material/TipsAndUpdatesOutlined'
 import CloudOffOutlinedIcon from '@mui/icons-material/CloudOffOutlined'
 import {
@@ -55,7 +57,15 @@ const SHOW_ERROR_DETAIL = import.meta.env.DEV
 export type ChatItem =
   | { id: number; kind: 'user'; text: string }
   | { id: number; kind: 'assistant'; text: string; sources: AssistantSource[]; answeredMonth?: string }
-  | { id: number; kind: 'error'; code: AssistantErrorCode; detail?: AssistantErrorDetail }
+  | {
+    id: number
+    kind: 'error'
+    code: AssistantErrorCode
+    detail?: AssistantErrorDetail
+    /** câu hỏi bị lỗi + id bubble user tương ứng → nút "Thử lại" gửi lại */
+    question?: string
+    userId?: number
+  }
   | { id: number; kind: 'divider'; screenId: ScreenId }
 
 interface MascotChatPanelProps {
@@ -74,6 +84,10 @@ interface MascotChatPanelProps {
   /** null → trang không cho đổi tháng → ẩn nút "Xem tháng …" */
   monthControl: MascotMonthControl | null
   onSend: (question: string) => void
+  /** hủy câu đang chờ trả lời */
+  onCancel: () => void
+  /** gửi lại câu hỏi của item lỗi */
+  onRetry: (errorId: number) => void
   onNewConversation: () => void
   onClose: () => void
 }
@@ -94,6 +108,8 @@ export function MascotChatPanel({
   viewingMonth,
   monthControl,
   onSend,
+  onCancel,
+  onRetry,
   onNewConversation,
   onClose,
 }: MascotChatPanelProps) {
@@ -300,7 +316,7 @@ export function MascotChatPanel({
           </Typography>
         )}
 
-        {items.map((item) => {
+        {items.map((item, index) => {
           if (item.kind === 'divider') {
             return (
               <Stack key={item.id} direction="row" sx={{ alignItems: 'center', gap: 1, my: 0.5 }}>
@@ -316,9 +332,24 @@ export function MascotChatPanel({
             const devLine = SHOW_ERROR_DETAIL && item.detail
               ? formatErrorDetail(item.detail, t.mascot.chat)
               : undefined
+            // chỉ lỗi cuối cùng (ứng với câu hỏi cuối) mới có nút "Thử lại"
+            const canRetry = Boolean(item.question) && index === items.length - 1
             return (
               <Box key={item.id} sx={{ alignSelf: 'flex-start', maxWidth: '85%' }}>
                 <Bubble from="error" nested>{t.mascot.chat.errors[item.code](name)}</Bubble>
+                {canRetry && (
+                  <Button
+                    size="small"
+                    variant="text"
+                    color="error"
+                    startIcon={<ReplayRoundedIcon sx={{ fontSize: '15px !important' }} />}
+                    disabled={pending || offline}
+                    onClick={() => onRetry(item.id)}
+                    sx={{ mt: 0.25, px: 0.75, py: 0.125, minWidth: 0, fontSize: 11.5, textTransform: 'none' }}
+                  >
+                    {t.mascot.chat.retry}
+                  </Button>
+                )}
                 {devLine && (
                   <Typography
                     color="text.disabled"
@@ -369,11 +400,20 @@ export function MascotChatPanel({
         })}
 
         {pending && (
-          <Stack direction="row" sx={{ alignItems: 'center', gap: 1, px: 0.5 }}>
+          <Stack direction="row" role="status" sx={{ alignItems: 'center', gap: 1, px: 0.5 }}>
             <CircularProgress size={14} />
-            <Typography color="text.secondary" sx={{ fontSize: 12.5 }}>
+            <Typography color="text.secondary" sx={{ fontSize: 12.5, flex: 1 }}>
               {slow ? t.mascot.chat.thinkingLong(name) : t.mascot.chat.thinking(name)}
             </Typography>
+            <Button
+              size="small"
+              variant="text"
+              color="inherit"
+              onClick={onCancel}
+              sx={{ px: 0.75, py: 0.125, minWidth: 0, fontSize: 11.5, textTransform: 'none', color: 'text.secondary' }}
+            >
+              {t.mascot.chat.cancel}
+            </Button>
           </Stack>
         )}
 
@@ -439,16 +479,29 @@ export function MascotChatPanel({
               : undefined}
             sx={{ '& .MuiInputBase-input': { fontSize: 13 } }}
           />
-          <IconButton
-            color="primary"
-            aria-label={t.mascot.chat.send}
-            title={t.mascot.chat.send}
-            disabled={pending || offline || draft.trim().length === 0}
-            onClick={() => submit(draft)}
-            sx={{ mb: 0.25 }}
-          >
-            <SendRoundedIcon fontSize="small" />
-          </IconButton>
+          {/* đang chờ trả lời → nút gửi đổi thành nút dừng (hủy request) */}
+          {pending ? (
+            <IconButton
+              color="error"
+              aria-label={t.mascot.chat.cancel}
+              title={t.mascot.chat.cancel}
+              onClick={onCancel}
+              sx={{ mb: 0.25 }}
+            >
+              <StopRoundedIcon fontSize="small" />
+            </IconButton>
+          ) : (
+            <IconButton
+              color="primary"
+              aria-label={t.mascot.chat.send}
+              title={t.mascot.chat.send}
+              disabled={offline || draft.trim().length === 0}
+              onClick={() => submit(draft)}
+              sx={{ mb: 0.25 }}
+            >
+              <SendRoundedIcon fontSize="small" />
+            </IconButton>
+          )}
         </Stack>
       )}
     </Paper>

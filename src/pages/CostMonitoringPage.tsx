@@ -113,12 +113,12 @@ export function CostMonitoringPage({
   const openMascotChat = useMascotOpenChat()
 
   // context cho chat của mascot: tháng + tuần PL TGT đang chọn
-  // + khung đang mở drawer (div = xưởng, cost = hạng mục) để hỏi đúng khung
+  // + khung đang mở drawer (factory = xưởng, category = hạng mục) để hỏi đúng khung
   useMascotParams({
     month: month ? toApiMonth(month) : null,
     // "Mới nhất" ('') → không gửi key simuWeek
     ...(simuWeek ? { simuWeek } : {}),
-    ...(detailOpen && detailTarget ? { div: detailTarget.div, cost: detailTarget.chart } : {}),
+    ...(detailOpen && detailTarget ? { factory: detailTarget.div, category: detailTarget.chart } : {}),
   })
 
   // nút "Xem tháng … trên màn hình" của mascot; tháng dạng "YYYY.MM" như danh sách months
