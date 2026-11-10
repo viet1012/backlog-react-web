@@ -85,6 +85,8 @@ export interface AssistantErrorDetail {
   /** code thô từ body (có thể không thuộc ASSISTANT_ERROR_CODES) */
   rawCode?: string
   message?: string
+  /** header Retry-After (giây) khi 429; undefined nếu BE không gửi / CORS không expose */
+  retryAfterSec?: number
 }
 
 export class AssistantApiError extends Error {
@@ -120,15 +122,17 @@ function codeFromStatus(status: number): AssistantErrorCode {
 }
 
 // Body lỗi: { status, message, code }
-function readError(data: unknown, httpStatus: number): AssistantApiError {
+function readError(data: unknown, httpStatus: number, headers?: Headers): AssistantApiError {
   const body = asRecord(data)
   const rawCode = typeof body?.code === 'string' ? body.code : undefined
   const message = typeof body?.message === 'string' ? body.message : undefined
   const status = typeof body?.status === 'number' ? body.status : httpStatus
+  const retryAfter = Number(headers?.get('Retry-After'))
+  const retryAfterSec = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined
 
   return new AssistantApiError(
     isErrorCode(rawCode) ? rawCode : codeFromStatus(httpStatus),
-    { kind: 'http', status, rawCode, message },
+    { kind: 'http', status, rawCode, message, retryAfterSec },
   )
 }
 
@@ -359,7 +363,7 @@ export async function postAssistantChat(
       return null
     })
 
-    if (!response.ok) throw readError(data, response.status)
+    if (!response.ok) throw readError(data, response.status, response.headers)
 
     const body = asRecord(data)
     const answer = body?.answer

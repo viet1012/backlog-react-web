@@ -5,6 +5,8 @@ import {
   Button,
   CircularProgress,
   Snackbar,
+  Tab,
+  Tabs,
 } from '@mui/material'
 import type { PaletteMode } from '@mui/material'
 import { useState } from 'react'
@@ -17,6 +19,7 @@ import { AiLogsDailyChart } from '../components/aiLogs/AiLogsDailyChart'
 import { AiLogsFilterBar } from '../components/aiLogs/AiLogsFilterBar'
 import { AiLogsKpi } from '../components/aiLogs/AiLogsKpi'
 import { AiLogsTable } from '../components/aiLogs/AiLogsTable'
+import { AiTestSuitePanel } from '../components/aiLogs/AiTestSuitePanel'
 import { AI_LOGS_PAGE_SIZES, defaultFilters } from '../components/aiLogs/aiLogsUtils'
 import { useAiLogDetail, useAiLogList, useAiLogStats } from '../hooks/useAssistantLogs'
 import { exportAiLogsExcel } from '../services/assistantLogService'
@@ -37,8 +40,12 @@ const DEFAULT_QUERY: AiLogListQuery = {
   order: 'desc',
 }
 
+type AiLogsTab = 'logs' | 'tests'
+
 export function AiLogsPage({ mode, onToggleMode }: AiLogsPageProps) {
   const { t } = useI18n()
+
+  const [tab, setTab] = useState<AiLogsTab>('logs')
 
   const [filters, setFilters] = useState<AiLogFilters>(defaultFilters)
   const [query, setQuery] = useState<AiLogListQuery>(DEFAULT_QUERY)
@@ -88,7 +95,7 @@ export function AiLogsPage({ mode, onToggleMode }: AiLogsPageProps) {
             error={Boolean(error)}
           />
         }
-        actions={
+        actions={tab === 'logs' && (
           <>
             <Button
               size="small"
@@ -106,23 +113,49 @@ export function AiLogsPage({ mode, onToggleMode }: AiLogsPageProps) {
               onClick={() => setRefreshKey((k) => k + 1)}
             />
           </>
-        }
+        )}
         bottom={
-          <AiLogsFilterBar
-            value={filters}
-            onChange={changeFilters}
-            onReset={() => changeFilters(defaultFilters())}
-          />
+          <>
+            <Tabs
+              value={tab}
+              onChange={(_, next: AiLogsTab) => setTab(next)}
+              sx={{ minHeight: 36, '& .MuiTab-root': { minHeight: 36, py: 0.5, textTransform: 'none', fontWeight: 700 } }}
+            >
+              <Tab value="logs" label={t.aiLogs.tabs.logs} />
+              <Tab value="tests" label={t.aiLogs.tabs.tests} />
+            </Tabs>
+
+            {tab === 'logs' && (
+              <AiLogsFilterBar
+                value={filters}
+                onChange={changeFilters}
+                onReset={() => changeFilters(defaultFilters())}
+              />
+            )}
+          </>
         }
         mode={mode}
         onToggleMode={onToggleMode}
       />
 
-      {error && (
+      {tab === 'logs' && error && (
         <Alert severity="error" sx={{ flexShrink: 0 }}>
           {error}
         </Alert>
       )}
+
+      {/* tab Bộ test luôn mounted để lượt chạy không bị hủy khi chuyển tab */}
+      <Box
+        sx={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          display: tab === 'tests' ? 'flex' : 'none',
+          flexDirection: 'column',
+        }}
+      >
+        <AiTestSuitePanel />
+      </Box>
 
       {/* trang cuộn dọc; bảng giữ chiều cao tối thiểu để đọc được */}
       <Box
@@ -130,7 +163,7 @@ export function AiLogsPage({ mode, onToggleMode }: AiLogsPageProps) {
           flex: 1,
           minHeight: 0,
           overflowY: 'auto',
-          display: 'flex',
+          display: tab === 'logs' ? 'flex' : 'none',
           flexDirection: 'column',
           gap: uiTokens.page.gap,
         }}
