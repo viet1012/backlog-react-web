@@ -5,13 +5,16 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import OpenInFullRoundedIcon from '@mui/icons-material/OpenInFullRounded'
 import SendRoundedIcon from '@mui/icons-material/SendRounded'
 import TipsAndUpdatesOutlinedIcon from '@mui/icons-material/TipsAndUpdatesOutlined'
+import CloudOffOutlinedIcon from '@mui/icons-material/CloudOffOutlined'
 import {
+  Alert,
   Box,
   Button,
   Chip,
   CircularProgress,
   IconButton,
   Paper,
+  Skeleton,
   Stack,
   TextField,
   Typography,
@@ -32,7 +35,7 @@ import { MascotMarkdown } from './MascotMarkdown'
 import { MascotSvg } from './MascotSvg'
 import { getScreenName } from './mascotMessages'
 import type { MascotScreen, ScreenId } from './mascotMessages'
-import { useMascotName } from './mascotContext'
+import { useMascotContext, useMascotName } from './mascotContext'
 import type { MascotMonthControl } from './mascotContext'
 import styles from './Mascot.module.css'
 
@@ -57,12 +60,15 @@ export type ChatItem =
 
 interface MascotChatPanelProps {
   id: string
-  greeting: string
+  /** null → đang tải câu chào từ API (hiện bubble "đang gõ") */
+  greeting: string | null
   screen: MascotScreen
   items: ChatItem[]
   pending: boolean
   /** gợi ý đang hiển thị (Mascot đã chọn bộ 4 ban đầu hay 2 follow-up) */
   suggestions: AssistantSuggestion[]
+  /** > 0 → gợi ý đang tải, hiện bấy nhiêu khung skeleton giữ chỗ */
+  suggestionSkeletons: number
   /** tháng đang xem trên màn hình ("YYYY.MM") */
   viewingMonth?: string
   /** null → trang không cho đổi tháng → ẩn nút "Xem tháng …" */
@@ -74,6 +80,9 @@ interface MascotChatPanelProps {
 
 const preWrap = { whiteSpace: 'pre-wrap', wordBreak: 'break-word' } as const
 
+/** bề rộng khung skeleton gợi ý – lệch nhau cho giống chip thật */
+const SKELETON_WIDTHS = ['72%', '58%', '64%', '46%']
+
 export function MascotChatPanel({
   id,
   greeting,
@@ -81,6 +90,7 @@ export function MascotChatPanel({
   items,
   pending,
   suggestions,
+  suggestionSkeletons,
   viewingMonth,
   monthControl,
   onSend,
@@ -89,7 +99,13 @@ export function MascotChatPanel({
 }: MascotChatPanelProps) {
   const { t } = useI18n()
   const name = useMascotName()
+  const { name: loadedName, status, retry } = useMascotContext()
+  const reconnecting = status === 'reconnecting'
+  const offline = status === 'offline' || reconnecting
+  // lần đầu (chưa có tên lưu) đang tải → skeleton thay vì hiện tên mặc định rồi đổi
+  const nameLoading = status === 'loading' && loadedName === null
   const chatEnabled = Boolean(screen.screenKey)
+  const canSend = chatEnabled && !offline
   const [draft, setDraft] = useState('')
   // chế độ rộng 720px × 85vh, nhớ qua localStorage
   const [wide, setWide] = useState(() => loadPreference(WIDE_KEY) === true)
@@ -102,7 +118,8 @@ export function MascotChatPanel({
   const listRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  const showSuggestions = chatEnabled && !pending && suggestions.length > 0
+  const showSuggestions = canSend && !pending && suggestions.length > 0
+  const showSkeletons = canSend && !pending && !showSuggestions && suggestionSkeletons > 0
 
   const [slow, setSlow] = useState(false)
 
@@ -122,11 +139,11 @@ export function MascotChatPanel({
 
   useEffect(() => {
     inputRef.current?.focus()
-  }, [chatEnabled])
+  }, [canSend])
 
   function submit(text: string) {
     const question = text.trim()
-    if (!question || pending) return
+    if (!question || pending || offline) return
     onSend(question.slice(0, MAX_QUESTION_LENGTH))
     setDraft('')
   }
@@ -160,21 +177,51 @@ export function MascotChatPanel({
           borderBottom: `1px solid ${theme.palette.divider}`,
         })}
       >
-        <Box
-          sx={{
-            width: 30,
-            height: 30,
-            borderRadius: '50%',
-            overflow: 'hidden',
-            bgcolor: '#dbeafb',
-            flexShrink: 0,
-          }}
-        >
-          <MascotSvg waving={false} headOnly className={styles.avatarSvg} />
+        <Box sx={{ position: 'relative', flexShrink: 0 }}>
+          <Box
+            sx={{
+              width: 30,
+              height: 30,
+              borderRadius: '50%',
+              overflow: 'hidden',
+              bgcolor: '#dbeafb',
+              // offline → avatar xám
+              filter: offline ? 'grayscale(1)' : 'none',
+              opacity: offline ? 0.7 : 1,
+              transition: 'filter 0.3s, opacity 0.3s',
+            }}
+          >
+            <MascotSvg waving={false} headOnly className={styles.avatarSvg} />
+          </Box>
+          {status !== 'loading' && (
+            <Box
+              sx={(theme) => ({
+                position: 'absolute',
+                right: -1,
+                bottom: -1,
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                bgcolor: offline ? 'grey.500' : 'success.main',
+                border: `2px solid ${theme.palette.background.paper}`,
+              })}
+            />
+          )}
         </Box>
-        <Typography sx={{ fontWeight: 700, fontSize: 14, flex: 1 }}>
-          {name}
-        </Typography>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          {nameLoading
+            ? <Skeleton variant="text" width={90} sx={{ fontSize: 14 }} />
+            : (
+              <Typography noWrap sx={{ fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}>
+                {name}
+              </Typography>
+            )}
+          {status !== 'loading' && (
+            <Typography color="text.secondary" sx={{ fontSize: 11, lineHeight: 1.2 }}>
+              {offline ? t.mascot.chat.statusOffline : t.mascot.chat.statusOnline}
+            </Typography>
+          )}
+        </Box>
         {chatEnabled && (
           <IconButton
             size="small"
@@ -204,6 +251,29 @@ export function MascotChatPanel({
         </IconButton>
       </Stack>
 
+      {/* Mất kết nối API */}
+      {offline && chatEnabled && (
+        <Alert
+          severity="warning"
+          icon={<CloudOffOutlinedIcon fontSize="small" />}
+          action={(
+            <Button
+              color="inherit"
+              size="small"
+              onClick={retry}
+              disabled={reconnecting}
+              startIcon={reconnecting ? <CircularProgress size={12} color="inherit" /> : undefined}
+              sx={{ textTransform: 'none', whiteSpace: 'nowrap' }}
+            >
+              {reconnecting ? t.mascot.chat.reconnecting : t.mascot.chat.retry}
+            </Button>
+          )}
+          sx={{ borderRadius: 0, py: 0.25, fontSize: 12, alignItems: 'center' }}
+        >
+          {t.mascot.chat.offline(name)}
+        </Alert>
+      )}
+
       {/* Tin nhắn */}
       <Box
         ref={listRef}
@@ -220,7 +290,9 @@ export function MascotChatPanel({
           gap: 1,
         }}
       >
-        <Bubble from="assistant">{greeting}</Bubble>
+        {greeting === null
+          ? <TypingBubble label={t.mascot.chat.thinking(name)} />
+          : <Bubble from="assistant" className={styles.fadeIn}>{greeting}</Bubble>}
 
         {!chatEnabled && (
           <Typography color="text.secondary" sx={{ fontSize: 12, fontStyle: 'italic', px: 0.5 }}>
@@ -305,8 +377,16 @@ export function MascotChatPanel({
           </Stack>
         )}
 
+        {showSkeletons && (
+          <Stack direction="row" aria-hidden="true" sx={{ flexWrap: 'wrap', gap: 0.75, pt: 0.5 }}>
+            {SKELETON_WIDTHS.slice(0, suggestionSkeletons).map((width, index) => (
+              <Skeleton key={index} variant="rounded" width={width} height={26} sx={{ borderRadius: 4 }} />
+            ))}
+          </Stack>
+        )}
+
         {showSuggestions && (
-          <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.75, pt: 0.5 }}>
+          <Stack direction="row" className={styles.fadeIn} sx={{ flexWrap: 'wrap', gap: 0.75, pt: 0.5 }}>
             {suggestions.map(({ text, kind }) => {
               const dynamic = kind === 'dynamic'
               return (
@@ -347,7 +427,8 @@ export function MascotChatPanel({
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={t.mascot.chat.placeholder(name)}
+            placeholder={offline ? t.mascot.chat.offlinePlaceholder : t.mascot.chat.placeholder(name)}
+            disabled={offline}
             multiline
             maxRows={4}
             size="small"
@@ -362,7 +443,7 @@ export function MascotChatPanel({
             color="primary"
             aria-label={t.mascot.chat.send}
             title={t.mascot.chat.send}
-            disabled={pending || draft.trim().length === 0}
+            disabled={pending || offline || draft.trim().length === 0}
             onClick={() => submit(draft)}
             sx={{ mb: 0.25 }}
           >
@@ -433,19 +514,45 @@ function formatErrorDetail(
   ].filter(Boolean).join(' · ')
 }
 
+/** Bubble "đang gõ" (3 chấm) khi câu chào từ API chưa về */
+function TypingBubble({ label }: { label: string }) {
+  return (
+    <Box
+      role="status"
+      aria-label={label}
+      sx={(theme) => ({
+        alignSelf: 'flex-start',
+        display: 'flex',
+        gap: '4px',
+        px: 1.5,
+        py: 1.25,
+        borderRadius: 2,
+        borderBottomLeftRadius: 4,
+        bgcolor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.100',
+      })}
+    >
+      {[0, 1, 2].map((index) => (
+        <span key={index} className={styles.typingDot} style={{ animationDelay: `${index * 0.15}s` }} />
+      ))}
+    </Box>
+  )
+}
+
 interface BubbleProps {
   from: 'user' | 'assistant' | 'error'
   /** nằm trong wrapper đã giới hạn bề rộng */
   nested?: boolean
   /** câu trả lời của assistant: render markdown (GFM), không render HTML thô */
   markdown?: boolean
+  className?: string
   children: string
 }
 
-function Bubble({ from, nested = false, markdown = false, children }: BubbleProps) {
+function Bubble({ from, nested = false, markdown = false, className, children }: BubbleProps) {
   const isUser = from === 'user'
   return (
     <Box
+      className={className}
       sx={(theme) => ({
         alignSelf: isUser ? 'flex-end' : 'flex-start',
         maxWidth: nested ? 'none' : '85%',

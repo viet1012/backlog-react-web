@@ -31,10 +31,30 @@ export const ShipmentPage = lazyPage(() => import('./ShipmentPage').then((m) => 
 export const SphPage = lazyPage(() => import('./SphPage').then((m) => m.SphPage))
 export const UserHomePage = lazyPage(() => import('./UserHomePage').then((m) => m.UserHomePage))
 
-// Default routes after sign-in (getDefaultAuthRoute)
+// Default routes after sign-in (getDefaultAuthRoute) and sidebar hover:
+// the chunk is downloading before the click
 const pagesByRoute: Record<string, { preload: () => Promise<unknown> }> = {
-  '/odbf': OdbfPage,
+  '/pc-training': PcTrainingPage,
+  '/sph': SphPage,
+  '/asakai': AsakaiPage,
+  '/cost-monitoring': CostMonitoringPage,
   '/user-home': UserHomePage,
+  '/backlog': BacklogPage,
+  '/remain-po-control': RemainPoControlPage,
+  '/fac-confirm': FacConfirmPage,
+  '/odbf': OdbfPage,
+  '/export-list': ExportListPage,
+  '/packing-list': PackingListPage,
+  '/shipping-schedule': ShipmentPage,
+  '/sales-status': SalesStatusPage,
+  '/bosb': BosbPage,
+  '/deadstock': DeadstockPage,
+  '/pl': PlPage,
+  '/kpi': KpiPage,
+  '/ot': OtPage,
+  '/monitoring/machine': MachineMonitorPage,
+  '/settings/machine-locator': MachineLocatorPage,
+  '/settings/ai-logs': AiLogsPage,
 }
 
 export function preloadRoute(path: string) {

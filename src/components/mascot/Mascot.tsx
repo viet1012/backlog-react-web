@@ -10,7 +10,7 @@ import type { ChatItem } from './MascotChatPanel'
 import { useMascotContext, useMascotName } from './mascotContext'
 import { getMascotScreen } from './mascotMessages'
 import { MASCOT_VIEWBOX, MascotSvg } from './MascotSvg'
-import { useMascotSuggestions } from './useMascotSuggestions'
+import { FOLLOW_UP_COUNT, INITIAL_COUNT, useMascotSuggestions } from './useMascotSuggestions'
 import styles from './Mascot.module.css'
 
 /** Chiều cao mascot (px) – chiều rộng tính theo tỉ lệ viewBox 160:200 */
@@ -37,7 +37,8 @@ function prefersReducedMotion() {
 export function Mascot() {
   const { t, language } = useI18n()
   const { pathname } = useLocation()
-  const { params, monthControl, openChatSeq, elevated } = useMascotContext()
+  const { params, monthControl, openChatSeq, elevated, status, retry, reportStatus } = useMascotContext()
+  const offline = status === 'offline'
   const name = useMascotName()
   // tháng đang xem trên màn hình, dạng "YYYY.MM"
   const viewingMonth = normalizeMonth(params.month)
@@ -46,8 +47,10 @@ export function Mascot() {
   const [minimized, setMinimized] = useState(() => loadPreference(MINIMIZED_KEY) === true)
   const [waveCount, setWaveCount] = useState(0) // 0 = không vẫy
   const [open, setOpen] = useState(false)
+  // hover / focus vào mascot → tải trước gợi ý, mở panel là có ngay câu chào + gợi ý từ API
+  const [warm, setWarm] = useState(false)
   const suggestions = useMascotSuggestions({
-    active: open && !minimized,
+    active: (open || warm) && !minimized,
     screenKey: screen.screenKey,
     params,
     lang: language,
@@ -55,27 +58,23 @@ export function Mascot() {
   })
   const [greetIdx, setGreetIdx] = useState(0)
 
-  // Lịch sử chat sống cùng Mascot (ở layout) → giữ khi chuyển trang, mất khi reload
-  const [items, setItems] = useState<ChatItem[]>([])
-  const [pending, setPending] = useState(false)
+  // Lịch sử chat tách theo screenKey, sống cùng Mascot (ở layout) → mỗi màn chỉ thấy chat của màn đó,
+  // quay lại vẫn còn; mất khi reload
+  const [itemsByScreen, setItemsByScreen] = useState<Record<string, ChatItem[]>>({})
+  const [pendingScreens, setPendingScreens] = useState<Record<string, boolean>>({})
+  const currentKey = screen.screenKey ?? ''
+  const items = itemsByScreen[currentKey] ?? []
+  const pending = pendingScreens[currentKey] === true
   const nextId = useRef(0)
-  const abortRef = useRef<AbortController | null>(null)
+  const abortRef = useRef<Record<string, AbortController>>({})
   const restartFrame = useRef<number | undefined>(undefined)
   const bodyRef = useRef<HTMLButtonElement>(null)
 
-  // Đổi screenKey → thêm dòng "Đang xem: …" (thay dòng phân cách cuối nếu chưa hỏi gì)
-  const [prevScreenKey, setPrevScreenKey] = useState(screen.screenKey)
-  if (screen.screenKey !== prevScreenKey) {
-    setPrevScreenKey(screen.screenKey)
-    const screenId = screen.screenId
-    if (screenId) {
-      setItems((prev) => {
-        const base = prev.at(-1)?.kind === 'divider' ? prev.slice(0, -1) : prev
-        return base.length > 0
-          ? [...base, { id: nextId.current++, kind: 'divider', screenId }]
-          : base
-      })
-    }
+  // đóng panel → thôi tải trước (đổi tháng lúc panel đóng không gọi API gợi ý)
+  const [prevOpen, setPrevOpen] = useState(open)
+  if (open !== prevOpen) {
+    setPrevOpen(open)
+    if (!open) setWarm(false)
   }
 
   // Trang yêu cầu mở chat (vd nút "Hỏi … về khung này") → bỏ thu nhỏ + mở panel
@@ -91,7 +90,7 @@ export function Mascot() {
 
   useEffect(() => () => {
     window.cancelAnimationFrame(restartFrame.current ?? 0)
-    abortRef.current?.abort()
+    Object.values(abortRef.current).forEach((controller) => controller.abort())
   }, [])
 
   // Esc đóng panel, trả focus về mascot
@@ -107,10 +106,17 @@ export function Mascot() {
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [open])
 
-  function appendItem(item: ChatItemInput): number {
+  function appendItem(screenKey: string, item: ChatItemInput): number {
     const id = nextId.current++
-    setItems((prev) => [...prev, { ...item, id } as ChatItem])
+    setItemsByScreen((prev) => ({
+      ...prev,
+      [screenKey]: [...(prev[screenKey] ?? []), { ...item, id } as ChatItem],
+    }))
     return id
+  }
+
+  function setScreenPending(screenKey: string, value: boolean) {
+    setPendingScreens((prev) => ({ ...prev, [screenKey]: value }))
   }
 
   function startWave(count: number) {
@@ -123,12 +129,15 @@ export function Mascot() {
 
   function handleMouseEnter() {
     if (waveCount === 0) startWave(HOVER_WAVES)
+    setWarm(true)
   }
 
   function handleClick() {
     if (!open) {
       startWave(CLICK_WAVES)
       setGreetIdx((i) => i + 1)
+      // mở panel lúc đang offline → kiểm tra lại kết nối ngay
+      if (offline) retry()
     }
     setOpen(!open)
   }
@@ -155,46 +164,67 @@ export function Mascot() {
       .slice(-HISTORY_SIZE)
       .map((item) => ({ role: item.kind, content: item.text }))
 
-    appendItem({ kind: 'user', text: question })
+    appendItem(screenKey, { kind: 'user', text: question })
     suggestions.recordAsked(question)
-    setPending(true)
+    setScreenPending(screenKey, true)
 
+    // chuyển màn khi đang chờ → câu trả lời vẫn ghi vào lịch sử của màn đã hỏi
     const controller = new AbortController()
-    abortRef.current = controller
+    abortRef.current[screenKey] = controller
 
     try {
       const { answer, sources, answeredMonth } = await postAssistantChat(
         { screenKey, params, question, history },
         controller.signal,
       )
-      const answerId = appendItem({ kind: 'assistant', text: answer, sources, answeredMonth })
+      const answerId = appendItem(screenKey, { kind: 'assistant', text: answer, sources, answeredMonth })
       suggestions.requestFollowUp(answerId, screenKey)
+      reportStatus('online')
     } catch (error) {
       if (controller.signal.aborted) return
-      appendItem(error instanceof AssistantApiError
+      // không gọi được server → chuyển offline (lỗi HTTP / timeout: server vẫn sống)
+      if (error instanceof AssistantApiError && error.detail.kind === 'network') reportStatus('offline')
+      appendItem(screenKey, error instanceof AssistantApiError
         ? { kind: 'error', code: error.code, detail: error.detail }
         : { kind: 'error', code: 'INTERNAL' })
     } finally {
-      if (!controller.signal.aborted) setPending(false)
+      if (!controller.signal.aborted) {
+        setScreenPending(screenKey, false)
+        delete abortRef.current[screenKey]
+      }
     }
   }
 
   function startNewConversation() {
-    // hủy câu đang chờ (send() bỏ qua kết quả khi đã abort)
-    abortRef.current?.abort()
-    abortRef.current = null
-    setPending(false)
-    setItems([])
+    // chỉ xóa chat của màn hiện tại; hủy câu đang chờ (send() bỏ qua kết quả khi đã abort)
+    abortRef.current[currentKey]?.abort()
+    delete abortRef.current[currentKey]
+    setScreenPending(currentKey, false)
+    setItemsByScreen((prev) => ({ ...prev, [currentKey]: [] }))
     suggestions.newConversation()
   }
 
   // Gợi ý: chưa hỏi gì ở màn này → bộ 4 câu; ngay sau câu trả lời → 2 câu follow-up
   const last = items.at(-1)
-  const visibleSuggestions = !last || last.kind === 'divider'
+  const atStart = !last || last.kind === 'divider'
+  const visibleSuggestions = atStart
     ? suggestions.initial
     : last.kind === 'assistant'
       ? suggestions.followUpFor(last.id)
       : null
+  // đang tải → số khung skeleton giữ chỗ (offline: API lỗi ngay → dùng nội dung tĩnh, không skeleton)
+  const suggestionSkeletons = offline
+    ? 0
+    : atStart
+      ? (suggestions.initialLoading ? INITIAL_COUNT : 0)
+      : last.kind === 'assistant' && suggestions.isFollowUpLoading(last.id)
+        ? FOLLOW_UP_COUNT
+        : 0
+  // màn có chat: câu chào từ API; đang tải → null (panel hiện "đang gõ"); lỗi → câu tĩnh
+  const greeting = screen.screenKey
+    ? suggestions.greeting
+      ?? (suggestions.initialLoading && !offline ? null : screen.greeting ?? screen.lines[0])
+    : screen.lines[greetIdx % screen.lines.length]
 
   // nổi trên Drawer (1200) / Modal (1300) của MUI khi trang bật elevated
   const elevatedStyle: CSSProperties | undefined = elevated ? { zIndex: 1350 } : undefined
@@ -227,16 +257,12 @@ export function Mascot() {
       {open && (
         <MascotChatPanel
           id={PANEL_ID}
-          greeting={
-            // màn có chat: câu chào từ API suggestions; đang tải / lỗi → câu trung tính
-            screen.screenKey
-              ? suggestions.greeting ?? screen.greeting ?? screen.lines[0]
-              : screen.lines[greetIdx % screen.lines.length]
-          }
+          greeting={greeting}
           screen={screen}
           items={items}
           pending={pending}
           suggestions={visibleSuggestions ?? []}
+          suggestionSkeletons={suggestionSkeletons}
           viewingMonth={viewingMonth}
           monthControl={monthControl}
           onSend={send}
@@ -265,6 +291,7 @@ export function Mascot() {
         aria-expanded={open}
         aria-controls={open ? PANEL_ID : undefined}
         onMouseEnter={handleMouseEnter}
+        onFocus={() => setWarm(true)}
         onClick={handleClick}
         onAnimationEnd={handleAnimationEnd}
       >

@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { getAssistantSuggestions, normalizeQuestion } from '../../services/assistantService'
 import type { AssistantParams, AssistantSuggestion } from '../../services/assistantService'
 
-const INITIAL_COUNT = 4
-const FOLLOW_UP_COUNT = 2
+export const INITIAL_COUNT = 4
+export const FOLLOW_UP_COUNT = 2
 
 /** 'fallback' → API lỗi, dùng gợi ý tĩnh trong i18n */
 type Loaded = AssistantSuggestion[] | 'fallback'
@@ -30,7 +30,8 @@ export function useMascotSuggestions({ active, screenKey, params, lang, staticSu
   const askedRef = useRef<string[]>([])
   const [refreshToken, setRefreshToken] = useState(0)
   const [initialState, setInitialState] = useState<{ key: string; list: Loaded; greeting?: string } | null>(null)
-  const [followUp, setFollowUp] = useState<{ afterId: number; list: Loaded } | null>(null)
+  // list 'loading' → đang gọi follow-up cho câu trả lời afterId
+  const [followUp, setFollowUp] = useState<{ afterId: number; list: Loaded | 'loading' } | null>(null)
   const followUpAbort = useRef<AbortController | null>(null)
 
   const paramsKey = JSON.stringify(params)
@@ -72,11 +73,20 @@ export function useMascotSuggestions({ active, screenKey, params, lang, staticSu
     ? resolve(initialState.list, INITIAL_COUNT)
     : null
 
+  /** đang tải bộ initial cho params hiện tại (dùng để hiện skeleton thay vì nội dung tĩnh rồi nhảy) */
+  const initialLoading = Boolean(screenKey) && initial === null
+
   /** câu chào từ API (lần gọi initial khớp params hiện tại); undefined = đang tải / lỗi / API không trả */
   const greeting = initialState?.key === initialKey ? initialState.greeting : undefined
 
   function followUpFor(afterId: number): AssistantSuggestion[] | null {
-    return followUp?.afterId === afterId ? resolve(followUp.list, FOLLOW_UP_COUNT) : null
+    return followUp?.afterId === afterId && followUp.list !== 'loading'
+      ? resolve(followUp.list, FOLLOW_UP_COUNT)
+      : null
+  }
+
+  function isFollowUpLoading(afterId: number) {
+    return followUp?.afterId === afterId && followUp.list === 'loading'
   }
 
   function recordAsked(question: string) {
@@ -90,7 +100,7 @@ export function useMascotSuggestions({ active, screenKey, params, lang, staticSu
     followUpAbort.current?.abort()
     const controller = new AbortController()
     followUpAbort.current = controller
-    setFollowUp(null)
+    setFollowUp({ afterId, list: 'loading' })
 
     getAssistantSuggestions(
       {
@@ -116,5 +126,14 @@ export function useMascotSuggestions({ active, screenKey, params, lang, staticSu
     setRefreshToken((value) => value + 1)
   }
 
-  return { initial, greeting, followUpFor, recordAsked, requestFollowUp, newConversation }
+  return {
+    initial,
+    initialLoading,
+    greeting,
+    followUpFor,
+    isFollowUpLoading,
+    recordAsked,
+    requestFollowUp,
+    newConversation,
+  }
 }

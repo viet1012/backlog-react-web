@@ -679,6 +679,12 @@ export const en = {
             viewing: (screen: string) => `Viewing: ${screen}`,
             showMonth: (month: string) => `Show ${month} on screen`,
             notSupported: "Chat isn't available on this page yet.",
+            offline: (name: string) => `${name} is offline right now. You can ask again once the connection is back.`,
+            offlinePlaceholder: 'Assistant is offline…',
+            retry: 'Retry',
+            reconnecting: 'Reconnecting…',
+            statusOnline: 'Online',
+            statusOffline: 'Offline',
             networkError: 'Network error',
             timeout: (seconds: number) => `Timeout after ${seconds}s`,
             sources: {

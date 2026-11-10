@@ -585,6 +585,12 @@ export const vi: Messages = {
             viewing: (screen) => `Đang xem: ${screen}`,
             showMonth: (month) => `Xem tháng ${month} trên màn hình`,
             notSupported: 'Trang này chưa hỗ trợ hỏi đáp.',
+            offline: (name) => `${name} đang tạm ngưng kết nối. Bạn có thể hỏi lại khi kết nối được khôi phục.`,
+            offlinePlaceholder: 'Trợ lý đang ngoại tuyến…',
+            retry: 'Thử lại',
+            reconnecting: 'Đang kết nối lại…',
+            statusOnline: 'Trực tuyến',
+            statusOffline: 'Ngoại tuyến',
             networkError: 'Network error',
             timeout: (seconds) => `Timeout sau ${seconds}s`,
             sources: {

@@ -148,6 +148,45 @@
   }
 }
 
+/* Nội dung từ API về (câu chào, gợi ý) → hiện dần thay vì nhảy */
+.fadeIn {
+  animation: fadeIn 0.25s ease-out;
+}
+
+/* 3 chấm "đang gõ" khi câu chào chưa về */
+.typingDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.35;
+  animation: typing 1s ease-in-out infinite;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes typing {
+  0%,
+  60%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 0.9;
+    transform: translateY(-3px);
+  }
+}
+
 @keyframes bob {
   0%,
   100% {
@@ -203,7 +242,9 @@
   .svg,
   .eyes,
   .waving,
-  .panel {
+  .panel,
+  .fadeIn,
+  .typingDot {
     animation: none;
   }
 

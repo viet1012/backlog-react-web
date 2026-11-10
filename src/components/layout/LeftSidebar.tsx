@@ -78,6 +78,7 @@ import { FactoryAvatar } from './FactoryAvatar'
 import { LogoutConfirmDialog } from './LogoutConfirmDialog'
 import { QuickJumpDialog, type QuickJumpItem } from './QuickJumpDialog'
 import { useI18n } from '../../i18n/useI18n'
+import { preloadRoute } from '../../pages/lazyPages'
 
 // =========================================================
 // CONSTANTS
@@ -368,6 +369,8 @@ export function LeftSidebar() {
         <ListItemButton
           component={NavLink}
           to={item.path}
+          onPointerEnter={() => preloadRoute(item.path)}
+          onFocus={() => preloadRoute(item.path)}
           selected={active}
           aria-label={label}
           ref={(el: HTMLElement | null) => {
@@ -1001,6 +1004,8 @@ export function LeftSidebar() {
                   key={item.path}
                   component={NavLink}
                   to={item.path}
+                  onPointerEnter={() => preloadRoute(item.path)}
+                  onFocus={() => preloadRoute(item.path)}
                   onClick={() => setFlyout(null)}
                   sx={{
                     minHeight: 34,

@@ -57,7 +57,7 @@ import type {
   MonitorTarget,
   MonitorTone,
 } from '../components/machineMonitor/monitorTypes'
-import { useMonitorData } from '../hooks/useMonitorData'
+import { prefetchMonitor, useMonitorData } from '../hooks/useMonitorData'
 import { useStableCallback } from '../hooks/useStableCallback'
 import { listFloors } from '../services/machineLocatorService'
 import { appScrollbarSx } from '../theme/scrollbarStyle'
@@ -81,6 +81,14 @@ interface MachineMonitorPageProps {
 const PREF_LAYOUT = 'machine-monitor:layout'
 const PREF_ONLY_ACTIVE = 'machine-monitor:onlyActive'
 const DEFAULT_LAYOUT_ID = 'factory-b-f1'
+
+// danh sách floor của lần mở trước (sống qua lần chuyển trang)
+let layoutsCache: MachineLayoutConfig[] | null = null
+
+// khoảng lịch sử của tab: nhớ theo tab; giá trị cũ dạng chuỗi -> về mặc định
+const historyPref = (tab: MonitorTabDef<unknown>) => `machine-monitor:${tab.id}:history`
+const initialHistory = (tab: MonitorTabDef<unknown>) =>
+  (tab.history ? parseRange(loadPreference(historyPref(tab))) ?? tab.history.defaultRange : undefined)
 
 const tabsSx = {
   minHeight: 32,
@@ -113,8 +121,9 @@ export function MachineMonitorPage({
     }
   }, [tr])
 
-  // Floor dùng chung với Machine Locator (GET /floors); null = đang tải
-  const [layouts, setLayouts] = useState<MachineLayoutConfig[] | null>(null)
+  // Floor dùng chung với Machine Locator (GET /floors); null = đang tải.
+  // Có cache (lần mở trước) thì hiện ngay, vẫn tải lại ngầm
+  const [layouts, setLayouts] = useState<MachineLayoutConfig[] | null>(() => layoutsCache)
   const [layoutsError, setLayoutsError] = useState('')
   const [layoutsSeq, setLayoutsSeq] = useState(0)
 
@@ -124,7 +133,11 @@ export function MachineMonitorPage({
     listFloors().then(
       (ls) => {
         if (!alive) return
-        setLayouts(ls)
+        // giữ nguyên object cũ nếu không đổi -> MonitorView không tải lại vô ích
+        if (JSON.stringify(ls) !== JSON.stringify(layoutsCache)) {
+          layoutsCache = ls
+          setLayouts(ls)
+        }
         setLayoutsError('')
       },
       (e: unknown) => {
@@ -156,6 +169,17 @@ export function MachineMonitorPage({
   const entry = MONITOR_TABS.find((t) => t.def && t.id === searchParams.get('tab'))
     ?? MONITOR_TABS.find((t) => t.def)!
   const tab = entry.def!
+
+  // lúc rảnh: tải trước các floor còn lại của tab đang xem -> đổi floor không phải chờ
+  useEffect(() => {
+    if (!layouts) return
+
+    const t = window.setTimeout(() => {
+      for (const l of layouts) if (l.id !== layoutId) prefetchMonitor(l, tab, initialHistory(tab))
+    }, 2000)
+
+    return () => window.clearTimeout(t)
+  }, [layouts, layoutId, tab])
 
   function go(next: { tab?: string, layout?: string }) {
     const p = new URLSearchParams()
@@ -212,7 +236,14 @@ export function MachineMonitorPage({
           sx={[tabsSx, { borderLeft: '1px solid', borderColor: 'divider', pl: 1 }]}
         >
           {layouts.map((l) => (
-            <Tab key={l.id} value={l.id} label={l.name} />
+            <Tab
+              key={l.id}
+              value={l.id}
+              label={l.name}
+              // tải trước khi rê chuột / focus -> bấm vào là có dữ liệu
+              onPointerEnter={() => prefetchMonitor(l, tab, initialHistory(tab))}
+              onFocus={() => prefetchMonitor(l, tab, initialHistory(tab))}
+            />
           ))}
         </Tabs>
       )}
@@ -320,10 +351,9 @@ const rowKey = (t: MonitorTarget) => `${t.kind}:${t.id}`
 function MonitorView({ layout, tab, header }: MonitorViewProps) {
   const { t: tr } = useI18n()
 
-  // khoảng lịch sử (tab có history), nhớ theo tab; giá trị cũ dạng chuỗi -> về mặc định
-  const prefHistory = `machine-monitor:${tab.id}:history`
-  const [history, setHistory] = useState<MonitorRange | undefined>(() =>
-    (tab.history ? parseRange(loadPreference(prefHistory)) ?? tab.history.defaultRange : undefined))
+  // khoảng lịch sử (tab có history)
+  const prefHistory = historyPref(tab)
+  const [history, setHistory] = useState<MonitorRange | undefined>(() => initialHistory(tab))
   // mục "Đã an toàn trong khoảng": mặc định thu gọn
   const [showHistoryRows, setShowHistoryRows] = useState(false)
 

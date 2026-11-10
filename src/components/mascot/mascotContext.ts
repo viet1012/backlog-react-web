@@ -9,9 +9,20 @@ export interface MascotMonthControl {
   select: (month: string) => void
 }
 
+/**
+ * loading: đang gọi /config · online: API trả lời được · offline: không gọi được API ·
+ * reconnecting: đang gọi lại sau khi offline (UI vẫn coi như offline, không nháy)
+ */
+export type MascotStatus = 'loading' | 'online' | 'offline' | 'reconnecting'
+
 export interface MascotContextValue {
-  /** tên mascot từ GET /api/assistant/info; null → đang tải / lỗi (dùng tên mặc định trong i18n) */
+  /** tên mascot từ API (hoặc tên đã lưu lần trước); null → chưa từng có (dùng tên mặc định trong i18n) */
   name: string | null
+  status: MascotStatus
+  /** gọi lại /config để kiểm tra kết nối (bỏ qua khi đang tải) */
+  retry: () => void
+  /** chat gọi được / không gọi được API → cập nhật trạng thái mà không cần chờ retry */
+  reportStatus: (status: 'online' | 'offline') => void
   /** context của trang hiện tại gửi kèm câu hỏi (vd month, simuWeek) */
   params: AssistantParams
   setParams: (params: AssistantParams) => void
@@ -28,6 +39,9 @@ export interface MascotContextValue {
 
 export const MascotContext = createContext<MascotContextValue>({
   name: null,
+  status: 'loading',
+  retry: () => {},
+  reportStatus: () => {},
   params: {},
   setParams: () => {},
   monthControl: null,
