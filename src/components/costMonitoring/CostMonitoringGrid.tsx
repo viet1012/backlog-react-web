@@ -9,6 +9,8 @@ interface CostMonitoringGridProps {
   month: string | null
   data: CostMonitoringChartResponse | null
   loading: boolean
+  // legend tắt Estimate (MTD) → ẩn đường trên cả 9 chart
+  estVisible?: boolean
   onOpenDetail?: (target: CostDetailTarget) => void
 }
 
@@ -52,7 +54,7 @@ const cellSx = (rowIndex: number, column: number) => (theme: Theme) => ({
 
 // Bảng 3 hàng (PRESS / MOLD / GUIDE) × 3 cột (OT / T&SL / RM) như Excel.
 // Màn nhỏ xếp 1 cột, nhãn hàng/cột ẩn và tiêu đề nằm trong từng ô.
-export function CostMonitoringGrid({ month, data, loading, onOpenDetail }: CostMonitoringGridProps) {
+export function CostMonitoringGrid({ month, data, loading, estVisible = true, onOpenDetail }: CostMonitoringGridProps) {
   return (
     <Box
       sx={{
@@ -133,6 +135,7 @@ export function CostMonitoringGrid({ month, data, loading, onOpenDetail }: CostM
                 chart={data?.charts.find((c) => c.div === row.div && c.chart === column)}
                 title={`${row.label} · ${column}`}
                 loading={loading}
+                estVisible={estVisible}
                 onOpenDetail={onOpenDetail && (() => onOpenDetail({ div: row.div, chart: column }))}
               />
             </Box>

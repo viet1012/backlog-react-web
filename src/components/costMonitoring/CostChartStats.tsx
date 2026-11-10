@@ -13,7 +13,14 @@ import {
   seriesColor,
   type CostSeriesKey,
 } from './costChartConfig'
-import { getCostPace, getCostStatus, lastValue, type CostChartRow } from './costChartUtils'
+import {
+  getCostPace,
+  getCostStatus,
+  getEstimateOver,
+  lastValue,
+  monthEndValue,
+  type CostChartRow,
+} from './costChartUtils'
 import { useI18n } from '../../i18n/useI18n'
 
 interface CostChartStatsProps {
@@ -34,21 +41,20 @@ export function CostChartStats({ rows, chart, ratioDigits = 0 }: CostChartStatsP
     { key: 'fcTgt', label: 'FC', value: chart.fcTgt },
     { key: 'plTgt', label: 'PL', value: chart.plTgt },
     { key: 'actMtd', label: 'Act', value: chart.actMtdLatest },
-    { key: 'estMtd', label: 'Est', value: chart.estMonthEnd },
+    // estMtd tại ngày cuối tháng
+    { key: 'estMtd', label: 'Est', value: monthEndValue(rows, 'estMtd') },
     { key: 'fluctTgt', label: 'Fluct', value: lastValue(rows, 'fluctTgt') },
   ]
 
   const status = getCostStatus(chart, rows)
 
-  // cảnh báo theo trạng thái BE (forecast.status), không tự tính ở FE
+  // Đã vượt: theo BE (forecast.status = OVER). Dự báo vượt: estMtd cuối tháng > fluctTgt cuối tháng.
   const forecast = chart.forecast
-  const warnText = forecast?.status === 'WILL_EXCEED'
-    ? t.cost.forecastWarn.willExceed(
-        formatK(forecast.estimateOver),
-        t.cost.forecastBase[forecast.estimateBase ?? 'PL'],
-      )
-    : forecast?.status === 'OVER'
-      ? t.cost.forecastWarn.over(formatK(forecast.actualPctOfFluct))
+  const estOver = getEstimateOver(rows)
+  const warnText = forecast?.status === 'OVER'
+    ? t.cost.forecastWarn.over(formatK(forecast.actualPctOfFluct))
+    : estOver?.isOver
+      ? t.cost.forecastWarn.willExceed(formatK(estOver.over), t.cost.forecastBase.PL)
       : null
   const warnColor = theme.palette.error.main
 

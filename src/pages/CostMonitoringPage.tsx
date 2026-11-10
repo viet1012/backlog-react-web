@@ -129,6 +129,9 @@ export function CostMonitoringPage({
     },
   })
 
+  // bật/tắt đường Estimate (MTD) trên cả 9 chart từ legend
+  const [estVisible, setEstVisible] = useState(true)
+
   const [guideOpen, setGuideOpen] =
     useState(() => loadPreference(GUIDE_SEEN_KEY) !== true)
 
@@ -306,7 +309,11 @@ export function CostMonitoringPage({
                 {t.cost.printLine(month ?? '–', lastUpdated ? dayjs(lastUpdated).format('DD/MM/YYYY HH:mm') : '–')}
               </Typography>
 
-              <CostChartLegend plUnavailable={noPlWeeks} />
+              <CostChartLegend
+                plUnavailable={noPlWeeks}
+                estVisible={estVisible}
+                onToggleEst={() => setEstVisible((v) => !v)}
+              />
             </>
           }
           mode={mode}
@@ -322,6 +329,7 @@ export function CostMonitoringPage({
 
         {data && (
           <CostForecastBanner
+            month={toApiMonth(data.month)}
             charts={data.charts}
             onOpenDetail={(target) => {
               setDetailTarget(target)
@@ -363,6 +371,7 @@ export function CostMonitoringPage({
             month={data ? toApiMonth(data.month) : month && toApiMonth(month)}
             data={data}
             loading={loading}
+            estVisible={estVisible}
             onOpenDetail={(target) => {
               setDetailTarget(target)
               setDetailOpen(true)

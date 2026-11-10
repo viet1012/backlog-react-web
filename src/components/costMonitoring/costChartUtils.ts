@@ -56,6 +56,29 @@ export function lastValue(rows: CostChartRow[], key: CostSeriesKey) {
   return i >= 0 ? rows[i][key] : null
 }
 
+// Giá trị tại dòng ngày cuối tháng (không lùi về ngày trước nếu null)
+export function monthEndValue(rows: CostChartRow[], key: CostSeriesKey) {
+  return rows.length > 0 ? rows[rows.length - 1][key] : null
+}
+
+export interface CostEstimateOver {
+  est: number
+  fluct: number
+  /** est − fluct */
+  over: number
+  isOver: boolean
+}
+
+// Dự báo vượt: estMtd ngày cuối tháng > fluctTgt ngày cuối tháng. Thiếu 1 trong 2 → null.
+export function getEstimateOver(rows: CostChartRow[]): CostEstimateOver | null {
+  const est = monthEndValue(rows, 'estMtd')
+  const fluct = monthEndValue(rows, 'fluctTgt')
+
+  if (est == null || fluct == null) return null
+
+  return { est, fluct, over: est - fluct, isOver: est > fluct }
+}
+
 // Tick trục X: ngày 1, 5, 10, 15, 20, 25 và ngày cuối tháng
 export function buildXTicks(rows: CostChartRow[]): string[] {
   const last = rows.length - 1
@@ -112,10 +135,17 @@ export type CostStatus =
   // cả tháng chưa có actual (vd OT) → Estimate chỉ là kế hoạch, không đánh giá %
   | { level: 'noActual'; ratio: null }
 
-// So giá trị cuối (Est, không có thì Act) với target (Fluct, không có thì FC)
+// Có estMtd & fluctTgt ngày cuối tháng → vượt khi est > fluct.
+// Không đủ → so giá trị cuối (Est, không có thì Act) với target (Fluct, không có thì FC)
 export function getCostStatus(chart: CostChart, rows: CostChartRow[]): CostStatus | null {
   if (chart.actMtdLatest == null && lastIndexOf(rows, 'actMtd') < 0) {
     return { level: 'noActual', ratio: null }
+  }
+
+  const estOver = getEstimateOver(rows)
+
+  if (estOver && estOver.fluct > 0) {
+    return { ratio: (estOver.est / estOver.fluct) * 100, level: estOver.isOver ? 'over' : 'ok' }
   }
 
   const final = chart.estMonthEnd ?? chart.actMtdLatest

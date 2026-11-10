@@ -24,6 +24,8 @@ interface CostChartCardProps {
   chart: CostChart | undefined
   title: string
   loading: boolean
+  // false → ẩn đường Estimate (MTD) (tắt từ legend)
+  estVisible?: boolean
   // có → bấm ô mở drawer chi tiết
   onOpenDetail?: () => void
 }
@@ -37,14 +39,15 @@ function EmptyState({ text }: { text: string }) {
   )
 }
 
-export function CostChartCard({ month, chart, title, loading, onOpenDetail }: CostChartCardProps) {
+export function CostChartCard({ month, chart, title, loading, estVisible = true, onOpenDetail }: CostChartCardProps) {
   const { t } = useI18n()
 
   const theme = useTheme()
   const dark = theme.palette.mode === 'dark'
 
   const rows = chart ? buildRows(month, chart) : []
-  const visibleSeries = COST_SERIES.filter((s) => rows.some((r) => r[s.key] != null))
+  const dataSeries = COST_SERIES.filter((s) => rows.some((r) => r[s.key] != null))
+  const visibleSeries = estVisible ? dataSeries : dataSeries.filter((s) => s.key !== 'estMtd')
 
   const renderTooltip = ({ active, label }: TooltipContentProps) => {
     const row = active ? rows.find((r) => r.label === label) : undefined
@@ -84,7 +87,7 @@ export function CostChartCard({ month, chart, title, loading, onOpenDetail }: Co
   let body
   if (!chart && loading) {
     body = <Skeleton variant="rounded" sx={{ flex: 1, minHeight: 0 }} />
-  } else if (!chart || visibleSeries.length === 0) {
+  } else if (!chart || dataSeries.length === 0) {
     body = <EmptyState text={t.cost.chartEmpty} />
   } else {
     const yAxis = buildYAxis(rows, chart)
@@ -136,15 +139,15 @@ export function CostChartCard({ month, chart, title, loading, onOpenDetail }: Co
                 <Line
                   key={s.key}
                   type="linear"
-                  // estimate vẽ bằng estLine để nối tiếp từ điểm actual cuối
-                  dataKey={s.key === 'estMtd' ? 'estLine' : s.key}
+                  // estMtd vẽ thẳng từ API: null giữ null (đứt đoạn), không nối
+                  dataKey={s.key}
                   name={s.label}
                   stroke={seriesColor(s, dark)}
                   strokeWidth={s.strokeWidth}
                   strokeDasharray={s.dash}
                   connectNulls={false}
                   dot={false}
-                  activeDot={{ r: 3 }}
+                  activeDot={s.key === 'estMtd' ? false : { r: 3 }}
                   isAnimationActive={false}
                 />
               ))}
