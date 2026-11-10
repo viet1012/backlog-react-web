@@ -57,9 +57,6 @@ export function getSidebarSx(
         contain:
             'layout paint',
 
-        willChange:
-            'width',
-
         // =====================================================
         // GLASS BACKGROUND
         // =====================================================
@@ -338,7 +335,8 @@ export function getGroupHeaderSx(
         opacity: collapsed ? 0 : 1,
         overflow: 'hidden',
         pointerEvents: collapsed ? 'none' : 'auto',
-        transition: `${labelTransition}, color 160ms ease, background-color 160ms ease`,
+        // Height follows the sidebar width so items below glide instead of jumping
+        transition: `${labelTransition}, height 180ms cubic-bezier(0.2, 0, 0, 1), min-height 180ms cubic-bezier(0.2, 0, 0, 1), color 160ms ease, background-color 160ms ease`,
 
         '&:hover': {
             color: 'text.primary',

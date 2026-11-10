@@ -109,15 +109,10 @@ interface NavEntry {
   groupId: MenuGroupId
 }
 
-interface IndicatorBox {
-  x: number
-  y: number
-  width: number
-  height: number
-  visible: boolean
-  // Jump without sliding (first show / re-show after hidden)
-  instant: boolean
-}
+// Indicator transitions: slide only when the active page changes; snap when
+// the layout moves under it (collapse/expand, group toggle) so it never lags.
+const indicatorSlide = 'transform 280ms cubic-bezier(.3,1.25,.5,1), width 180ms ease, height 180ms ease, opacity 160ms ease, background-color 220ms ease, border-color 220ms ease'
+const indicatorSnap = 'opacity 160ms ease, background-color 220ms ease, border-color 220ms ease'
 
 function isVisible(item: MenuItemConfig) {
   return !item.disabled && (!item.roles || hasAnyRole(item.roles))
@@ -206,9 +201,14 @@ export function LeftSidebar() {
       .filter((item) => isVisible(item) && !isReady(item))
       .map((item) => ({ item, groupId: group.id })))
 
+  // Router updates run in a transition, so location changes only after the
+  // new page has rendered. Highlight the clicked item right away instead.
+  const [pendingPath, setPendingPath] = useState<string | null>(null)
+  const currentPath = pendingPath ?? location.pathname
+
   const activeEntry: NavEntry | undefined = groups
     .flatMap((group) => group.items.map((item) => ({ item, groupId: group.id })))
-    .find((entry) => entry.item.path === location.pathname)
+    .find((entry) => entry.item.path === currentPath)
 
   const activePath = activeEntry?.item.path
 
@@ -230,6 +230,7 @@ export function LeftSidebar() {
 
   if (openedForPath !== location.pathname) {
     setOpenedForPath(location.pathname)
+    setPendingPath(null)
 
     if (activeEntry && !openGroups[activeEntry.groupId]) {
       setOpenGroups((current) => ({ ...current, [activeEntry.groupId]: true }))
@@ -278,38 +279,53 @@ export function LeftSidebar() {
   // =======================================================
 
   const menuInnerRef = useRef<HTMLDivElement>(null)
+  const indicatorRef = useRef<HTMLDivElement>(null)
   const itemRefs = useRef(new Map<string, HTMLElement>())
-  const [indicator, setIndicator] = useState<IndicatorBox | null>(null)
+  const placedPathRef = useRef<string | undefined>(undefined)
 
+  // Positioned straight on the DOM: the ResizeObserver fires every frame
+  // while the sidebar width animates, and a React re-render per frame of
+  // the whole sidebar is what made collapse/expand stutter.
   useLayoutEffect(() => {
     const inner = menuInnerRef.current
-    if (!inner) return
+    const indicatorEl = indicatorRef.current
+    if (!inner || !indicatorEl) return
 
-    const measure = () => {
+    const place = (slide: boolean) => {
       const el = activePath ? itemRefs.current.get(activePath) : undefined
 
       // Hidden when the active item's group is closed
       if (!el || el.getClientRects().length === 0) {
-        setIndicator((prev) => prev && { ...prev, visible: false })
+        indicatorEl.style.transition = indicatorSnap
+        indicatorEl.style.opacity = '0'
         return
       }
 
       const box = inner.getBoundingClientRect()
       const rect = el.getBoundingClientRect()
+      const wasHidden = indicatorEl.style.opacity !== '1'
 
-      setIndicator((prev) => ({
-        x: rect.left - box.left,
-        y: rect.top - box.top,
-        width: rect.width,
-        height: rect.height,
-        visible: true,
-        instant: !prev || !prev.visible,
-      }))
+      indicatorEl.style.transition = slide && !wasHidden ? indicatorSlide : indicatorSnap
+      indicatorEl.style.transform = `translate(${rect.left - box.left}px, ${rect.top - box.top}px)`
+      indicatorEl.style.width = `${rect.width}px`
+      indicatorEl.style.height = `${rect.height}px`
+      indicatorEl.style.opacity = '1'
     }
 
-    measure()
+    const pathChanged = placedPathRef.current !== activePath
+    placedPathRef.current = activePath
+    place(pathChanged)
 
-    const observer = new ResizeObserver(measure)
+    // Skip the observer's initial callback (same size) so it does not
+    // cut the slide that just started.
+    let lastWidth = inner.offsetWidth
+    let lastHeight = inner.offsetHeight
+    const observer = new ResizeObserver(() => {
+      if (inner.offsetWidth === lastWidth && inner.offsetHeight === lastHeight) return
+      lastWidth = inner.offsetWidth
+      lastHeight = inner.offsetHeight
+      place(false)
+    })
     observer.observe(inner)
     return () => observer.disconnect()
   }, [activePath, collapsed, openGroups])
@@ -352,7 +368,7 @@ export function LeftSidebar() {
 
   function renderItem(item: MenuItemConfig, groupId: MenuGroupId) {
     const color = getGroupColor(groupId, mode)
-    const active = item.path === location.pathname
+    const active = item.path === currentPath
     const label = t.nav[item.labelKey]
     const actionLabel = actionLabelOf(item)
 
@@ -371,6 +387,7 @@ export function LeftSidebar() {
           to={item.path}
           onPointerEnter={() => preloadRoute(item.path)}
           onFocus={() => preloadRoute(item.path)}
+          onClick={() => setPendingPath(item.path)}
           selected={active}
           aria-label={label}
           ref={(el: HTMLElement | null) => {
@@ -604,6 +621,7 @@ export function LeftSidebar() {
           display: 'flex',
           alignItems: 'center',
           flexShrink: 0,
+          transition: 'height 180ms cubic-bezier(0.2, 0, 0, 1), min-height 180ms cubic-bezier(0.2, 0, 0, 1)',
         }}
       >
         {/* EXPANDED */}
@@ -800,45 +818,37 @@ export function LeftSidebar() {
       >
         <Box ref={menuInnerRef} sx={{ position: 'relative' }}>
 
-          {indicator && (
-            <Box
-              aria-hidden
-              sx={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                zIndex: 0,
-                pointerEvents: 'none',
-                borderRadius: '11px',
-                bgcolor: alpha(indicatorColor, dark ? 0.16 : 0.1),
-                border: '1px solid',
-                borderColor: alpha(indicatorColor, 0.3),
-                boxShadow: `0 6px 18px ${alpha(indicatorColor, 0.16)}`,
-                transition: indicator.instant
-                  ? 'opacity 160ms ease'
-                  : 'transform 280ms cubic-bezier(.3,1.25,.5,1), width 180ms ease, height 180ms ease, opacity 160ms ease, background-color 220ms ease, border-color 220ms ease',
+          {/* Position / size / opacity are written by the layout effect above */}
+          <Box
+            ref={indicatorRef}
+            aria-hidden
+            sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              zIndex: 0,
+              opacity: 0,
+              pointerEvents: 'none',
+              borderRadius: '11px',
+              bgcolor: alpha(indicatorColor, dark ? 0.16 : 0.1),
+              border: '1px solid',
+              borderColor: alpha(indicatorColor, 0.3),
+              boxShadow: `0 6px 18px ${alpha(indicatorColor, 0.16)}`,
 
-                // Left rail
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  left: -1,
-                  top: 8,
-                  bottom: 8,
-                  width: 3,
-                  borderRadius: '0 4px 4px 0',
-                  bgcolor: indicatorColor,
-                  boxShadow: `0 0 10px ${alpha(indicatorColor, 0.7)}`,
-                },
-              }}
-              style={{
-                transform: `translate(${indicator.x}px, ${indicator.y}px)`,
-                width: indicator.width,
-                height: indicator.height,
-                opacity: indicator.visible ? 1 : 0,
-              }}
-            />
-          )}
+              // Left rail
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                left: -1,
+                top: 8,
+                bottom: 8,
+                width: 3,
+                borderRadius: '0 4px 4px 0',
+                bgcolor: indicatorColor,
+                boxShadow: `0 0 10px ${alpha(indicatorColor, 0.7)}`,
+              },
+            }}
+          />
 
           {groups.map((group) => {
             const color = getGroupColor(group.id, mode)
@@ -996,7 +1006,7 @@ export function LeftSidebar() {
 
             {flyoutGroup.items.map((item) => {
               const color = getGroupColor(flyoutGroup.id, mode)
-              const active = item.path === location.pathname
+              const active = item.path === currentPath
               const actionLabel = actionLabelOf(item)
 
               return (
@@ -1006,7 +1016,10 @@ export function LeftSidebar() {
                   to={item.path}
                   onPointerEnter={() => preloadRoute(item.path)}
                   onFocus={() => preloadRoute(item.path)}
-                  onClick={() => setFlyout(null)}
+                  onClick={() => {
+                    setPendingPath(item.path)
+                    setFlyout(null)
+                  }}
                   sx={{
                     minHeight: 34,
                     gap: 1,
