@@ -188,6 +188,13 @@ export function AiLogsPage({ mode, onToggleMode }: AiLogsPageProps) {
   const { t } = useI18n()
 
   const [tab, setTab] = useState<AiLogsTab>('logs')
+  // Tab nặng chỉ dựng khi mở lần đầu (vào trang nhanh hơn), mở rồi thì giữ mounted
+  const [visited, setVisited] = useState<ReadonlySet<AiLogsTab>>(() => new Set(['logs']))
+
+  function changeTab(next: AiLogsTab) {
+    setTab(next)
+    setVisited((prev) => (prev.has(next) ? prev : new Set(prev).add(next)))
+  }
 
   // tab con màn hình được nhớ qua lần tải lại → khởi tạo cùng bộ lọc
   const [filters, setFilters] = useState<AiLogFilters>(() => ({
@@ -278,7 +285,7 @@ export function AiLogsPage({ mode, onToggleMode }: AiLogsPageProps) {
           <>
             <Tabs
               value={tab}
-              onChange={(_, next: AiLogsTab) => setTab(next)}
+              onChange={(_, next: AiLogsTab) => changeTab(next)}
               sx={{ minHeight: 36, '& .MuiTab-root': { minHeight: 36, py: 0.5, textTransform: 'none', fontWeight: 700 } }}
             >
               <Tab value="logs" label={t.aiLogs.tabs.logs} />
@@ -319,30 +326,34 @@ export function AiLogsPage({ mode, onToggleMode }: AiLogsPageProps) {
         </Alert>
       )}
 
-      {/* tab Bộ test luôn mounted để lượt chạy không bị hủy khi chuyển tab */}
-      <Box
-        sx={{
-          flex: 1,
-          minHeight: 0,
-          overflowY: 'auto',
-          display: tab === 'tests' ? 'flex' : 'none',
-          flexDirection: 'column',
-        }}
-      >
-        <AiTestSuitePanel />
-      </Box>
+      {/* tab Bộ test: mở rồi thì luôn mounted để lượt chạy không bị hủy khi chuyển tab */}
+      {visited.has('tests') && (
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            display: tab === 'tests' ? 'flex' : 'none',
+            flexDirection: 'column',
+          }}
+        >
+          <AiTestSuitePanel />
+        </Box>
+      )}
 
-      {/* Phòng thay đồ – luôn mounted để giữ bản nháp khi chuyển tab */}
-      <Box
-        sx={{
-          flex: 1,
-          minHeight: 0,
-          overflowY: 'auto',
-          display: tab === 'wardrobe' ? 'block' : 'none',
-        }}
-      >
-        <AiWardrobePanel />
-      </Box>
+      {/* Phòng thay đồ: mở rồi thì luôn mounted để giữ bản nháp khi chuyển tab */}
+      {visited.has('wardrobe') && (
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            display: tab === 'wardrobe' ? 'block' : 'none',
+          }}
+        >
+          <AiWardrobePanel />
+        </Box>
+      )}
 
       {/* trang cuộn dọc; bảng giữ chiều cao tối thiểu để đọc được */}
       <Box

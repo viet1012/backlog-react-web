@@ -1,7 +1,7 @@
 import dayjs from 'dayjs'
 import { useEffect, useRef, useState } from 'react'
-import { DEFAULT_AI_TEST_CASES } from '../components/aiLogs/aiTestDefaults'
-import { isCostScreen } from '../components/aiLogs/aiTestUtils'
+import { BUILTIN_CASES, CORE_SUITE_ID, withSuite } from '../components/aiLogs/aiTestSuiteRegistry'
+import { isCaseLike, isCostScreen, normalizeCase } from '../components/aiLogs/aiTestUtils'
 import { useI18n } from '../i18n/useI18n'
 import {
   AssistantApiError,
@@ -9,7 +9,6 @@ import {
   type AssistantParams,
 } from '../services/assistantService'
 import {
-  DEFAULT_TEST_SCREEN_KEY,
   type AiTestCase,
   type AiTestRun,
   type AiTestRunConfig,
@@ -25,35 +24,44 @@ import {
 // giữ nguyên key khi thêm screenKey – migrate tại chỗ để không mất dữ liệu cũ
 const STORAGE_KEY = 'aiTestSuite.v1'
 
-// dữ liệu cũ / file JSON cũ chưa có screenKey → thuộc Cost Monitoring
-function normalizeCase(c: Partial<AiTestCase> & Pick<AiTestCase, 'id' | 'question' | 'expected'>): AiTestCase {
-  return {
-    ...c,
-    screenKey: typeof c.screenKey === 'string' && c.screenKey.trim() ? c.screenKey : DEFAULT_TEST_SCREEN_KEY,
-    group: c.group ?? '',
-    drawer: c.drawer ?? null,
-    maxSec: c.maxSec ?? null,
-  }
+// dạng lưu localStorage: state + id các câu dựng sẵn đã từng nạp
+// (câu dựng sẵn mới – file JSON mới trong src/data/aiTestSuites – được tự thêm; câu đã xóa không quay lại)
+interface StoredState extends AiTestSuiteState {
+  seenBuiltin?: string[]
 }
 
-function loadState(): AiTestSuiteState {
+const BUILTIN_IDS = BUILTIN_CASES.map((c) => c.id)
+
+interface LoadResult {
+  state: AiTestSuiteState
+  // số câu dựng sẵn mới được tự thêm lúc mở
+  autoAdded: number
+}
+
+function loadState(): LoadResult {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (raw) {
-      const parsed = JSON.parse(raw) as Partial<AiTestSuiteState>
+      const parsed = JSON.parse(raw) as Partial<StoredState>
       if (Array.isArray(parsed.cases)) {
-        return { cases: parsed.cases.filter(isCase).map(normalizeCase), runs: parsed.runs ?? {} }
+        const cases = parsed.cases.filter(isCaseLike).map(normalizeCase).map(withSuite)
+        const existing = new Set(cases.map((c) => c.id))
+        // dữ liệu cũ chưa có seenBuiltin → coi bộ Cơ bản là đã nạp (giữ nguyên câu người dùng đã xóa)
+        const seen = new Set(parsed.seenBuiltin ?? BUILTIN_CASES.filter((c) => c.suite === CORE_SUITE_ID).map((c) => c.id))
+        const added = BUILTIN_CASES.filter((c) => !seen.has(c.id) && !existing.has(c.id))
+        return { state: { cases: [...cases, ...added], runs: parsed.runs ?? {} }, autoAdded: added.length }
       }
     }
   } catch {
     // localStorage bị chặn / JSON hỏng → dùng mặc định
   }
-  return { cases: DEFAULT_AI_TEST_CASES, runs: {} }
+  return { state: { cases: BUILTIN_CASES, runs: {} }, autoAdded: 0 }
 }
 
 function saveState(state: AiTestSuiteState) {
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+    const stored: StoredState = { ...state, seenBuiltin: BUILTIN_IDS }
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stored))
   } catch {
     // hết quota / bị chặn → chỉ giữ trong phiên
   }
@@ -63,22 +71,13 @@ export function newCaseId() {
   return `case-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
 }
 
-// chỉ kiểm tra trường bắt buộc; trường thiếu (screenKey, group…) do normalizeCase bù
-function isCase(value: unknown): value is Partial<AiTestCase> & Pick<AiTestCase, 'id' | 'question' | 'expected'> {
-  const c = value as Partial<AiTestCase> | null
-  return typeof c === 'object' && c !== null
-    && typeof c.id === 'string'
-    && typeof c.question === 'string'
-    && typeof c.expected === 'string'
-}
-
 // Lỗi định dạng → ném Error
 export function parseSuiteFile(text: string): AiTestSuiteState {
   const data = JSON.parse(text) as Partial<AiTestSuiteFile> | unknown[]
   const list: unknown = Array.isArray(data) ? data : data.cases
-  if (!Array.isArray(list) || !list.every(isCase)) throw new Error('Invalid test suite file')
+  if (!Array.isArray(list) || !list.every(isCaseLike)) throw new Error('Invalid test suite file')
 
-  const cases = list.map(normalizeCase)
+  const cases = list.map(normalizeCase).map(withSuite)
   const runs = !Array.isArray(data) && data.runs ? data.runs : {}
   return { cases, runs }
 }
@@ -217,7 +216,8 @@ export interface AiTestProgress {
 
 export function useAiTestSuite() {
   const { language } = useI18n()
-  const [state, setState] = useState<AiTestSuiteState>(loadState)
+  const [initial] = useState(loadState)
+  const [state, setState] = useState<AiTestSuiteState>(initial.state)
   const [config, setConfig] = useState<AiTestRunConfig>(() => ({
     month: dayjs().format('YYYY-MM'),
     simuWeek: '',
@@ -352,13 +352,13 @@ export function useAiTestSuite() {
   }
 
   function resetToDefaults() {
-    setState({ cases: DEFAULT_AI_TEST_CASES, runs: {} })
+    setState({ cases: BUILTIN_CASES, runs: {} })
   }
 
   // thêm câu mặc định chưa có (theo id) – giữ nguyên câu đã sửa / kết quả cũ; trả số câu đã thêm
   function mergeDefaults() {
     const existing = new Set(stateRef.current.cases.map((c) => c.id))
-    const missing = DEFAULT_AI_TEST_CASES.filter((c) => !existing.has(c.id))
+    const missing = BUILTIN_CASES.filter((c) => !existing.has(c.id))
     if (missing.length > 0) setState((prev) => ({ ...prev, cases: [...prev.cases, ...missing] }))
     return missing.length
   }
@@ -380,6 +380,8 @@ export function useAiTestSuite() {
   return {
     cases: state.cases,
     runs: state.runs,
+    // số câu từ file JSON mới được tự thêm lúc mở tab
+    autoAdded: initial.autoAdded,
     config,
     setConfig,
     progress,

@@ -24,6 +24,7 @@ import {
     MapOutlined,
     MonitorHeartOutlined,
     SmartToyOutlined,
+    TrackChangesOutlined,
 } from '@mui/icons-material'
 import type { UserRole } from '../../services/authService'
 import type { Messages } from '../../i18n/messages/en'
@@ -170,6 +171,17 @@ export const menuGroups:
                     action: 'view',
                     icon: (
                         <PendingActionsOutlined />
+                    ),
+                },
+
+                {
+                    labelKey: 'saleFollow',
+                    path: '/sale-follow',
+                    status: 'ready',
+                    roles: ['PC'],
+                    action: 'view',
+                    icon: (
+                        <TrackChangesOutlined />
                     ),
                 },
 

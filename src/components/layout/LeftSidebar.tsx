@@ -79,6 +79,7 @@ import { LogoutConfirmDialog } from './LogoutConfirmDialog'
 import { QuickJumpDialog, type QuickJumpItem } from './QuickJumpDialog'
 import { useI18n } from '../../i18n/useI18n'
 import { preloadRoute } from '../../pages/lazyPages'
+import { setNavPending } from './navPending'
 
 // =========================================================
 // CONSTANTS
@@ -387,7 +388,10 @@ export function LeftSidebar() {
           to={item.path}
           onPointerEnter={() => preloadRoute(item.path)}
           onFocus={() => preloadRoute(item.path)}
-          onClick={() => setPendingPath(item.path)}
+          onClick={() => {
+            setPendingPath(item.path)
+            setNavPending(item.path)
+          }}
           selected={active}
           aria-label={label}
           ref={(el: HTMLElement | null) => {
@@ -1018,6 +1022,7 @@ export function LeftSidebar() {
                   onFocus={() => preloadRoute(item.path)}
                   onClick={() => {
                     setPendingPath(item.path)
+                    setNavPending(item.path)
                     setFlyout(null)
                   }}
                   sx={{
@@ -1148,6 +1153,9 @@ export function LeftSidebar() {
           onClose={() => setSearchOpen(false)}
           onSelect={(path) => {
             setSearchOpen(false)
+            preloadRoute(path)
+            setPendingPath(path)
+            setNavPending(path)
             navigate(path)
           }}
         />

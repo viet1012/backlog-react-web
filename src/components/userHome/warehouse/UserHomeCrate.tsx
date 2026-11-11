@@ -6,6 +6,8 @@ import { keyframes } from '@mui/material/styles'
 import { LockOutlined } from '@mui/icons-material'
 
 import { useI18n } from '../../../i18n/useI18n'
+import { preloadRoute } from '../../../pages/lazyPages'
+import { setNavPending } from '../../layout/navPending'
 import { getGroupColor } from '../../layout/sidebarConfig'
 import { C, INK, SIGN_FAMILY } from '../factoryScene/primitives'
 import type { HomeMenuEntry } from '../userHomeMenu'
@@ -134,6 +136,9 @@ export function UserHomeCrate({ entry, kind, size, delayMs, dark }: UserHomeCrat
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
     event.preventDefault()
     if (picked) return
+    // Tải trang đích ngay trong lúc thùng trượt ra
+    preloadRoute(item.path)
+    setNavPending(item.path)
     if (reduceMotion) {
       navigate(item.path)
       return

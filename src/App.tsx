@@ -40,6 +40,7 @@ import {
   PcTrainingPage,
   PlPage,
   RemainPoControlPage,
+  SaleFollowPage,
   SalesStatusPage,
   ShipmentPage,
   SphPage,
@@ -209,6 +210,7 @@ function App() {
                 <Route element={<RoleRoute roles={['PC']} />}>
                   <Route path="backlog" element={<BacklogPage mode={mode} onToggleMode={toggleThemeMode} />} />
                   <Route path="remain-po-control" element={<RemainPoControlPage mode={mode} />} />
+                  <Route path="sale-follow" element={<SaleFollowPage mode={mode} />} />
                   <Route path="export-list" element={<ExportListPage />} />
                 </Route>
 

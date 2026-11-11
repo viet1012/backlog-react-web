@@ -67,6 +67,7 @@ import type { Messages } from '../../i18n/i18nContext'
 import { useI18n } from '../../i18n/useI18n'
 import { AiTestCaseDialog } from './AiTestCaseDialog'
 import { TABULAR_NUMS, formatDateTime, formatSec } from './aiLogsUtils'
+import { BUILTIN_SUITES, CUSTOM_SUITE_ID, suiteOf } from './aiTestSuiteRegistry'
 import { drawerLabel, groupCases, isCostScreen, isOverLimit } from './aiTestUtils'
 
 const cellSx = { ...TABULAR_NUMS, fontSize: 12.5, py: 0.75, px: 1, verticalAlign: 'top' } as const
@@ -83,8 +84,17 @@ function loadScreenTab(): string | null {
   return typeof stored === 'string' ? stored : null
 }
 
+// bộ test đang chọn của từng màn hình – { [screenKey]: suiteId | 'all' }
+const PREF_SUITE_TAB = 'ai-logs:tests:suite'
+const ALL_SUITES = 'all'
+
+function loadSuiteTabs(): Record<string, string> {
+  const stored = loadPreference(PREF_SUITE_TAB)
+  return stored && typeof stored === 'object' && !Array.isArray(stored) ? stored as Record<string, string> : {}
+}
+
 // =========================================================
-// Hàng tab con theo màn hình (screenKey) – dạng pill, nhẹ hơn tab chính của trang
+// Hàng tab dạng pill (màn hình / bộ test) – nhẹ hơn tab chính của trang
 // =========================================================
 
 const pulse = keyframes`
@@ -93,25 +103,40 @@ const pulse = keyframes`
   100% { box-shadow: 0 0 0 0 transparent; opacity: 1; }
 `
 
-interface ScreenTabStat {
-  screenKey: string
+interface PillTabItem {
+  value: string
+  label: string
   total: number
   pass: number
   fail: number
 }
 
-function ScreenTabs({
-  stats,
+function countStats(list: AiTestCase[], runs: Record<string, AiTestRun>) {
+  return {
+    total: list.length,
+    pass: list.filter((c) => runs[c.id]?.verdict === 'pass').length,
+    fail: list.filter((c) => runs[c.id]?.verdict === 'fail').length,
+  }
+}
+
+function PillTabs({
+  items,
   value,
-  runningKey,
+  runningValue,
+  ariaLabel,
+  size = 'md',
   onChange,
 }: {
-  stats: ScreenTabStat[]
+  items: PillTabItem[]
   value: string
-  runningKey: string | null
-  onChange: (screenKey: string) => void
+  runningValue: string | null
+  ariaLabel: string
+  // sm: hàng tab bộ test, nằm dưới hàng tab màn hình
+  size?: 'md' | 'sm'
+  onChange: (value: string) => void
 }) {
   const { t } = useI18n()
+  const sm = size === 'sm'
 
   return (
     <Tabs
@@ -119,26 +144,26 @@ function ScreenTabs({
       onChange={(_, v: string) => onChange(v)}
       variant="scrollable"
       scrollButtons="auto"
-      aria-label={t.aiLogs.screenTabs.ariaLabel}
+      aria-label={ariaLabel}
       sx={{
         flexShrink: 0,
-        minHeight: 32,
+        minHeight: sm ? 28 : 32,
         '& .MuiTabs-indicator': { display: 'none' },
         // MUI v9: container của tab là .MuiTabs-list (không còn .MuiTabs-flexContainer)
-        '& .MuiTabs-list': { gap: 0.75, alignItems: 'center', height: 32 },
+        '& .MuiTabs-list': { gap: sm ? 0.5 : 0.75, alignItems: 'center', height: sm ? 28 : 32 },
         '& .MuiTabs-scrollButtons': { width: 28 },
       }}
     >
-      {stats.map(({ screenKey, total, pass, fail }) => (
+      {items.map(({ value: itemValue, label, total, pass, fail }) => (
         <Tab
-          key={screenKey}
-          value={screenKey}
-          // tên màn hình + ý nghĩa con số cho trình đọc màn hình (tooltip chỉ hiện khi hover)
-          aria-label={`${getScreenNameByKey(screenKey, t)} – ${t.aiLogs.screenTabs.countTooltip(total, pass, fail)}`}
+          key={itemValue}
+          value={itemValue}
+          // tên tab + ý nghĩa con số cho trình đọc màn hình (tooltip chỉ hiện khi hover)
+          aria-label={`${label} – ${t.aiLogs.screenTabs.countTooltip(total, pass, fail)}`}
           label={(
             <Tooltip describeChild title={t.aiLogs.screenTabs.countTooltip(total, pass, fail)}>
               <Stack direction="row" component="span" sx={{ alignItems: 'center', gap: 0.75 }}>
-                {runningKey === screenKey && (
+                {runningValue === itemValue && (
                   <Box
                     component="span"
                     sx={{
@@ -151,7 +176,7 @@ function ScreenTabs({
                     }}
                   />
                 )}
-                <span>{getScreenNameByKey(screenKey, t)}</span>
+                <span>{label}</span>
                 <Box
                   component="span"
                   sx={(theme) => ({
@@ -174,20 +199,23 @@ function ScreenTabs({
           )}
           sx={(theme) => ({
             // đồng bộ với tab màn hình ở tab Logs (AiLogsPage)
-            minHeight: 26,
+            minHeight: sm ? 22 : 26,
             minWidth: 0,
-            py: 0.25,
-            px: 1.25,
+            py: sm ? 0 : 0.25,
+            px: sm ? 1 : 1.25,
             borderRadius: 999,
             border: 1,
             borderColor: 'divider',
+            // bộ test: viền nét đứt để phân biệt cấp với tab màn hình
+            borderStyle: sm ? 'dashed' : 'solid',
             textTransform: 'none',
-            fontSize: 12.5,
+            fontSize: sm ? 12 : 12.5,
             fontWeight: 600,
             color: 'text.secondary',
             transition: 'background-color 120ms, border-color 120ms',
             '&:hover': { bgcolor: 'action.hover' },
             '&.Mui-selected': {
+              borderStyle: 'solid',
               color: 'primary.main',
               borderColor: alpha(theme.palette.primary.main, 0.45),
               bgcolor: alpha(theme.palette.primary.main, 0.1),
@@ -431,27 +459,26 @@ export function AiTestSuitePanel() {
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
   const [dialog, setDialog] = useState<{ open: boolean; initial: AiTestCase | null }>({ open: false, initial: null })
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null)
-  const [message, setMessage] = useState<{ severity: 'success' | 'error'; text: string } | null>(null)
+  // câu từ file JSON mới (src/data/aiTestSuites) được tự nạp lúc mở tab → báo 1 lần
+  const [message, setMessage] = useState<{ severity: 'success' | 'error'; text: string } | null>(() => (
+    suite.autoAdded > 0 ? { severity: 'success', text: labels.suites.autoAdded(suite.autoAdded) } : null
+  ))
   const fileInput = useRef<HTMLInputElement>(null)
 
   // ---- tab theo màn hình: màn hình đã khai báo + screenKey lạ có trong bộ test ----
-  const screenStats = useMemo<ScreenTabStat[]>(() => {
+  const screenStats = useMemo<PillTabItem[]>(() => {
     const keys = [...new Set([...ASSISTANT_SCREENS.map((s) => s.screenKey), ...cases.map((c) => c.screenKey)])]
-    return keys.map((key) => {
-      const own = cases.filter((c) => c.screenKey === key)
-      return {
-        screenKey: key,
-        total: own.length,
-        pass: own.filter((c) => runs[c.id]?.verdict === 'pass').length,
-        fail: own.filter((c) => runs[c.id]?.verdict === 'fail').length,
-      }
-    })
-  }, [cases, runs])
+    return keys.map((key) => ({
+      value: key,
+      label: getScreenNameByKey(key, t),
+      ...countStats(cases.filter((c) => c.screenKey === key), runs),
+    }))
+  }, [cases, runs, t])
 
   const [storedScreen, setStoredScreen] = useState(loadScreenTab)
   // tab đã lưu không còn (màn hình bị gỡ / xóa hết câu của screenKey lạ) → tab đầu tiên (suy ra khi render)
-  const screenKey = screenStats.find((s) => s.screenKey === storedScreen)?.screenKey
-    ?? screenStats[0]?.screenKey
+  const screenKey = screenStats.find((s) => s.value === storedScreen)?.value
+    ?? screenStats[0]?.value
     ?? DEFAULT_TEST_SCREEN_KEY
   const costScreen = isCostScreen(screenKey)
 
@@ -465,9 +492,47 @@ export function AiTestSuitePanel() {
     ? cases.find((c) => c.id === progress.currentId)?.screenKey ?? null
     : null
 
-  const screenCases = useMemo(() => cases.filter((c) => c.screenKey === screenKey), [cases, screenKey])
-  const grouped = useMemo(() => groupCases(screenCases), [screenCases])
+  const allScreenCases = useMemo(() => cases.filter((c) => c.screenKey === screenKey), [cases, screenKey])
 
+  // ---- tab bộ test trong màn hình: mỗi file JSON (src/data/aiTestSuites/<screenKey>) + "Tự thêm" ----
+  const suiteStats = useMemo<PillTabItem[]>(() => {
+    const bySuite = new Map<string, AiTestCase[]>()
+    for (const c of allScreenCases) {
+      const id = suiteOf(c)
+      const list = bySuite.get(id)
+      if (list) list.push(c)
+      else bySuite.set(id, [c])
+    }
+    const items: PillTabItem[] = BUILTIN_SUITES
+      .filter((s) => bySuite.has(s.id))
+      .map((s) => ({ value: s.id, label: s.title ?? labels.suites.core, ...countStats(bySuite.get(s.id) ?? [], runs) }))
+    const custom = bySuite.get(CUSTOM_SUITE_ID)
+    if (custom) items.push({ value: CUSTOM_SUITE_ID, label: labels.suites.custom, ...countStats(custom, runs) })
+    // chỉ 1 bộ thì không cần hàng tab con
+    if (items.length < 2) return []
+    return [{ value: ALL_SUITES, label: labels.suites.all, ...countStats(allScreenCases, runs) }, ...items]
+  }, [allScreenCases, runs, labels])
+
+  const [storedSuites, setStoredSuites] = useState(loadSuiteTabs)
+  // bộ đã lưu không còn (file JSON bị gỡ / xóa hết câu) → "Tất cả"
+  const suiteKey = suiteStats.find((s) => s.value === storedSuites[screenKey])?.value ?? ALL_SUITES
+
+  function selectSuite(id: string) {
+    const next = { ...storedSuites, [screenKey]: id }
+    setStoredSuites(next)
+    savePreference(PREF_SUITE_TAB, next)
+  }
+
+  // bộ của câu đang chạy (cùng màn hình) → chấm nhấp nháy trên tab bộ test
+  const runningCase = progress?.currentId ? cases.find((c) => c.id === progress.currentId) : undefined
+  const runningSuite = runningCase && runningCase.screenKey === screenKey ? suiteOf(runningCase) : null
+
+  // câu đang hiển thị = màn hình + bộ test đang chọn; Chạy / Chạy lại / tổng hợp đều theo danh sách này
+  const screenCases = useMemo(
+    () => (suiteKey === ALL_SUITES ? allScreenCases : allScreenCases.filter((c) => suiteOf(c) === suiteKey)),
+    [allScreenCases, suiteKey],
+  )
+  const grouped = useMemo(() => groupCases(screenCases), [screenCases])
   // gợi ý ô "Nhóm" trong dialog theo màn hình đang chọn ở dialog
   const groupsByScreen = useMemo(() => {
     const map: Record<string, string[]> = {}
@@ -534,12 +599,24 @@ export function AiTestSuitePanel() {
 
   return (
     <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: uiTokens.page.gap }}>
-      <ScreenTabs
-        stats={screenStats}
+      <PillTabs
+        items={screenStats}
         value={screenKey}
-        runningKey={runningScreenKey}
+        runningValue={runningScreenKey}
+        ariaLabel={t.aiLogs.screenTabs.ariaLabel}
         onChange={selectScreen}
       />
+
+      {suiteStats.length > 0 && (
+        <PillTabs
+          size="sm"
+          items={suiteStats}
+          value={suiteKey}
+          runningValue={runningSuite}
+          ariaLabel={labels.suites.ariaLabel}
+          onChange={selectSuite}
+        />
+      )}
 
       {/* thanh công cụ – pt chừa chỗ cho label nổi của ô outlined (wrapper overflow: auto cắt mất) */}
       <Stack direction="row" sx={{ alignItems: 'center', gap: 1, flexWrap: 'wrap', flexShrink: 0, pt: 1 }}>
@@ -755,7 +832,27 @@ export function AiTestSuitePanel() {
                             bgcolor: alpha(theme.palette.primary.main, 0.06),
                           })}
                         >
-                          {group}
+                          <Stack direction="row" sx={{ alignItems: 'center', gap: 1 }}>
+                            <span>{group}</span>
+                            <Typography component="span" sx={{ ...TABULAR_NUMS, fontSize: 11.5, fontWeight: 600, color: 'text.secondary' }}>
+                              {`(${items.length})`}
+                            </Typography>
+                            <Box sx={{ flex: 1 }} />
+                            <Tooltip title={labels.runGroup(items.length)}>
+                              <span>
+                                <Button
+                                  size="small"
+                                  startIcon={<PlayArrowRoundedIcon sx={{ fontSize: 16 }} />}
+                                  disabled={suite.running}
+                                  onClick={() => void suite.run(items.map((c) => c.id))}
+                                  aria-label={`${labels.runGroup(items.length)} – ${group}`}
+                                  sx={{ textTransform: 'none', fontSize: 12, py: 0, minHeight: 24 }}
+                                >
+                                  {labels.run}
+                                </Button>
+                              </span>
+                            </Tooltip>
+                          </Stack>
                         </TableCell>
                       </TableRow>
                     )}
@@ -906,6 +1003,8 @@ export function AiTestSuitePanel() {
         open={dialog.open}
         initial={dialog.initial}
         defaultScreenKey={screenKey}
+        // thêm câu khi đang ở 1 bộ dựng sẵn → câu thuộc bộ đó; "Tất cả" / "Tự thêm" → Tự thêm
+        defaultSuite={suiteKey === ALL_SUITES || suiteKey === CUSTOM_SUITE_ID ? undefined : suiteKey}
         groupsByScreen={groupsByScreen}
         onClose={() => setDialog((d) => ({ ...d, open: false }))}
         onSave={(testCase) => {

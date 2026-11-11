@@ -1,13 +1,15 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { Box, LinearProgress } from '@mui/material'
 import { alpha, keyframes } from '@mui/material/styles'
+import { useLocation } from 'react-router-dom'
 
 import { Mascot, MascotProvider } from '../mascot'
 import { clockInTimeline, useClockInRun } from '../shift/clockInStore'
 
 import { KeepAliveOutlet } from './KeepAliveOutlet'
 import { LeftSidebar } from './LeftSidebar'
+import { setNavPending, useNavPending } from './navPending'
 
 // Clock-in: the app is mounted under the shutter, then the sidebar and the
 // page come up as it rolls up ("lights on"). Dim, not invisible, while
@@ -50,6 +52,15 @@ function PageFallback() {
 
 export function MainLayout() {
   const run = useClockInRun()
+  const { pathname } = useLocation()
+  const pendingPath = useNavPending()
+  // Đã bấm sang trang khác nhưng router chưa đổi xong (trang mới đang tải / render)
+  const navigating = pendingPath !== null && pendingPath !== pathname
+
+  // Router đổi xong (hoặc người dùng bấm lại đúng trang hiện tại) → xoá trạng thái chờ
+  useEffect(() => {
+    setNavPending(null)
+  }, [pathname])
 
   // ms from mount until the shutter starts rolling up; null when not signing in
   const [riseDelay] = useState(() => run
@@ -86,7 +97,9 @@ export function MainLayout() {
         <LeftSidebar />
         <Box
           component="main"
+          aria-busy={navigating}
           sx={{
+            position: 'relative',
             display: 'flex',
             flex: 1,
             minWidth: 0,
@@ -94,8 +107,37 @@ export function MainLayout() {
             overflow: 'hidden',
           }}
         >
-          {/* giữ các trang đã mở (ẩn) → chuyển qua lại không tải lại */}
-          <KeepAliveOutlet fallback={<PageFallback />} />
+          {/* Phản hồi tức thì khi bấm chuyển trang: thanh chạy trên cùng + trang cũ mờ đi.
+              Trễ 120ms để chuyển trang nhanh (đã tải sẵn) không bị nháy. */}
+          {navigating && (
+            <LinearProgress
+              sx={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                zIndex: 10,
+                height: 2,
+                animation: `${fadeIn} 160ms ease-out 120ms both`,
+              }}
+            />
+          )}
+
+          {/* Không đặt key theo pathname: KeepAliveOutlet phải giữ nguyên để không mount lại các trang đã mở */}
+          <Box
+            sx={{
+              display: 'flex',
+              flex: 1,
+              minWidth: 0,
+              minHeight: 0,
+              opacity: navigating ? 0.55 : 1,
+              pointerEvents: navigating ? 'none' : undefined,
+              transition: navigating ? 'opacity 180ms ease 120ms' : 'none',
+            }}
+          >
+            {/* giữ các trang đã mở (ẩn) → chuyển qua lại không tải lại */}
+            <KeepAliveOutlet fallback={<PageFallback />} />
+          </Box>
         </Box>
 
         {/* đặt ngoài Outlet → không re-mount khi chuyển trang */}

@@ -23,6 +23,9 @@ export interface AiTestCase {
   drawer: { div: CostDiv; cost: CostChartType } | null
   // thời gian tối đa (giây); vượt → cảnh báo; null = không giới hạn
   maxSec: number | null
+  // bộ test (tab con trong màn hình) – "<screenKey>/<tên file>" của src/data/aiTestSuites;
+  // undefined = câu tự thêm / nhập từ file ngoài
+  suite?: string
 }
 
 export type AiTestVerdict = 'pass' | 'fail'

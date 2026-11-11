@@ -1,5 +1,7 @@
 import { lazy, type ComponentType } from 'react'
 
+import { loadWarehouse3D } from '../components/userHome/warehouse3d/loadWarehouse3D'
+
 // Every page is its own chunk, loaded on the first visit. The login page is
 // not here: it stays in the main bundle so the first screen needs no second
 // request. preload() starts the download early (e.g. during the clock-in).
@@ -26,6 +28,7 @@ export const PackingListPage = lazyPage(() => import('./PackingListPage').then((
 export const PcTrainingPage = lazyPage(() => import('./training/PcTrainingPage').then((m) => m.PcTrainingPage))
 export const PlPage = lazyPage(() => import('./PlPage').then((m) => m.PlPage))
 export const RemainPoControlPage = lazyPage(() => import('./RemainPoControlPage').then((m) => m.RemainPoControlPage))
+export const SaleFollowPage = lazyPage(() => import('./SaleFollowPage').then((m) => m.SaleFollowPage))
 export const SalesStatusPage = lazyPage(() => import('./SalesStatusPage').then((m) => m.SalesStatusPage))
 export const ShipmentPage = lazyPage(() => import('./ShipmentPage').then((m) => m.ShipmentPage))
 export const SphPage = lazyPage(() => import('./SphPage').then((m) => m.SphPage))
@@ -38,9 +41,11 @@ const pagesByRoute: Record<string, { preload: () => Promise<unknown> }> = {
   '/sph': SphPage,
   '/asakai': AsakaiPage,
   '/cost-monitoring': CostMonitoringPage,
-  '/user-home': UserHomePage,
+  // Trang chủ cần thêm chunk three.js + font: tải song song, không đợi trang mount mới tải
+  '/user-home': { preload: () => Promise.all([UserHomePage.preload(), loadWarehouse3D()]) },
   '/backlog': BacklogPage,
   '/remain-po-control': RemainPoControlPage,
+  '/sale-follow': SaleFollowPage,
   '/fac-confirm': FacConfirmPage,
   '/odbf': OdbfPage,
   '/export-list': ExportListPage,

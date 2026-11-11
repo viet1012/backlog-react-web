@@ -22,6 +22,8 @@ interface AiTestCaseDialogProps {
   initial: AiTestCase | null
   // màn hình mặc định cho câu mới (tab đang chọn)
   defaultScreenKey: string
+  // bộ test cho câu mới (tab bộ test đang chọn); undefined = câu tự thêm
+  defaultSuite?: string
   // tên nhóm đã có theo từng màn hình → gợi ý ô "Nhóm"
   groupsByScreen: Record<string, string[]>
   onClose: () => void
@@ -32,6 +34,7 @@ interface AiTestCaseDialogProps {
 function AiTestCaseForm({
   initial,
   defaultScreenKey,
+  defaultSuite,
   groupsByScreen,
   onClose,
   onSave,
@@ -72,6 +75,10 @@ function AiTestCaseForm({
       // màn hình khác Cost Monitoring không có drawer
       drawer: showDrawer ? parseDrawer(drawer) : null,
       maxSec: maxSec.trim() === '' || !Number.isFinite(sec) || sec <= 0 ? null : sec,
+      // giữ bộ test khi vẫn ở màn hình ban đầu; chuyển màn hình → thành câu tự thêm
+      suite: screenKey === (initial?.screenKey ?? defaultScreenKey)
+        ? (initial ? initial.suite : defaultSuite)
+        : undefined,
     })
   }
 

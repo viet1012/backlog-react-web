@@ -22,12 +22,14 @@ import { buildHomeMenu } from '../components/userHome/userHomeMenu'
 import { UserHomeIdBadge } from '../components/userHome/warehouse/UserHomeIdBadge'
 import { UserHomeLedBoard } from '../components/userHome/warehouse/UserHomeLedBoard'
 import { UserHomeRack } from '../components/userHome/warehouse/UserHomeRack'
+import { loadWarehouse3D } from '../components/userHome/warehouse3d/loadWarehouse3D'
+import { Warehouse3DLoading } from '../components/userHome/warehouse3d/Warehouse3DLoading'
 import { WebGLBoundary } from '../components/userHome/warehouse3d/WebGLBoundary'
 import { useI18n } from '../i18n/useI18n'
 import { appScrollbarSx } from '../theme/scrollbarStyle'
 
-// Chunk riêng: three.js chỉ tải khi thật sự dùng bản 3D
-const UserHomeWarehouse3D = lazy(() => import('../components/userHome/warehouse3d/UserHomeWarehouse3D'))
+// Chunk riêng: three.js chỉ tải khi thật sự dùng bản 3D (thường đã được tải trước lúc rê chuột vào menu)
+const UserHomeWarehouse3D = lazy(loadWarehouse3D)
 
 // Dưới ngưỡng này (FPS trung vị lúc thả hàng) thì coi là chưa mượt
 const SLOW_FPS = 30
@@ -91,7 +93,7 @@ export function UserHomePage({ mode, onToggleMode }: UserHomePageProps) {
     ? cssRack
     : (
       <WebGLBoundary fallback={cssRack}>
-        <Suspense fallback={<Box sx={{ flex: 1, minHeight: 0 }} />}>
+        <Suspense fallback={<Warehouse3DLoading dark={dark} />}>
           <UserHomeWarehouse3D
             menu={menu}
             dark={dark}

@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { Box } from '@mui/material'
@@ -7,6 +7,8 @@ import { ContactShadows, Environment, Html, Lightformer, Sparkles } from '@react
 import { MathUtils, Object3D, Vector3, type PerspectiveCamera, type SpotLight } from 'three'
 
 import { useI18n } from '../../../i18n/useI18n'
+import { preloadRoute } from '../../../pages/lazyPages'
+import { setNavPending } from '../../layout/navPending'
 import { getGroupColor } from '../../layout/sidebarConfig'
 import type { RenderSize } from '../graphics/GraphicsQualityButton'
 import { graphicsDpr, type GraphicsProfile } from '../graphics/graphicsQuality'
@@ -15,6 +17,9 @@ import { Crate3D, type CrateQuality, type CrateTexts } from './Crate3D'
 import { Rack3D } from './Rack3D'
 import { buildRackLayout, RACK, type CratePlacement, type RackLayout } from './rackModel'
 import { useIconImages } from './useIconImages'
+import { Warehouse3DLoading } from './Warehouse3DLoading'
+
+const FADE_MS = 320
 
 /*
  * Kệ hàng WebGL (three.js). Canvas trong suốt đặt trên nền xưởng CSS.
@@ -132,6 +137,19 @@ function ShadowControl() {
       state.gl.shadowMap.needsUpdate = true
       first.current = false
     }
+  })
+
+  return null
+}
+
+// Nằm trong Suspense cùng kệ + thùng: frame đầu tiên có đủ font + vật thể thì báo sẵn sàng
+function SceneReady({ onReady }: { onReady: () => void }) {
+  const done = useRef(false)
+
+  useFrame(() => {
+    if (done.current) return
+    done.current = true
+    onReady()
   })
 
   return null
@@ -290,6 +308,10 @@ export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeas
   const [introDone, setIntroDone] = useState(!intro)
   const introSeconds = Math.max(0, ...layout.crates.map((crate) => crate.delay)) + INTRO_TAIL
   const timerRef = useRef(0)
+  // Canvas mờ dần hiện lên khi cảnh đã vẽ được frame đầu; khung chờ mờ đi rồi gỡ khỏi DOM
+  const [sceneReady, setSceneReady] = useState(false)
+  const [loaderGone, setLoaderGone] = useState(false)
+  const markReady = useCallback(() => setSceneReady(true), [])
 
   const quality: CrateQuality = {
     smoothness: profile.roundedSmoothness,
@@ -321,6 +343,9 @@ export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeas
     const crate = layout.crates[index]
     if (crate.kind !== 'ready' || picked !== null) return
     setPicked(index)
+    // Tải trang đích ngay trong lúc thùng trượt ra
+    preloadRoute(crate.entry.item.path)
+    setNavPending(crate.entry.item.path)
     timerRef.current = window.setTimeout(() => navigate(crate.entry.item.path), PICK_MS)
   }
 
@@ -349,9 +374,30 @@ export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeas
     >
       {host}
 
+      {!loaderGone && (
+        <Box
+          aria-hidden={sceneReady}
+          onTransitionEnd={() => {
+            if (sceneReady) setLoaderGone(true)
+          }}
+          sx={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 1,
+            display: 'flex',
+            pointerEvents: 'none',
+            opacity: sceneReady ? 0 : 1,
+            transition: `opacity ${FADE_MS}ms ease-out`,
+          }}
+        >
+          <Warehouse3DLoading dark={dark} />
+        </Box>
+      )}
+
       {/* key theo mức: antialias / loại bóng chỉ đặt được lúc tạo context nên đổi mức là dựng lại */}
       <Canvas
         key={profile.level}
+        style={{ opacity: sceneReady ? 1 : 0, transition: `opacity ${FADE_MS}ms ease-out` }}
         shadows={profile.shadowMapSize > 0 ? 'percentage' : false}
         frameloop={profile.ambientMotion ? 'always' : 'demand'}
         dpr={graphicsDpr(profile)}
@@ -367,6 +413,7 @@ export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeas
         {/* Chờ font chữ SDF tải xong (vài trăm ms) rồi mới dựng kệ + thùng, tránh chữ hiện chậm hơn hàng */}
         <Suspense fallback={null}>
           <ShadowControl />
+          <SceneReady onReady={markReady} />
           {!introDone && <IntroTimer seconds={introSeconds} onDone={setIntroDone} />}
           <Rack3D layout={layout} outlines={profile.outlines} />
 

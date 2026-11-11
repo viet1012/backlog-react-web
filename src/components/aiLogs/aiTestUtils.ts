@@ -7,6 +7,29 @@ export function isCostScreen(screenKey: string) {
   return screenKey === DEFAULT_TEST_SCREEN_KEY
 }
 
+type CaseLike = Partial<AiTestCase> & Pick<AiTestCase, 'id' | 'question' | 'expected'>
+
+// chỉ kiểm tra trường bắt buộc; trường thiếu (screenKey, group…) do normalizeCase bù
+export function isCaseLike(value: unknown): value is CaseLike {
+  const c = value as Partial<AiTestCase> | null
+  return typeof c === 'object' && c !== null
+    && typeof c.id === 'string'
+    && typeof c.question === 'string'
+    && typeof c.expected === 'string'
+}
+
+// dữ liệu cũ / file JSON chưa có screenKey → thuộc Cost Monitoring
+export function normalizeCase(c: CaseLike): AiTestCase {
+  return {
+    ...c,
+    screenKey: typeof c.screenKey === 'string' && c.screenKey.trim() ? c.screenKey : DEFAULT_TEST_SCREEN_KEY,
+    group: c.group ?? '',
+    drawer: c.drawer ?? null,
+    maxSec: c.maxSec ?? null,
+    suite: typeof c.suite === 'string' && c.suite ? c.suite : undefined,
+  }
+}
+
 // drawer lưu dạng "div|cost" trong ô select; '' = không mở drawer
 export const DRAWER_OPTIONS = COST_ROWS.flatMap((row) =>
   COST_COLUMNS.map((cost) => ({ value: `${row.div}|${cost}`, label: `${row.label} ${cost}` })),
