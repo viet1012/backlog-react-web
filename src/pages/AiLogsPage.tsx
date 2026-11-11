@@ -11,7 +11,7 @@ import {
 } from '@mui/material'
 import type { PaletteMode } from '@mui/material'
 import { alpha } from '@mui/material/styles'
-import { useState } from 'react'
+import { Suspense, lazy, startTransition, useState } from 'react'
 import { PageHeader } from '../components/common/PageHeader'
 import { PageShell } from '../components/common/PageShell'
 import { RefreshButton } from '../components/common/RefreshButton'
@@ -21,8 +21,6 @@ import { AiLogsDailyChart } from '../components/aiLogs/AiLogsDailyChart'
 import { AiLogsFilterBar } from '../components/aiLogs/AiLogsFilterBar'
 import { AiLogsKpi } from '../components/aiLogs/AiLogsKpi'
 import { AiLogsTable } from '../components/aiLogs/AiLogsTable'
-import { AiTestSuitePanel } from '../components/aiLogs/AiTestSuitePanel'
-import { AiWardrobePanel } from '../components/aiLogs/AiWardrobePanel'
 import {
   AI_LOGS_PAGE_SIZES,
   TABULAR_NUMS,
@@ -36,6 +34,19 @@ import type { AiLogFilters, AiLogListQuery, AiLogScreenStat } from '../types/ass
 import { uiTokens } from '../theme/uiTokens'
 import { useI18n } from '../i18n/useI18n'
 import { loadPreference, savePreference } from '../utils/uiPreferences'
+
+// Tab Bộ test (kèm các file JSON bộ test) và Phòng thay đồ tách chunk riêng:
+// vào trang AI Logs chỉ tải tab Logs, bấm tab nào mới tải tab đó
+const AiTestSuitePanel = lazy(() => import('../components/aiLogs/AiTestSuitePanel').then((m) => ({ default: m.AiTestSuitePanel })))
+const AiWardrobePanel = lazy(() => import('../components/aiLogs/AiWardrobePanel').then((m) => ({ default: m.AiWardrobePanel })))
+
+function TabLoading() {
+  return (
+    <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', py: 6 }}>
+      <CircularProgress size={28} />
+    </Box>
+  )
+}
 
 interface AiLogsPageProps {
   mode: PaletteMode
@@ -193,7 +204,10 @@ export function AiLogsPage({ mode, onToggleMode }: AiLogsPageProps) {
 
   function changeTab(next: AiLogsTab) {
     setTab(next)
-    setVisited((prev) => (prev.has(next) ? prev : new Set(prev).add(next)))
+    // dựng tab nặng ở chế độ transition → tab được chọn đổi màu ngay, nội dung vẽ sau
+    startTransition(() => {
+      setVisited((prev) => (prev.has(next) ? prev : new Set(prev).add(next)))
+    })
   }
 
   // tab con màn hình được nhớ qua lần tải lại → khởi tạo cùng bộ lọc
@@ -337,7 +351,9 @@ export function AiLogsPage({ mode, onToggleMode }: AiLogsPageProps) {
             flexDirection: 'column',
           }}
         >
-          <AiTestSuitePanel />
+          <Suspense fallback={<TabLoading />}>
+            <AiTestSuitePanel />
+          </Suspense>
         </Box>
       )}
 
@@ -351,7 +367,9 @@ export function AiLogsPage({ mode, onToggleMode }: AiLogsPageProps) {
             display: tab === 'wardrobe' ? 'block' : 'none',
           }}
         >
-          <AiWardrobePanel />
+          <Suspense fallback={<TabLoading />}>
+            <AiWardrobePanel />
+          </Suspense>
         </Box>
       )}
 

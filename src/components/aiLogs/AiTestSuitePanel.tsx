@@ -15,7 +15,6 @@ import {
   Button,
   Chip,
   CircularProgress,
-  Collapse,
   Divider,
   IconButton,
   LinearProgress,
@@ -45,7 +44,7 @@ import FileUploadOutlinedIcon from '@mui/icons-material/FileUploadOutlined'
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded'
 import ClearAllRoundedIcon from '@mui/icons-material/ClearAllRounded'
 import PlaylistAddRoundedIcon from '@mui/icons-material/PlaylistAddRounded'
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { SIMU_WEEK_OPTIONS } from '../costMonitoring/costChartConfig'
 import { MascotMarkdown } from '../mascot/MascotMarkdown'
 import { ASSISTANT_SCREENS, getScreenNameByKey } from '../mascot/mascotMessages'
@@ -323,15 +322,14 @@ function RunStatus({
 
   return (
     <Stack sx={{ gap: 0.5, alignItems: 'flex-start' }}>
-      <Tooltip title={run.errorMessage ?? ''} disableHoverListener={!run.errorMessage}>
-        <Chip
-          size="small"
-          label={run.ok ? labels.status.ok : run.errorCode ?? labels.status.error}
-          color={run.ok ? 'success' : 'error'}
-          variant="outlined"
-          sx={{ height: 20, fontSize: 11, fontWeight: 700 }}
-        />
-      </Tooltip>
+      <Chip
+        size="small"
+        label={run.ok ? labels.status.ok : run.errorCode ?? labels.status.error}
+        color={run.ok ? 'success' : 'error'}
+        variant="outlined"
+        title={run.errorMessage ?? undefined}
+        sx={{ height: 20, fontSize: 11, fontWeight: 700 }}
+      />
       <Typography
         sx={{
           ...TABULAR_NUMS,
@@ -447,6 +445,154 @@ function RunProgress({ progress, labels }: { progress: AiTestProgress; labels: L
 }
 
 // =========================================================
+// 1 dòng câu test – memo: lúc đang chạy / chấm điểm chỉ dòng liên quan vẽ lại
+// (bộ test vài trăm câu → vẽ lại cả bảng mỗi lần tiến độ đổi làm trang giật)
+// Không dùng MUI Tooltip trong dòng (5 tooltip × vài trăm dòng rất nặng) → title gốc của trình duyệt
+// =========================================================
+
+interface CaseRowActions {
+  toggle: (id: string) => void
+  run: (id: string) => void
+  edit: (testCase: AiTestCase) => void
+  remove: (testCase: AiTestCase) => void
+  verdict: (id: string, verdict: AiTestVerdict | null) => void
+  note: (id: string, note: string) => void
+}
+
+const CaseRow = memo(function CaseRow({
+  testCase,
+  index,
+  run,
+  state,
+  progress,
+  open: openProp,
+  running,
+  labels,
+  actions,
+}: {
+  testCase: AiTestCase
+  index: number
+  run: AiTestRun | undefined
+  state: 'running' | 'queued' | null
+  progress: AiTestProgress | null
+  open: boolean
+  running: boolean
+  labels: Labels
+  actions: CaseRowActions
+}) {
+  const open = openProp && run != null
+  const drawer = drawerLabel(testCase.drawer)
+
+  return (
+    <>
+      <TableRow
+        hover
+        onClick={() => run && actions.toggle(testCase.id)}
+        sx={(theme) => ({
+          cursor: run ? 'pointer' : 'default',
+          '& > td': { borderBottom: open ? 0 : undefined },
+          ...(run?.verdict === 'fail' && { bgcolor: alpha(theme.palette.error.main, 0.04) }),
+        })}
+      >
+        <TableCell sx={{ ...cellSx, color: 'text.secondary' }}>
+          <Stack direction="row" sx={{ alignItems: 'center' }}>
+            {run ? (
+              open
+                ? <KeyboardArrowDownRoundedIcon sx={{ fontSize: 16 }} />
+                : <KeyboardArrowRightRoundedIcon sx={{ fontSize: 16 }} />
+            ) : <Box sx={{ width: 16 }} />}
+            {index}
+          </Stack>
+        </TableCell>
+
+        <TableCell sx={cellSx}>
+          <Typography sx={{ fontSize: 13, fontWeight: 600 }}>{testCase.question}</Typography>
+          {(drawer || testCase.maxSec != null) && (
+            <Stack direction="row" sx={{ gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
+              {drawer && (
+                <Chip
+                  size="small"
+                  color="info"
+                  variant="outlined"
+                  label={labels.table.drawerChip(drawer)}
+                  sx={{ height: 18, fontSize: 10.5 }}
+                />
+              )}
+              {testCase.maxSec != null && (
+                <Chip
+                  size="small"
+                  variant="outlined"
+                  label={labels.table.maxSecChip(testCase.maxSec)}
+                  sx={{ height: 18, fontSize: 10.5 }}
+                />
+              )}
+            </Stack>
+          )}
+        </TableCell>
+
+        <TableCell sx={{ ...cellSx, color: 'text.secondary', whiteSpace: 'pre-wrap' }}>
+          {testCase.expected || '–'}
+        </TableCell>
+
+        <TableCell sx={cellSx}>
+          <RunStatus testCase={testCase} run={run} state={state} progress={progress} labels={labels} />
+        </TableCell>
+
+        <TableCell sx={cellSx} onClick={(e) => e.stopPropagation()}>
+          <ToggleButtonGroup
+            size="small"
+            exclusive
+            disabled={!run}
+            value={run?.verdict ?? null}
+            onChange={(_, v: AiTestVerdict | null) => actions.verdict(testCase.id, v)}
+          >
+            <ToggleButton value="pass" color="success" sx={{ p: 0.25 }} aria-label={labels.pass} title={labels.pass}>
+              <CheckRoundedIcon sx={{ fontSize: 18 }} />
+            </ToggleButton>
+            <ToggleButton value="fail" color="error" sx={{ p: 0.25 }} aria-label={labels.fail} title={labels.fail}>
+              <CloseRoundedIcon sx={{ fontSize: 18 }} />
+            </ToggleButton>
+          </ToggleButtonGroup>
+        </TableCell>
+
+        <TableCell sx={{ ...cellSx, whiteSpace: 'nowrap' }} align="right" onClick={(e) => e.stopPropagation()}>
+          <IconButton
+            size="small"
+            disabled={running}
+            onClick={() => actions.run(testCase.id)}
+            aria-label={labels.run}
+            title={labels.run}
+          >
+            <PlayArrowRoundedIcon fontSize="small" />
+          </IconButton>
+          <IconButton size="small" onClick={() => actions.edit(testCase)} aria-label={labels.edit} title={labels.edit}>
+            <EditOutlinedIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            disabled={state !== null}
+            onClick={() => actions.remove(testCase)}
+            aria-label={labels.delete}
+            title={labels.delete}
+          >
+            <DeleteOutlineRoundedIcon fontSize="small" />
+          </IconButton>
+        </TableCell>
+      </TableRow>
+
+      {/* chi tiết chỉ dựng khi mở (trước đây mỗi câu đã chạy luôn có 1 dòng Collapse ẩn) */}
+      {open && run && (
+        <TableRow>
+          <TableCell colSpan={COLS} sx={{ p: 0 }}>
+            <RunDetail run={run} labels={labels} onNote={(note) => actions.note(testCase.id, note)} />
+          </TableCell>
+        </TableRow>
+      )}
+    </>
+  )
+})
+
+// =========================================================
 // PANEL
 // =========================================================
 
@@ -533,6 +679,29 @@ export function AiTestSuitePanel() {
     [allScreenCases, suiteKey],
   )
   const grouped = useMemo(() => groupCases(screenCases), [screenCases])
+  // số thứ tự trong danh sách đang xem (tránh indexOf từng dòng – O(n²))
+  const indexById = useMemo(() => new Map(screenCases.map((c, i) => [c.id, i + 1])), [screenCases])
+
+  // handler ổn định cho CaseRow (memo) – đọc bản suite mới nhất qua ref
+  const suiteRef = useRef(suite)
+  useLayoutEffect(() => {
+    suiteRef.current = suite
+  })
+  const rowActions = useMemo<CaseRowActions>(() => ({
+    toggle: (id) => setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    }),
+    run: (id) => void suiteRef.current.run([id]),
+    edit: (testCase) => setDialog({ open: true, initial: testCase }),
+    remove: (testCase) => {
+      if (window.confirm(labels.deleteConfirm(testCase.question))) suiteRef.current.deleteCase(testCase.id)
+    },
+    verdict: (id, verdict) => suiteRef.current.setVerdict(id, verdict),
+    note: (id, note) => suiteRef.current.setNote(id, note),
+  }), [labels])
   // gợi ý ô "Nhóm" trong dialog theo màn hình đang chọn ở dialog
   const groupsByScreen = useMemo(() => {
     const map: Record<string, string[]> = {}
@@ -566,15 +735,6 @@ export function AiTestSuitePanel() {
       return !r || !r.ok || r.verdict === 'fail' || isOverLimit(c, r)
     })
     .map((c) => c.id)
-
-  function toggleExpanded(id: string) {
-    setExpanded((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
 
   function rowState(id: string): 'running' | 'queued' | null {
     if (progress?.currentId === id) return 'running'
@@ -857,140 +1017,21 @@ export function AiTestSuitePanel() {
                       </TableRow>
                     )}
 
-                    {items.map((testCase) => {
-                      const run = runs[testCase.id]
-                      const state = rowState(testCase.id)
-                      const open = expanded.has(testCase.id) && run != null
-                      const drawer = drawerLabel(testCase.drawer)
-                      const index = screenCases.indexOf(testCase) + 1
-
-                      return (
-                        <Fragment key={testCase.id}>
-                          <TableRow
-                            hover
-                            onClick={() => run && toggleExpanded(testCase.id)}
-                            sx={(theme) => ({
-                              cursor: run ? 'pointer' : 'default',
-                              '& > td': { borderBottom: open ? 0 : undefined },
-                              ...(run?.verdict === 'fail' && { bgcolor: alpha(theme.palette.error.main, 0.04) }),
-                            })}
-                          >
-                            <TableCell sx={{ ...cellSx, color: 'text.secondary' }}>
-                              <Stack direction="row" sx={{ alignItems: 'center' }}>
-                                {run ? (
-                                  open
-                                    ? <KeyboardArrowDownRoundedIcon sx={{ fontSize: 16 }} />
-                                    : <KeyboardArrowRightRoundedIcon sx={{ fontSize: 16 }} />
-                                ) : <Box sx={{ width: 16 }} />}
-                                {index}
-                              </Stack>
-                            </TableCell>
-
-                            <TableCell sx={cellSx}>
-                              <Typography sx={{ fontSize: 13, fontWeight: 600 }}>{testCase.question}</Typography>
-                              <Stack direction="row" sx={{ gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
-                                {drawer && (
-                                  <Chip
-                                    size="small"
-                                    color="info"
-                                    variant="outlined"
-                                    label={labels.table.drawerChip(drawer)}
-                                    sx={{ height: 18, fontSize: 10.5 }}
-                                  />
-                                )}
-                                {testCase.maxSec != null && (
-                                  <Chip
-                                    size="small"
-                                    variant="outlined"
-                                    label={labels.table.maxSecChip(testCase.maxSec)}
-                                    sx={{ height: 18, fontSize: 10.5 }}
-                                  />
-                                )}
-                              </Stack>
-                            </TableCell>
-
-                            <TableCell sx={{ ...cellSx, color: 'text.secondary', whiteSpace: 'pre-wrap' }}>
-                              {testCase.expected || '–'}
-                            </TableCell>
-
-                            <TableCell sx={cellSx}>
-                              <RunStatus
-                                testCase={testCase}
-                                run={run}
-                                state={state}
-                                progress={progress}
-                                labels={labels}
-                              />
-                            </TableCell>
-
-                            <TableCell sx={cellSx} onClick={(e) => e.stopPropagation()}>
-                              <ToggleButtonGroup
-                                size="small"
-                                exclusive
-                                disabled={!run}
-                                value={run?.verdict ?? null}
-                                onChange={(_, v: AiTestVerdict | null) => suite.setVerdict(testCase.id, v)}
-                              >
-                                <ToggleButton value="pass" color="success" sx={{ p: 0.25 }} aria-label={labels.pass}>
-                                  <Tooltip title={labels.pass}><CheckRoundedIcon sx={{ fontSize: 18 }} /></Tooltip>
-                                </ToggleButton>
-                                <ToggleButton value="fail" color="error" sx={{ p: 0.25 }} aria-label={labels.fail}>
-                                  <Tooltip title={labels.fail}><CloseRoundedIcon sx={{ fontSize: 18 }} /></Tooltip>
-                                </ToggleButton>
-                              </ToggleButtonGroup>
-                            </TableCell>
-
-                            <TableCell sx={{ ...cellSx, whiteSpace: 'nowrap' }} align="right" onClick={(e) => e.stopPropagation()}>
-                              <Tooltip title={labels.run}>
-                                <span>
-                                  <IconButton
-                                    size="small"
-                                    disabled={suite.running}
-                                    onClick={() => void suite.run([testCase.id])}
-                                  >
-                                    <PlayArrowRoundedIcon fontSize="small" />
-                                  </IconButton>
-                                </span>
-                              </Tooltip>
-                              <Tooltip title={labels.edit}>
-                                <IconButton size="small" onClick={() => setDialog({ open: true, initial: testCase })}>
-                                  <EditOutlinedIcon fontSize="small" />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title={labels.delete}>
-                                <span>
-                                  <IconButton
-                                    size="small"
-                                    disabled={state !== null}
-                                    onClick={() => {
-                                      if (window.confirm(labels.deleteConfirm(testCase.question))) {
-                                        suite.deleteCase(testCase.id)
-                                      }
-                                    }}
-                                  >
-                                    <DeleteOutlineRoundedIcon fontSize="small" />
-                                  </IconButton>
-                                </span>
-                              </Tooltip>
-                            </TableCell>
-                          </TableRow>
-
-                          {run && (
-                            <TableRow>
-                              <TableCell colSpan={COLS} sx={{ p: 0, borderBottom: open ? undefined : 0 }}>
-                                <Collapse in={open} unmountOnExit>
-                                  <RunDetail
-                                    run={run}
-                                    labels={labels}
-                                    onNote={(note) => suite.setNote(testCase.id, note)}
-                                  />
-                                </Collapse>
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </Fragment>
-                      )
-                    })}
+                    {items.map((testCase) => (
+                      <CaseRow
+                        key={testCase.id}
+                        testCase={testCase}
+                        index={indexById.get(testCase.id) ?? 0}
+                        run={runs[testCase.id]}
+                        state={rowState(testCase.id)}
+                        // chỉ dòng đang chạy nhận progress → các dòng khác không vẽ lại khi tiến độ đổi
+                        progress={progress?.currentId === testCase.id ? progress : null}
+                        open={expanded.has(testCase.id)}
+                        running={suite.running}
+                        labels={labels}
+                        actions={rowActions}
+                      />
+                    ))}
                   </Fragment>
                 ))}
               </TableBody>
