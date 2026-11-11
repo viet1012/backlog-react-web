@@ -1,27 +1,17 @@
 import {
   useCallback,
-  useEffect,
+  useMemo,
   useState,
 } from 'react'
 import type { OdbfSummaryItem } from '../types/odbf'
 import { getOdbfSummary } from '../services/odbfService'
 import { getMessages } from '../i18n/i18nContext'
+import { useCachedQuery } from './useCachedQuery'
 
+const EMPTY_ITEMS: OdbfSummaryItem[] = []
 
-
+// Cache theo phiên: quay lại trang ODBF => hiện ngay, tải lại ngầm nếu đã cũ
 export function useOdbfSummary() {
-  const [items, setItems] =
-    useState<OdbfSummaryItem[]>([])
-
-  const [loading, setLoading] =
-    useState(true)
-
-  const [error, setError] =
-    useState<string | null>(null)
-
-  const [lastUpdated, setLastUpdated] =
-    useState<Date | null>(null)
-
   const [refreshKey, setRefreshKey] =
     useState(0)
 
@@ -32,52 +22,24 @@ export function useOdbfSummary() {
       )
     }, [])
 
-  useEffect(() => {
-    const controller =
-      new AbortController()
+  const query = useCachedQuery(
+    'odbf:summary',
+    (signal) => getOdbfSummary(signal),
+    {
+      refreshKey,
+      fallbackError: () => getMessages().odbf.loadFailed,
+    },
+  )
 
-    async function load() {
-      setLoading(true)
-      setError(null)
-
-      try {
-        const response =
-          await getOdbfSummary(
-            controller.signal,
-          )
-
-        setItems(response)
-        setLastUpdated(new Date())
-      } catch (err) {
-        if (
-          !controller.signal.aborted
-        ) {
-          setError(
-            err instanceof Error
-              ? err.message
-              : getMessages().odbf.loadFailed,
-          )
-        }
-      } finally {
-        if (
-          !controller.signal.aborted
-        ) {
-          setLoading(false)
-        }
-      }
-    }
-
-    void load()
-
-    return () => {
-      controller.abort()
-    }
-  }, [refreshKey])
+  const lastUpdated = useMemo(
+    () => (query.updatedAt == null ? null : new Date(query.updatedAt)),
+    [query.updatedAt],
+  )
 
   return {
-    items,
-    loading,
-    error,
+    items: query.data ?? EMPTY_ITEMS,
+    loading: query.loading,
+    error: query.error,
     lastUpdated,
     refresh,
   }

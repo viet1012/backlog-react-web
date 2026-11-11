@@ -26,6 +26,13 @@ import type {
   FacConfirmRow,
 } from '../types/facConfirm'
 import { getMessages } from '../i18n/i18nContext'
+import {
+  clearQueryCache,
+  isQueryFresh,
+  QUERY_FRESH_MS,
+  readQueryCache,
+  writeQueryCache,
+} from '../utils/queryCache'
 
 interface UseFacConfirmDataParams
   extends FacConfirmDataScope {
@@ -53,6 +60,11 @@ interface FacConfirmCacheEntry {
 
 const CACHE_MAX_ENTRIES = 10
 const CACHE_TTL_MS = 60_000
+
+// Mới hơn mức này: quay lại trang / bộ lọc thì không gọi API lại
+const CACHE_FRESH_MS = QUERY_FRESH_MS
+
+const PROCESS_GROUPS_CACHE_PREFIX = 'fac-confirm:process-groups:'
 
 const facConfirmCache = new Map<string, FacConfirmCacheEntry>()
 
@@ -89,6 +101,7 @@ function writeCache(key: string, entry: FacConfirmCacheEntry): void {
 
 export function clearFacConfirmCache(): void {
   facConfirmCache.clear()
+  clearQueryCache(PROCESS_GROUPS_CACHE_PREFIX)
 }
 
 function isAbortError(error: unknown): boolean {
@@ -220,12 +233,8 @@ export function useFacConfirmData({
   const loadData = useCallback(async () => {
     tableRequestRef.current?.abort()
 
-    const controller = new AbortController()
-    tableRequestRef.current = controller
-    setLoading(true)
-    setError(null)
-
-    // Có cache => hiện ngay, vẫn tải lại ngầm bên dưới
+    // Có cache => hiện ngay; còn mới (vd vừa quay lại trang) => không gọi API,
+    // cũ hơn => vẫn tải lại ngầm bên dưới
     const cached = readCache(requestKey)
 
     if (cached) {
@@ -233,7 +242,20 @@ export function useFacConfirmData({
       setConfirmedProcesses(cached.confirmedProcesses)
       setTotalElements(cached.totalElements)
       setLoaded({ key: requestKey, procGrp: cached.procGrp })
+
+      if (Date.now() - cached.storedAt < CACHE_FRESH_MS) {
+        tableRequestRef.current = null
+        setLoading(false)
+        setError(null)
+        setLastUpdated(new Date(cached.storedAt))
+        return
+      }
     }
+
+    const controller = new AbortController()
+    tableRequestRef.current = controller
+    setLoading(true)
+    setError(null)
 
     try {
       const request = {
@@ -353,20 +375,36 @@ export function useFacConfirmData({
   const loadProcessGroups = useCallback(async () => {
     summaryRequestRef.current?.abort()
 
+    const request = {
+      div,
+      expD,
+      classify,
+      heatType,
+      filters: excelFilters,
+      logicOperator: 'and' as const,
+    }
+
+    // Cache như bảng: có => hiện ngay; còn mới => không gọi API
+    const cacheKey = `${PROCESS_GROUPS_CACHE_PREFIX}${JSON.stringify(request)}`
+    const cached = readQueryCache<FacConfirmProcessGroupSummary[]>(cacheKey)
+
+    if (cached) {
+      setProcessGroups(cached.data)
+
+      if (isQueryFresh(cached, CACHE_FRESH_MS)) {
+        summaryRequestRef.current = null
+        setSummaryLoading(false)
+        return
+      }
+    }
+
     const controller = new AbortController()
     summaryRequestRef.current = controller
     setSummaryLoading(true)
 
     try {
       const result = await getFacConfirmProcessGroups(
-        {
-          div,
-          expD,
-          classify,
-          heatType,
-          filters: excelFilters,
-          logicOperator: 'and',
-        },
+        request,
         controller.signal,
       )
 
@@ -377,6 +415,7 @@ export function useFacConfirmData({
         return
       }
 
+      writeQueryCache(cacheKey, result)
       setProcessGroups(result)
     } catch (requestError) {
       if (

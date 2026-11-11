@@ -62,3 +62,15 @@ export function preloadRoute(path: string) {
     // The route loads it again (and shows its error) on navigation
   })
 }
+
+// Pages not kept alive when hidden: the 3D warehouse (WebGL context) and the
+// machine locator editor (canvas + fitting worker, unsaved-edit flow)
+const NOT_KEPT_ALIVE = new Set(['/user-home', '/settings/machine-locator'])
+
+// Key under which KeepAliveOutlet keeps a page mounted (hidden) after leaving
+// it, so coming back is instant; null = render normally (redirects, unknown)
+export function keepAliveKey(pathname: string): string | null {
+  const path = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname
+
+  return Object.hasOwn(pagesByRoute, path) && !NOT_KEPT_ALIVE.has(path) ? path : null
+}

@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import {
   getBacklogStatusSummary,
   type BacklogFilterItem,
-  type BacklogStatusSummary,
   type ReportFilters,
 } from '../services/reportService'
 import { createBacklogFilters, removeStatusFilters } from './backlogFilterUtils'
 import { getMessages } from '../i18n/i18nContext'
+import { useCachedQuery } from './useCachedQuery'
 
 interface UseBacklogSummaryParams {
   filters: ReportFilters
@@ -19,9 +19,6 @@ export function useBacklogSummary({
   excelFilters,
   refreshKey,
 }: UseBacklogSummaryParams) {
-  const [summary, setSummary] = useState<BacklogStatusSummary | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const { div, currentProcess, shipBy, productionDate } = filters
 
   const summaryFilters = useMemo(
@@ -42,37 +39,25 @@ export function useBacklogSummary({
     ],
   )
 
-  useEffect(() => {
-    const controller = new AbortController()
-
-    // Summary has an independent lifecycle so its failure never clears table data.
-    // oxlint-disable-next-line react/set-state-in-effect
-    setLoading(true)
-    setError(null)
-
-    void getBacklogStatusSummary(
+  // Summary has an independent lifecycle so its failure never clears table data.
+  // Cached per filter: coming back to the page shows it right away.
+  const query = useCachedQuery(
+    `backlog:summary:${JSON.stringify([filters.search, summaryFilters])}`,
+    (signal) => getBacklogStatusSummary(
       { filters: summaryFilters, logicOperator: 'and' },
-      controller.signal,
+      signal,
       filters.search,
-    )
-      .then((response) => {
-        if (!controller.signal.aborted) setSummary(response)
-      })
-      .catch((requestError: unknown) => {
-        if (controller.signal.aborted) return
-        setSummary(null)
-        setError(
-          requestError instanceof Error
-            ? requestError.message
-            : getMessages().misc.backlogSummaryFailed,
-        )
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false)
-      })
+    ),
+    {
+      refreshKey,
+      fallbackError: () => getMessages().misc.backlogSummaryFailed,
+    },
+  )
 
-    return () => controller.abort()
-  }, [filters.search, refreshKey, summaryFilters])
-
-  return { summary, loading, error }
+  return {
+    // lỗi => không hiện tổng hợp của bộ lọc khác
+    summary: query.error ? null : query.data,
+    loading: query.loading,
+    error: query.error,
+  }
 }

@@ -1,12 +1,12 @@
-import { Suspense, useState } from 'react'
+import { useState } from 'react'
 
 import { Box, LinearProgress } from '@mui/material'
 import { alpha, keyframes } from '@mui/material/styles'
-import { Outlet } from 'react-router-dom'
 
 import { Mascot, MascotProvider } from '../mascot'
 import { clockInTimeline, useClockInRun } from '../shift/clockInStore'
 
+import { KeepAliveOutlet } from './KeepAliveOutlet'
 import { LeftSidebar } from './LeftSidebar'
 
 // Clock-in: the app is mounted under the shutter, then the sidebar and the
@@ -94,9 +94,8 @@ export function MainLayout() {
             overflow: 'hidden',
           }}
         >
-          <Suspense fallback={<PageFallback />}>
-            <Outlet />
-          </Suspense>
+          {/* giữ các trang đã mở (ẩn) → chuyển qua lại không tải lại */}
+          <KeepAliveOutlet fallback={<PageFallback />} />
         </Box>
 
         {/* đặt ngoài Outlet → không re-mount khi chuyển trang */}

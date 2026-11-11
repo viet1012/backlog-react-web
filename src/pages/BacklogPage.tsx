@@ -19,7 +19,6 @@ import type {
 
 import {
   useCallback,
-  useEffect,
   useMemo,
   useState,
 } from 'react'
@@ -33,6 +32,7 @@ import { RefreshButton } from '../components/common/RefreshButton'
 import { UpdatedStatus } from '../components/common/UpdatedStatus'
 import { useBacklogData } from '../hooks/useBacklogData'
 import { useBacklogSummary } from '../hooks/useBacklogSummary'
+import { useCachedQuery } from '../hooks/useCachedQuery'
 import { useGridPreferences } from '../hooks/useGridPreferences'
 
 import {
@@ -74,6 +74,10 @@ interface SummaryCellFilter {
   status: string
   date: string
 }
+
+
+type BacklogOptionField =
+  Parameters<typeof getBacklogFilterOptions>[0]['field']
 
 
 const EMPTY_SELECT_OPTIONS: BacklogSelectOptions = {
@@ -307,26 +311,6 @@ export function BacklogPage({
   ] =
     useState(false)
 
-  // =======================================================
-  // DROPDOWN OPTIONS
-  // =======================================================
-
-  const [
-    selectOptions,
-    setSelectOptions,
-  ] =
-    useState<BacklogSelectOptions>(
-      EMPTY_SELECT_OPTIONS,
-    )
-
-
-  const [
-    selectOptionsLoading,
-    setSelectOptionsLoading,
-  ] =
-    useState(false)
-
-
   const {
     data,
     totalElements,
@@ -371,216 +355,82 @@ export function BacklogPage({
 
   // =======================================================
   // LOAD DROPDOWN OPTIONS
+  // Cache theo bộ lọc: quay lại trang / bộ lọc vừa xem không phải chờ
   // =======================================================
 
-  useEffect(
-    () => {
+  const simpleFilters =
+    buildSimpleFilters(
+      filters,
+    )
 
-      const controller =
-        new AbortController()
+  const selectOptionsQuery =
+    useCachedQuery<BacklogSelectOptions>(
+      `backlog:options:${JSON.stringify([
+        filters.search.trim(),
+        simpleFilters,
+        excelFilters,
+      ])}`,
+      async (signal) => {
 
+        const allFilters = [
+          ...simpleFilters,
+          ...excelFilters,
+        ]
 
-      const load =
-        async () => {
-
-          try {
-
-            setSelectOptionsLoading(
-              true,
-            )
-
-
-            const simpleFilters =
-              buildSimpleFilters(
-                filters,
-              )
-
-
-            const allFilters = [
-              ...simpleFilters,
-              ...excelFilters,
-            ]
-
-
-            const [
-              status,
-              div,
-              currentProcess,
-              shipBy,
-            ] =
-              await Promise.all([
-
-                getBacklogFilterOptions(
-                  {
-                    field:
-                      'Status',
-
-                    filters:
-                      removeOwnField(
-                        allFilters,
-                        'Status',
-                      ),
-
-                    logicOperator:
-                      'and',
-
-                    search:
-                      filters.search.trim(),
-
-                    limit:
-                      500,
-                  },
-
-                  controller.signal,
-                ),
-
-
-                getBacklogFilterOptions(
-                  {
-                    field:
-                      'Div',
-
-                    filters:
-                      removeOwnField(
-                        allFilters,
-                        'Div',
-                      ),
-
-                    logicOperator:
-                      'and',
-
-                    search:
-                      filters.search.trim(),
-
-                    limit:
-                      500,
-                  },
-
-                  controller.signal,
-                ),
-
-
-                getBacklogFilterOptions(
-                  {
-                    field:
-                      'CurrentProcess',
-
-                    filters:
-                      removeOwnField(
-                        allFilters,
-                        'CurrentProcess',
-                      ),
-
-                    logicOperator:
-                      'and',
-
-                    search:
-                      filters.search.trim(),
-
-                    limit:
-                      500,
-                  },
-
-                  controller.signal,
-                ),
-
-
-                getBacklogFilterOptions(
-                  {
-                    field:
-                      'ShipBy',
-
-                    filters:
-                      removeOwnField(
-                        allFilters,
-                        'ShipBy',
-                      ),
-
-                    logicOperator:
-                      'and',
-
-                    search:
-                      filters.search.trim(),
-
-                    limit:
-                      500,
-                  },
-
-                  controller.signal,
-                ),
-              ])
-
-            console.log(
-              'BACKLOG FILTER OPTIONS:',
+        const loadField =
+          (field: BacklogOptionField) =>
+            getBacklogFilterOptions(
               {
-                status,
-                div,
-                currentProcess,
-                shipBy,
+                field,
+
+                filters:
+                  removeOwnField(
+                    allFilters,
+                    field,
+                  ),
+
+                logicOperator:
+                  'and',
+
+                search:
+                  filters.search.trim(),
+
+                limit:
+                  500,
               },
+
+              signal,
             )
 
-            setSelectOptions({
-              status,
-              div,
-              currentProcess,
-              shipBy,
-            })
+        const [
+          status,
+          div,
+          currentProcess,
+          shipBy,
+        ] =
+          await Promise.all([
+            loadField('Status'),
+            loadField('Div'),
+            loadField('CurrentProcess'),
+            loadField('ShipBy'),
+          ])
 
-          } catch (error) {
-
-            if (
-              error instanceof DOMException
-              && error.name === 'AbortError'
-            ) {
-              return
-            }
-
-
-            console.error(
-              'Load backlog filter options failed:',
-              error,
-            )
-
-          } finally {
-
-            if (
-              !controller.signal.aborted
-            ) {
-              setSelectOptionsLoading(
-                false,
-              )
-            }
-          }
+        return {
+          status,
+          div,
+          currentProcess,
+          shipBy,
         }
+      },
+      { refreshKey },
+    )
 
-      console.log(
-        'LOAD FILTER OPTIONS',
-        {
-          filters,
-          excelFilters,
-        },
-      )
+  const selectOptions =
+    selectOptionsQuery.data
+    ?? EMPTY_SELECT_OPTIONS
 
-      void load()
-
-
-      return () => {
-        controller.abort()
-      }
-
-    },
-    [
-      filters.search,
-      filters.status,
-      filters.div,
-      filters.currentProcess,
-      filters.shipBy,
-      filters.productionDate,
-      excelFilters,
-      refreshKey,
-    ]
-  )
+  const selectOptionsLoading =
+    selectOptionsQuery.loading
 
 
   // =======================================================

@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react'
@@ -9,7 +10,6 @@ import type {
   CostDetailTarget,
   CostDetailTransactionPage,
   CostDetailTxQuery,
-  CostMonitoringChartResponse,
   CostPlWeeksResponse,
   CostSimuWeek,
 } from '../types/costMonitoring'
@@ -22,6 +22,9 @@ import {
   toApiMonth,
 } from '../services/costMonitoringService'
 import { getMessages } from '../i18n/i18nContext'
+import { useCachedQuery } from './useCachedQuery'
+
+const EMPTY_MONTHS: string[] = []
 
 
 function toErrorMessage(err: unknown, fallback: string) {
@@ -205,43 +208,15 @@ export function useCostDetailTransactions(
 }
 
 
+// Cache theo phiên (useCachedQuery): quay lại trang / tháng / tuần vừa xem => hiện ngay,
+// tải lại ngầm nếu đã cũ. Nút ↻ (refreshKey) bỏ qua cache và gửi refresh=true cho chart.
 export function useCostMonitoring() {
-  const [months, setMonths] =
-    useState<string[]>([])
-
-  // dạng "2026.10" như API /months trả về
-  const [month, setMonth] =
+  // tháng người dùng chọn (dạng "2026.10" như API /months trả về); null = mới nhất
+  const [selectedMonth, setMonth] =
     useState<string | null>(null)
 
   const [simuWeek, setSimuWeek] =
     useState<CostSimuWeek>('')
-
-  const [data, setData] =
-    useState<CostMonitoringChartResponse | null>(null)
-
-  // null = chưa tải / lỗi → dropdown không khóa tuần nào
-  const [plWeeks, setPlWeeks] =
-    useState<CostPlWeeksResponse | null>(null)
-
-  // đổi tháng → bỏ danh sách tuần của tháng cũ ngay (tránh khóa nhầm tuần)
-  const [plWeeksMonth, setPlWeeksMonth] =
-    useState(month)
-  if (plWeeksMonth !== month) {
-    setPlWeeksMonth(month)
-    setPlWeeks(null)
-  }
-
-  const [monthsLoading, setMonthsLoading] =
-    useState(true)
-
-  const [chartLoading, setChartLoading] =
-    useState(false)
-
-  const [error, setError] =
-    useState<string | null>(null)
-
-  const [lastUpdated, setLastUpdated] =
-    useState<Date | null>(null)
 
   const [refreshKey, setRefreshKey] =
     useState(0)
@@ -253,126 +228,56 @@ export function useCostMonitoring() {
       )
     }, [])
 
-  // refreshKey đã tải xong với refresh=true; khác refreshKey hiện tại = lượt này do nút ↻
-  // (chỉ cập nhật khi tải thành công → request bị hủy giữa chừng thì lượt sau vẫn gửi refresh)
-  const chartRefreshedKey =
-    useRef(0)
-
   // ---------- months ----------
-  useEffect(() => {
-    const controller =
-      new AbortController()
+  const monthsQuery = useCachedQuery(
+    'cost:months',
+    (signal) => getCostMonitoringMonths(signal),
+    {
+      refreshKey,
+      fallbackError: () => getMessages().cost.monthsLoadFailed,
+    },
+  )
 
-    async function load() {
-      setMonthsLoading(true)
-      setError(null)
+  const months = monthsQuery.data ?? EMPTY_MONTHS
 
-      try {
-        const response =
-          await getCostMonitoringMonths(
-            controller.signal,
-          )
-
-        setMonths(response)
-
-        // giữ tháng đang chọn nếu còn trong danh sách, không thì lấy mới nhất
-        setMonth((current) =>
-          current && response.includes(current)
-            ? current
-            : response[0] ?? null,
-        )
-      } catch (err) {
-        if (!controller.signal.aborted) {
-          setError(
-            toErrorMessage(err, getMessages().cost.monthsLoadFailed),
-          )
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setMonthsLoading(false)
-        }
-      }
-    }
-
-    void load()
-
-    return () => {
-      controller.abort()
-    }
-  }, [refreshKey])
+  // giữ tháng đang chọn nếu còn trong danh sách, không thì lấy mới nhất
+  const month =
+    selectedMonth && months.includes(selectedMonth)
+      ? selectedMonth
+      : months[0] ?? null
 
   // ---------- tuần PL simulation có số (không chặn chart; lỗi → null = chưa biết) ----------
-  useEffect(() => {
-    if (!month) {
-      return
-    }
+  const plWeeksQuery = useCachedQuery(
+    month ? `cost:pl-weeks:${month}` : null,
+    (signal) => getCostMonitoringPlWeeks(toApiMonth(month!), signal),
+    { refreshKey },
+  )
 
-    const controller =
-      new AbortController()
-
-    getCostMonitoringPlWeeks(toApiMonth(month), controller.signal)
-      .then((response) => {
-        setPlWeeks(response)
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) {
-          setPlWeeks(null)
-        }
-      })
-
-    return () => {
-      controller.abort()
-    }
-  }, [month, refreshKey])
+  // đổi tháng → không dùng danh sách tuần của tháng cũ (tránh khóa nhầm tuần)
+  const plWeeks: CostPlWeeksResponse | null =
+    plWeeksQuery.stale || plWeeksQuery.error
+      ? null
+      : plWeeksQuery.data
 
   // ---------- chart ----------
-  useEffect(() => {
-    if (!month) {
-      return
-    }
+  const chartQuery = useCachedQuery(
+    month ? `cost:chart:${month}|${simuWeek}` : null,
+    (signal, force) => getCostMonitoringChart(
+      toApiMonth(month!),
+      simuWeek,
+      signal,
+      force,
+    ),
+    {
+      refreshKey,
+      fallbackError: () => getMessages().cost.chartLoadFailed,
+    },
+  )
 
-    const controller =
-      new AbortController()
-
-    const forceRefresh =
-      refreshKey !== chartRefreshedKey.current
-
-    async function load(selectedMonth: string) {
-      setChartLoading(true)
-      setError(null)
-
-      try {
-        const response =
-          await getCostMonitoringChart(
-            toApiMonth(selectedMonth),
-            simuWeek,
-            controller.signal,
-            forceRefresh,
-          )
-
-        chartRefreshedKey.current = refreshKey
-        setData(response)
-        setLastUpdated(new Date())
-      } catch (err) {
-        if (!controller.signal.aborted) {
-          setData(null)
-          setError(
-            toErrorMessage(err, getMessages().cost.chartLoadFailed),
-          )
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setChartLoading(false)
-        }
-      }
-    }
-
-    void load(month)
-
-    return () => {
-      controller.abort()
-    }
-  }, [month, simuWeek, refreshKey])
+  const lastUpdated = useMemo(
+    () => (chartQuery.updatedAt == null ? null : new Date(chartQuery.updatedAt)),
+    [chartQuery.updatedAt],
+  )
 
   return {
     months,
@@ -381,9 +286,10 @@ export function useCostMonitoring() {
     simuWeek,
     setSimuWeek,
     plWeeks,
-    data,
-    loading: monthsLoading || chartLoading,
-    error,
+    // lỗi chart → không hiện chart của tháng / tuần khác
+    data: chartQuery.error ? null : chartQuery.data,
+    loading: monthsQuery.loading || chartQuery.loading,
+    error: monthsQuery.error ?? chartQuery.error,
     lastUpdated,
     refresh,
     // cho drawer detail tải lại cùng nút Refresh

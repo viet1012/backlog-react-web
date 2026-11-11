@@ -1,5 +1,6 @@
 import { API_BASE_URL } from '../config/api'
 import { getMessages } from '../i18n/i18nContext'
+import { clearQueryCache } from '../utils/queryCache'
 
 const AUTH_STORAGE_KEY = 'production_control_auth'
 
@@ -306,6 +307,9 @@ export function getCurrentEmployeeId():
 // =========================================================
 
 export function logout(): void {
+  // dữ liệu đã tải của phiên trước không được hiện cho người đăng nhập sau
+  clearQueryCache()
+
   localStorage.removeItem(
     AUTH_STORAGE_KEY,
   )

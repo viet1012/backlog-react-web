@@ -1,14 +1,13 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { getShipmentDetail, getShipmentFulfillment } from '../services/shipmentService'
 import type { ProductionOrder } from '../types/report'
 import type { ShipmentDetailFilter, ShipmentFulfillment } from '../types/shipment'
 import { getMessages } from '../i18n/i18nContext'
+import { useCachedQuery } from './useCachedQuery'
+
+const EMPTY_DATA: ShipmentFulfillment[] = []
 
 export function useShipmentData(appliedFromD: string, appliedToD: string) {
-  const [data, setData] = useState<ShipmentFulfillment[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const [detailOpen, setDetailOpen] = useState(false)
   const [detailFilter, setDetailFilter] = useState<ShipmentDetailFilter | null>(null)
@@ -16,27 +15,22 @@ export function useShipmentData(appliedFromD: string, appliedToD: string) {
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
 
-  useEffect(() => {
-    const controller = new AbortController()
-    async function loadData() {
-      setLoading(true)
-      setError(null)
-      try {
-        setData(await getShipmentFulfillment(appliedFromD, appliedToD, controller.signal))
-        setLastUpdated(new Date())
-      } catch (requestError) {
-        if (!controller.signal.aborted) {
-          setError(requestError instanceof Error
-            ? requestError.message
-            : getMessages().shipment.loadFailed)
-        }
-      } finally {
-        if (!controller.signal.aborted) setLoading(false)
-      }
-    }
-    void loadData()
-    return () => controller.abort()
-  }, [appliedFromD, appliedToD, refreshKey])
+  // Cache theo khoảng ngày: quay lại trang / khoảng vừa xem => hiện ngay, tải lại ngầm nếu đã cũ
+  const query = useCachedQuery(
+    `shipment:fulfillment:${appliedFromD}|${appliedToD}`,
+    (signal) => getShipmentFulfillment(appliedFromD, appliedToD, signal),
+    {
+      refreshKey,
+      fallbackError: () => getMessages().shipment.loadFailed,
+    },
+  )
+
+  const data = query.data ?? EMPTY_DATA
+  const { loading, error } = query
+  const lastUpdated = useMemo(
+    () => (query.updatedAt == null ? null : new Date(query.updatedAt)),
+    [query.updatedAt],
+  )
 
   const handleRefresh = useCallback(() => setRefreshKey((value) => value + 1), [])
 

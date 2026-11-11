@@ -1,6 +1,6 @@
 import {
   useCallback,
-  useEffect,
+  useMemo,
   useState,
 } from 'react'
 
@@ -26,6 +26,7 @@ import type {
 import {
   createBacklogFilters,
 } from './backlogFilterUtils'
+import { useCachedQuery } from './useCachedQuery'
 
 
 interface UseBacklogDataParams {
@@ -36,9 +37,14 @@ interface UseBacklogDataParams {
   sortModel: GridSortModel
 }
 
+const EMPTY_ROWS: ProductionOrder[] = []
+
 
 // =========================================================
 // HOOK
+//
+// Cache theo trang / bộ lọc / sort (useCachedQuery):
+// quay lại trang Backlog hoặc trang bảng vừa xem => hiện ngay, tải lại ngầm nếu đã cũ
 // =========================================================
 
 export function useBacklogData({
@@ -50,180 +56,86 @@ export function useBacklogData({
 }: UseBacklogDataParams) {
 
   const [
-    data,
-    setData,
-  ] = useState<ProductionOrder[]>([])
-
-  const [
-    totalElements,
-    setTotalElements,
-  ] = useState(0)
-
-  const [
-    loading,
-    setLoading,
-  ] = useState(false)
-
-  const [
-    error,
-    setError,
-  ] = useState<string | null>(
-    null,
-  )
-
-  const [
-    lastUpdated,
-    setLastUpdated,
-  ] = useState<Date | null>(
-    null,
-  )
-
-  const [
     refreshKey,
     setRefreshKey,
   ] = useState(0)
 
 
-  useEffect(() => {
+  // ===================================================
+  // REQUEST
+  // ===================================================
 
-    const controller =
-      new AbortController()
-
-
-    async function loadBacklog() {
-
-      setLoading(true)
-      setError(null)
-
-      try {
-
-        // ===================================================
-        // ALL ACTIVE FILTERS
-        // ===================================================
-
-        const allFilters =
-          createBacklogFilters(
-            filters,
-            excelFilters,
-          )
-
-
-        // ===================================================
-        // DETAIL REQUEST
-        // ===================================================
-
-        const detailFilterRequest = {
-          filters:
-            allFilters,
-
-          logicOperator:
-            'and' as const,
-        }
-
-
-        // ===================================================
-        // SORT
-        // ===================================================
+  const request =
+    useMemo(
+      () => {
 
         const activeSort =
           sortModel[0]
 
-        const sortRequest =
-          activeSort?.sort
-            && isExcelFilterField(
-              activeSort.field,
-            )
-            ? {
-              field:
+        return {
+          filterRequest: {
+            filters:
+              createBacklogFilters(
+                filters,
+                excelFilters,
+              ),
+
+            logicOperator:
+              'and' as const,
+          },
+
+          sortRequest:
+            activeSort?.sort
+              && isExcelFilterField(
                 activeSort.field,
+              )
+              ? {
+                field:
+                  activeSort.field,
 
-              direction:
-                activeSort.sort,
-            }
-            : undefined
+                direction:
+                  activeSort.sort,
+              }
+              : undefined,
 
-
-        // ===================================================
-        // LOAD DETAIL
-        // ===================================================
-
-        const detailResponse =
-          await searchReports(
-            page,
-            pageSize,
-            detailFilterRequest,
-            controller.signal,
-            sortRequest,
+          search:
             filters.search,
-          )
-
-
-        if (
-          controller.signal.aborted
-        ) {
-          return
         }
+      },
+      [
+        excelFilters,
+        filters,
+        sortModel,
+      ],
+    )
 
 
-        // ===================================================
-        // SET DATA
-        // ===================================================
-
-        setData(
-          detailResponse.content,
-        )
-
-        setTotalElements(
-          detailResponse.totalElements,
-        )
-
-        setLastUpdated(
-          new Date(),
-        )
-
-      } catch (requestError) {
-
-        if (
-          controller.signal.aborted
-        ) {
-          return
-        }
-
-        setData([])
-        setTotalElements(0)
-        setError(
-          requestError instanceof Error
-            ? requestError.message
-            : getMessages().backlog.loadFailed,
-        )
-
-      } finally {
-
-        if (
-          !controller.signal.aborted
-        ) {
-          setLoading(false)
-        }
-      }
-    }
+  const query =
+    useCachedQuery(
+      `backlog:list:${JSON.stringify([page, pageSize, request])}`,
+      (signal) =>
+        searchReports(
+          page,
+          pageSize,
+          request.filterRequest,
+          signal,
+          request.sortRequest,
+          request.search,
+        ),
+      {
+        refreshKey,
+        fallbackError: () => getMessages().backlog.loadFailed,
+      },
+    )
 
 
-    void loadBacklog()
-
-
-    return () => {
-      controller.abort()
-    }
-
-  }, [
-    excelFilters,
-    filters,
-    filters.search,
-    page,
-    pageSize,
-    refreshKey,
-    sortModel,
-  ])
+  const lastUpdated =
+    useMemo(
+      () => (query.updatedAt == null
+        ? null
+        : new Date(query.updatedAt)),
+      [query.updatedAt],
+    )
 
 
   // =========================================================
@@ -242,11 +154,17 @@ export function useBacklogData({
 
 
   return {
-    data,
-    totalElements,
+    data:
+      query.data?.content ?? EMPTY_ROWS,
 
-    loading,
-    error,
+    totalElements:
+      query.data?.totalElements ?? 0,
+
+    loading:
+      query.loading,
+
+    error:
+      query.error,
 
     lastUpdated,
 
