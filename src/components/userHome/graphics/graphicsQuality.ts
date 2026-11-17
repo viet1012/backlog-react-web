@@ -132,7 +132,16 @@ function cleanRenderer(raw: string) {
   return name.replace(/\s*\(0x[0-9a-f]+\)/i, '').replace(/\s+(Direct3D|OpenGL|Vulkan|Metal).*$/i, '').trim()
 }
 
+// GPU không đổi trong phiên: chỉ dò 1 lần. Tạo context WebGL thử tốn vài chục ms
+// (trên Windows/ANGLE có khi >100ms) và chặn luồng chính mỗi lần vào trang chủ
+let gpuCache: GpuInfo | null = null
+
 export function detectGpu(): GpuInfo {
+  gpuCache ??= probeGpu()
+  return gpuCache
+}
+
+function probeGpu(): GpuInfo {
   try {
     const canvas = document.createElement('canvas')
     const gl = canvas.getContext('webgl2') ?? canvas.getContext('webgl')

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 
 import { Alert, Box, Button, Snackbar, useMediaQuery } from '@mui/material'
 import type { PaletteMode, Theme } from '@mui/material/styles'
@@ -35,6 +35,11 @@ const UserHomeWarehouse3D = lazy(loadWarehouse3D)
 const SLOW_FPS = 30
 const TOAST_MS = 12000
 
+// Cảnh thả hàng chỉ chạy ở lần đầu vào trang trong phiên. Trang chủ không được giữ lại
+// (KeepAliveOutlet) nên mỗi lần quay lại đều dựng lại cảnh; phát lại hoạt cảnh ~1.5s
+// khiến trang có vẻ tải lâu. Các lần sau: hàng nằm sẵn trên kệ.
+let introPlayed = false
+
 interface UserHomePageProps {
   mode: PaletteMode
   onToggleMode: () => void
@@ -62,6 +67,10 @@ export function UserHomePage({ mode, onToggleMode }: UserHomePageProps) {
   const [setting, setSetting] = useState<GraphicsSetting>(loadGraphicsSetting)
   // Đã đổi mức trong phiên này -> dựng lại kệ 3D không phát lại cảnh thả hàng
   const [qualityChanged, setQualityChanged] = useState(false)
+  const [firstVisit] = useState(() => !introPlayed)
+  useEffect(() => {
+    introPlayed = true
+  }, [])
   const [renderSize, setRenderSize] = useState<RenderSize | null>(null)
   const [toast, setToast] = useState<QualityToast | null>(null)
   const slowHandled = useRef(false)
@@ -98,7 +107,7 @@ export function UserHomePage({ mode, onToggleMode }: UserHomePageProps) {
             menu={menu}
             dark={dark}
             profile={GRAPHICS_PROFILES[level]}
-            intro={!qualityChanged}
+            intro={firstVisit && !qualityChanged}
             onMeasured={handleMeasured}
             onRenderSize={setRenderSize}
           />

@@ -18,6 +18,10 @@ import { Rack3D } from './Rack3D'
 import { buildRackLayout, RACK, type CratePlacement, type RackLayout } from './rackModel'
 import { useIconImages } from './useIconImages'
 import { Warehouse3DLoading } from './Warehouse3DLoading'
+import { warmTextFonts } from './warmTextFonts'
+
+// Chạy khi chunk này được tải (thường là tải trước, trước khi mở trang): parse font SDF sẵn
+warmTextFonts()
 
 const FADE_MS = 320
 
