@@ -40,10 +40,12 @@ export const dataGridHeaderSx =
         ? alpha('#FFFFFF', 0.10)
         : alpha('#334155', 0.10)
 
+    // Header dính trên đầu, dòng cuộn chạy bên dưới; không còn blur nên
+    // nền phải gần đặc để chữ của dòng không lộ qua header
     const headerGlass =
       isDark
-        ? alpha('#111827', 0.58)
-        : alpha('#F8FAFC', 0.62)
+        ? alpha('#111827', 0.94)
+        : alpha('#F8FAFC', 0.95)
 
     const bodyGlass =
       isDark
@@ -138,15 +140,12 @@ export const dataGridHeaderSx =
       // MAIN / VIRTUAL SCROLLER
       // =====================================================
 
+      // Chỉ giữ 1 lớp blur ở root: blur lồng nhau (main/header/footer) bắt GPU
+      // vẽ lại nhiều lớp mỗi lần trang hiện ra (chuyển trang bị giật), còn nhìn
+      // gần như không khác vì bên dưới chỉ là nền của chính grid
       '& .MuiDataGrid-main': {
         backgroundColor:
           bodyGlass,
-
-        backdropFilter:
-          'blur(14px) saturate(135%)',
-
-        WebkitBackdropFilter:
-          'blur(14px) saturate(135%)',
       },
 
       '& .MuiDataGrid-virtualScroller': {
@@ -173,12 +172,6 @@ export const dataGridHeaderSx =
 
         background:
           `${headerGlass} !important`,
-
-        backdropFilter:
-          'blur(22px) saturate(160%)',
-
-        WebkitBackdropFilter:
-          'blur(22px) saturate(160%)',
 
         borderBottom:
           `1px solid ${isDark
@@ -281,12 +274,6 @@ export const dataGridHeaderSx =
       {
         background:
           `${headerGlass} !important`,
-
-        backdropFilter:
-          'blur(22px) saturate(160%)',
-
-        WebkitBackdropFilter:
-          'blur(22px) saturate(160%)',
       },
 
       // =====================================================
@@ -485,12 +472,6 @@ export const dataGridHeaderSx =
           isDark
             ? alpha('#111827', 0.58)
             : alpha('#F8FAFC', 0.64),
-
-        backdropFilter:
-          'blur(20px) saturate(145%)',
-
-        WebkitBackdropFilter:
-          'blur(20px) saturate(145%)',
 
         boxShadow:
           isDark

@@ -83,7 +83,8 @@ export function createDashboardTheme(mode: PaletteMode, language: Language = 'vi
               ? 'rgba(255,255,255,0.045)'
               : 'rgba(255,255,255,0.72)',
 
-            backdropFilter: 'blur(12px)',
+            // Không blur ở control nhỏ: nằm trên panel gần đặc nên không thấy khác,
+            // nhưng mỗi ô blur là một lớp GPU phải vẽ lại khi trang hiện ra
 
             '& fieldset': {
               borderColor: dark
@@ -137,8 +138,6 @@ export function createDashboardTheme(mode: PaletteMode, language: Language = 'vi
             fontWeight: 600,
             textTransform: 'none',
             boxShadow: 'none',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
             transition: 'transform 120ms ease, background-color 160ms ease, border-color 160ms ease, color 160ms ease',
             '&:hover': { boxShadow: 'none' },
             '&:active': { transform: 'scale(0.98)' },
@@ -153,8 +152,6 @@ export function createDashboardTheme(mode: PaletteMode, language: Language = 'vi
               ? 'rgba(255,255,255,0.045)'
               : 'rgba(255,255,255,0.58)',
             border: `1px solid ${dark ? 'rgba(255,255,255,0.09)' : 'rgba(71,85,105,0.12)'}`,
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
             transition: 'transform 120ms ease, background-color 160ms ease, color 160ms ease, border-color 160ms ease',
             '&:hover': {
               backgroundColor: dark
@@ -180,8 +177,6 @@ export function createDashboardTheme(mode: PaletteMode, language: Language = 'vi
               ? 'rgba(255,255,255,0.05)'
               : 'rgba(255,255,255,0.60)',
             border: `1px solid ${dark ? 'rgba(255,255,255,0.09)' : 'rgba(71,85,105,0.12)'}`,
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
             transition: 'transform 120ms ease, background-color 160ms ease, border-color 160ms ease',
             '&:active': { transform: 'scale(0.98)' },
           },

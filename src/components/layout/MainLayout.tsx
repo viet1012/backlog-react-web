@@ -83,7 +83,8 @@ export function MainLayout() {
           radial-gradient(circle at 88% 92%, ${alpha(theme.palette.info.main, theme.palette.mode === 'dark' ? 0.08 : 0.06)} 0, transparent 30%),
           linear-gradient(145deg, ${alpha(theme.palette.background.default, 0.98)}, ${alpha(theme.palette.background.paper, 0.72)})
         `,
-        backgroundAttachment: 'fixed',
+        // Không dùng backgroundAttachment: 'fixed': khung đã 100vh, không cuộn nên không
+        // cần, mà 'fixed' bắt trình duyệt vẽ lại nền (và các lớp blur phía trên) liên tục
 
         // Fill backwards only: a transform kept after the end would make
         // these the containing block of every position: fixed inside.
@@ -107,7 +108,7 @@ export function MainLayout() {
             overflow: 'hidden',
           }}
         >
-          {/* Phản hồi tức thì khi bấm chuyển trang: thanh chạy trên cùng + trang cũ mờ đi.
+          {/* Phản hồi tức thì khi bấm chuyển trang: thanh chạy trên cùng.
               Trễ 120ms để chuyển trang nhanh (đã tải sẵn) không bị nháy. */}
           {navigating && (
             <LinearProgress
@@ -123,6 +124,22 @@ export function MainLayout() {
             />
           )}
 
+          {/* Lớp phủ mờ khi đang chuyển trang. Không đổi opacity của chính trang:
+              làm vậy gom cả trang thành 1 lớp, mọi backdrop-filter bên trong phải vẽ lại
+              2 lần (mờ đi + hiện lại) và nhảy về 1 không transition → nháy. */}
+          {navigating && (
+            <Box
+              aria-hidden
+              sx={(theme) => ({
+                position: 'absolute',
+                inset: 0,
+                zIndex: 9,
+                bgcolor: alpha(theme.palette.background.default, 0.45),
+                animation: `${fadeIn} 180ms ease 120ms both`,
+              })}
+            />
+          )}
+
           {/* Không đặt key theo pathname: KeepAliveOutlet phải giữ nguyên để không mount lại các trang đã mở */}
           <Box
             sx={{
@@ -130,9 +147,6 @@ export function MainLayout() {
               flex: 1,
               minWidth: 0,
               minHeight: 0,
-              opacity: navigating ? 0.55 : 1,
-              pointerEvents: navigating ? 'none' : undefined,
-              transition: navigating ? 'opacity 180ms ease 120ms' : 'none',
             }}
           >
             {/* giữ các trang đã mở (ẩn) → chuyển qua lại không tải lại */}
