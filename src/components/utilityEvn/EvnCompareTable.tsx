@@ -7,6 +7,7 @@ import { uiTokens } from '../../theme/uiTokens'
 import {
   EVN_DASH,
   EVN_GROUPS,
+  EVN_HIGHLIGHT_GROUP,
   evnCoverageText,
   evnNoteText,
   evnPctTone,
@@ -56,8 +57,28 @@ const COLUMN_WIDTHS = [
 
 type Align = 'left' | 'center' | 'right'
 
+// vị trí nhóm Tổng điện lưới (nổi bật): viền đậm 2 bên + nền nhạt màu primary
+const HIGHLIGHT_INDEX = EVN_GROUPS.indexOf(EVN_HIGHLIGHT_GROUP)
+// cột Nguồn đứng ngay sau nhóm nổi bật → nhận viền trái đậm
+const SOURCE_AFTER_HIGHLIGHT = HIGHLIGHT_INDEX === EVN_GROUPS.length - 1
+
 function groupBorder(theme: Theme) {
   return `1px solid ${alpha(theme.palette.text.primary, 0.18)}`
+}
+
+function highlightBorder(theme: Theme) {
+  return `2px solid ${theme.palette.primary.main}`
+}
+
+function highlightTint(theme: Theme, strength: 'head' | 'body') {
+  const dark = theme.palette.mode === 'dark'
+  return alpha(theme.palette.primary.main, strength === 'head' ? (dark ? 0.22 : 0.12) : dark ? 0.1 : 0.05)
+}
+
+// viền trái: đậm (cạnh nhóm nổi bật) > ranh giới nhóm thường
+function leftBorder(theme: Theme, strongLeft: boolean, groupStart: boolean) {
+  if (strongLeft) return highlightBorder(theme)
+  return groupStart ? groupBorder(theme) : undefined
 }
 
 // Nền ô luôn đặc (cột sticky đè lên khi cuộn ngang); tô màu bằng inset shadow như ODBF
@@ -82,6 +103,9 @@ function HeadCell({
   colSpan,
   align = 'center',
   groupStart = false,
+  highlight = false,
+  strongLeft = false,
+  noRight = false,
 }: {
   children: ReactNode
   width?: number
@@ -91,6 +115,9 @@ function HeadCell({
   colSpan?: number
   align?: Align
   groupStart?: boolean
+  highlight?: boolean
+  strongLeft?: boolean
+  noRight?: boolean
 }) {
   return (
     <Box
@@ -111,12 +138,13 @@ function HeadCell({
         px: 0.75,
         textAlign: align,
         whiteSpace: 'nowrap',
-        fontWeight: 700,
-        color: 'text.secondary',
+        fontWeight: highlight ? 800 : 700,
+        color: highlight ? 'primary.main' : 'text.secondary',
         bgcolor: theme.palette.background.paper,
-        borderRight: `1px solid ${theme.palette.divider}`,
+        boxShadow: highlight ? tintLayers([highlightTint(theme, 'head')]) : undefined,
+        borderRight: noRight ? 'none' : `1px solid ${theme.palette.divider}`,
         borderBottom: `1px solid ${theme.palette.divider}`,
-        borderLeft: groupStart ? groupBorder(theme) : undefined,
+        borderLeft: leftBorder(theme, strongLeft, groupStart),
       })}
     >
       {children}
@@ -137,6 +165,9 @@ function BodyCell({
   wrap = false,
   title,
   footer = false,
+  highlight = false,
+  strongLeft = false,
+  noRight = false,
 }: {
   children: ReactNode
   width: number
@@ -150,6 +181,9 @@ function BodyCell({
   wrap?: boolean
   title?: string
   footer?: boolean
+  highlight?: boolean
+  strongLeft?: boolean
+  noRight?: boolean
 }) {
   const empty = children === EVN_DASH || children === ''
 
@@ -187,11 +221,12 @@ function BodyCell({
           footer && alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.12 : 0.06),
           sunday && sundayTint(theme),
           evnToneTint(theme, tone),
+          highlight && highlightTint(theme, 'body'),
         ]),
-        borderRight: `1px solid ${theme.palette.divider}`,
+        borderRight: noRight ? 'none' : `1px solid ${theme.palette.divider}`,
         borderBottom: `1px solid ${theme.palette.divider}`,
         borderTop: footer ? groupBorder(theme) : undefined,
-        borderLeft: groupStart ? groupBorder(theme) : undefined,
+        borderLeft: leftBorder(theme, strongLeft, groupStart),
       })}
     >
       {children}
@@ -199,11 +234,24 @@ function BodyCell({
   )
 }
 
+// Viền / nền theo vị trí nhóm so với nhóm nổi bật (Tổng điện lưới)
+function groupEdges(groupIndex: number) {
+  const highlight = groupIndex === HIGHLIGHT_INDEX
+  return {
+    highlight,
+    // nhóm nổi bật và nhóm ngay sau nó dùng viền trái đậm (thành 2 cạnh của khối nổi bật)
+    strongLeft: highlight || groupIndex === HIGHLIGHT_INDEX + 1,
+    // ô cuối nhóm nổi bật bỏ viền phải để không chồng lên viền đậm kế bên
+    noRightLast: highlight,
+  }
+}
+
 // 4 ô của 1 nhóm: Excel | Thực tế | Chênh | %
 function GroupCells({
   cell,
   unit,
   hasExcel,
+  groupIndex,
   sunday = false,
   footer = false,
   notApplicableTitle,
@@ -211,19 +259,25 @@ function GroupCells({
   cell: EvnCell
   unit: EvnUnit
   hasExcel: boolean
+  groupIndex: number
   sunday?: boolean
   footer?: boolean
   notApplicableTitle: string
 }) {
+  const { highlight, strongLeft, noRightLast } = groupEdges(groupIndex)
+  const common = { sunday, footer, highlight }
+
   if (cell.notApplicable) {
     return (
       <>
         {[0, 1, 2, 3].map((i) => (
           <BodyCell
             key={i}
+            {...common}
             width={i === 3 ? PCT_W : VALUE_W}
-            sunday={sunday}
             groupStart={i === 0}
+            strongLeft={i === 0 && strongLeft}
+            noRight={i === 3 && noRightLast}
             title={notApplicableTitle}
           >
             {EVN_DASH}
@@ -235,16 +289,16 @@ function GroupCells({
 
   return (
     <>
-      <BodyCell width={VALUE_W} sunday={sunday} groupStart strong={footer} footer={footer}>
+      <BodyCell {...common} width={VALUE_W} groupStart strongLeft={strongLeft} strong={footer || highlight}>
         {hasExcel ? formatAmount(cell.excel, unit) : EVN_DASH}
       </BodyCell>
-      <BodyCell width={VALUE_W} sunday={sunday} strong={footer} footer={footer}>
+      <BodyCell {...common} width={VALUE_W} strong={footer || highlight}>
         {formatAmount(cell.actual, unit)}
       </BodyCell>
-      <BodyCell width={VALUE_W} sunday={sunday} strong={footer} footer={footer}>
+      <BodyCell {...common} width={VALUE_W} strong={footer}>
         {formatAmountDiff(cell.diff, unit)}
       </BodyCell>
-      <BodyCell width={PCT_W} sunday={sunday} tone={evnPctTone(cell.pct)} footer={footer}>
+      <BodyCell {...common} width={PCT_W} tone={evnPctTone(cell.pct)} noRight={noRightLast}>
         {formatPct(cell.pct)}
       </BodyCell>
     </>
@@ -301,28 +355,46 @@ export function EvnCompareTable({ rows, summary, unit, loading }: EvnCompareTabl
               <Box component="tr">
                 <HeadCell width={DATE_W} left={0} rowSpan={2} align="left">{labels.date}</HeadCell>
                 <HeadCell width={WEEKDAY_W} left={WEEKDAY_LEFT} rowSpan={2}>{labels.weekday}</HeadCell>
-                {EVN_GROUPS.map((key) => (
-                  <HeadCell key={key} colSpan={4} groupStart>{labels.groups[key]}</HeadCell>
-                ))}
-                <HeadCell width={SOURCE_W} rowSpan={2} groupStart>{labels.source}</HeadCell>
+                {EVN_GROUPS.map((key, g) => {
+                  const edges = groupEdges(g)
+                  return (
+                    <HeadCell
+                      key={key}
+                      colSpan={4}
+                      groupStart
+                      highlight={edges.highlight}
+                      strongLeft={edges.strongLeft}
+                      noRight={edges.noRightLast}
+                    >
+                      {labels.groups[key]}
+                    </HeadCell>
+                  )
+                })}
+                <HeadCell width={SOURCE_W} rowSpan={2} groupStart strongLeft={SOURCE_AFTER_HIGHLIGHT}>
+                  {labels.source}
+                </HeadCell>
                 <HeadCell width={COVERAGE_W} rowSpan={2}>{labels.coverage}</HeadCell>
                 <HeadCell width={NOTE_W} rowSpan={2} align="left">{labels.note}</HeadCell>
               </Box>
 
               <Box component="tr">
-                {EVN_GROUPS.map((key) => (
-                  [labels.excel, labels.actual, labels.diff, labels.pct].map((text, i) => (
+                {EVN_GROUPS.map((key, g) => {
+                  const edges = groupEdges(g)
+                  return [labels.excel, labels.actual, labels.diff, labels.pct].map((text, i) => (
                     <HeadCell
                       key={`${key}-${i}`}
                       width={i === 3 ? PCT_W : VALUE_W}
                       top={HEAD_H}
                       align={i === 3 ? 'center' : 'right'}
                       groupStart={i === 0}
+                      highlight={edges.highlight}
+                      strongLeft={i === 0 && edges.strongLeft}
+                      noRight={i === 3 && edges.noRightLast}
                     >
                       {text}
                     </HeadCell>
                   ))
-                ))}
+                })}
               </Box>
             </Box>
 
@@ -353,12 +425,13 @@ export function EvnCompareTable({ rows, summary, unit, loading }: EvnCompareTabl
                       {evnWeekdayLabel(row, labels.weekdays)}
                     </BodyCell>
 
-                    {EVN_GROUPS.map((key) => (
+                    {EVN_GROUPS.map((key, g) => (
                       <GroupCells
                         key={key}
                         cell={row.cells[key]}
                         unit={unit}
                         hasExcel={row.hasExcel}
+                        groupIndex={g}
                         sunday={row.sunday}
                         notApplicableTitle={labels.sundayPeak}
                       />
@@ -369,6 +442,7 @@ export function EvnCompareTable({ rows, summary, unit, loading }: EvnCompareTabl
                       align="center"
                       sunday={row.sunday}
                       groupStart
+                      strongLeft={SOURCE_AFTER_HIGHLIGHT}
                       strong={row.hasExcel}
                       color={row.hasExcel ? 'success.main' : 'text.secondary'}
                     >
@@ -405,18 +479,26 @@ export function EvnCompareTable({ rows, summary, unit, loading }: EvnCompareTabl
                 </BodyCell>
                 <BodyCell width={WEEKDAY_W} left={WEEKDAY_LEFT} footer>{''}</BodyCell>
 
-                {EVN_GROUPS.map((key) => (
+                {EVN_GROUPS.map((key, g) => (
                   <GroupCells
                     key={key}
                     cell={summary.totals[key]}
                     unit={unit}
                     hasExcel
+                    groupIndex={g}
                     footer
                     notApplicableTitle={labels.sundayPeak}
                   />
                 ))}
 
-                <BodyCell width={SOURCE_W} align="center" groupStart footer color="text.secondary">
+                <BodyCell
+                  width={SOURCE_W}
+                  align="center"
+                  groupStart
+                  strongLeft={SOURCE_AFTER_HIGHLIGHT}
+                  footer
+                  color="text.secondary"
+                >
                   {labels.totalHint(summary.excelDays)}
                 </BodyCell>
                 <BodyCell width={COVERAGE_W} footer>{''}</BodyCell>

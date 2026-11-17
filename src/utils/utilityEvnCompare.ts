@@ -70,6 +70,9 @@ export const EVN_GROUPS = ['normal', 'highPeak', 'lowPeak', 'totalElectricity', 
 
 export type EvnGroupKey = typeof EVN_GROUPS[number]
 
+// Nhóm cột được làm nổi bật trên bảng / file Excel
+export const EVN_HIGHLIGHT_GROUP: EvnGroupKey = 'totalElectricity'
+
 export const HOURS_PER_DAY = 24
 
 // =========================================================

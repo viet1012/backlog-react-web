@@ -4,6 +4,7 @@ import { UTILITY_SCOPE_CODES, type UtilityEvnCompareData, type UtilityScopeCode 
 import {
   EVN_DASH,
   EVN_GROUPS,
+  EVN_HIGHLIGHT_GROUP,
   EVN_PCT_OK,
   EVN_PCT_WARN,
   EVN_SCOPE_LABEL,
@@ -21,6 +22,7 @@ import {
   toUnit,
   type EvnCell,
   type EvnCompareSummary,
+  type EvnGroupKey,
   type EvnMetric,
   type EvnUnit,
 } from './utilityEvnCompare'
@@ -54,6 +56,13 @@ const COLOR = {
   muted: '6B7280',
   partial: 'C2410C',
   title: '1F3A5F',
+  // nhóm Tổng điện lưới (nổi bật)
+  highlightHeaderFill: '2563EB',
+  highlightSubHeaderFill: 'D6E4FF',
+  highlightText: '1E40AF',
+  highlightFill: 'EEF4FF',
+  highlightSundayFill: 'E2E8F3',
+  highlightTotalFill: 'C7D8F5',
 } as const
 
 const TONE_STYLE = {
@@ -85,6 +94,17 @@ const HEADER: XlsxStyle = {
   border: true,
 }
 const SUB_HEADER: XlsxStyle = { bold: true, fill: COLOR.subHeaderFill, align: 'center', vAlign: 'center', border: true }
+const HEADER_HIGHLIGHT: XlsxStyle = { ...HEADER, fill: COLOR.highlightHeaderFill }
+const SUB_HEADER_HIGHLIGHT: XlsxStyle = { ...SUB_HEADER, fill: COLOR.highlightSubHeaderFill, color: COLOR.highlightText }
+
+// style nền của 1 nhóm cột: nhóm Tổng điện lưới tô nền xanh nhạt + chữ đậm
+function groupBase(key: EvnGroupKey, base: XlsxStyle, kind: 'row' | 'sunday' | 'total'): XlsxStyle {
+  if (key !== EVN_HIGHLIGHT_GROUP) return base
+  const fill = kind === 'total'
+    ? COLOR.highlightTotalFill
+    : kind === 'sunday' ? COLOR.highlightSundayFill : COLOR.highlightFill
+  return { ...base, fill, bold: true }
+}
 
 function pctValue(pct: number | null): number | null {
   return pct === null ? null : pct / 100
@@ -154,12 +174,10 @@ function dailySheet(
   const head1: XlsxRow = [
     { v: table.date, s: HEADER },
     { v: table.weekday, s: HEADER },
-    ...EVN_GROUPS.flatMap((key) => [
-      { v: `${table.groups[key]} (${unit})`, s: HEADER },
-      { v: null, s: HEADER },
-      { v: null, s: HEADER },
-      { v: null, s: HEADER },
-    ]),
+    ...EVN_GROUPS.flatMap((key) => {
+      const s = key === EVN_HIGHLIGHT_GROUP ? HEADER_HIGHLIGHT : HEADER
+      return [{ v: `${table.groups[key]} (${unit})`, s }, { v: null, s }, { v: null, s }, { v: null, s }]
+    }),
     { v: table.source, s: HEADER },
     { v: table.coverage, s: HEADER },
     { v: table.hoursWithData, s: HEADER },
@@ -169,12 +187,10 @@ function dailySheet(
   const head2: XlsxRow = [
     { v: null, s: HEADER },
     { v: null, s: HEADER },
-    ...EVN_GROUPS.flatMap(() => [
-      { v: table.excel, s: SUB_HEADER },
-      { v: table.actual, s: SUB_HEADER },
-      { v: table.diff, s: SUB_HEADER },
-      { v: table.pct, s: SUB_HEADER },
-    ]),
+    ...EVN_GROUPS.flatMap((key) => {
+      const s = key === EVN_HIGHLIGHT_GROUP ? SUB_HEADER_HIGHLIGHT : SUB_HEADER
+      return [table.excel, table.actual, table.diff, table.pct].map((v) => ({ v, s }))
+    }),
     { v: null, s: HEADER },
     { v: null, s: HEADER },
     { v: null, s: HEADER },
@@ -199,7 +215,9 @@ function dailySheet(
         s: { ...base, numFmt: DATE_FMT, align: 'center', ...(row.partial ? { color: COLOR.partial, bold: true } : {}) },
       },
       { v: evnWeekdayLabel(row, table.weekdays), s: { ...base, align: 'center' } },
-      ...EVN_GROUPS.flatMap((key) => groupCells(row.cells[key], unit, base)),
+      ...EVN_GROUPS.flatMap((key) =>
+        groupCells(row.cells[key], unit, groupBase(key, base, row.sunday ? 'sunday' : 'row')),
+      ),
       {
         v: row.hasExcel ? table.sourceEvn : table.sourceNone,
         s: { ...base, align: 'center', ...(row.hasExcel ? { bold: true } : { color: COLOR.muted }) },
@@ -219,7 +237,7 @@ function dailySheet(
   const total: XlsxRow = [
     { v: table.total, s: { ...totalBase, align: 'center' } },
     { v: null, s: totalBase },
-    ...EVN_GROUPS.flatMap((key) => groupCells(summary.totals[key], unit, totalBase)),
+    ...EVN_GROUPS.flatMap((key) => groupCells(summary.totals[key], unit, groupBase(key, totalBase, 'total'))),
     { v: table.totalHint(summary.excelDays), s: totalBase },
     { v: null, s: totalBase },
     { v: null, s: totalBase },
