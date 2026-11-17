@@ -105,7 +105,11 @@ export function UserHomeCrate({ entry, kind, size, delayMs, dark }: UserHomeCrat
   const [picked, setPicked] = useState(false)
   const timerRef = useRef(0)
 
-  useEffect(() => () => window.clearTimeout(timerRef.current), [])
+  // Ẩn trang (giữ lại bằng Activity): quay lại thì thùng đã nằm lại trên kệ
+  useEffect(() => () => {
+    window.clearTimeout(timerRef.current)
+    setPicked(false)
+  }, [])
 
   const { item, groupId } = entry
   const w = size

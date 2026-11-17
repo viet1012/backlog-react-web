@@ -2,7 +2,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSPr
 import { useNavigate } from 'react-router-dom'
 
 import { Box } from '@mui/material'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { Canvas, useFrame, useThree, type RootState } from '@react-three/fiber'
 import { ContactShadows, Environment, Html, Lightformer, Sparkles } from '@react-three/drei'
 import { MathUtils, Object3D, Vector3, type PerspectiveCamera, type SpotLight } from 'three'
 
@@ -171,7 +171,7 @@ function IntroTimer({ seconds, onDone }: { seconds: number; onDone: (done: boole
 
 // Đặt camera vừa khít kệ theo tỉ lệ khung; lệch nhẹ theo chuột (parallax)
 function CameraRig({ rackHeight }: { rackHeight: number }) {
-  const { size, gl, invalidate } = useThree()
+  const { size, gl, invalidate, get } = useThree()
   const pointer = useRef({ x: 0, y: 0 })
   const placed = useRef(false)
 
@@ -187,6 +187,8 @@ function CameraRig({ rackHeight }: { rackHeight: number }) {
 
   useEffect(() => {
     const onMove = (event: PointerEvent) => {
+      // Trang chủ đang ẩn (đã dừng vẽ): bỏ qua, không đo layout mỗi lần rê chuột ở trang khác
+      if (get().frameloop === 'never') return
       const rect = gl.domElement.getBoundingClientRect()
       pointer.current.x = MathUtils.clamp(((event.clientX - rect.left) / rect.width) * 2 - 1, -1, 1)
       pointer.current.y = MathUtils.clamp(((event.clientY - rect.top) / rect.height) * 2 - 1, -1, 1)
@@ -194,7 +196,7 @@ function CameraRig({ rackHeight }: { rackHeight: number }) {
     }
     window.addEventListener('pointermove', onMove)
     return () => window.removeEventListener('pointermove', onMove)
-  }, [gl, invalidate])
+  }, [gl, invalidate, get])
 
   useEffect(() => invalidate(), [fit, invalidate])
 
@@ -324,7 +326,25 @@ export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeas
     ambient: profile.ambientMotion,
   }
 
-  useEffect(() => () => window.clearTimeout(timerRef.current), [])
+  // Trang chủ được giữ lại (KeepAliveOutlet/Activity) khi sang trang khác. Canvas có reconciler
+  // riêng nên effect bên trong (vòng lặp vẽ, nghe chuột) không bị dọn khi ẩn: tự dừng vòng lặp
+  // lúc ẩn, bật lại + vẽ 1 frame lúc hiện. Thùng đã rút ra / đang rê chuột thì trả về như cũ.
+  const r3f = useRef<RootState | null>(null)
+  const frameloop = profile.ambientMotion ? 'always' : 'demand'
+  useEffect(() => {
+    const state = r3f.current
+    if (state) {
+      state.setFrameloop(frameloop)
+      state.invalidate()
+    }
+    return () => {
+      window.clearTimeout(timerRef.current)
+      r3f.current?.setFrameloop('never')
+      setPicked(null)
+      setHovered(null)
+      setFocused(null)
+    }
+  }, [frameloop])
 
   const active = hovered ?? focused
   const activeCrate = active === null ? null : layout.crates[active]
@@ -403,7 +423,10 @@ export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeas
         key={profile.level}
         style={{ opacity: sceneReady ? 1 : 0, transition: `opacity ${FADE_MS}ms ease-out` }}
         shadows={profile.shadowMapSize > 0 ? 'percentage' : false}
-        frameloop={profile.ambientMotion ? 'always' : 'demand'}
+        frameloop={frameloop}
+        onCreated={(state) => {
+          r3f.current = state
+        }}
         dpr={graphicsDpr(profile)}
         gl={{ antialias: profile.antialias, alpha: true }}
         camera={{ fov: FOV, near: 0.1, far: 60, position: [0, 2, 10] }}

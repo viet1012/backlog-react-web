@@ -70,9 +70,10 @@ export function preloadRoute(path: string) {
   })
 }
 
-// Pages not kept alive when hidden: the 3D warehouse (WebGL context) and the
-// machine locator editor (canvas + fitting worker, unsaved-edit flow)
-const NOT_KEPT_ALIVE = new Set(['/user-home', '/settings/machine-locator'])
+// Pages not kept alive when hidden: the machine locator editor (canvas +
+// fitting worker, unsaved-edit flow). The 3D home is kept: it pauses its
+// render loop while hidden (UserHomeWarehouse3D) so coming back is instant
+const NOT_KEPT_ALIVE = new Set(['/settings/machine-locator'])
 
 // Key under which KeepAliveOutlet keeps a page mounted (hidden) after leaving
 // it, so coming back is instant; null = render normally (redirects, unknown)

@@ -36,9 +36,9 @@ const UserHomeWarehouse3D = lazy(loadWarehouse3D)
 const SLOW_FPS = 30
 const TOAST_MS = 12000
 
-// Cảnh thả hàng chỉ chạy ở lần đầu vào trang trong phiên. Trang chủ không được giữ lại
-// (KeepAliveOutlet) nên mỗi lần quay lại đều dựng lại cảnh; phát lại hoạt cảnh ~1.5s
-// khiến trang có vẻ tải lâu. Các lần sau: hàng nằm sẵn trên kệ.
+// Cảnh thả hàng chỉ chạy ở lần đầu vào trang trong phiên. Trang chủ được giữ lại
+// (KeepAliveOutlet) nhưng vẫn có thể bị bỏ khi mở quá nhiều trang; lúc dựng lại thì
+// hàng nằm sẵn trên kệ, không phát lại hoạt cảnh ~1.5s.
 let introPlayed = false
 
 interface UserHomePageProps {
