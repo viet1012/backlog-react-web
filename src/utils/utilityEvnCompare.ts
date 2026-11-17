@@ -245,6 +245,73 @@ export function summarizeEvnScopes(data: UtilityEvnCompareData | null, metric: E
 }
 
 // =========================================================
+// TỔNG QUAN 3 PHẠM VI (không cần chuyển tab)
+// =========================================================
+
+export interface EvnScopeOverview {
+  code: UtilityScopeCode
+  // theo metric đang xem (mwh / kusd)
+  rows: EvnCompareRow[]
+  summary: EvnCompareSummary
+  // metric còn lại (đang xem điện năng → tiền, và ngược lại)
+  cross: EvnCompareSummary
+  issues: UtilityMeterIssue[]
+  estimatedMissingMwh: number | null
+}
+
+export function buildEvnOverview(
+  data: UtilityEvnCompareData | null,
+  metric: EvnMetric,
+  crossMetric: EvnMetric,
+): EvnScopeOverview[] {
+  if (!data) return []
+
+  return UTILITY_SCOPE_CODES.map((code) => {
+    const rows = buildEvnCompareRows(data, code, metric)
+    return {
+      code,
+      rows,
+      summary: summarizeEvnCompare(rows),
+      cross: summarizeEvnCompare(buildEvnCompareRows(data, code, crossMetric)),
+      issues: collectMeterIssues(data, code),
+      estimatedMissingMwh: data.measured.scopes.find((s) => s.code === code)?.estimatedMissingMwh ?? null,
+    }
+  })
+}
+
+// Bảng gộp: mỗi ngày 1 dòng, mỗi phạm vi 1 nhóm cột
+export interface EvnOverviewRow {
+  date: string
+  weekdayIndex: number | null
+  weekdayRaw: string | null
+  sunday: boolean
+  byScope: Partial<Record<UtilityScopeCode, EvnCompareRow>>
+}
+
+export function buildEvnOverviewRows(overview: EvnScopeOverview[]): EvnOverviewRow[] {
+  const byDate = new Map<string, EvnOverviewRow>()
+
+  for (const scope of overview) {
+    for (const row of scope.rows) {
+      let entry = byDate.get(row.date)
+      if (!entry) {
+        entry = {
+          date: row.date,
+          weekdayIndex: row.weekdayIndex,
+          weekdayRaw: row.weekdayRaw,
+          sunday: row.sunday,
+          byScope: {},
+        }
+        byDate.set(row.date, entry)
+      }
+      entry.byScope[scope.code] = row
+    }
+  }
+
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date))
+}
+
+// =========================================================
 // CẢNH BÁO ĐỒNG HỒ
 // =========================================================
 
@@ -384,7 +451,10 @@ export function missingHoursOf(meter: UtilityMissingMeter): number | null {
   return meter.validHours === null ? null : Math.max(0, HOURS_PER_DAY - meter.validHours)
 }
 
-export function evnWeekdayLabel(row: EvnCompareRow, weekdays: readonly string[]): string {
+export function evnWeekdayLabel(
+  row: Pick<EvnCompareRow, 'weekdayIndex' | 'weekdayRaw'>,
+  weekdays: readonly string[],
+): string {
   return (row.weekdayIndex !== null ? weekdays[row.weekdayIndex] : undefined) ?? row.weekdayRaw ?? EVN_DASH
 }
 
@@ -499,6 +569,63 @@ export function buildEvnCompareCsv(
     null,
     null,
     null,
+  ]
+
+  return [header, ...body, total]
+    .map((cells) => cells.map(csvCell).join(','))
+    .join('\r\n')
+}
+
+export interface EvnOverviewCsvLabels {
+  date: string
+  weekday: string
+  excel: string
+  actual: string
+  diff: string
+  pct: string
+  partial: string
+  total: string
+  weekdayOf: (row: EvnOverviewRow) => string
+}
+
+// CSV tổng quan: điện lưới của 3 phạm vi cạnh nhau theo ngày
+export function buildEvnOverviewCsv(
+  rows: EvnOverviewRow[],
+  overview: EvnScopeOverview[],
+  unit: EvnUnit,
+  labels: EvnOverviewCsvLabels,
+): string {
+  const scopes = overview.map((s) => s.code)
+  const emptyCell: EvnCell = { excel: null, actual: null, diff: null, pct: null, notApplicable: false }
+
+  const header = [
+    labels.date,
+    labels.weekday,
+    ...scopes.flatMap((code) => {
+      const name = EVN_SCOPE_LABEL[code]
+      return [
+        `${name} - ${labels.excel} (${unit})`,
+        `${name} - ${labels.actual} (${unit})`,
+        `${name} - ${labels.diff} (${unit})`,
+        `${name} - ${labels.pct}`,
+        `${name} - ${labels.partial}`,
+      ]
+    }),
+  ]
+
+  const body = rows.map((row) => [
+    row.date,
+    labels.weekdayOf(row),
+    ...scopes.flatMap((code) => {
+      const scopeRow = row.byScope[code]
+      return [...csvCells(scopeRow?.cells.totalElectricity ?? emptyCell, unit), scopeRow?.partial ? 'x' : null]
+    }),
+  ])
+
+  const total = [
+    labels.total,
+    null,
+    ...overview.flatMap((scope) => [...csvCells(scope.summary.totals.totalElectricity, unit), null]),
   ]
 
   return [header, ...body, total]
