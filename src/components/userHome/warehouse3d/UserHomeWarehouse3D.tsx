@@ -339,7 +339,6 @@ export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeas
       status: item.status === 'developing'
         ? t.sidebar.developing
         : item.status === 'todo' ? t.sidebar.notStarted : t.sidebar.comingSoon,
-      roles: (item.roles ?? []).join(' / '),
     }
   })
 
@@ -354,7 +353,6 @@ export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeas
   }
 
   function tooltipLines(index: number, crate: CratePlacement) {
-    if (crate.kind === 'locked') return [t.userHome.requires(texts[index].roles), t.userHome.lockedNote]
     if (crate.kind === 'upcoming') return [texts[index].status]
     return texts[index].hint ? [texts[index].hint] : []
   }
@@ -462,7 +460,7 @@ export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeas
         {tooltip && <CrateTooltip placement={tooltip.placement} title={tooltip.title} lines={tooltip.lines} />}
         <EmptyTierNotes
           layout={layout}
-          notes={{ ready: t.userHome.readyNone, upcoming: t.userHome.upcomingNone, locked: t.userHome.lockedNone }}
+          notes={{ ready: t.userHome.readyNone, upcoming: t.userHome.upcomingNone }}
         />
       </Canvas>
 
@@ -484,9 +482,7 @@ export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeas
             </a>
           ) : (
             <span key={crate.entry.item.path} tabIndex={0} onFocus={() => setFocused(index)} onBlur={() => setFocused(null)}>
-              {crate.kind === 'locked'
-                ? `${texts[index].title}, ${t.userHome.requires(texts[index].roles)}`
-                : `${texts[index].title}, ${texts[index].status}`}
+              {`${texts[index].title}, ${texts[index].status}`}
             </span>
           )
         ))}

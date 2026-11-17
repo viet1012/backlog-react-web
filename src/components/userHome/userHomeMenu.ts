@@ -2,10 +2,10 @@ import { hasAnyRole } from '../../services/authService'
 import { menuGroups, type MenuGroupId, type MenuItemConfig } from '../layout/sidebarConfig'
 
 /*
- * Chia menu sidebar thành 3 nhóm cho trang chủ, cùng quy tắc với LeftSidebar:
+ * Chia menu sidebar thành nhóm cho trang chủ, cùng quy tắc với LeftSidebar:
  * - ready: mở được ngay (đủ quyền, đã xong) -> lối tắt
- * - locked: đã xong nhưng cần vai trò khác -> gợi ý xin quyền
  * - upcoming: đủ quyền nhưng chưa xong / đang tắt -> sắp ra mắt
+ * Trang không có quyền (vd. trang ADMIN với tài khoản thường) không hiện.
  */
 export interface HomeMenuEntry {
   item: MenuItemConfig
@@ -14,26 +14,26 @@ export interface HomeMenuEntry {
 
 export interface HomeMenu {
   ready: HomeMenuEntry[]
-  locked: HomeMenuEntry[]
   upcoming: HomeMenuEntry[]
 }
 
 const HOME_PATH = '/user-home'
 
 export function buildHomeMenu(): HomeMenu {
-  const menu: HomeMenu = { ready: [], locked: [], upcoming: [] }
+  const menu: HomeMenu = { ready: [], upcoming: [] }
 
   for (const group of menuGroups) {
     for (const item of group.items) {
       if (item.path === HOME_PATH) continue
 
+      // Không có quyền: không hiện
+      if (item.roles && !hasAnyRole(item.roles)) continue
+
       const entry = { item, groupId: group.id }
-      const allowed = !item.roles || hasAnyRole(item.roles)
       const ready = (item.status ?? 'ready') === 'ready' && !item.disabled
 
-      if (allowed && ready) menu.ready.push(entry)
-      else if (allowed) menu.upcoming.push(entry)
-      else if (ready) menu.locked.push(entry)
+      if (ready) menu.ready.push(entry)
+      else menu.upcoming.push(entry)
     }
   }
 

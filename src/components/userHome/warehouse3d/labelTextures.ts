@@ -9,7 +9,6 @@ import { C, INK } from '../factoryScene/primitives'
  * mép trái / mép trên) để component đặt chữ khớp với hình.
  * Texture riêng từng thùng do component tự dispose; texture dùng chung (carton, sàn kệ, trụ, lưới) tạo 1 lần.
  */
-const TAU = Math.PI * 2
 // Vẽ gấp đôi độ phân giải (toạ độ vẽ giữ nguyên) để nét viền / icon không bị bết
 const LABEL_SCALE = 2
 
@@ -133,80 +132,6 @@ export function upcomingFaceTexture() {
   return toTexture(canvas)
 }
 
-export const LOCKED_LAYOUT = {
-  // Tâm tên trang trên thẻ tên / chiều cao vùng chữ
-  titleY: 0.73,
-  titleHeight: 0.26,
-  titleWidth: 0.68,
-}
-
-// Mặt trước thùng nhựa "cần quyền": gân thùng, lỗ tay cầm, thẻ tên + icon (nền trong suốt)
-export function lockedFaceTexture(img: HTMLImageElement | undefined) {
-  const W = FACE_W
-  const H = FACE_H
-  const { canvas, ctx } = createCanvas(W, H, LABEL_SCALE)
-
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.07)'
-  for (let y = 10; y < H; y += 22) ctx.fillRect(0, y, W, 3)
-
-  ctx.fillStyle = 'rgba(10, 16, 24, 0.62)'
-  ctx.beginPath()
-  ctx.roundRect(W * 0.33, H * 0.08, W * 0.34, H * 0.12, 24)
-  ctx.fill()
-
-  ctx.fillStyle = 'rgba(242, 245, 248, 0.94)'
-  ctx.beginPath()
-  ctx.roundRect(W * 0.12, H * 0.3, W * 0.76, H * 0.58, 10)
-  ctx.fill()
-
-  if (img) {
-    const size = H * 0.2
-    ctx.drawImage(tintedIcon(img, '#6b7684', Math.round(size * LABEL_SCALE)), W / 2 - size / 2, H * 0.36, size, size)
-  }
-
-  return toTexture(canvas)
-}
-
-export const TAG_ASPECT = 2
-
-export const TAG_LAYOUT = {
-  // Chữ vai trò bắt đầu sau ổ khoá
-  textLeft: 0.38,
-  textRight: 0.94,
-}
-
-// Thẻ đỏ treo trên thùng khoá: lỗ xỏ dây + ổ khoá (vai trò đặt chồng bằng SDF)
-export function roleTagTexture() {
-  const W = 256
-  const H = W / TAG_ASPECT
-  const { canvas, ctx } = createCanvas(W, H, LABEL_SCALE)
-
-  ctx.fillStyle = C.red
-  ctx.strokeStyle = INK
-  ctx.lineWidth = 6
-  ctx.beginPath()
-  ctx.roundRect(3, 3, W - 6, H - 6, 12)
-  ctx.fill()
-  ctx.stroke()
-
-  // Lỗ xỏ dây
-  ctx.fillStyle = '#f6d7da'
-  ctx.beginPath()
-  ctx.arc(24, H / 2, 8, 0, TAU)
-  ctx.fill()
-
-  // Ổ khoá
-  ctx.fillStyle = '#fff'
-  ctx.strokeStyle = '#fff'
-  ctx.lineWidth = 6
-  ctx.beginPath()
-  ctx.arc(66, H / 2 - 8, 13, Math.PI, 0)
-  ctx.stroke()
-  ctx.fillRect(48, H / 2 - 8, 36, 30)
-
-  return toTexture(canvas)
-}
-
 // =========================================================
 // KỆ
 // =========================================================
@@ -258,7 +183,6 @@ export function tierPlateTexture() {
 let cartonCache: Texture | null = null
 let deckCache: Texture | null = null
 let uprightCache: Texture | null = null
-let meshCache: Texture | null = null
 
 // Vân giấy carton (nhân với màu vật liệu)
 export function cartonTexture() {
@@ -312,26 +236,4 @@ export function uprightTexture() {
   uprightCache = toTexture(canvas)
   uprightCache.wrapS = uprightCache.wrapT = RepeatWrapping
   return uprightCache
-}
-
-// Lưới thép cho lồng (dùng làm alphaMap: trắng = sợi thép)
-export function meshAlphaTexture() {
-  if (meshCache) return meshCache
-  const S = 128
-  const { canvas, ctx } = createCanvas(S, S)
-  ctx.fillStyle = '#000000'
-  ctx.fillRect(0, 0, S, S)
-  ctx.strokeStyle = '#ffffff'
-  ctx.lineWidth = 7
-  for (const offset of [-S, 0, S]) {
-    ctx.beginPath()
-    ctx.moveTo(offset, 0)
-    ctx.lineTo(offset + S, S)
-    ctx.moveTo(offset + S, 0)
-    ctx.lineTo(offset, S)
-    ctx.stroke()
-  }
-  meshCache = toTexture(canvas, false)
-  meshCache.wrapS = meshCache.wrapT = RepeatWrapping
-  return meshCache
 }

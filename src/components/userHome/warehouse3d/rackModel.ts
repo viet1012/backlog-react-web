@@ -31,9 +31,8 @@ export interface TierSpec {
   delay: number
 }
 
-// Từ dưới lên: cần quyền -> dùng ngay (ngang tầm mắt) -> sắp ra mắt
+// Từ dưới lên: dùng ngay -> sắp ra mắt
 export const TIERS: TierSpec[] = [
-  { kind: 'locked', code: 'A-01', clear: 0.85, maxSize: 0.8, delay: 0.8 },
   { kind: 'ready', code: 'A-02', clear: 1.15, maxSize: 1.05, delay: 0.15 },
   { kind: 'upcoming', code: 'A-03', clear: 0.8, maxSize: 0.58, delay: 0.5 },
 ]
@@ -67,7 +66,6 @@ export interface RackLayout {
 
 export function buildRackLayout(menu: HomeMenu): RackLayout {
   const byKind: Record<CrateKind, HomeMenuEntry[]> = {
-    locked: menu.locked,
     ready: menu.ready,
     upcoming: menu.upcoming,
   }

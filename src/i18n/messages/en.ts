@@ -596,13 +596,9 @@ export const en = {
         // Shelf tiers of the warehouse rack
         tierReady: 'Ready to use',
         tierUpcoming: 'Coming soon',
-        tierLocked: 'Needs access',
         pickHint: 'Pick a box to open the page',
         loading3d: 'Setting up the warehouse…',
         readyNone: 'No page is available for your role yet.',
-        lockedNote: 'Roles are taken from HR data each time you sign in. If your work needs these pages, ask your manager to update your section or role.',
-        lockedNone: 'You already have access to every available page.',
-        requires: (roles: string) => `Requires ${roles}`,
         upcomingNone: 'Nothing scheduled right now.',
         // Short description per menu labelKey; missing keys show no description
         pageHints: {

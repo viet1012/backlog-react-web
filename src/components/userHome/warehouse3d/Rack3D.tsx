@@ -1,14 +1,12 @@
 import { useEffect, useMemo } from 'react'
 import { useThree } from '@react-three/fiber'
 import { Edges } from '@react-three/drei'
-import { DoubleSide } from 'three'
 
 import { useI18n } from '../../../i18n/useI18n'
 import { INK } from '../factoryScene/primitives'
 import { FitText } from './FitText'
 import {
   deckTexture,
-  meshAlphaTexture,
   PLATE_ASPECT,
   PLATE_LAYOUT,
   tierPlateTexture,
@@ -18,7 +16,7 @@ import { RACK, type RackLayout, type TierLayout } from './rackModel'
 
 /*
  * Khung kệ: 4 trụ đột lỗ + giằng chéo 2 hông, mỗi tầng 2 dầm (trước/sau) + tấm sàn,
- * nhãn vị trí trên dầm trước, tầng "cần quyền" có lồng lưới + ổ khoá.
+ * nhãn vị trí trên dầm trước.
  */
 const UPRIGHT_COLOR = '#2a67a8'
 const BEAM_COLOR = '#f07a22'
@@ -116,56 +114,6 @@ function TierPlate({ tier, label }: { tier: TierLayout; label: string }) {
   )
 }
 
-function Cage({ tier }: { tier: TierLayout }) {
-  const width = RACK.width - RACK.post
-  const height = tier.topY - tier.deckY - 0.03
-  const alpha = useMemo(() => {
-    const texture = meshAlphaTexture()
-    texture.repeat.set(width / 0.12, height / 0.12)
-    return texture
-  }, [width, height])
-  const centerY = tier.deckY + height / 2
-  const z = 0.05
-
-  return (
-    // raycast tắt: chuột xuyên qua lưới tới thùng phía sau
-    <group>
-      <mesh position={[0, centerY, z]} raycast={() => null}>
-        <planeGeometry args={[width, height]} />
-        {/* alphaToCoverage (dùng MSAA) thay alphaTest: sợi thép mịn, không "bò" răng cưa khi camera di chuyển */}
-        <meshStandardMaterial color="#a3adb8" metalness={0.75} roughness={0.35} alphaMap={alpha} alphaToCoverage side={DoubleSide} />
-      </mesh>
-      {/* Khung ống viền lồng */}
-      {[
-        { p: [0, tier.topY - 0.03, z], s: [width, 0.025, 0.025] },
-        { p: [-width / 2, centerY, z], s: [0.025, height, 0.025] },
-        { p: [width / 2, centerY, z], s: [0.025, height, 0.025] },
-        { p: [0, centerY, z], s: [0.02, height, 0.02] },
-      ].map(({ p, s }, i) => (
-        <mesh key={i} position={p as [number, number, number]} castShadow raycast={() => null}>
-          <boxGeometry args={s as [number, number, number]} />
-          <meshStandardMaterial color="#8e99a5" metalness={0.8} roughness={0.3} />
-        </mesh>
-      ))}
-      {/* Ổ khoá treo giữa */}
-      <group position={[0, tier.topY - 0.13, z + 0.03]}>
-        <mesh castShadow>
-          <boxGeometry args={[0.1, 0.085, 0.035]} />
-          <meshStandardMaterial color="#c9a227" metalness={0.85} roughness={0.28} />
-        </mesh>
-        <mesh position={[0, 0.045, 0]}>
-          <torusGeometry args={[0.032, 0.008, 10, 20, Math.PI]} />
-          <meshStandardMaterial color="#cfd6de" metalness={0.9} roughness={0.2} />
-        </mesh>
-        <mesh position={[0, -0.005, 0.018]}>
-          <circleGeometry args={[0.011, 16]} />
-          <meshStandardMaterial color="#3b2f0a" />
-        </mesh>
-      </group>
-    </group>
-  )
-}
-
 interface Rack3DProps {
   layout: RackLayout
   // Mức Thấp: nét viền mực thay cho bóng đổ để khối vẫn rõ ràng
@@ -195,7 +143,6 @@ export function Rack3D({ layout, outlines }: Rack3DProps) {
   }, [anisotropy])
 
   const tierLabel = {
-    locked: t.userHome.tierLocked,
     ready: t.userHome.tierReady,
     upcoming: t.userHome.tierUpcoming,
   }
@@ -246,7 +193,6 @@ export function Rack3D({ layout, outlines }: Rack3DProps) {
             {edges}
           </mesh>
           <TierPlate tier={tier} label={tierLabel[tier.spec.kind]} />
-          {tier.spec.kind === 'locked' && tier.count > 0 && <Cage tier={tier} />}
         </group>
       ))}
 

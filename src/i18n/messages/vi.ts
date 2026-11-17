@@ -503,13 +503,9 @@ export const vi: Messages = {
         role: 'Vai trò',
         tierReady: 'Dùng ngay',
         tierUpcoming: 'Sắp ra mắt',
-        tierLocked: 'Cần quyền',
         pickHint: 'Chọn một thùng hàng để mở trang',
         loading3d: 'Đang dựng kho hàng…',
         readyNone: 'Chưa có trang nào cho vai trò của bạn.',
-        lockedNote: 'Quyền được lấy từ dữ liệu HR mỗi lần đăng nhập. Nếu công việc cần các trang này, hãy nhờ quản lý cập nhật bộ phận hoặc vai trò của bạn.',
-        lockedNone: 'Bạn đã có quyền vào tất cả các trang hiện có.',
-        requires: (roles) => `Cần quyền ${roles}`,
         upcomingNone: 'Hiện chưa có chức năng mới.',
         pageHints: {
             costMonitoring: 'Chi phí theo tháng so với mục tiêu PL',

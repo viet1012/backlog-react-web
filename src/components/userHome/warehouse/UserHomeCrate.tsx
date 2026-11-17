@@ -3,7 +3,6 @@ import { Link as RouterLink, useNavigate } from 'react-router-dom'
 
 import { Box, Tooltip, Typography, useMediaQuery } from '@mui/material'
 import { keyframes } from '@mui/material/styles'
-import { LockOutlined } from '@mui/icons-material'
 
 import { useI18n } from '../../../i18n/useI18n'
 import { preloadRoute } from '../../../pages/lazyPages'
@@ -18,7 +17,7 @@ import { CRATE_DEPTH, CRATE_RATIO } from './crateLayout'
  * Phải nằm trong chuỗi preserve-3d dưới một phần tử có `perspective` (ô kệ).
  * Không dùng opacity / overflow trên các lớp bọc vì sẽ làm phẳng 3D.
  */
-export type CrateKind = 'ready' | 'upcoming' | 'locked'
+export type CrateKind = 'ready' | 'upcoming'
 
 // Thời gian thùng trượt ra trước khi chuyển trang
 const PICK_MS = 380
@@ -35,10 +34,6 @@ const SKINS = {
   carton: {
     light: { front: 'linear-gradient(180deg, #dcab72 0%, #c78d53 100%)', top: '#e9c08c', side: '#a9743f' },
     dark: { front: 'linear-gradient(180deg, #b88752 0%, #976a3b 100%)', top: '#c99a63', side: '#7a522c' },
-  },
-  tote: {
-    light: { front: 'linear-gradient(180deg, #8b98a7 0%, #6b7786 100%)', top: '#a3afbd', side: '#56616e' },
-    dark: { front: 'linear-gradient(180deg, #5d6876 0%, #47515d 100%)', top: '#6f7a88', side: '#38414b' },
   },
 }
 
@@ -63,8 +58,7 @@ interface CrateBodyProps {
 
 function CrateBody({ w, h, kind, dark, children }: CrateBodyProps) {
   const d = Math.round(w * CRATE_DEPTH)
-  const skin = SKINS[kind === 'locked' ? 'tote' : 'carton'][dark ? 'dark' : 'light']
-  const carton = kind !== 'locked'
+  const skin = SKINS.carton[dark ? 'dark' : 'light']
 
   return (
     <Box sx={{ position: 'relative', width: w, height: h, transformStyle: 'preserve-3d' }}>
@@ -79,7 +73,7 @@ function CrateBody({ w, h, kind, dark, children }: CrateBodyProps) {
           transformOrigin: 'bottom',
           transform: 'rotateX(90deg)',
           background: [
-            carton ? `linear-gradient(90deg, transparent 42%, ${TAPE} 42% 58%, transparent 58%)` : '',
+            `linear-gradient(90deg, transparent 42%, ${TAPE} 42% 58%, transparent 58%)`,
             kind === 'upcoming' ? FILM : '',
             skin.top,
           ].filter(Boolean).join(', '),
@@ -119,7 +113,6 @@ export function UserHomeCrate({ entry, kind, size, delayMs, dark }: UserHomeCrat
   const color = getGroupColor(groupId, dark ? 'dark' : 'light')
   const label = t.nav[item.labelKey]
   const hint = t.userHome.pageHints[item.labelKey]
-  const roles = (item.roles ?? []).join(' / ')
   const statusLabel = item.status === 'developing'
     ? t.sidebar.developing
     : item.status === 'todo'
@@ -180,7 +173,7 @@ export function UserHomeCrate({ entry, kind, size, delayMs, dark }: UserHomeCrat
         </Box>
       </Box>
     )
-  } else if (kind === 'upcoming') {
+  } else {
     front = (
       <>
         <Box sx={{ position: 'absolute', left: '42%', width: '16%', top: 0, height: '22%', bgcolor: TAPE }} />
@@ -222,42 +215,6 @@ export function UserHomeCrate({ entry, kind, size, delayMs, dark }: UserHomeCrat
           </Typography>
         </Box>
         <Box sx={{ position: 'absolute', inset: 0, background: FILM, pointerEvents: 'none' }} />
-      </>
-    )
-  } else {
-    front = (
-      <>
-        {/* Gân thùng nhựa + lỗ tay cầm */}
-        <Box sx={{ position: 'absolute', inset: 0, background: 'repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0 2px, transparent 2px 12px)' }} />
-        <Box sx={{ position: 'absolute', left: '33%', width: '34%', top: '9%', height: '11%', borderRadius: 999, bgcolor: 'rgba(10, 16, 24, 0.55)' }} />
-        <Box sx={{ position: 'absolute', left: '12%', right: '12%', top: '32%', bottom: '14%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 0.3, px: 0.6, borderRadius: '3px', bgcolor: 'rgba(240, 244, 248, 0.88)' }}>
-          <Box sx={{ display: 'grid', color: '#6b7684', '& svg': { fontSize: Math.max(14, w * 0.14) } }}>{item.icon}</Box>
-          <Typography noWrap sx={{ maxWidth: '100%', fontSize: font * 0.9, fontWeight: 800, color: '#3d4753' }}>
-            {label}
-          </Typography>
-        </Box>
-        {/* Thẻ đỏ treo góc: vai trò cần có */}
-        <Box
-          sx={{
-            position: 'absolute',
-            top: '-6%',
-            right: '-8%',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 0.3,
-            px: 0.7,
-            py: 0.25,
-            borderRadius: '3px',
-            bgcolor: C.red,
-            color: '#fff',
-            border: `1px solid ${INK}`,
-            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
-            transform: 'rotate(8deg)',
-          }}
-        >
-          <LockOutlined sx={{ fontSize: Math.max(10, font * 0.8) }} />
-          <Typography sx={{ fontSize: Math.max(8.5, font * 0.68), fontWeight: 900, whiteSpace: 'nowrap' }}>{roles}</Typography>
-        </Box>
       </>
     )
   }
@@ -321,11 +278,11 @@ export function UserHomeCrate({ entry, kind, size, delayMs, dark }: UserHomeCrat
     content = (
       <Tooltip
         arrow
-        title={kind === 'locked' ? `${label} · ${t.userHome.requires(roles)}` : `${label} · ${statusLabel}`}
+        title={`${label} · ${statusLabel}`}
       >
         <Box
           tabIndex={0}
-          aria-label={kind === 'locked' ? `${label}, ${t.userHome.requires(roles)}` : `${label}, ${statusLabel}`}
+          aria-label={`${label}, ${statusLabel}`}
           sx={{ position: 'relative', transformStyle: 'preserve-3d', outline: 'none', '&:focus-visible .crate-front': { outline: `3px solid ${C.yellow}`, outlineOffset: 3 } }}
         >
           {body}

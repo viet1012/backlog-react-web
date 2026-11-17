@@ -6,7 +6,8 @@ import { useI18n } from '../../../i18n/useI18n'
  * Khung chờ trong lúc tải three.js / font / dựng cảnh WebGL: dáng kệ 3 tầng với thùng mờ,
  * để người dùng thấy trang đang làm việc thay vì 1 vùng trống. Không import three.
  */
-const TIERS = [5, 5, 4]
+// 2 tầng như kệ thật: sắp ra mắt (trên) + dùng ngay (dưới)
+const TIERS = [4, 5]
 
 interface Warehouse3DLoadingProps {
   dark: boolean

@@ -8,15 +8,10 @@ import { FitText } from './FitText'
 import { FONT } from './fonts'
 import {
   cartonTexture,
-  LOCKED_LAYOUT,
-  lockedFaceTexture,
   printedIconTexture,
   readyStickerTexture,
-  roleTagTexture,
   STICKER_ASPECT,
   STICKER_LAYOUT,
-  TAG_ASPECT,
-  TAG_LAYOUT,
   UPCOMING_LAYOUT,
   upcomingFaceTexture,
 } from './labelTextures'
@@ -34,7 +29,6 @@ export interface CrateTexts {
   action: string
   group: string
   status: string
-  roles: string
 }
 
 // Phần chất lượng đồ hoạ thùng cần biết
@@ -66,7 +60,6 @@ interface Crate3DProps {
 type CrateTextures =
   | { kind: 'ready'; sticker: Texture; icon: Texture | null }
   | { kind: 'upcoming'; face: Texture }
-  | { kind: 'locked'; face: Texture; tag: Texture }
 
 const DROP_HEIGHT = 1.4
 const DROP_SECONDS = 0.75
@@ -104,7 +97,6 @@ function sharpen(texture: Texture, anisotropy: number) {
   return texture
 }
 const CARTON = { light: '#c99660', dark: '#b3844f' }
-const TOTE = { light: '#6f7d8c', dark: '#5a6674' }
 
 function easeOutBounce(u: number) {
   const n = 7.5625
@@ -153,12 +145,7 @@ export function Crate3D({ placement, index, texts, color, icon, highlighted, pic
         icon: icon ? sharpen(printedIconTexture(icon, color), anisotropy) : null,
       }
     }
-    if (kind === 'upcoming') return { kind, face: sharpen(upcomingFaceTexture(), anisotropy) }
-    return {
-      kind,
-      face: sharpen(lockedFaceTexture(icon), anisotropy),
-      tag: sharpen(roleTagTexture(), anisotropy),
-    }
+    return { kind, face: sharpen(upcomingFaceTexture(), anisotropy) }
   }, [kind, color, icon, anisotropy])
 
   useEffect(() => () => {
@@ -167,7 +154,6 @@ export function Crate3D({ placement, index, texts, color, icon, highlighted, pic
       textures.icon?.dispose()
     } else {
       textures.face.dispose()
-      if (textures.kind === 'locked') textures.tag.dispose()
     }
   }, [textures])
 
@@ -216,14 +202,12 @@ export function Crate3D({ placement, index, texts, color, icon, highlighted, pic
 
   const frontZ = d / 2 + 0.002
   const radius = Math.min(0.03, w * 0.035)
-  const carton = kind !== 'locked'
-  const bodyColor = carton ? CARTON[dark ? 'dark' : 'light'] : TOTE[dark ? 'dark' : 'light']
 
   const bodyMaterial = (
     <meshStandardMaterial
-      color={bodyColor}
-      map={carton ? cartonTexture() : null}
-      roughness={carton ? 0.86 : 0.48}
+      color={CARTON[dark ? 'dark' : 'light']}
+      map={cartonTexture()}
+      roughness={0.86}
       metalness={0}
       emissive={highlighted && kind === 'ready' ? '#3a2a10' : '#000000'}
     />
@@ -238,12 +222,10 @@ export function Crate3D({ placement, index, texts, color, icon, highlighted, pic
   const ledRadius = stickerH * 0.045
   const iconSize = h * 0.26
   const iconY = stickerY + stickerH / 2 + h * 0.03 + iconSize / 2
-  // Mặt in kín (thùng sắp ra mắt / cần quyền)
+  // Mặt in kín (thùng sắp ra mắt)
   const faceW = w * 0.98
   const faceH = h * 0.98
   const faceRow = (fromTop: number) => faceH / 2 - faceH * fromTop
-  const tagW = MathUtils.clamp(w * 0.4, 0.16, 0.26)
-  const tagH = tagW / TAG_ASPECT
   const textZ = 0.002
 
   return (
@@ -274,19 +256,15 @@ export function Crate3D({ placement, index, texts, color, icon, highlighted, pic
           </mesh>
         )}
 
-        {carton && (
-          <>
-            {/* Băng keo trên nóc + vắt xuống mặt trước */}
-            <mesh position={[0, h / 2 + 0.002, 0]} rotation-x={-Math.PI / 2} raycast={noRaycast}>
-              <planeGeometry args={[w * 0.18, d + 0.004]} />
-              <meshStandardMaterial color="#e9d5aa" roughness={0.28} polygonOffset polygonOffsetFactor={-2} />
-            </mesh>
-            <mesh position={[0, h / 2 - h * 0.06, frontZ]} raycast={noRaycast}>
-              <planeGeometry args={[w * 0.18, h * 0.12]} />
-              <meshStandardMaterial color="#e9d5aa" roughness={0.28} polygonOffset polygonOffsetFactor={-2} />
-            </mesh>
-          </>
-        )}
+        {/* Băng keo trên nóc + vắt xuống mặt trước */}
+        <mesh position={[0, h / 2 + 0.002, 0]} rotation-x={-Math.PI / 2} raycast={noRaycast}>
+          <planeGeometry args={[w * 0.18, d + 0.004]} />
+          <meshStandardMaterial color="#e9d5aa" roughness={0.28} polygonOffset polygonOffsetFactor={-2} />
+        </mesh>
+        <mesh position={[0, h / 2 - h * 0.06, frontZ]} raycast={noRaycast}>
+          <planeGeometry args={[w * 0.18, h * 0.12]} />
+          <meshStandardMaterial color="#e9d5aa" roughness={0.28} polygonOffset polygonOffsetFactor={-2} />
+        </mesh>
 
         {textures.kind === 'ready' && (
           <>
@@ -382,45 +360,6 @@ export function Crate3D({ placement, index, texts, color, icon, highlighted, pic
           </>
         )}
 
-        {textures.kind === 'locked' && (
-          <>
-            <group position={[0, 0, frontZ + 0.001]}>
-              <DecalPlane map={textures.face} width={faceW} height={faceH} position={[0, 0, 0]} roughness={0.55} />
-              <FitText
-                position={[0, faceRow(LOCKED_LAYOUT.titleY), textZ]}
-                textAlign="center"
-                fontSize={h * 0.1}
-                minFontSize={h * 0.065}
-                lineHeight={1.05}
-                maxWidth={faceW * LOCKED_LAYOUT.titleWidth}
-                overflowWrap="break-word"
-                fitHeight={faceH * LOCKED_LAYOUT.titleHeight}
-                color="#3d4753"
-              >
-                {texts.title}
-              </FitText>
-            </group>
-            {/* Dây + thẻ đỏ treo góc */}
-            <mesh position={[w / 2 - tagW * 0.55, h / 2 - 0.01, frontZ + 0.012]} rotation-z={0.5} raycast={noRaycast}>
-              <cylinderGeometry args={[0.0025, 0.0025, 0.07, 6]} />
-              <meshStandardMaterial color="#efe6d2" />
-            </mesh>
-            <group position={[w / 2 - tagW * 0.2, h / 2 - 0.04 - tagH / 2, frontZ + 0.02]} rotation-z={-0.16}>
-              <DecalPlane map={textures.tag} width={tagW} height={tagH} position={[0, 0, 0]} roughness={0.45} />
-              <FitText
-                position={[-tagW / 2 + tagW * TAG_LAYOUT.textLeft, 0, textZ]}
-                anchorX="left"
-                fontSize={tagH * 0.36}
-                whiteSpace="nowrap"
-                fitWidth={tagW * (TAG_LAYOUT.textRight - TAG_LAYOUT.textLeft)}
-                minFontSize={tagH * 0.2}
-                color="#ffffff"
-              >
-                {texts.roles}
-              </FitText>
-            </group>
-          </>
-        )}
       </group>
     </>
   )

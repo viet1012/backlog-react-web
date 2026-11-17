@@ -1,5 +1,4 @@
-import { Box, Tooltip, Typography } from '@mui/material'
-import { InfoOutlined } from '@mui/icons-material'
+import { Box, Typography } from '@mui/material'
 
 import { useElementSize } from '../../../hooks/useElementSize'
 import { useI18n } from '../../../i18n/useI18n'
@@ -9,8 +8,8 @@ import { CRATE_DEPTH, CRATE_RATIO, crateCell, fitCrates } from './crateLayout'
 import { UserHomeCrate, type CrateKind } from './UserHomeCrate'
 
 /*
- * Kệ hàng 3 tầng (nhìn chính diện, hơi từ trên xuống):
- * trên = sắp ra mắt (thùng bọc màng co), giữa = dùng ngay (thùng mở được), dưới = cần quyền (thùng nhựa trong lồng lưới).
+ * Kệ hàng 2 tầng (nhìn chính diện, hơi từ trên xuống):
+ * trên = sắp ra mắt (thùng bọc màng co), dưới = dùng ngay (thùng mở được).
  * Mỗi tầng là một khung perspective riêng; điểm nhìn đặt cao dần để cả kệ trông như cùng một góc nhìn.
  */
 const UPRIGHT = 18
@@ -39,10 +38,9 @@ interface RackTierProps {
   eye: string
   delayBase: number
   dark: boolean
-  info?: string
 }
 
-function RackTier({ kind, code, label, entries, empty, flex, maxSize, eye, delayBase, dark, info }: RackTierProps) {
+function RackTier({ kind, code, label, entries, empty, flex, maxSize, eye, delayBase, dark }: RackTierProps) {
   const [stageRef, stage] = useElementSize<HTMLDivElement>()
   const rawFit = fitCrates(
     entries.length,
@@ -132,23 +130,6 @@ function RackTier({ kind, code, label, entries, empty, flex, maxSize, eye, delay
             </Typography>
           </Box>
         )}
-
-        {/* Lồng lưới thép cho hàng cần quyền */}
-        {kind === 'locked' && entries.length > 0 && (
-          <Box
-            sx={{
-              position: 'absolute',
-              inset: `4px ${SIDE_PAD / 2}px 0`,
-              pointerEvents: 'none',
-              border: `2px solid ${dark ? 'rgba(160, 180, 200, 0.45)' : 'rgba(70, 85, 100, 0.55)'}`,
-              borderBottom: 'none',
-              background: [
-                `repeating-linear-gradient(45deg, ${dark ? 'rgba(170, 190, 210, 0.22)' : 'rgba(60, 75, 90, 0.26)'} 0 1.5px, transparent 1.5px 16px)`,
-                `repeating-linear-gradient(-45deg, ${dark ? 'rgba(170, 190, 210, 0.22)' : 'rgba(60, 75, 90, 0.26)'} 0 1.5px, transparent 1.5px 16px)`,
-              ].join(', '),
-            }}
-          />
-        )}
       </Box>
 
       {/* Thanh ngang kệ + nhãn vị trí kho */}
@@ -175,7 +156,7 @@ function RackTier({ kind, code, label, entries, empty, flex, maxSize, eye, delay
             gap: 0.8,
             height: 24,
             pl: 0.8,
-            pr: info ? 0.4 : 0.8,
+            pr: 0.8,
             borderRadius: '3px',
             bgcolor: '#fdfdf8',
             border: `1px solid ${INK}`,
@@ -192,13 +173,6 @@ function RackTier({ kind, code, label, entries, empty, flex, maxSize, eye, delay
           <Typography sx={{ fontSize: 11, fontWeight: 900, color: '#ef7424' }}>{entries.length}</Typography>
           {/* Mã vạch trang trí */}
           <Box sx={{ width: 30, height: 13, background: `repeating-linear-gradient(90deg, ${INK} 0 1px, transparent 1px 3px, ${INK} 3px 5px, transparent 5px 6px)` }} />
-          {info && (
-            <Tooltip arrow title={info}>
-              <Box component="span" tabIndex={0} aria-label={info} sx={{ display: 'grid', color: '#c95b14', cursor: 'help', outline: 'none', '&:focus-visible': { outline: `2px solid ${INK}` } }}>
-                <InfoOutlined sx={{ fontSize: 16 }} />
-              </Box>
-            </Tooltip>
-          )}
         </Box>
       </Box>
     </Box>
@@ -286,19 +260,6 @@ export function UserHomeRack({ menu, dark }: UserHomeRackProps) {
         eye="50% -55%"
         delayBase={150}
         dark={dark}
-      />
-      <RackTier
-        kind="locked"
-        code="A-01"
-        label={t.userHome.tierLocked}
-        entries={menu.locked}
-        empty={t.userHome.lockedNone}
-        flex={1}
-        maxSize={170}
-        eye="50% -140%"
-        delayBase={800}
-        dark={dark}
-        info={t.userHome.lockedNote}
       />
     </Box>
   )
