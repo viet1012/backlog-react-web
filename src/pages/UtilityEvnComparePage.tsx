@@ -71,11 +71,11 @@ const VIEW_PREF_KEY = 'utility-evn:view'
 // table / chart: 1 phạm vi theo tab; overview: cả 3 phạm vi trên 1 màn
 type EvnViewMode = 'table' | 'chart' | 'overview'
 
-const VIEW_MODES: readonly EvnViewMode[] = ['table', 'chart', 'overview']
+const VIEW_MODES: readonly EvnViewMode[] = ['overview', 'table', 'chart']
 
 function loadView(): EvnViewMode {
   const stored = loadPreference(VIEW_PREF_KEY)
-  return VIEW_MODES.find((v) => v === stored) ?? 'table'
+  return VIEW_MODES.find((v) => v === stored) ?? 'overview'
 }
 
 function loadScope(): UtilityScopeCode {
@@ -319,6 +319,10 @@ export function UtilityEvnComparePage({ mode, onToggleMode }: UtilityEvnCompareP
                 '& .MuiToggleButton-root': { height: 30, px: 1.25, gap: 0.5, textTransform: 'none', fontSize: 12.5, fontWeight: 700 },
               }}
             >
+              <ToggleButton value="overview">
+                <SpaceDashboardOutlinedIcon sx={{ fontSize: 16 }} />
+                {labels.viewOverview}
+              </ToggleButton>
               <ToggleButton value="table">
                 <TableRowsOutlinedIcon sx={{ fontSize: 16 }} />
                 {labels.viewTable}
@@ -326,10 +330,6 @@ export function UtilityEvnComparePage({ mode, onToggleMode }: UtilityEvnCompareP
               <ToggleButton value="chart">
                 <InsertChartOutlinedIcon sx={{ fontSize: 16 }} />
                 {labels.viewChart}
-              </ToggleButton>
-              <ToggleButton value="overview">
-                <SpaceDashboardOutlinedIcon sx={{ fontSize: 16 }} />
-                {labels.viewOverview}
               </ToggleButton>
             </ToggleButtonGroup>
 
