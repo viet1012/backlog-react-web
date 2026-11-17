@@ -705,6 +705,65 @@ export const en = {
         openDetail: 'Click to view details',
     },
 
+    // Nạp Actual OT (ADMIN) – dialog trên màn Cost Monitoring
+    costOt: {
+        button: 'Load OT',
+        buttonTip: 'Load Actual OT from the Excel file',
+        title: (month: string) => `Load Actual OT · ${month}`,
+        status: {
+            title: (month: string) => `Loaded status – ${month}`,
+            subDiv: 'Division',
+            lastDate: 'Last day with data',
+            days: 'Days',
+            total: 'Total (K$)',
+            loadedAt: 'Loaded at',
+            source: 'Source',
+            notLoaded: 'Not loaded',
+            loadFailed: 'Unable to load OT status',
+        },
+        sourceTitle: 'OT file',
+        drop: {
+            title: 'Drag & drop the Excel file here, or click to choose',
+            hint: '.xlsx / .xlsm, up to 20 MB',
+            change: 'choose another file',
+        },
+        fromShare: 'Fetch from server (\\\\192.168.0.6)',
+        shareSelected: 'Source: file on the server (\\\\192.168.0.6)',
+        allMonths: 'Load all months in the file',
+        onlyMonth: (month: string) => `unchecked: month ${month} only`,
+        previewing: 'Reading file… (large files can take 5–15 seconds)',
+        importing: 'Loading OT…',
+        preview: {
+            title: 'Preview',
+            source: (source: string) => `Source: ${source}`,
+            month: 'Month',
+            subDiv: 'Division',
+            sheet: 'Sheet',
+            days: 'Days',
+            range: 'From – To',
+            total: 'Total K$',
+            guideTotal: 'Guide (PG + MG)',
+            empty: 'No OT data found in the file for the selected month.',
+        },
+        warnings: (count: number) => `${count} ${count === 1 ? 'warning' : 'warnings'}`,
+        warningsShow: 'Show',
+        warningsHide: 'Hide',
+        confirm: 'Confirm load',
+        cancel: 'Cancel',
+        success: (rows: number) => `Loaded ${rows.toLocaleString('en-US')} OT rows`,
+        errors: {
+            badExtension: 'Only .xlsx or .xlsm files are accepted.',
+            tooLarge: (mb: string) => `File is ${mb} MB – the limit is 20 MB.`,
+            notSignedIn: 'You are not signed in – please sign in again.',
+            forbidden: 'You do not have permission to load OT.',
+            badRequest: 'Invalid file or parameters.',
+            shareUnavailable: 'The server cannot read the shared folder right now.',
+            network: 'Cannot connect to the server.',
+            invalidResponse: 'Invalid response from the server.',
+            http: (status: number) => `Request failed (HTTP ${status}).`,
+        },
+    },
+
     costDetail: {
         title: (frame: string, month: string) => `${frame} · ${month}`,
         close: 'Close',
@@ -778,6 +837,7 @@ export const en = {
             allocation: (value: string) =>
                 `Act MTD also includes ${value} K$ of shared allocation (F2 / HT2 / HT-G) and adjustments – not listed as transactions.`,
             empty: 'No transactions',
+            otNone: 'OT has no transaction details',
             exportExcel: 'Export Excel',
             exportFailed: 'Export failed',
             rowsPerPage: 'Rows:',
@@ -1101,8 +1161,8 @@ export const en = {
 
         faq: [
             {
-                q: 'Why does the OT chart have no Actual line?',
-                a: 'Actual OT data is not in the system yet. For now only the target and plan are shown; the OT badge is for reference only.',
+                q: 'Why does an OT chart have no Actual line?',
+                a: 'Actual OT is loaded from the OT Excel file by an admin ("Load OT" button). Months not loaded yet show "No actual yet" with only the target and plan. OT has no transaction details – the drawer shows KPI and the daily table only.',
             },
             {
                 q: 'Why is there no red line (Fluctuating TGT) yet?',

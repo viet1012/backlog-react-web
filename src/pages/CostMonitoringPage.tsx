@@ -1,3 +1,4 @@
+import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined'
 import {
   Alert,
   Box,
@@ -10,6 +11,7 @@ import {
   ListSubheader,
   MenuItem,
   Select,
+  Snackbar,
   Stack,
   Tooltip,
   Typography,
@@ -17,6 +19,9 @@ import {
 import type { PaletteMode } from '@mui/material'
 import dayjs from 'dayjs'
 import { useState } from 'react'
+import { AppButton } from '../components/common/AppButton'
+import { CostOtImportDialog } from '../components/costMonitoring/CostOtImportDialog'
+import { hasAnyRole } from '../services/authService'
 import { FactoryNoRowsOverlay } from '../components/common/FactoryNoRowsOverlay'
 import { GuideButton } from '../components/common/GuideButton'
 import { PageHeader } from '../components/common/PageHeader'
@@ -98,13 +103,20 @@ export function CostMonitoringPage({
     lastUpdated,
     refresh,
     refreshKey,
+    reloadData,
+    dataVersion,
   } = useCostMonitoring()
 
   // Drawer chi tiết 1 khung; giữ target khi đóng để nội dung không mất trong lúc trượt ra
   const [detailOpen, setDetailOpen] = useState(false)
   const [detailTarget, setDetailTarget] = useState<CostDetailTarget | null>(null)
 
-  const detail = useCostMonitoringDetail(month, detailTarget, simuWeek, refreshKey, detailOpen)
+  const detail = useCostMonitoringDetail(month, detailTarget, simuWeek, refreshKey, detailOpen, dataVersion)
+
+  // Nạp Actual OT – nút chỉ hiện với ADMIN (BE vẫn kiểm quyền, 403 hiện trong dialog)
+  const canImportOt = hasAnyRole(['ADMIN'])
+  const [otImportOpen, setOtImportOpen] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
 
   const detailLabel = detailTarget
     ? `${COST_ROWS.find((r) => r.div === detailTarget.div)?.label ?? detailTarget.div} · ${detailTarget.chart}`
@@ -294,6 +306,21 @@ export function CostMonitoringPage({
                 </Tooltip>
               </Stack>
 
+              {canImportOt && (
+                <Tooltip title={t.costOt.buttonTip}>
+                  <span>
+                    <AppButton
+                      icon={<UploadFileOutlinedIcon fontSize="small" />}
+                      disabled={!month}
+                      onClick={() => setOtImportOpen(true)}
+                      sx={{ flexShrink: 0 }}
+                    >
+                      {t.costOt.button}
+                    </AppButton>
+                  </span>
+                </Tooltip>
+              )}
+
               <RefreshButton
                 loading={loading}
                 onClick={refresh}
@@ -405,6 +432,32 @@ export function CostMonitoringPage({
         onTabChange={setGuideTab}
         onClose={closeGuide}
       />
+
+      {canImportOt && (
+        <CostOtImportDialog
+          open={otImportOpen}
+          month={month}
+          onClose={() => setOtImportOpen(false)}
+          onImported={(result) => {
+            setOtImportOpen(false)
+            setToast(t.costOt.success(result.rowsWritten))
+            // BE đã xóa cache → gọi /chart như bình thường (không refresh=true);
+            // trạng thái OT tải lại ở lần mở dialog sau
+            reloadData()
+          }}
+        />
+      )}
+
+      <Snackbar
+        open={toast !== null}
+        autoHideDuration={5000}
+        onClose={() => setToast(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="success" variant="filled" onClose={() => setToast(null)}>
+          {toast ?? ''}
+        </Alert>
+      </Snackbar>
     </PageShell>
   )
 }

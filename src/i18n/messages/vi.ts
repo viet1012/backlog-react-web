@@ -609,6 +609,64 @@ export const vi: Messages = {
         openDetail: 'Bấm để xem chi tiết',
     },
 
+    costOt: {
+        button: 'Nạp OT',
+        buttonTip: 'Nạp Actual OT từ file Excel',
+        title: (month) => `Nạp Actual OT · ${month}`,
+        status: {
+            title: (month) => `Trạng thái đã nạp – ${month}`,
+            subDiv: 'Bộ phận',
+            lastDate: 'Ngày cuối có số',
+            days: 'Số ngày',
+            total: 'Tổng (K$)',
+            loadedAt: 'Nạp lúc',
+            source: 'Nguồn',
+            notLoaded: 'Chưa nạp',
+            loadFailed: 'Không tải được trạng thái OT',
+        },
+        sourceTitle: 'File OT',
+        drop: {
+            title: 'Kéo-thả file Excel vào đây hoặc bấm để chọn',
+            hint: '.xlsx / .xlsm, tối đa 20 MB',
+            change: 'chọn file khác',
+        },
+        fromShare: 'Lấy từ server (\\\\192.168.0.6)',
+        shareSelected: 'Nguồn: file trên server (\\\\192.168.0.6)',
+        allMonths: 'Nạp tất cả các tháng trong file',
+        onlyMonth: (month) => `bỏ chọn: chỉ tháng ${month}`,
+        previewing: 'Đang đọc file… (file lớn có thể mất 5–15 giây)',
+        importing: 'Đang nạp OT…',
+        preview: {
+            title: 'Xem trước',
+            source: (source) => `Nguồn: ${source}`,
+            month: 'Tháng',
+            subDiv: 'Bộ phận',
+            sheet: 'Sheet',
+            days: 'Số ngày',
+            range: 'Từ – Đến',
+            total: 'Tổng K$',
+            guideTotal: 'Guide (PG + MG)',
+            empty: 'Không tìm thấy số OT trong file cho tháng đã chọn.',
+        },
+        warnings: (count) => `${count} cảnh báo`,
+        warningsShow: 'Hiện',
+        warningsHide: 'Thu gọn',
+        confirm: 'Xác nhận nạp',
+        cancel: 'Hủy',
+        success: (rows) => `Đã nạp ${rows.toLocaleString('en-US')} dòng OT`,
+        errors: {
+            badExtension: 'Chỉ nhận file .xlsx hoặc .xlsm.',
+            tooLarge: (mb) => `File ${mb} MB – vượt giới hạn 20 MB.`,
+            notSignedIn: 'Chưa đăng nhập – vui lòng đăng nhập lại.',
+            forbidden: 'Bạn không có quyền nạp OT.',
+            badRequest: 'File hoặc tham số không hợp lệ.',
+            shareUnavailable: 'Server hiện không đọc được thư mục share.',
+            network: 'Không kết nối được server.',
+            invalidResponse: 'Phản hồi từ server không hợp lệ.',
+            http: (status) => `Yêu cầu thất bại (HTTP ${status}).`,
+        },
+    },
+
     costDetail: {
         title: (frame, month) => `${frame} · ${month}`,
         close: 'Đóng',
@@ -682,6 +740,7 @@ export const vi: Messages = {
             allocation: (value) =>
                 `Act MTD còn gồm ${value} K$ phân bổ chung (F2 / HT2 / HT-G) và điều chỉnh – không có dòng giao dịch.`,
             empty: 'Không có giao dịch',
+            otNone: 'OT không có chi tiết giao dịch',
             exportExcel: 'Xuất Excel',
             exportFailed: 'Xuất file thất bại',
             rowsPerPage: 'Số dòng:',
@@ -1001,8 +1060,8 @@ export const vi: Messages = {
 
         faq: [
             {
-                q: 'Vì sao chart OT không có đường Actual?',
-                a: 'Dữ liệu OT thực tế chưa được đưa vào hệ thống. Hiện chỉ xem được target và kế hoạch; badge OT chỉ mang tính tham khảo.',
+                q: 'Vì sao chart OT có tháng không có đường Actual?',
+                a: 'Actual OT được admin nạp từ file Excel OT (nút "Nạp OT"). Tháng chưa nạp hiện "Chưa có actual", chỉ xem được target và kế hoạch. OT không có chi tiết giao dịch – drawer chỉ có KPI và bảng theo ngày.',
             },
             {
                 q: 'Vì sao chưa có đường đỏ (Fluctuating TGT)?',

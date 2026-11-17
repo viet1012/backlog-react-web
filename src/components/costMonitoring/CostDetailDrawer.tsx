@@ -62,7 +62,7 @@ function SectionTitle({ children, hint }: { children: ReactNode; hint?: string }
   )
 }
 
-// chưa có actual (vd OT) → chỉ hiện KPI + empty state
+// chưa có actual (vd tháng chưa nạp OT) → chỉ hiện KPI + empty state
 function hasActual(kpi: CostDetailKpi) {
   return kpi.actMtd != null
 }
@@ -301,6 +301,8 @@ export function CostDetailDrawer({
     body = error ? <Alert severity="error">{error}</Alert> : null
   } else {
     const { kpi } = data
+    // OT: kpi + daily có số, BE không có giao dịch
+    const isOt = data.chart === 'OT'
 
     body = (
       <Stack sx={{ gap: 1, opacity: loading ? 0.6 : 1, transition: 'opacity 120ms' }}>
@@ -339,7 +341,8 @@ export function CostDetailDrawer({
               onSelectDate={setSelectedDate}
             />
 
-            <SectionTitle hint={t.costDetail.daily.hint}>{t.costDetail.daily.title}</SectionTitle>
+            {/* OT không có giao dịch → không gợi ý "bấm để lọc giao dịch" */}
+            <SectionTitle hint={isOt ? undefined : t.costDetail.daily.hint}>{t.costDetail.daily.title}</SectionTitle>
             <CostDetailDailyTable
               rows={data.daily}
               abnormalDays={abnormalDays}
@@ -348,15 +351,33 @@ export function CostDetailDrawer({
             />
 
             <SectionTitle>{t.costDetail.tx.title}</SectionTitle>
-            <CostDetailTransactionTable
-              month={month}
-              target={target ?? { div: data.div, chart: data.chart }}
-              simuWeek={simuWeek}
-              initial={data.transactions}
-              filterDate={selectedDate}
-              onClearFilter={() => setSelectedDate(null)}
-              exportName={`cost_${data.div}_${data.chart.replace('&', '')}_${data.month.replace('.', '-')}`}
-            />
+            {isOt ? (
+              <Box
+                sx={{
+                  minHeight: 80,
+                  display: 'grid',
+                  placeItems: 'center',
+                  border: 1,
+                  borderStyle: 'dashed',
+                  borderColor: 'divider',
+                  borderRadius: 1.5,
+                }}
+              >
+                <Typography color="text.secondary" sx={{ fontSize: 13 }}>
+                  {t.costDetail.tx.otNone}
+                </Typography>
+              </Box>
+            ) : (
+              <CostDetailTransactionTable
+                month={month}
+                target={target ?? { div: data.div, chart: data.chart }}
+                simuWeek={simuWeek}
+                initial={data.transactions}
+                filterDate={selectedDate}
+                onClearFilter={() => setSelectedDate(null)}
+                exportName={`cost_${data.div}_${data.chart.replace('&', '')}_${data.month.replace('.', '-')}`}
+              />
+            )}
           </>
         )}
       </Stack>

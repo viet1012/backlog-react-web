@@ -22,6 +22,7 @@ import {
   toApiMonth,
 } from '../services/costMonitoringService'
 import { getMessages } from '../i18n/i18nContext'
+import { clearQueryCache } from '../utils/queryCache'
 import { useCachedQuery } from './useCachedQuery'
 
 const EMPTY_MONTHS: string[] = []
@@ -41,6 +42,8 @@ export function useCostMonitoringDetail(
   refreshKey = 0,
   // drawer đang mở; đóng thì giữ data (nội dung không mất lúc trượt ra) nhưng không tải lại
   open = true,
+  // tăng khi dữ liệu nguồn đổi (nạp OT) → lần mở sau tải lại, không gửi refresh=true
+  dataVersion = 0,
 ) {
   const [data, setData] =
     useState<CostDetailResponse | null>(null)
@@ -83,7 +86,7 @@ export function useCostMonitoringDetail(
       return
     }
 
-    const loadKey = `${month}|${div}|${chart}|${simuWeek}|${refreshKey}`
+    const loadKey = `${month}|${div}|${chart}|${simuWeek}|${refreshKey}|${dataVersion}`
     if (loadedFor.current === loadKey) {
       return
     }
@@ -127,7 +130,7 @@ export function useCostMonitoringDetail(
     return () => {
       controller.abort()
     }
-  }, [month, div, chart, simuWeek, refreshKey, open])
+  }, [month, div, chart, simuWeek, refreshKey, open, dataVersion])
 
   return { data, loading, error }
 }
@@ -228,6 +231,17 @@ export function useCostMonitoring() {
       )
     }, [])
 
+  // dữ liệu nguồn đổi (vd vừa nạp OT; BE đã xóa cache): tải lại /chart như bình thường,
+  // KHÔNG gửi refresh=true. Đổi version trong key → bỏ qua cache FE, giữ chart cũ trong lúc tải.
+  const [dataVersion, setDataVersion] =
+    useState(0)
+
+  const reloadData =
+    useCallback(() => {
+      clearQueryCache('cost:chart:')
+      setDataVersion((value) => value + 1)
+    }, [])
+
   // ---------- months ----------
   const monthsQuery = useCachedQuery(
     'cost:months',
@@ -261,7 +275,7 @@ export function useCostMonitoring() {
 
   // ---------- chart ----------
   const chartQuery = useCachedQuery(
-    month ? `cost:chart:${month}|${simuWeek}` : null,
+    month ? `cost:chart:${month}|${simuWeek}|${dataVersion}` : null,
     (signal, force) => getCostMonitoringChart(
       toApiMonth(month!),
       simuWeek,
@@ -294,5 +308,8 @@ export function useCostMonitoring() {
     refresh,
     // cho drawer detail tải lại cùng nút Refresh
     refreshKey,
+    reloadData,
+    // cho drawer detail tải lại (không refresh=true) sau khi dữ liệu nguồn đổi
+    dataVersion,
   }
 }

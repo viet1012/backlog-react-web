@@ -83,7 +83,7 @@ export interface CostDetailKpi {
     fluct: number | null
     // Ratio Sale&Inven mới nhất của bộ phận, % (Fluct = FC × (1 + Ratio))
     ratioPct: number | null
-    // null = chưa có actual (vd OT)
+    // null = chưa có actual (vd tháng chưa nạp OT)
     actMtd: number | null
     estimateEom: number | null
     // Actual / Fluct × 100
@@ -172,6 +172,58 @@ export interface CostDetailTxQuery {
 export interface CostDetailTarget {
     div: CostDiv
     chart: CostChartType
+}
+
+// =========================================================
+// NẠP ACTUAL OT – /api/cost-monitoring/ot/* (K$)
+// PG, MG gộp vào div Guide
+// =========================================================
+
+export type OtSubDiv = 'PR' | 'MO' | 'PG' | 'MG'
+
+export const OT_SUB_DIVS: readonly OtSubDiv[] = ['PR', 'MO', 'PG', 'MG']
+
+export interface CostOtImportSummary {
+    // "2026-11"
+    month: string
+    subDiv: OtSubDiv
+    div: CostDiv
+    // "PressCOGS" ...
+    sheet: string
+    days: number
+    // yyyy-MM-dd
+    firstDate: string | null
+    lastDate: string | null
+    totalK: number | null
+}
+
+export interface CostOtImportResult {
+    // tên file hoặc "share:<tên file>"
+    source: string
+    dryRun: boolean
+    // ISO LocalDateTime
+    importedAt: string | null
+    // dryRun → 0
+    rowsWritten: number
+    summaries: CostOtImportSummary[]
+    warnings: string[]
+}
+
+export interface CostOtStatusRow {
+    subDiv: OtSubDiv
+    div: CostDiv
+    days: number
+    lastDate: string | null
+    totalK: number | null
+    loadedAt: string | null
+    source: string | null
+}
+
+export interface CostOtStatusResponse {
+    month: string
+    unit: string
+    shareImportEnabled: boolean
+    rows: CostOtStatusRow[]
 }
 
 // '' = Latest (không gửi simuWeek)

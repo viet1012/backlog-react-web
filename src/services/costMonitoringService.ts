@@ -2,7 +2,20 @@ import {
     API_BASE_URL,
 } from '../config/api'
 
+import { getMessages } from '../i18n/i18nContext'
+import { getCurrentEmployeeId } from './authService'
+
+import {
+    OT_SUB_DIVS,
+} from '../types/costMonitoring'
+
 import type {
+    CostDiv,
+    CostOtImportResult,
+    CostOtImportSummary,
+    CostOtStatusResponse,
+    CostOtStatusRow,
+    OtSubDiv,
     CostChartForecast,
     CostDetailDailyRow,
     CostForecastStatus,
@@ -482,6 +495,210 @@ export async function exportCostTransactionsExcel(
     anchor.click()
     anchor.remove()
     URL.revokeObjectURL(url)
+}
+
+
+// =========================================================
+// NẠP ACTUAL OT – /ot/import (multipart), /ot/import-from-share, /ot/status
+// Ghi cần header X-Employee-Id (BE kiểm quyền ADMIN).
+// Lỗi BE luôn dạng { status, message } → dùng message; thiếu thì thông báo theo status.
+// =========================================================
+
+export class CostApiError extends Error {
+    readonly status?: number
+
+    constructor(message: string, status?: number) {
+        super(message)
+
+        this.name = 'CostApiError'
+        this.status = status
+    }
+}
+
+function otErrorMessage(status: number): string {
+    const errors = getMessages().costOt.errors
+
+    if (status === 401) return errors.notSignedIn
+    if (status === 403) return errors.forbidden
+    if (status === 400) return errors.badRequest
+    if (status === 503) return errors.shareUnavailable
+    return errors.http(status)
+}
+
+async function otRequest(
+    url: string,
+    init: RequestInit,
+    write: boolean,
+): Promise<unknown> {
+    const headers: Record<string, string> = { Accept: 'application/json' }
+
+    if (write) {
+        const employeeId = getCurrentEmployeeId()
+
+        if (!employeeId) {
+            throw new CostApiError(getMessages().costOt.errors.notSignedIn, 401)
+        }
+
+        headers['X-Employee-Id'] = employeeId
+    }
+
+    let response: Response
+
+    try {
+        // body FormData: KHÔNG set Content-Type – browser tự thêm boundary
+        response = await fetch(url, { cache: 'no-store', ...init, headers })
+    } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') throw err
+        throw new CostApiError(getMessages().costOt.errors.network)
+    }
+
+    const body: unknown = await response.json().catch(() => null)
+
+    if (!response.ok) {
+        const message = isRecord(body) ? text(body.message) : null
+        throw new CostApiError(message ?? otErrorMessage(response.status), response.status)
+    }
+
+    if (body === null) {
+        throw new CostApiError(getMessages().costOt.errors.invalidResponse, response.status)
+    }
+
+    return body
+}
+
+function subDivOf(value: unknown): OtSubDiv | null {
+    return OT_SUB_DIVS.find((s) => s === value) ?? null
+}
+
+function divOf(value: unknown, subDiv: OtSubDiv): CostDiv {
+    if (value === 'PR' || value === 'MO' || value === 'Guide') return value
+    return subDiv === 'PG' || subDiv === 'MG' ? 'Guide' : subDiv
+}
+
+// LocalDateTime Jackson: "2026-11-17T08:30:00" (hoặc mảng [y, M, d, H, m, s])
+function dateTime(value: unknown): string | null {
+    if (typeof value === 'string') return value.trim() || null
+    if (Array.isArray(value) && value.length >= 3) {
+        const [y, mo, d, h = 0, mi = 0, s = 0] = value as number[]
+        const p = (n: number) => String(n).padStart(2, '0')
+        return `${y}-${p(mo)}-${p(d)}T${p(h)}:${p(mi)}:${p(s)}`
+    }
+    return null
+}
+
+function mapOtSummary(raw: JsonRecord): CostOtImportSummary[] {
+    const subDiv = subDivOf(raw.subDiv)
+    if (!subDiv) return []
+
+    return [{
+        month: text(raw.month) ?? '',
+        subDiv,
+        div: divOf(raw.div, subDiv),
+        sheet: text(raw.sheet) ?? '',
+        days: num(raw.days) ?? 0,
+        firstDate: date(raw.firstDate),
+        lastDate: date(raw.lastDate),
+        totalK: num(raw.totalK),
+    }]
+}
+
+function mapOtImportResult(raw: unknown): CostOtImportResult {
+    if (!isRecord(raw) || !Array.isArray(raw.summaries)) {
+        throw new CostApiError(getMessages().costOt.errors.invalidResponse)
+    }
+
+    return {
+        source: text(raw.source) ?? '',
+        dryRun: raw.dryRun === true,
+        importedAt: dateTime(raw.importedAt),
+        rowsWritten: num(raw.rowsWritten) ?? 0,
+        summaries: raw.summaries.filter(isRecord).flatMap(mapOtSummary),
+        warnings: Array.isArray(raw.warnings)
+            ? raw.warnings.filter((w): w is string => typeof w === 'string' && w.trim() !== '')
+            : [],
+    }
+}
+
+function mapOtStatusRow(raw: JsonRecord): CostOtStatusRow[] {
+    const subDiv = subDivOf(raw.subDiv)
+    if (!subDiv) return []
+
+    return [{
+        subDiv,
+        div: divOf(raw.div, subDiv),
+        days: num(raw.days) ?? 0,
+        lastDate: date(raw.lastDate),
+        totalK: num(raw.totalK),
+        loadedAt: dateTime(raw.loadedAt),
+        source: text(raw.source),
+    }]
+}
+
+export interface CostOtImportOptions {
+    // "2026-11"; bỏ trống = mọi tháng trong file
+    month?: string
+    dryRun: boolean
+}
+
+// file .xlsx/.xlsm ≤ 20MB (FE đã kiểm trước khi gọi)
+export async function importOt(
+    file: File,
+    opts: CostOtImportOptions,
+    signal?: AbortSignal,
+): Promise<CostOtImportResult> {
+    const form = new FormData()
+
+    form.append('file', file)
+    if (opts.month) form.append('month', opts.month)
+    form.append('dryRun', String(opts.dryRun))
+
+    const result = await otRequest(
+        `${API_URL}/ot/import`,
+        { method: 'POST', body: form, signal },
+        true,
+    )
+
+    return mapOtImportResult(result)
+}
+
+// BE tự đọc file trên share (\\192.168.0.6); không có body
+export async function importOtFromShare(
+    opts: CostOtImportOptions,
+    signal?: AbortSignal,
+): Promise<CostOtImportResult> {
+    const params = new URLSearchParams({ dryRun: String(opts.dryRun) })
+    if (opts.month) params.set('month', opts.month)
+
+    const result = await otRequest(
+        `${API_URL}/ot/import-from-share?${params}`,
+        { method: 'POST', signal },
+        true,
+    )
+
+    return mapOtImportResult(result)
+}
+
+// month dạng "2026-11"
+export async function getOtStatus(
+    month: string,
+    signal?: AbortSignal,
+): Promise<CostOtStatusResponse> {
+    const result = await otRequest(
+        `${API_URL}/ot/status?${new URLSearchParams({ month })}`,
+        { method: 'GET', signal },
+        false,
+    )
+
+    if (!isRecord(result) || !Array.isArray(result.rows)) {
+        throw new CostApiError(getMessages().costOt.errors.invalidResponse)
+    }
+
+    return {
+        month: text(result.month) ?? month,
+        unit: text(result.unit) ?? 'K$',
+        shareImportEnabled: result.shareImportEnabled === true,
+        rows: result.rows.filter(isRecord).flatMap(mapOtStatusRow),
+    }
 }
 
 
