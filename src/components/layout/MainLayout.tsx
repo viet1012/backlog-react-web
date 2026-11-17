@@ -10,6 +10,7 @@ import { clockInTimeline, useClockInRun } from '../shift/clockInStore'
 import { KeepAliveOutlet } from './KeepAliveOutlet'
 import { LeftSidebar } from './LeftSidebar'
 import { setNavPending, useNavPending } from './navPending'
+import { recordPageVisit } from './pageUsage'
 
 // Clock-in: the app is mounted under the shutter, then the sidebar and the
 // page come up as it rolls up ("lights on"). Dim, not invisible, while
@@ -60,6 +61,8 @@ export function MainLayout() {
   // Router đổi xong (hoặc người dùng bấm lại đúng trang hiện tại) → xoá trạng thái chờ
   useEffect(() => {
     setNavPending(null)
+    // Trang chủ dùng số liệu này để đưa trang hay dùng lên đầu kệ
+    recordPageVisit(pathname)
   }, [pathname])
 
   // ms from mount until the shutter starts rolling up; null when not signing in

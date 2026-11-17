@@ -336,6 +336,7 @@ export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeas
       hint: t.userHome.pageHints[item.labelKey],
       action: (item.action === 'input' ? t.sidebar.input : t.sidebar.view).toUpperCase(),
       group: t.nav.groups[entry.groupId],
+      badge: entry.frequent ? t.userHome.frequent : undefined,
       status: item.status === 'developing'
         ? t.sidebar.developing
         : item.status === 'todo' ? t.sidebar.notStarted : t.sidebar.comingSoon,
@@ -354,7 +355,8 @@ export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeas
 
   function tooltipLines(index: number, crate: CratePlacement) {
     if (crate.kind === 'upcoming') return [texts[index].status]
-    return texts[index].hint ? [texts[index].hint] : []
+    const { hint, badge } = texts[index]
+    return [hint, badge && `★ ${badge}`].filter((line): line is string => Boolean(line))
   }
 
   // Thùng dùng ngay: mô tả trang (không in trên nhãn vì quá nhỏ); ẩn khi đã bấm chọn
@@ -478,10 +480,11 @@ export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeas
               onFocus={() => setFocused(index)}
               onBlur={() => setFocused(null)}
             >
-              {texts[index].hint ? `${texts[index].title} — ${texts[index].hint}` : texts[index].title}
+              {[texts[index].title, texts[index].hint, texts[index].badge].filter(Boolean).join(' — ')}
             </a>
           ) : (
-            <span key={crate.entry.item.path} tabIndex={0} onFocus={() => setFocused(index)} onBlur={() => setFocused(null)}>
+            // Không bấm được nên không nằm trong thứ tự Tab; trình đọc màn hình vẫn đọc
+            <span key={crate.entry.item.path}>
               {`${texts[index].title}, ${texts[index].status}`}
             </span>
           )

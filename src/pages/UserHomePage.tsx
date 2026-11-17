@@ -6,6 +6,7 @@ import { SpeedRounded } from '@mui/icons-material'
 
 import { PageHeader } from '../components/common/PageHeader'
 import { PageShell } from '../components/common/PageShell'
+import { FindPageButton } from '../components/userHome/FindPageButton'
 import { GraphicsQualityButton, type RenderSize } from '../components/userHome/graphics/GraphicsQualityButton'
 import {
   detectGpu,
@@ -123,6 +124,8 @@ export function UserHomePage({ mode, onToggleMode }: UserHomePageProps) {
         mode={mode}
         onToggleMode={onToggleMode}
         actions={(
+          <>
+          <FindPageButton />
           <GraphicsQualityButton
             setting={setting}
             level={level}
@@ -132,6 +135,7 @@ export function UserHomePage({ mode, onToggleMode }: UserHomePageProps) {
             renderSize={renderSize}
             onChange={changeSetting}
           />
+          </>
         )}
       />
 

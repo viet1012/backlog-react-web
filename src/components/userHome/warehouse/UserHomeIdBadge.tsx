@@ -4,7 +4,8 @@ import { keyframes } from '@mui/material/styles'
 import { getAuthSession, getAuthenticatedUsername } from '../../../services/authService'
 import { useI18n } from '../../../i18n/useI18n'
 import { FactoryAvatar } from '../../layout/FactoryAvatar'
-import { getDayPeriod, monoFont } from '../../shift/shiftParts'
+import { monoFont } from '../../shift/shiftParts'
+import { useDayPeriod } from '../../shift/useDayPeriod'
 import { readAvatarSeed } from '../../shift/workerCharacter'
 
 /*
@@ -22,9 +23,13 @@ export function UserHomeIdBadge() {
   const { t } = useI18n()
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
 
+  // Đổi buổi (sáng -> chiều...) khi trang mở lâu: avatar đổi theo, như sidebar
+  const period = useDayPeriod()
+
   const session = getAuthSession()
+  // Tên hiển thị = tên đăng nhập (name || employeeId), cũng là seed avatar như sidebar
   const username = getAuthenticatedUsername() ?? t.sidebar.fallbackUser
-  const displayName = session?.name || session?.employeeId || 'User'
+  const displayName = username
   const roles = session?.roles.length ? session.roles : ['USER']
 
   // Chỉ hiện các trường HR có dữ liệu
@@ -104,7 +109,7 @@ export function UserHomeIdBadge() {
 
         <Box sx={{ display: 'flex', gap: 1.2, px: 1.4, pt: 1.1, pb: 1.2 }}>
           <Box sx={{ flexShrink: 0, p: 0.4, borderRadius: '10px', bgcolor: '#e3eaf3', border: '1px solid rgba(20, 30, 45, 0.12)' }}>
-            <FactoryAvatar seed={readAvatarSeed(username)} size={52} period={getDayPeriod(new Date())} animate={!reduceMotion} />
+            <FactoryAvatar seed={readAvatarSeed(username)} size={52} period={period} animate={!reduceMotion} />
           </Box>
           <Box sx={{ minWidth: 0, flex: 1 }}>
             <Typography noWrap sx={{ fontSize: 14.5, fontWeight: 800, lineHeight: 1.2 }}>{displayName}</Typography>

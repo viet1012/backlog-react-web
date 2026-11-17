@@ -29,6 +29,8 @@ export interface CrateTexts {
   action: string
   group: string
   status: string
+  // Nhãn vàng góc trên trái (trang hay dùng)
+  badge?: string
 }
 
 // Phần chất lượng đồ hoạ thùng cần biết
@@ -227,6 +229,8 @@ export function Crate3D({ placement, index, texts, color, icon, highlighted, pic
   const faceH = h * 0.98
   const faceRow = (fromTop: number) => faceH / 2 - faceH * fromTop
   const textZ = 0.002
+  const badgeW = w * 0.3
+  const badgeH = h * 0.12
 
   return (
     <>
@@ -270,6 +274,25 @@ export function Crate3D({ placement, index, texts, color, icon, highlighted, pic
           <>
             {textures.icon && (
               <DecalPlane map={textures.icon} width={iconSize} height={iconSize} position={[0, iconY, frontZ + 0.0005]} roughness={0.9} />
+            )}
+            {/* Nhãn vàng dán tay góc trên trái: trang hay dùng */}
+            {texts.badge && (
+              <group position={[-w / 2 + w * 0.05 + badgeW / 2, h / 2 - h * 0.06 - badgeH / 2, frontZ + 0.001]} rotation-z={0.05}>
+                <mesh raycast={noRaycast}>
+                  <planeGeometry args={[badgeW, badgeH]} />
+                  <meshStandardMaterial color="#ffd23f" roughness={0.55} toneMapped={false} polygonOffset polygonOffsetFactor={-2} />
+                </mesh>
+                <FitText
+                  position={[0, 0, textZ]}
+                  fontSize={badgeH * 0.56}
+                  letterSpacing={0.06}
+                  whiteSpace="nowrap"
+                  fitWidth={badgeW * 0.88}
+                  color={INK}
+                >
+                  {texts.badge.toUpperCase()}
+                </FitText>
+              </group>
             )}
             <group position={[0, stickerY, frontZ + 0.001]}>
               <DecalPlane map={textures.sticker} width={stickerW} height={stickerH} position={[0, 0, 0]} roughness={0.5} />

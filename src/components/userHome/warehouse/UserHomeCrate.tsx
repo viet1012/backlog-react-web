@@ -146,7 +146,28 @@ export function UserHomeCrate({ entry, kind, size, delayMs, dark }: UserHomeCrat
       <Box sx={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', p: `${Math.round(w * 0.06)}px` }}>
         <Box sx={{ position: 'absolute', left: '42%', width: '16%', top: 0, height: '24%', bgcolor: TAPE }} />
         <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: font }}>
-          {showMarks && (
+          {entry.frequent ? (
+            // Nhãn vàng dán tay: trang người dùng hay mở
+            <Typography
+              noWrap
+              sx={{
+                px: 0.5,
+                py: 0.15,
+                borderRadius: '2px',
+                fontSize: Math.max(8.5, font * 0.62),
+                fontWeight: 900,
+                lineHeight: 1.2,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: INK,
+                bgcolor: C.yellow,
+                border: `1px solid ${INK}`,
+                transform: 'rotate(-3deg)',
+              }}
+            >
+              ★ {t.userHome.frequent}
+            </Typography>
+          ) : showMarks && (
             <Typography sx={{ fontSize: font * 0.85, fontWeight: 900, lineHeight: 1, color: 'rgba(60, 35, 10, 0.45)' }}>↑↑</Typography>
           )}
           <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -228,7 +249,7 @@ export function UserHomeCrate({ entry, kind, size, delayMs, dark }: UserHomeCrat
         component={RouterLink}
         to={item.path}
         onClick={handlePick}
-        aria-label={hint ? `${label} — ${hint}` : label}
+        aria-label={[label, hint, entry.frequent ? t.userHome.frequent : ''].filter(Boolean).join(' — ')}
         data-picked={picked || undefined}
         sx={{
           position: 'relative',
@@ -280,10 +301,11 @@ export function UserHomeCrate({ entry, kind, size, delayMs, dark }: UserHomeCrat
         arrow
         title={`${label} · ${statusLabel}`}
       >
+        {/* Không bấm được nên không nằm trong thứ tự Tab; trình đọc màn hình vẫn đọc nhãn */}
         <Box
-          tabIndex={0}
+          role="img"
           aria-label={`${label}, ${statusLabel}`}
-          sx={{ position: 'relative', transformStyle: 'preserve-3d', outline: 'none', '&:focus-visible .crate-front': { outline: `3px solid ${C.yellow}`, outlineOffset: 3 } }}
+          sx={{ position: 'relative', transformStyle: 'preserve-3d' }}
         >
           {body}
         </Box>

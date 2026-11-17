@@ -516,6 +516,8 @@ export const vi: Messages = {
         loading3d: 'Đang dựng kho hàng…',
         readyNone: 'Chưa có trang nào cho vai trò của bạn.',
         upcomingNone: 'Hiện chưa có chức năng mới.',
+        frequent: 'Hay dùng',
+        findPage: 'Tìm trang',
         pageHints: {
             costMonitoring: 'Chi phí theo tháng so với mục tiêu PL',
             machine: 'Bản đồ máy: an toàn, dừng máy, tải máy',

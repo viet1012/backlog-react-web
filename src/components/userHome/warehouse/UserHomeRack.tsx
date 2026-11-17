@@ -179,6 +179,11 @@ function RackTier({ kind, code, label, entries, empty, flex, maxSize, eye, delay
   )
 }
 
+// Tầng "Sắp ra mắt" không bấm được: ít mục thì co lại, nhường chỗ cho thùng dùng ngay (tối đa 0.9 so với 1.3)
+function upcomingFlex(count: number) {
+  return Math.min(0.9, 0.4 + count * 0.12)
+}
+
 interface UserHomeRackProps {
   menu: HomeMenu
   dark: boolean
@@ -243,7 +248,7 @@ export function UserHomeRack({ menu, dark }: UserHomeRackProps) {
         label={t.userHome.tierUpcoming}
         entries={menu.upcoming}
         empty={t.userHome.upcomingNone}
-        flex={0.9}
+        flex={upcomingFlex(menu.upcoming.length)}
         maxSize={150}
         eye="50% 0%"
         delayBase={500}

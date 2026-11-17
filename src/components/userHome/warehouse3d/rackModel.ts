@@ -64,6 +64,18 @@ export interface RackLayout {
   height: number
 }
 
+/*
+ * Tầng "Sắp ra mắt" không bấm được: ít thùng (vừa 1 hàng ở cỡ tối đa) thì hạ thấp tầng,
+ * kệ thấp hơn -> camera đứng gần hơn -> thùng dùng ngay to hơn trên màn hình.
+ */
+function tierClear(spec: TierSpec, count: number) {
+  if (spec.kind !== 'upcoming') return spec.clear
+  if (count === 0) return 0.45
+  // Thùng cỡ tối đa cao maxSize / CRATE_RATIO; chừa 8% phía trên như fitCrates bên dưới
+  if (count <= 3) return Math.min(spec.clear, spec.maxSize / CRATE_RATIO / 0.92 + 0.04)
+  return spec.clear
+}
+
 export function buildRackLayout(menu: HomeMenu): RackLayout {
   const byKind: Record<CrateKind, HomeMenuEntry[]> = {
     ready: menu.ready,
@@ -74,8 +86,9 @@ export function buildRackLayout(menu: HomeMenu): RackLayout {
   const crates: CratePlacement[] = []
   let deckY = RACK.base + RACK.beam
 
-  for (const spec of TIERS) {
-    const entries = byKind[spec.kind]
+  for (const baseSpec of TIERS) {
+    const entries = byKind[baseSpec.kind]
+    const spec = { ...baseSpec, clear: tierClear(baseSpec, entries.length) }
     // Chừa 8% phía trên cho thoáng
     const fit = fitCrates(entries.length, innerWidth, spec.clear * 0.92, { gap: RACK.gap, maxSize: spec.maxSize })
     const w = fit.size

@@ -609,6 +609,9 @@ export const en = {
         loading3d: 'Setting up the warehouse…',
         readyNone: 'No page is available for your role yet.',
         upcomingNone: 'Nothing scheduled right now.',
+        // Sticker on the pages this user opens most
+        frequent: 'Frequent',
+        findPage: 'Find page',
         // Short description per menu labelKey; missing keys show no description
         pageHints: {
             costMonitoring: 'Monthly cost against the PL target',

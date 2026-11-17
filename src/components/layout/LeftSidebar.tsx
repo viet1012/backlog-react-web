@@ -47,7 +47,7 @@ import {
 } from 'react-router-dom'
 
 import { uiTokens } from '../../theme/uiTokens'
-import { getDayPeriod, monoFont, type DayPeriod } from '../shift/shiftParts'
+import { monoFont, type DayPeriod } from '../shift/shiftParts'
 
 import {
   getGroupColor,
@@ -80,6 +80,8 @@ import { QuickJumpDialog, type QuickJumpItem } from './QuickJumpDialog'
 import { useI18n } from '../../i18n/useI18n'
 import { preloadRoute } from '../../pages/lazyPages'
 import { setNavPending } from './navPending'
+import { onOpenQuickJump } from './quickJump'
+import { useDayPeriod } from '../shift/useDayPeriod'
 
 // =========================================================
 // CONSTANTS
@@ -121,18 +123,6 @@ function isVisible(item: MenuItemConfig) {
 
 function isReady(item: MenuItemConfig) {
   return (item.status ?? 'ready') === 'ready'
-}
-
-// Re-checked every minute so the greeting follows the clock.
-function useDayPeriod() {
-  const [period, setPeriod] = useState(() => getDayPeriod(new Date()))
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setPeriod(getDayPeriod(new Date())), 60_000)
-    return () => window.clearInterval(timer)
-  }, [])
-
-  return period
 }
 
 const logoutButtonSx = (theme: Theme) => ({
@@ -255,7 +245,11 @@ export function LeftSidebar() {
     }
 
     window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
+    const offOpen = onOpenQuickJump(() => setSearchOpen(true))
+    return () => {
+      window.removeEventListener('keydown', handleKey)
+      offOpen()
+    }
   }, [])
 
   const quickJumpItems: QuickJumpItem[] = groups.flatMap((group) =>

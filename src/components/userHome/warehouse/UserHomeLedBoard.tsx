@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { Box, GlobalStyles, Typography } from '@mui/material'
 import { keyframes } from '@mui/material/styles'
 import { PlaceRounded } from '@mui/icons-material'
 
-import { getAuthSession } from '../../../services/authService'
+import { getAuthenticatedUsername } from '../../../services/authService'
 import { useI18n } from '../../../i18n/useI18n'
 import { FACTORY_NAME, getDayPeriod } from '../../shift/shiftParts'
 import { HOME_FONT, homeFontFaces } from '../homeFonts'
@@ -52,13 +52,18 @@ export function UserHomeLedBoard() {
   const { t, language } = useI18n()
   const now = useNow()
 
-  const session = getAuthSession()
-  const displayName = session?.name || session?.employeeId || 'User'
+  // Tên không đổi trong lúc ở trang: đọc 1 lần, không đọc lại storage mỗi giây
+  const [displayName] = useState(() => getAuthenticatedUsername() ?? 'User')
   const period = getDayPeriod(now)
   const locale = language === 'vi' ? 'vi-VN' : 'en-US'
 
-  const weekday = new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(now)
-  const dateFormat = new Intl.DateTimeFormat(locale, { day: '2-digit', month: '2-digit', year: 'numeric' })
+  // Tạo bộ định dạng 1 lần theo ngôn ngữ (khá tốn), không tạo lại mỗi tick
+  const { weekdayFormat, dateFormat } = useMemo(() => ({
+    weekdayFormat: new Intl.DateTimeFormat(locale, { weekday: 'long' }),
+    dateFormat: new Intl.DateTimeFormat(locale, { day: '2-digit', month: '2-digit', year: 'numeric' }),
+  }), [locale])
+
+  const weekday = weekdayFormat.format(now)
   const dateText = dateFormat.format(now)
   // LED 7 đoạn không vẽ được "/": giữ thứ tự ngày/tháng theo ngôn ngữ, nối bằng "-"
   const dateSegments = dateFormat.formatToParts(now).filter((part) => part.type !== 'literal').map((part) => part.value).join('-')
