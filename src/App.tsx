@@ -225,14 +225,11 @@ function App() {
                   <Route path="shipping-schedule" element={<ShipmentPage mode={mode} onToggleMode={toggleThemeMode} />} />
                 </Route>
 
+                {/* Trang mặc định của mọi tài khoản (getDefaultAuthRoute): không giới hạn role */}
                 <Route
                   path="user-home"
-                  element={
-                    <RoleRoute roles={['USER']} />
-                  }
-                >
-                  <Route index element={<UserHomePage mode={mode} onToggleMode={toggleThemeMode} />} />
-                </Route>
+                  element={<UserHomePage mode={mode} onToggleMode={toggleThemeMode} />}
+                />
 
                 <Route
                   path="sales-status"

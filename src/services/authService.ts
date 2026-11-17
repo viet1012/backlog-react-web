@@ -261,21 +261,11 @@ export function getDefaultAuthRoute(
   session: AuthSession | null =
     getAuthSession(),
 ): string {
-  if (!session) {
-    return '/login'
-  }
-
-  const hasProductionRole =
-    session.roles.some(
-      (role) =>
-        role === 'ADMIN'
-        || role === 'PC'
-        || role === 'PRO',
-    )
-
-  return hasProductionRole
-    ? '/odbf'
-    : '/user-home'
+  // Mọi tài khoản vào trang chủ trước (route /user-home mở cho mọi role,
+  // nếu không RoleRoute sẽ chuyển hướng vòng lặp)
+  return session
+    ? '/user-home'
+    : '/login'
 }
 
 // =========================================================

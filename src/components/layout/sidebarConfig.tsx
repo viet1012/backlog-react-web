@@ -136,7 +136,6 @@ export const menuGroups:
                     labelKey: 'userHome',
                     path: '/user-home',
                     status: 'ready',
-                    roles: ['USER'],
                     icon: (
                         <HomeOutlined />
                     ),
