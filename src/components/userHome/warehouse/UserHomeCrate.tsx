@@ -103,6 +103,7 @@ export function UserHomeCrate({ entry, kind, size, delayMs, dark }: UserHomeCrat
   const navigate = useNavigate()
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const [picked, setPicked] = useState(false)
+  const [landed, setLanded] = useState(false)
   const timerRef = useRef(0)
 
   // Ẩn trang (giữ lại bằng Activity): quay lại thì thùng đã nằm lại trên kệ
@@ -317,12 +318,16 @@ export function UserHomeCrate({ entry, kind, size, delayMs, dark }: UserHomeCrat
     )
   }
 
-  // Lớp ngoài: hàng "được thả" xuống kệ lúc vào trang (tách khỏi transform hover ở lớp trong)
+  // Lớp ngoài: hàng "được thả" xuống kệ lúc vào trang (tách khỏi transform hover ở lớp trong).
+  // Thả xong thì gỡ animation: trang được giữ lại (ẩn bằng display:none), hiện lại sẽ không thả lần nữa
   return (
     <Box
+      onAnimationEnd={(event) => {
+        if (event.target === event.currentTarget) setLanded(true)
+      }}
       sx={{
         transformStyle: 'preserve-3d',
-        animation: `${crateDrop} 640ms cubic-bezier(0.3, 0.9, 0.4, 1) ${delayMs}ms both`,
+        animation: landed ? 'none' : `${crateDrop} 640ms cubic-bezier(0.3, 0.9, 0.4, 1) ${delayMs}ms both`,
         '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
       }}
     >

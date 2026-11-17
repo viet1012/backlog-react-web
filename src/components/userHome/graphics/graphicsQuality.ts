@@ -4,8 +4,8 @@ import { loadPreference, savePreference } from '../../../utils/uiPreferences'
  * Mức chất lượng đồ hoạ trang chủ. Không import three: trang dùng file này trước khi quyết định tải bản 3D.
  *
  * flat   2D CSS, không WebGL            -> máy rất yếu / không có WebGL
- * low    3D phẳng, nét viền kiểu truyện tranh, không bóng thời gian thực
- * medium 3D đầy đủ, bóng 1024px          -> mặc định card tích hợp
+ * low    3D phẳng, nét viền kiểu truyện tranh, không bóng thời gian thực -> Intel HD/UHD, máy ít nhân/RAM
+ * medium 3D đầy đủ, bóng 1024px          -> mặc định card tích hợp (Iris, AMD APU, Apple)
  * high   bóng 2048px, độ nét tới 2x      -> card rời phổ thông
  * ultra  siêu lấy mẫu, bóng 4096px, hiệu ứng sống động (hạt bụi, LED nháy, vẽ liên tục)
  */
@@ -157,6 +157,14 @@ function probeGpu(): GpuInfo {
     let suggested: GraphicsLevel = 'medium'
     if (/swiftshader|llvmpipe|software|basic render/.test(key)) suggested = 'flat'
     else if (/nvidia|geforce|quadro|rtx|gtx|radeon rx|radeon pro|arc\(tm\) a|arc a/.test(key)) suggested = 'high'
+    // Card Intel HD/UHD đời cũ (máy văn phòng phổ biến): bóng thời gian thực đã nặng -> Thấp.
+    // Iris / Iris Xe / Arc khoẻ hơn nên giữ mức Vừa
+    else if (/intel/.test(key) && /\b(u?hd) graphics/.test(key)) suggested = 'low'
+
+    // CPU ít nhân hoặc ít RAM: hạ thêm 1 bậc (không xuống 2D), trang vào nhanh hơn ngay lần đầu
+    const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory
+    const weakHost = (navigator.hardwareConcurrency || 8) <= 4 || (memory !== undefined && memory <= 4)
+    if (weakHost && suggested !== 'flat' && suggested !== 'low') suggested = lowerLevel(suggested)
 
     return { webgl: true, renderer: name, suggested }
   } catch {

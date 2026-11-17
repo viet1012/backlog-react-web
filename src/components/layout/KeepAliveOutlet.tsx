@@ -1,6 +1,8 @@
 import {
   Activity,
   Suspense,
+  useLayoutEffect,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -39,19 +41,66 @@ interface KeptPageProps {
   fallback: ReactNode
 }
 
+interface ScrollPos {
+  top: number
+  left: number
+}
+
+// Trang ẩn bằng display:none thì trình duyệt bỏ vị trí cuộn của mọi vùng cuộn bên trong
+// (bảng, danh sách, khung trang): hiện lại là nhảy về đầu, DataGrid còn nháy trắng hàng.
+// Ghi lại vị trí mỗi lần cuộn lúc trang đang hiện; hiện lại thì trả về trước khi vẽ.
+function useKeepScroll(active: boolean) {
+  const rootRef = useRef<HTMLDivElement>(null)
+  const saved = useRef(new Map<Element, ScrollPos>())
+
+  useLayoutEffect(() => {
+    const root = rootRef.current
+    const positions = saved.current
+    if (!active || !root) return
+
+    for (const [element, pos] of positions) {
+      if (!element.isConnected) continue
+      element.scrollTop = pos.top
+      element.scrollLeft = pos.left
+    }
+
+    const onScroll = (event: Event) => {
+      const target = event.target
+      if (!(target instanceof Element)) return
+      positions.set(target, { top: target.scrollTop, left: target.scrollLeft })
+    }
+
+    // scroll không nổi bọt: nghe ở pha capture để bắt mọi vùng cuộn con
+    root.addEventListener('scroll', onScroll, { capture: true, passive: true })
+    return () => {
+      root.removeEventListener('scroll', onScroll, { capture: true })
+      // bỏ các vùng cuộn đã bị gỡ khỏi trang
+      for (const element of positions.keys()) {
+        if (!element.isConnected) positions.delete(element)
+      }
+    }
+  }, [active])
+
+  return rootRef
+}
+
 function KeptPage({ active, element, fallback }: KeptPageProps) {
   const [frozen, setFrozen] = useState(element)
+  const rootRef = useKeepScroll(active)
 
   if (active && element !== frozen) {
     setFrozen(element)
   }
 
   return (
-    <Activity mode={active ? 'visible' : 'hidden'}>
-      <Suspense fallback={fallback}>
-        {active ? element : frozen}
-      </Suspense>
-    </Activity>
+    // display: contents: không tạo hộp, trang vẫn là con flex trực tiếp của khung như cũ
+    <div ref={rootRef} style={{ display: 'contents' }}>
+      <Activity mode={active ? 'visible' : 'hidden'}>
+        <Suspense fallback={fallback}>
+          {active ? element : frozen}
+        </Suspense>
+      </Activity>
+    </div>
   )
 }
 
