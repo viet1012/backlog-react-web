@@ -1,4 +1,5 @@
 import { alpha, type Theme } from '@mui/material/styles'
+import type { UtilityScopeCode } from '../../types/utilityEvn'
 import type { EvnPctTone } from '../../utils/utilityEvnCompare'
 
 export const TABULAR_NUMS = { fontVariantNumeric: 'tabular-nums' } as const
@@ -14,6 +15,17 @@ const EVN_SERIES_COLORS = {
 
 export function evnSeriesColors(theme: Theme): { excel: string; actual: string } {
   return EVN_SERIES_COLORS[theme.palette.mode === 'dark' ? 'dark' : 'light']
+}
+
+// Màu nhận diện 3 phạm vi (chế độ Tổng quan) – tránh trùng xanh Excel / xanh lá Thực tế / cam partial
+// và màu trạng thái; đã chạy validate_palette --pairs all (light + dark: PASS)
+const EVN_SCOPE_COLORS: Record<'light' | 'dark', Record<UtilityScopeCode, string>> = {
+  light: { KVH: '#6250d6', FAC_AB: '#d55181', FAC_C: '#0891b2' },
+  dark: { KVH: '#9085e9', FAC_AB: '#d55181', FAC_C: '#0891b2' },
+}
+
+export function evnScopeColors(theme: Theme): Record<UtilityScopeCode, string> {
+  return EVN_SCOPE_COLORS[theme.palette.mode === 'dark' ? 'dark' : 'light']
 }
 
 export function evnGridStroke(theme: Theme): string {

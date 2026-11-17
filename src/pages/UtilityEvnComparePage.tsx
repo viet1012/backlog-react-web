@@ -1,6 +1,7 @@
 import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined'
 import GridOnOutlinedIcon from '@mui/icons-material/GridOnOutlined'
 import InsertChartOutlinedIcon from '@mui/icons-material/InsertChartOutlined'
+import SpaceDashboardOutlinedIcon from '@mui/icons-material/SpaceDashboardOutlined'
 import TableRowsOutlinedIcon from '@mui/icons-material/TableRowsOutlined'
 import {
   Alert,
@@ -29,6 +30,7 @@ import { EvnCompareKpi } from '../components/utilityEvn/EvnCompareKpi'
 import { EvnCompareNotes } from '../components/utilityEvn/EvnCompareNotes'
 import { EvnCompareTable } from '../components/utilityEvn/EvnCompareTable'
 import { EvnMeterIssues } from '../components/utilityEvn/EvnMeterIssues'
+import { EvnOverviewBoard } from '../components/utilityEvn/EvnOverviewBoard'
 import { useUtilityEvnCompare } from '../hooks/useUtilityEvnCompare'
 import { useI18n } from '../i18n/useI18n'
 import { uiTokens } from '../theme/uiTokens'
@@ -51,6 +53,9 @@ import {
   resolveBillPeriod,
   summarizeEvnCompare,
   summarizeEvnScopes,
+  buildEvnOverview,
+  buildEvnOverviewCsv,
+  buildEvnOverviewRows,
   type EvnUnit,
 } from '../utils/utilityEvnCompare'
 
@@ -63,10 +68,14 @@ const SCOPE_PREF_KEY = 'utility-evn:scope'
 const UNIT_PREF_KEY = 'utility-evn:unit'
 const VIEW_PREF_KEY = 'utility-evn:view'
 
-type EvnViewMode = 'table' | 'chart'
+// table / chart: 1 phạm vi theo tab; overview: cả 3 phạm vi trên 1 màn
+type EvnViewMode = 'table' | 'chart' | 'overview'
+
+const VIEW_MODES: readonly EvnViewMode[] = ['table', 'chart', 'overview']
 
 function loadView(): EvnViewMode {
-  return loadPreference(VIEW_PREF_KEY) === 'chart' ? 'chart' : 'table'
+  const stored = loadPreference(VIEW_PREF_KEY)
+  return VIEW_MODES.find((v) => v === stored) ?? 'table'
 }
 
 function loadScope(): UtilityScopeCode {
@@ -106,6 +115,12 @@ export function UtilityEvnComparePage({ mode, onToggleMode }: UtilityEvnCompareP
     () => (view === 'chart' ? summarizeEvnScopes(data, evnMetricOf(unit)) : []),
     [data, unit, view],
   )
+  // chế độ Tổng quan: số của cả 3 phạm vi
+  const overview = useMemo(
+    () => (view === 'overview' ? buildEvnOverview(data, evnMetricOf(unit), evnMetricOf(crossUnit)) : []),
+    [data, unit, crossUnit, view],
+  )
+  const overviewRows = useMemo(() => buildEvnOverviewRows(overview), [overview])
   const issues = useMemo(() => collectMeterIssues(data, scope), [data, scope])
   const measuredScope = data?.measured.scopes.find((s) => s.code === scope) ?? null
 
@@ -132,8 +147,31 @@ export function UtilityEvnComparePage({ mode, onToggleMode }: UtilityEvnCompareP
     savePreference(VIEW_PREF_KEY, next)
   }
 
+  // từ thẻ Tổng quan → xem chi tiết 1 phạm vi ở chế độ Bảng
+  function openScope(code: UtilityScopeCode) {
+    changeScope(code)
+    changeView('table')
+  }
+
   function handleExport() {
     const table = labels.table
+
+    if (view === 'overview') {
+      const csv = buildEvnOverviewCsv(overviewRows, overview, unit, {
+        date: table.date,
+        weekday: table.weekday,
+        excel: table.excel,
+        actual: table.actual,
+        diff: table.diff,
+        pct: table.pct,
+        partial: table.partial,
+        total: table.total,
+        weekdayOf: (row) => evnWeekdayLabel(row, table.weekdays),
+      })
+      downloadCsv(csv, `utility-evn-compare_ALL_${month}_${unit}.csv`)
+      return
+    }
+
     const csv = buildEvnCompareCsv(rows, summary, unit, {
       date: table.date,
       weekday: table.weekday,
@@ -174,7 +212,7 @@ export function UtilityEvnComparePage({ mode, onToggleMode }: UtilityEvnCompareP
               size="small"
               variant="outlined"
               startIcon={<FileDownloadOutlinedIcon />}
-              disabled={rows.length === 0}
+              disabled={view === 'overview' ? overviewRows.length === 0 : rows.length === 0}
               onClick={handleExport}
               sx={{ textTransform: 'none', flexShrink: 0, whiteSpace: 'nowrap' }}
             >
@@ -218,42 +256,45 @@ export function UtilityEvnComparePage({ mode, onToggleMode }: UtilityEvnCompareP
               {labels.billPeriod(formatDayMonth(period.from), formatDayMonth(period.to))}
             </Typography>
 
-            <Tabs
-              value={scope}
-              onChange={(_, next: UtilityScopeCode) => changeScope(next)}
-              variant="scrollable"
-              scrollButtons={false}
-              aria-label={labels.scopeAria}
-              sx={(theme) => ({
-                minHeight: 32,
-                '& .MuiTabs-indicator': { display: 'none' },
-                '& .MuiTabs-list': { gap: 0.75, alignItems: 'center', height: 32 },
-                '& .MuiTab-root': {
-                  minHeight: 28,
-                  minWidth: 0,
-                  px: 1.5,
-                  py: 0.25,
-                  borderRadius: 999,
-                  border: 1,
-                  borderColor: 'divider',
-                  textTransform: 'none',
-                  fontSize: 12.5,
-                  fontWeight: 700,
-                  color: 'text.secondary',
-                  transition: 'background-color 120ms, border-color 120ms',
-                  '&:hover': { bgcolor: 'action.hover' },
-                },
-                '& .MuiTab-root.Mui-selected': {
-                  color: 'primary.main',
-                  bgcolor: alpha(theme.palette.primary.main, 0.1),
-                  borderColor: alpha(theme.palette.primary.main, 0.45),
-                },
-              })}
-            >
-              {UTILITY_SCOPE_CODES.map((code) => (
-                <Tab key={code} value={code} label={EVN_SCOPE_LABEL[code]} />
-              ))}
-            </Tabs>
+            {/* Tổng quan hiện cả 3 phạm vi → ẩn tab */}
+            {view !== 'overview' && (
+              <Tabs
+                value={scope}
+                onChange={(_, next: UtilityScopeCode) => changeScope(next)}
+                variant="scrollable"
+                scrollButtons={false}
+                aria-label={labels.scopeAria}
+                sx={(theme) => ({
+                  minHeight: 32,
+                  '& .MuiTabs-indicator': { display: 'none' },
+                  '& .MuiTabs-list': { gap: 0.75, alignItems: 'center', height: 32 },
+                  '& .MuiTab-root': {
+                    minHeight: 28,
+                    minWidth: 0,
+                    px: 1.5,
+                    py: 0.25,
+                    borderRadius: 999,
+                    border: 1,
+                    borderColor: 'divider',
+                    textTransform: 'none',
+                    fontSize: 12.5,
+                    fontWeight: 700,
+                    color: 'text.secondary',
+                    transition: 'background-color 120ms, border-color 120ms',
+                    '&:hover': { bgcolor: 'action.hover' },
+                  },
+                  '& .MuiTab-root.Mui-selected': {
+                    color: 'primary.main',
+                    bgcolor: alpha(theme.palette.primary.main, 0.1),
+                    borderColor: alpha(theme.palette.primary.main, 0.45),
+                  },
+                })}
+              >
+                {UTILITY_SCOPE_CODES.map((code) => (
+                  <Tab key={code} value={code} label={EVN_SCOPE_LABEL[code]} />
+                ))}
+              </Tabs>
+            )}
 
             <ToggleButtonGroup
               exclusive
@@ -285,6 +326,10 @@ export function UtilityEvnComparePage({ mode, onToggleMode }: UtilityEvnCompareP
               <ToggleButton value="chart">
                 <InsertChartOutlinedIcon sx={{ fontSize: 16 }} />
                 {labels.viewChart}
+              </ToggleButton>
+              <ToggleButton value="overview">
+                <SpaceDashboardOutlinedIcon sx={{ fontSize: 16 }} />
+                {labels.viewOverview}
               </ToggleButton>
             </ToggleButtonGroup>
 
@@ -337,14 +382,25 @@ export function UtilityEvnComparePage({ mode, onToggleMode }: UtilityEvnCompareP
               </Alert>
             )}
 
-            <EvnCompareKpi
-              summary={data ? summary : null}
-              unit={unit}
-              cross={{ summary: data ? crossSummary : null, unit: crossUnit }}
-              loading={loading}
-            />
+            {view !== 'overview' && (
+              <EvnCompareKpi
+                summary={data ? summary : null}
+                unit={unit}
+                cross={{ summary: data ? crossSummary : null, unit: crossUnit }}
+                loading={loading}
+              />
+            )}
 
-            {view === 'chart' ? (
+            {view === 'overview' ? (
+              <EvnOverviewBoard
+                overview={overview}
+                rows={overviewRows}
+                unit={unit}
+                crossUnit={crossUnit}
+                loading={loading}
+                onOpenScope={openScope}
+              />
+            ) : view === 'chart' ? (
               <EvnChartBoard
                 rows={rows}
                 summary={summary}
