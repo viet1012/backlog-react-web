@@ -26,7 +26,14 @@ import {
   type EvnUnit,
 } from '../../utils/utilityEvnCompare'
 import { EvnSection } from './EvnSection'
-import { EVN_PARTIAL_COLOR, TABULAR_NUMS, evnToneColor } from './evnCompareUi'
+import {
+  EVN_PARTIAL_COLOR,
+  TABULAR_NUMS,
+  evnAxisTick,
+  evnGridStroke,
+  evnSeriesColors,
+  evnToneColor,
+} from './evnCompareUi'
 
 interface EvnCompareChartProps {
   rows: EvnCompareRow[]
@@ -60,8 +67,7 @@ export function EvnCompareChart({ rows, unit, loading, height = 260 }: EvnCompar
   const theme = useTheme()
   const dark = theme.palette.mode === 'dark'
 
-  const excelColor = dark ? '#60A5FA' : '#2563EB'
-  const actualColor = dark ? '#34D399' : '#059669'
+  const { excel: excelColor, actual: actualColor } = evnSeriesColors(theme)
   const pctColor = alpha(theme.palette.text.secondary, dark ? 0.35 : 0.25)
 
   const data: ChartRow[] = rows.map((row) => {
@@ -77,7 +83,7 @@ export function EvnCompareChart({ rows, unit, loading, height = 260 }: EvnCompar
     }
   })
 
-  const axisTick = { fontSize: 11, fill: theme.palette.text.secondary, style: TABULAR_NUMS }
+  const axisTick = evnAxisTick(theme)
 
   // ngày partial: chấm cam to hơn trên đường thực tế
   const renderActualDot = (props: unknown) => {
@@ -171,7 +177,7 @@ export function EvnCompareChart({ rows, unit, loading, height = 260 }: EvnCompar
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={data} margin={{ top: 8, right: 0, bottom: 0, left: 0 }}>
-              <CartesianGrid vertical={false} stroke={dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'} />
+              <CartesianGrid vertical={false} stroke={evnGridStroke(theme)} />
 
               <XAxis
                 dataKey="label"

@@ -7,6 +7,7 @@ import type {
   UtilityMissingMeter,
   UtilityScopeCode,
 } from '../types/utilityEvn'
+import { UTILITY_SCOPE_CODES } from '../types/utilityEvn'
 import { downloadBlob } from './xlsxWriter'
 
 // =========================================================
@@ -222,6 +223,22 @@ export function summarizeEvnCompare(rows: EvnCompareRow[]): EvnCompareSummary {
     avgPctFull: fullPcts.length > 0 ? fullPcts.reduce((sum, p) => sum + p, 0) / fullPcts.length : null,
     fullDays: fullPcts.length,
   }
+}
+
+// Tổng điện lưới (ngày có Excel) của từng phạm vi – cho biểu đồ so sánh phạm vi
+export interface EvnScopeTotal {
+  code: UtilityScopeCode
+  total: EvnCell
+  excelDays: number
+}
+
+export function summarizeEvnScopes(data: UtilityEvnCompareData | null, metric: EvnMetric): EvnScopeTotal[] {
+  if (!data) return []
+
+  return UTILITY_SCOPE_CODES.map((code) => {
+    const summary = summarizeEvnCompare(buildEvnCompareRows(data, code, metric))
+    return { code, total: summary.totals.totalElectricity, excelDays: summary.excelDays }
+  })
 }
 
 // =========================================================

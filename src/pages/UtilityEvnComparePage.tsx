@@ -1,5 +1,7 @@
 import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined'
 import GridOnOutlinedIcon from '@mui/icons-material/GridOnOutlined'
+import InsertChartOutlinedIcon from '@mui/icons-material/InsertChartOutlined'
+import TableRowsOutlinedIcon from '@mui/icons-material/TableRowsOutlined'
 import {
   Alert,
   Box,
@@ -21,6 +23,7 @@ import { PageHeader } from '../components/common/PageHeader'
 import { PageShell } from '../components/common/PageShell'
 import { RefreshButton } from '../components/common/RefreshButton'
 import { UpdatedStatus } from '../components/common/UpdatedStatus'
+import { EvnChartBoard } from '../components/utilityEvn/EvnChartBoard'
 import { EvnCompareChart } from '../components/utilityEvn/EvnCompareChart'
 import { EvnCompareKpi } from '../components/utilityEvn/EvnCompareKpi'
 import { EvnCompareNotes } from '../components/utilityEvn/EvnCompareNotes'
@@ -47,6 +50,7 @@ import {
   formatDayMonth,
   resolveBillPeriod,
   summarizeEvnCompare,
+  summarizeEvnScopes,
   type EvnUnit,
 } from '../utils/utilityEvnCompare'
 
@@ -57,6 +61,13 @@ interface UtilityEvnComparePageProps {
 
 const SCOPE_PREF_KEY = 'utility-evn:scope'
 const UNIT_PREF_KEY = 'utility-evn:unit'
+const VIEW_PREF_KEY = 'utility-evn:view'
+
+type EvnViewMode = 'table' | 'chart'
+
+function loadView(): EvnViewMode {
+  return loadPreference(VIEW_PREF_KEY) === 'chart' ? 'chart' : 'table'
+}
 
 function loadScope(): UtilityScopeCode {
   const stored = loadPreference(SCOPE_PREF_KEY)
@@ -76,6 +87,7 @@ export function UtilityEvnComparePage({ mode, onToggleMode }: UtilityEvnCompareP
   const [month, setMonth] = useState(() => dayjs().format('YYYY-MM'))
   const [scope, setScope] = useState<UtilityScopeCode>(loadScope)
   const [unit, setUnit] = useState<EvnUnit>(loadUnit)
+  const [view, setView] = useState<EvnViewMode>(loadView)
 
   const { data, loading, error, lastUpdated, refresh } = useUtilityEvnCompare(month)
 
@@ -88,6 +100,11 @@ export function UtilityEvnComparePage({ mode, onToggleMode }: UtilityEvnCompareP
   const crossSummary = useMemo(
     () => summarizeEvnCompare(buildEvnCompareRows(data, scope, evnMetricOf(crossUnit))),
     [data, scope, crossUnit],
+  )
+  // chỉ tính khi đang ở chế độ Biểu đồ (so sánh 3 phạm vi)
+  const scopeTotals = useMemo(
+    () => (view === 'chart' ? summarizeEvnScopes(data, evnMetricOf(unit)) : []),
+    [data, unit, view],
   )
   const issues = useMemo(() => collectMeterIssues(data, scope), [data, scope])
   const measuredScope = data?.measured.scopes.find((s) => s.code === scope) ?? null
@@ -107,6 +124,12 @@ export function UtilityEvnComparePage({ mode, onToggleMode }: UtilityEvnCompareP
     if (!next) return
     setUnit(next)
     savePreference(UNIT_PREF_KEY, next)
+  }
+
+  function changeView(next: EvnViewMode | null) {
+    if (!next) return
+    setView(next)
+    savePreference(VIEW_PREF_KEY, next)
   }
 
   function handleExport() {
@@ -245,6 +268,26 @@ export function UtilityEvnComparePage({ mode, onToggleMode }: UtilityEvnCompareP
               ))}
             </ToggleButtonGroup>
 
+            <ToggleButtonGroup
+              exclusive
+              size="small"
+              value={view}
+              onChange={(_, next: EvnViewMode | null) => changeView(next)}
+              aria-label={labels.viewAria}
+              sx={{
+                '& .MuiToggleButton-root': { height: 30, px: 1.25, gap: 0.5, textTransform: 'none', fontSize: 12.5, fontWeight: 700 },
+              }}
+            >
+              <ToggleButton value="table">
+                <TableRowsOutlinedIcon sx={{ fontSize: 16 }} />
+                {labels.viewTable}
+              </ToggleButton>
+              <ToggleButton value="chart">
+                <InsertChartOutlinedIcon sx={{ fontSize: 16 }} />
+                {labels.viewChart}
+              </ToggleButton>
+            </ToggleButtonGroup>
+
             {dataUntil && (
               <Typography
                 sx={{
@@ -301,15 +344,30 @@ export function UtilityEvnComparePage({ mode, onToggleMode }: UtilityEvnCompareP
               loading={loading}
             />
 
-            <EvnCompareChart rows={rows} unit={unit} loading={loading} />
+            {view === 'chart' ? (
+              <EvnChartBoard
+                rows={rows}
+                summary={summary}
+                unit={unit}
+                loading={loading}
+                scopeTotals={scopeTotals}
+                issues={issues}
+                minCoveragePct={data?.measured.minCoveragePct ?? null}
+                estimatedMissingMwh={measuredScope?.estimatedMissingMwh ?? null}
+              />
+            ) : (
+              <>
+                <EvnCompareChart rows={rows} unit={unit} loading={loading} />
 
-            <EvnCompareTable rows={rows} summary={summary} unit={unit} loading={loading} />
+                <EvnCompareTable rows={rows} summary={summary} unit={unit} loading={loading} />
 
-            <EvnMeterIssues
-              issues={issues}
-              estimatedMissingMwh={measuredScope?.estimatedMissingMwh ?? null}
-              loading={loading && !data}
-            />
+                <EvnMeterIssues
+                  issues={issues}
+                  estimatedMissingMwh={measuredScope?.estimatedMissingMwh ?? null}
+                  loading={loading && !data}
+                />
+              </>
+            )}
 
             <EvnCompareNotes
               minCoveragePct={data?.measured.minCoveragePct ?? null}

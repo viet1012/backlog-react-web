@@ -6,6 +6,24 @@ export const TABULAR_NUMS = { fontVariantNumeric: 'tabular-nums' } as const
 // Ngày partial (đồng hồ mất dữ liệu)
 export const EVN_PARTIAL_COLOR = '#f97316'
 
+// Màu 2 chuỗi Excel / Thực tế – đã chạy validate_palette (light + dark: PASS)
+const EVN_SERIES_COLORS = {
+  light: { excel: '#2563EB', actual: '#059669' },
+  dark: { excel: '#3B82F6', actual: '#059669' },
+} as const
+
+export function evnSeriesColors(theme: Theme): { excel: string; actual: string } {
+  return EVN_SERIES_COLORS[theme.palette.mode === 'dark' ? 'dark' : 'light']
+}
+
+export function evnGridStroke(theme: Theme): string {
+  return theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'
+}
+
+export function evnAxisTick(theme: Theme) {
+  return { fontSize: 11, fill: theme.palette.text.secondary, style: TABULAR_NUMS }
+}
+
 export function evnToneColor(theme: Theme, tone: EvnPctTone | null): string {
   if (tone === 'ok') return theme.palette.success.main
   if (tone === 'warn') return theme.palette.warning.main
