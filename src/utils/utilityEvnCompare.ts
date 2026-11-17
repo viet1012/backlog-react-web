@@ -344,6 +344,8 @@ export function collectMeterIssues(
         missingHours: missing === null ? prev?.missingHours ?? null : (prev?.missingHours ?? 0) + missing,
         severity: null,
         lastDataAt: meter.lastDataAt,
+        estimatedMissingMwh: null,
+        estimatedMissingKusd: null,
         dates: [],
       })
     }

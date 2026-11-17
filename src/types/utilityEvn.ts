@@ -74,6 +74,10 @@ export interface UtilityMeterIssue {
   missingHours: number | null
   severity: UtilityMeterSeverity | null
   lastDataAt: string | null
+  // MWh ước tính không ghi nhận được = kWh TB/giờ hợp lệ × missingHours; chỉ meter MAJOR, MINOR luôn null
+  estimatedMissingMwh: number | null
+  // K$ = estimatedMissingMwh × giá lưới TB của Fac trong kỳ; null khi MWh null hoặc chưa có đơn giá
+  estimatedMissingKusd: number | null
   // YYYY-MM-DD; BE không trả → gom từ missingMeters theo ngày
   dates: string[]
 }

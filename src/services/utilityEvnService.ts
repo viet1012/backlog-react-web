@@ -131,6 +131,8 @@ function meterIssue(value: unknown, scopeCode: string): UtilityMeterIssue | null
     missingHours: num(value.missingHours),
     severity: str(value.severity)?.toUpperCase() ?? null,
     lastDataAt: str(value.lastDataAt),
+    estimatedMissingMwh: num(value.estimatedMissingMwh),
+    estimatedMissingKusd: num(value.estimatedMissingKusd),
     // BE chưa trả ngày → utils gom từ daily[].missingMeters
     dates: [],
   }

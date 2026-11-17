@@ -1,5 +1,6 @@
-import { Box, Skeleton, Stack, Typography } from '@mui/material'
+import { Box, Skeleton, Stack, Tooltip, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded'
 import { useI18n } from '../../i18n/useI18n'
 import { appScrollbarSx } from '../../theme/scrollbarStyle'
@@ -18,17 +19,37 @@ interface EvnMeterIssuesProps {
 
 type Align = 'left' | 'center' | 'right'
 
+// MWh / K$ ước tính: 3 chữ số thập phân, null → dash (không hiện 0)
+function formatEstimate(value: number | null): string {
+  if (value === null) return EVN_DASH
+  return value.toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 })
+}
+
 export function EvnMeterIssues({ issues, estimatedMissingMwh, loading }: EvnMeterIssuesProps) {
   const { t } = useI18n()
   const labels = t.utilityEvn.issues
 
-  const columns: { key: string; label: string; width?: number; align: Align }[] = [
+  const columns: { key: string; label: string; width?: number; align: Align; hint?: string }[] = [
     { key: 'meter', label: labels.meter, width: 220, align: 'left' },
     { key: 'fac', label: labels.fac, width: 80, align: 'center' },
     { key: 'severity', label: labels.severity, width: 90, align: 'center' },
     { key: 'hours', label: labels.missingHours, width: 110, align: 'right' },
+    { key: 'mwh', label: labels.estimatedMissingMwh, width: 150, align: 'right', hint: labels.estimatedMissingHint },
+    { key: 'kusd', label: labels.estimatedMissingKusd, width: 140, align: 'right', hint: labels.estimatedMissingHint },
     { key: 'dates', label: labels.dates, align: 'left' },
   ]
+
+  // cộng các giá trị khác null; toàn null → null (hiện dash)
+  function sumOf(pick: (issue: UtilityMeterIssue) => number | null): number | null {
+    let total: number | null = null
+    for (const issue of issues) {
+      const value = pick(issue)
+      if (value !== null) total = (total ?? 0) + value
+    }
+    return total
+  }
+  const totalMwh = sumOf((i) => i.estimatedMissingMwh)
+  const totalKusd = sumOf((i) => i.estimatedMissingKusd)
 
   function severityLabel(severity: string | null) {
     if (!severity) return EVN_DASH
@@ -76,6 +97,8 @@ export function EvnMeterIssues({ issues, estimatedMissingMwh, loading }: EvnMete
             component="table"
             sx={{
               width: '100%',
+              // màn hình hẹp → cuộn ngang trong khung bảng thay vì bóp cột
+              minWidth: 960,
               borderCollapse: 'separate',
               borderSpacing: 0,
               fontSize: uiTokens.table.auxiliaryFontSize,
@@ -103,7 +126,23 @@ export function EvnMeterIssues({ issues, estimatedMissingMwh, loading }: EvnMete
                       borderBottom: `1px solid ${theme.palette.divider}`,
                     })}
                   >
-                    {col.label}
+                    {col.hint ? (
+                      <Stack
+                        direction="row"
+                        sx={{ alignItems: 'center', gap: 0.25, justifyContent: col.align === 'right' ? 'flex-end' : 'flex-start' }}
+                      >
+                        <span>{col.label}</span>
+                        <Tooltip title={col.hint} arrow>
+                          <InfoOutlinedIcon
+                            tabIndex={0}
+                            aria-label={col.hint}
+                            sx={{ fontSize: 14, color: 'text.disabled', cursor: 'help' }}
+                          />
+                        </Tooltip>
+                      </Stack>
+                    ) : (
+                      col.label
+                    )}
                   </Box>
                 ))}
               </Box>
@@ -159,12 +198,46 @@ export function EvnMeterIssues({ issues, estimatedMissingMwh, loading }: EvnMete
                     >
                       {issue.missingHours === null ? EVN_DASH : t.utilityEvn.table.hours(Math.round(issue.missingHours * 10) / 10)}
                     </Box>
+                    <Box component="td" sx={{ ...TABULAR_NUMS, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      {formatEstimate(issue.estimatedMissingMwh)}
+                    </Box>
+                    <Box component="td" sx={{ ...TABULAR_NUMS, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      {formatEstimate(issue.estimatedMissingKusd)}
+                    </Box>
                     <Box component="td" sx={{ ...TABULAR_NUMS, color: 'text.secondary' }}>
                       {formatDateRanges(issue.dates)}
                     </Box>
                   </Box>
                 )
               })}
+            </Box>
+
+            <Box component="tfoot">
+              <Box
+                component="tr"
+                sx={(theme) => ({
+                  '& > td': {
+                    position: 'sticky',
+                    bottom: 0,
+                    zIndex: 1,
+                    height: uiTokens.table.rowHeight,
+                    px: 0.75,
+                    py: 0.25,
+                    fontWeight: 700,
+                    bgcolor: theme.palette.background.paper,
+                    borderTop: `1px solid ${theme.palette.divider}`,
+                  },
+                })}
+              >
+                <Box component="td" colSpan={4}>{labels.total}</Box>
+                <Box component="td" sx={{ ...TABULAR_NUMS, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  {formatEstimate(totalMwh)}
+                </Box>
+                <Box component="td" sx={{ ...TABULAR_NUMS, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  {formatEstimate(totalKusd)}
+                </Box>
+                <Box component="td" />
+              </Box>
             </Box>
           </Box>
         </Box>

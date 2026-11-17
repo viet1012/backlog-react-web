@@ -436,6 +436,10 @@ export const vi: Messages = {
             dates: 'Ngày bị ảnh hưởng',
             none: 'Không có đồng hồ nào thiếu dữ liệu trong kỳ',
             estimatedMissing: (value) => `Ước tính thiếu: ${value} MWh`,
+            estimatedMissingMwh: 'Ước tính mất (MWh)',
+            estimatedMissingKusd: 'Ước tính mất (K$)',
+            estimatedMissingHint: 'Ước tính = trung bình kWh/giờ của meter × số giờ mất; tiền theo giá lưới trung bình của Fac trong kỳ. Chỉ tính meter mức Nặng. Đây là phần dashboard không ghi nhận được, không ảnh hưởng hóa đơn EVN.',
+            total: 'Tổng',
         },
         notes: {
             title: 'Chú thích',

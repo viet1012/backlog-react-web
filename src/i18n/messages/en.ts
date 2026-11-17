@@ -529,6 +529,10 @@ export const en = {
             dates: 'Affected days',
             none: 'No meter issues in this period',
             estimatedMissing: (value: string) => `Estimated missing: ${value} MWh`,
+            estimatedMissingMwh: 'Est. missing (MWh)',
+            estimatedMissingKusd: 'Est. missing (K$)',
+            estimatedMissingHint: 'Estimate = meter average kWh/hour × hours missing; cost uses the factory average grid price for the period. Only Major meters are counted. This is the part the dashboard could not record; it does not affect the EVN invoice.',
+            total: 'Total',
         },
         notes: {
             title: 'Notes',
