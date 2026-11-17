@@ -45,6 +45,7 @@ import {
   ShipmentPage,
   SphPage,
   UserHomePage,
+  UtilityEvnComparePage,
 } from './pages/lazyPages'
 
 import {
@@ -310,6 +311,16 @@ function App() {
                     path="settings/ai-logs"
                     element={
                       <AiLogsPage
+                        mode={mode}
+                        onToggleMode={toggleThemeMode}
+                      />
+                    }
+                  />
+
+                  <Route
+                    path="utility-evn-compare"
+                    element={
+                      <UtilityEvnComparePage
                         mode={mode}
                         onToggleMode={toggleThemeMode}
                       />

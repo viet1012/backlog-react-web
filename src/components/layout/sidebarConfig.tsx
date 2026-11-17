@@ -25,6 +25,7 @@ import {
     MonitorHeartOutlined,
     SmartToyOutlined,
     TrackChangesOutlined,
+    ElectricBoltOutlined,
 } from '@mui/icons-material'
 import type { UserRole } from '../../services/authService'
 import type { Messages } from '../../i18n/messages/en'
@@ -344,6 +345,17 @@ export const menuGroups:
                     roles: ['ADMIN'],
                     icon: (
                         <SmartToyOutlined />
+                    ),
+                },
+
+                {
+                    labelKey: 'utilityEvnCompare',
+                    path: '/utility-evn-compare',
+                    status: 'ready',
+                    action: 'view',
+                    roles: ['ADMIN'],
+                    icon: (
+                        <ElectricBoltOutlined />
                     ),
                 },
             ],
