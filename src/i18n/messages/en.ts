@@ -83,7 +83,6 @@ export const en = {
         machineLocator: 'Machine Locator',
         aiLogs: 'AI Logs',
         utilityEvnCompare: 'Utility · EVN Compare',
-        utilityEvnImport: 'Utility · EVN Import',
     },
 
     sidebar: {
@@ -435,6 +434,9 @@ export const en = {
         viewTable: 'Table',
         viewChart: 'Charts',
         viewOverview: 'All factories',
+        sectionAria: 'Function',
+        sectionCompare: 'Compare',
+        sectionImport: 'Import Excel',
         overview: {
             pctTitle: '% deviation by day — all scopes (grid, days with GM)',
             linesTitle: 'Grid electricity by day — GM vs measured per scope',
@@ -571,7 +573,6 @@ export const en = {
     },
 
     utilityEvnImport: {
-        title: 'Utility · Import EVN daily',
         subtitle: 'Load daily EVN numbers from "F2 electric consumption.xlsx" — the server reads and validates the file',
         stepFile: '1. Choose file',
         stepResult: '2. Result',
@@ -638,6 +639,51 @@ export const en = {
             note: 'Unchanged rows and days without a number are not written.',
             cancel: 'Cancel',
             ok: 'Import',
+        },
+        calibration: {
+            title: 'Loss calibration',
+            unavailable: 'No EVN day falls within the range that has measured data yet – calibration cannot be computed.',
+            unchanged: 'EVN data did not change – recompute only if you want to.',
+            window: (from: string, to: string, days: number, lastEvnDay: string) =>
+                `Window: ${from} → ${to} (${days} days), last EVN day: ${lastEvnDay}`,
+            button: 'Compute loss calibration',
+            running: (scope: string) => `Computing ${scope}…`,
+            done: 'Done. Import again to compute a new calibration.',
+            pending: 'Waiting',
+            failed: 'Failed',
+            confirm: {
+                title: 'Compute loss calibration?',
+                body: 'This adds 1 new calibration row for FAC_AB and FAC_C, applied from the start day onwards.',
+                cancel: 'Cancel',
+                ok: 'Compute',
+            },
+            card: {
+                lossPerHour: 'Loss / hour',
+                lossPerDay: 'Loss / day',
+                lossPct: '% of avg load',
+                sampleDays: 'Sample days',
+                effectiveFrom: 'Effective from',
+                meta: (id: number, from: string, to: string, notUsed: number) =>
+                    `#${id} · window ${from} → ${to} · ${notUsed} EVN days not used`,
+            },
+            excluded: {
+                title: (count: number) => `Excluded days (${count})`,
+                day: 'Day',
+                reason: 'Reason',
+                coverage: 'Coverage %',
+                reasons: {
+                    NO_MEASURED_DATA: 'No measured data',
+                    COVERAGE_BELOW_100: 'Meter coverage below 100%',
+                } as Record<string, string | undefined>,
+            },
+            samples: {
+                title: (count: number) => `Sample days (${count})`,
+                day: 'Day',
+                evn: 'EVN (kWh)',
+                grid: 'Measured grid (kWh)',
+                load: 'Measured load (kWh)',
+                diff: 'Diff (kWh/h)',
+            },
         },
         errors: {
             badExtension: 'Only .xlsx files are accepted.',
@@ -709,8 +755,7 @@ export const en = {
             odbfSimulation: 'PO progress and quantity by day',
             machineLocator: 'Place machines on the floor map',
             aiLogs: 'AI assistant questions, errors and response times',
-            utilityEvnCompare: 'EVN GM vs. measured electricity by day',
-            utilityEvnImport: 'Import daily EVN numbers from the Excel file',
+            utilityEvnCompare: 'EVN GM vs. measured electricity by day, import EVN Excel',
             pcTraining: 'Production Control training material',
         } as Record<string, string | undefined>,
         graphics: {

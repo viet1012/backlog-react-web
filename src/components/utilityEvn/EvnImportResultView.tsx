@@ -17,7 +17,7 @@ import {
   Typography,
 } from '@mui/material'
 import dayjs from 'dayjs'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useI18n } from '../../i18n/useI18n'
 import type { EvnImportResult } from '../../types/utilityEvn'
 import { EVN_DASH, evnScopeLabel } from '../../utils/utilityEvnCompare'
@@ -65,10 +65,12 @@ function CountTile({ label, value, tone }: { label: string; value: number; tone:
 
 interface EvnImportResultViewProps {
   result: EvnImportResult
+  // chèn ngay sau thẻ tổng hợp (vd khối Hiệu chỉnh tổn thất)
+  children?: ReactNode
 }
 
 // Mỗi lượt gọi API mới, parent đổi `key` → bộ lọc / thu gọn về mặc định
-export function EvnImportResultView({ result }: EvnImportResultViewProps) {
+export function EvnImportResultView({ result, children }: EvnImportResultViewProps) {
   const { t } = useI18n()
   const labels = t.utilityEvnImport
 
@@ -141,6 +143,8 @@ export function EvnImportResultView({ result }: EvnImportResultViewProps) {
           </Alert>
         )}
       </EvnSection>
+
+      {children}
 
       <EvnSection
         title={labels.errorsTable.title(result.errors.length)}

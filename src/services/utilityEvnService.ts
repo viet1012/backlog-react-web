@@ -1,7 +1,14 @@
 import { UTILITY_API_BASE_URL } from '../config/api'
 import { getMessages } from '../i18n/i18nContext'
 import {
+  LOSS_CALIBRATION_SCOPES,
   UTILITY_SCOPE_CODES,
+  type CalibrationWindow,
+  type LossCalibrationExcluded,
+  type LossCalibrationOptions,
+  type LossCalibrationResult,
+  type LossCalibrationSample,
+  type LossCalibrationScope,
   type EvnImportError,
   type EvnImportOptions,
   type EvnImportResult,
@@ -273,15 +280,18 @@ export async function getUtilityEvnCompare(
 
 // =========================================================
 // IMPORT EVN DAILY TỪ EXCEL – POST /api/utility/evn-daily/import
+// HIỆU CHỈNH TỔN THẤT       – POST /api/utility/loss-calibration/recompute
 // FE không đọc Excel: upload nguyên file, BE đọc + kiểm tra + ghi DB.
 // Lỗi 400: { status, error, message, timestamp } → hiện message (tiếng Anh, giữ nguyên).
+// BE tự xóa cache electric-consumption sau cả 2 API.
 // =========================================================
 
 export const EVN_IMPORT_MAX_BYTES = 30 * 1024 * 1024
 // BE đọc file ~5 giây, cả file ~4.300 dòng
 export const EVN_IMPORT_TIMEOUT_MS = 120_000
 
-const IMPORTED_BY_MAX_LENGTH = 100
+// importedBy / createdBy
+const USER_PARAM_MAX_LENGTH = 100
 // Gần giới hạn mà mất kết nối: server thường cắt request quá lớn thay vì trả 413
 const NEAR_LIMIT_BYTES = EVN_IMPORT_MAX_BYTES - 1024 * 1024
 
@@ -337,11 +347,87 @@ function importResult(raw: unknown): EvnImportResult {
     skipped: num(raw.skipped) ?? 0,
     rejected: num(raw.rejected) ?? 0,
     errors: arr(raw.errors).map(importError).filter((e): e is EvnImportError => e !== null),
-    warnings: arr(raw.warnings).map(str).filter((w): w is string => w !== null),
+    warnings: strings(raw.warnings),
+    calibration: calibrationWindow(raw.calibration),
   }
 }
 
-function importHttpError(status: number, body: unknown): string {
+function strings(value: unknown): string[] {
+  return arr(value).map(str).filter((s): s is string => s !== null)
+}
+
+// until / days giữ nguyên giá trị BE (không tự tính lại); thiếu 1 trong 2 → coi như không tính được
+function calibrationWindow(value: unknown): CalibrationWindow {
+  if (!isObject(value)) {
+    return { available: false, lastEvnDay: null, until: null, days: null, from: null }
+  }
+
+  const until = str(value.until)
+  const days = num(value.days)
+
+  return {
+    available: value.available === true && until !== null && days !== null,
+    lastEvnDay: dateKey(value.lastEvnDay),
+    until,
+    days,
+    from: dateKey(value.from),
+  }
+}
+
+function calibrationSample(value: unknown): LossCalibrationSample | null {
+  if (!isObject(value)) return null
+  const day = dateKey(value.day)
+  if (!day) return null
+
+  return {
+    day,
+    evnTotalKwh: num(value.evnTotalKwh) ?? 0,
+    measuredGridKwh: num(value.measuredGridKwh) ?? 0,
+    measuredLoadKwh: num(value.measuredLoadKwh) ?? 0,
+    diffKwhPerHour: num(value.diffKwhPerHour) ?? 0,
+  }
+}
+
+function calibrationExcluded(value: unknown): LossCalibrationExcluded | null {
+  if (!isObject(value)) return null
+  const day = dateKey(value.day)
+  if (!day) return null
+
+  return { day, reason: str(value.reason) ?? '', coveragePct: num(value.coveragePct) }
+}
+
+function calibrationResult(raw: unknown, requested: LossCalibrationScope): LossCalibrationResult {
+  if (!isObject(raw)) {
+    throw new UtilityApiError(getMessages().utilityEvnImport.errors.invalidResponse)
+  }
+  const scope = str(raw.scope)
+
+  return {
+    id: num(raw.id) ?? 0,
+    scope: LOSS_CALIBRATION_SCOPES.find((s) => s === scope) ?? requested,
+    lossKwhPerHour: num(raw.lossKwhPerHour) ?? 0,
+    lossKwhPerDay: num(raw.lossKwhPerDay) ?? 0,
+    effectiveFrom: dateKey(raw.effectiveFrom) ?? '',
+    effectiveTo: dateKey(raw.effectiveTo),
+    method: str(raw.method) ?? '',
+    createdAt: str(raw.createdAt) ?? '',
+    createdBy: str(raw.createdBy),
+    windowFrom: dateKey(raw.windowFrom) ?? '',
+    windowTo: dateKey(raw.windowTo) ?? '',
+    hourOffset: num(raw.hourOffset) ?? 0,
+    sampleDays: num(raw.sampleDays) ?? 0,
+    evnDaysNotUsed: num(raw.evnDaysNotUsed) ?? 0,
+    minDiffKwhPerHour: num(raw.minDiffKwhPerHour) ?? 0,
+    maxDiffKwhPerHour: num(raw.maxDiffKwhPerHour) ?? 0,
+    avgLoadKwhPerHour: num(raw.avgLoadKwhPerHour) ?? 0,
+    lossPctOfAvgLoad: num(raw.lossPctOfAvgLoad),
+    warnings: strings(raw.warnings),
+    samples: arr(raw.samples).map(calibrationSample).filter((s): s is LossCalibrationSample => s !== null),
+    excluded: arr(raw.excluded).map(calibrationExcluded).filter((e): e is LossCalibrationExcluded => e !== null),
+  }
+}
+
+function httpErrorMessage(status: number, body: unknown): string {
   const errors = getMessages().utilityEvnImport.errors
   const message = isObject(body) ? str(body.message) : null
 
@@ -358,16 +444,62 @@ function parseJson(text: string): unknown {
   }
 }
 
+// POST lên BE utility, trả body JSON đã parse; mọi lỗi (trừ hủy bởi caller) → UtilityApiError
+async function utilityPost(
+  path: string,
+  params: URLSearchParams,
+  body: FormData | undefined,
+  signal: AbortSignal | undefined,
+  uploadBytes = 0,
+): Promise<unknown> {
+  const errors = getMessages().utilityEvnImport.errors
+  const timeout = AbortSignal.timeout(EVN_IMPORT_TIMEOUT_MS)
+
+  try {
+    // body FormData: KHÔNG set Content-Type – browser tự thêm boundary
+    const response = await fetch(`${UTILITY_API_BASE_URL}${path}?${params}`, {
+      method: 'POST',
+      body,
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+      signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+    })
+
+    // đọc body vẫn nằm trong timeout
+    const json = parseJson(await response.text())
+
+    if (!response.ok) {
+      throw new UtilityApiError(httpErrorMessage(response.status, json), response.status)
+    }
+
+    return json
+  } catch (error) {
+    if (error instanceof UtilityApiError) throw error
+    // người dùng rời trang / hủy → để caller tự bỏ qua
+    if (signal?.aborted) throw error
+    if (timeout.aborted) {
+      throw new UtilityApiError(errors.timeout(EVN_IMPORT_TIMEOUT_MS / 1000), undefined, { cause: error })
+    }
+    throw new UtilityApiError(
+      uploadBytes >= NEAR_LIMIT_BYTES ? errors.tooLarge : errors.network,
+      undefined,
+      { cause: error },
+    )
+  }
+}
+
+function userParam(value: string | undefined): string | null {
+  return value?.trim().slice(0, USER_PARAM_MAX_LENGTH) || null
+}
+
 // file .xlsx ≤ 30 MB (FE đã kiểm trước khi gọi)
 export async function importEvnDaily(
   file: File,
   opts: EvnImportOptions,
   signal?: AbortSignal,
 ): Promise<EvnImportResult> {
-  const errors = getMessages().utilityEvnImport.errors
-
   const params = new URLSearchParams({ dryRun: String(opts.dryRun) })
-  const importedBy = opts.importedBy?.trim().slice(0, IMPORTED_BY_MAX_LENGTH)
+  const importedBy = userParam(opts.importedBy)
   if (importedBy) params.set('importedBy', importedBy)
 
   // month chỉ hợp lệ khi có sheet (thiếu sheet BE trả 400)
@@ -380,37 +512,24 @@ export async function importEvnDaily(
   const form = new FormData()
   form.append('file', file)
 
-  const timeout = AbortSignal.timeout(EVN_IMPORT_TIMEOUT_MS)
+  const body = await utilityPost('/api/utility/evn-daily/import', params, form, signal, file.size)
+  return importResult(body)
+}
 
-  try {
-    // body FormData: KHÔNG set Content-Type – browser tự thêm boundary
-    const response = await fetch(`${UTILITY_API_BASE_URL}/api/utility/evn-daily/import?${params}`, {
-      method: 'POST',
-      body: form,
-      headers: { Accept: 'application/json' },
-      cache: 'no-store',
-      signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
-    })
+// Mỗi lần gọi thành công BE THÊM 1 dòng hiệu chỉnh (append-only) → chỉ gọi khi người dùng xác nhận.
+// days / until lấy nguyên từ EvnImportResult.calibration.
+export async function recomputeLossCalibration(
+  opts: LossCalibrationOptions,
+  signal?: AbortSignal,
+): Promise<LossCalibrationResult> {
+  const params = new URLSearchParams({
+    scope: opts.scope,
+    days: String(opts.days),
+    until: opts.until,
+  })
+  const createdBy = userParam(opts.createdBy)
+  if (createdBy) params.set('createdBy', createdBy)
 
-    // đọc body vẫn nằm trong timeout
-    const body = parseJson(await response.text())
-
-    if (!response.ok) {
-      throw new UtilityApiError(importHttpError(response.status, body), response.status)
-    }
-
-    return importResult(body)
-  } catch (error) {
-    if (error instanceof UtilityApiError) throw error
-    // người dùng rời trang / hủy → để caller tự bỏ qua
-    if (signal?.aborted) throw error
-    if (timeout.aborted) {
-      throw new UtilityApiError(errors.timeout(EVN_IMPORT_TIMEOUT_MS / 1000), undefined, { cause: error })
-    }
-    throw new UtilityApiError(
-      file.size >= NEAR_LIMIT_BYTES ? errors.tooLarge : errors.network,
-      undefined,
-      { cause: error },
-    )
-  }
+  const body = await utilityPost('/api/utility/loss-calibration/recompute', params, undefined, signal)
+  return calibrationResult(body, opts.scope)
 }

@@ -189,6 +189,88 @@ export interface EvnImportResult {
   rejected: number
   errors: EvnImportError[]
   warnings: string[]
+  // tham số gợi ý cho API hiệu chỉnh tổn thất
+  calibration: CalibrationWindow
+}
+
+export interface CalibrationWindow {
+  // false = không có ngày EVN nào trong khoảng có số đo → không gọi được API hiệu chỉnh
+  available: boolean
+  // yyyy-MM-dd, ngày cuối có số EVN của cả FAC_AB và FAC_C
+  lastEvnDay: string | null
+  // yyyy-MM-dd, exclusive – truyền nguyên cho API hiệu chỉnh
+  until: string | null
+  // 1..366 – truyền nguyên cho API hiệu chỉnh
+  days: number | null
+  // yyyy-MM-dd, ngày đầu khoảng (chỉ để hiển thị)
+  from: string | null
+}
+
+// =========================================================
+// HIỆU CHỈNH TỔN THẤT
+// POST {UTILITY_API_BASE_URL}/api/utility/loss-calibration/recompute?scope&days&until&createdBy
+// Mỗi lần gọi thành công THÊM 1 dòng (append-only) → không gọi lặp / tự động.
+// KVH = FAC_AB + FAC_C (BE tự cộng) → chỉ 2 scope này.
+// =========================================================
+
+export type LossCalibrationScope = 'FAC_AB' | 'FAC_C'
+
+export const LOSS_CALIBRATION_SCOPES: readonly LossCalibrationScope[] = ['FAC_AB', 'FAC_C']
+
+export type LossCalibrationExcludedReason = 'NO_MEASURED_DATA' | 'COVERAGE_BELOW_100'
+
+export interface LossCalibrationSample {
+  day: string
+  evnTotalKwh: number
+  measuredGridKwh: number
+  measuredLoadKwh: number
+  diffKwhPerHour: number
+}
+
+export interface LossCalibrationExcluded {
+  day: string
+  // BE có thể thêm lý do mới → giữ nguyên chuỗi
+  reason: LossCalibrationExcludedReason | string
+  coveragePct: number | null
+}
+
+export interface LossCalibrationResult {
+  id: number
+  scope: LossCalibrationScope
+  lossKwhPerHour: number
+  lossKwhPerDay: number
+  // yyyy-MM-dd
+  effectiveFrom: string
+  // null = không giới hạn
+  effectiveTo: string | null
+  method: string
+  createdAt: string
+  createdBy: string | null
+  windowFrom: string
+  // exclusive
+  windowTo: string
+  hourOffset: number
+  // số ngày dùng để tính
+  sampleDays: number
+  evnDaysNotUsed: number
+  minDiffKwhPerHour: number
+  maxDiffKwhPerHour: number
+  avgLoadKwhPerHour: number
+  // %
+  lossPctOfAvgLoad: number | null
+  // vd tổn thất âm, > 30 % tải → hiển thị nổi bật
+  warnings: string[]
+  samples: LossCalibrationSample[]
+  excluded: LossCalibrationExcluded[]
+}
+
+export interface LossCalibrationOptions {
+  scope: LossCalibrationScope
+  // lấy nguyên từ EvnImportResult.calibration.days
+  days: number
+  // lấy nguyên từ EvnImportResult.calibration.until
+  until: string
+  createdBy?: string
 }
 
 export interface EvnImportOptions {

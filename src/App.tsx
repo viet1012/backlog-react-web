@@ -46,7 +46,6 @@ import {
   SphPage,
   UserHomePage,
   UtilityEvnComparePage,
-  UtilityEvnImportPage,
 } from './pages/lazyPages'
 
 import {
@@ -319,16 +318,6 @@ function App() {
                     path="utility-evn-compare"
                     element={
                       <UtilityEvnComparePage
-                        mode={mode}
-                        onToggleMode={toggleThemeMode}
-                      />
-                    }
-                  />
-
-                  <Route
-                    path="utility-evn-import"
-                    element={
-                      <UtilityEvnImportPage
                         mode={mode}
                         onToggleMode={toggleThemeMode}
                       />

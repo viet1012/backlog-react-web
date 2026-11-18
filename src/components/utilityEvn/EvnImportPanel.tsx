@@ -19,25 +19,25 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import type { PaletteMode } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { useEffect, useRef, useState, type DragEvent } from 'react'
-import { AppButton } from '../components/common/AppButton'
-import { PageHeader } from '../components/common/PageHeader'
-import { PageShell } from '../components/common/PageShell'
-import { EvnImportResultView } from '../components/utilityEvn/EvnImportResultView'
-import { EvnSection } from '../components/utilityEvn/EvnSection'
-import { TABULAR_NUMS } from '../components/utilityEvn/evnCompareUi'
-import { useI18n } from '../i18n/useI18n'
-import { getAuthenticatedUsername } from '../services/authService'
-import { EVN_IMPORT_MAX_BYTES, importEvnDaily } from '../services/utilityEvnService'
-import { uiTokens } from '../theme/uiTokens'
-import type { EvnImportResult } from '../types/utilityEvn'
-import { clearQueryCache } from '../utils/queryCache'
+import { useI18n } from '../../i18n/useI18n'
+import { getAuthenticatedUsername } from '../../services/authService'
+import { EVN_IMPORT_MAX_BYTES, importEvnDaily } from '../../services/utilityEvnService'
+import { uiTokens } from '../../theme/uiTokens'
+import type { EvnImportResult } from '../../types/utilityEvn'
+import { clearQueryCache } from '../../utils/queryCache'
+import { AppButton } from '../common/AppButton'
+import { EvnCalibrationSection } from './EvnCalibrationSection'
+import { EvnImportResultView } from './EvnImportResultView'
+import { EvnSection } from './EvnSection'
+import { TABULAR_NUMS } from './evnCompareUi'
 
-interface UtilityEvnImportPageProps {
-  mode: PaletteMode
-  onToggleMode: () => void
+interface EvnImportPanelProps {
+  // import thật (dryRun=false) thành công → màn So sánh tải lại số
+  onImported?: (result: EvnImportResult) => void
+  // tính hiệu chỉnh tổn thất xong (≥ 1 scope) → màn So sánh tải lại số
+  onCalibrated?: () => void
 }
 
 const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/
@@ -48,10 +48,12 @@ function count(value: number) {
   return value.toLocaleString('en-US')
 }
 
+// Tab "Import Excel" của màn So sánh EVN.
 // Bước 1: chọn file (+ tùy chọn sheet / tháng) → "Kiểm tra" (dryRun=true)
 // Bước 2: "Import vào DB" (dryRun=false) với đúng file + tham số vừa kiểm tra.
+// Bước B: sau import thật → "Tính hiệu chỉnh tổn thất" (EvnCalibrationSection).
 // File chỉ nằm trong state (bộ nhớ), không lưu localStorage, không log nội dung.
-export function UtilityEvnImportPage({ mode, onToggleMode }: UtilityEvnImportPageProps) {
+export function EvnImportPanel({ onImported, onCalibrated }: EvnImportPanelProps) {
   const { t } = useI18n()
   const labels = t.utilityEvnImport
 
@@ -70,7 +72,10 @@ export function UtilityEvnImportPage({ mode, onToggleMode }: UtilityEvnImportPag
   // mỗi lượt gọi API thành công +1 → dựng lại phần kết quả (bộ lọc về mặc định)
   const [runId, setRunId] = useState(0)
 
-  const [busy, setBusy] = useState<Busy>(null)
+  // request đang chạy của phần import; calibrating = khối hiệu chỉnh đang gọi API
+  const [request, setRequest] = useState<Busy>(null)
+  const [calibrating, setCalibrating] = useState(false)
+  const busy = request ?? (calibrating ? 'calibrate' : null)
   const [error, setError] = useState<string | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [dragOver, setDragOver] = useState(false)
@@ -140,7 +145,7 @@ export function UtilityEvnImportPage({ mode, onToggleMode }: UtilityEvnImportPag
     const ctrl = new AbortController()
     controller.current = ctrl
 
-    setBusy(dryRun ? 'check' : 'import')
+    setRequest(dryRun ? 'check' : 'import')
     setError(null)
     if (dryRun) {
       setChecked(null)
@@ -169,21 +174,28 @@ export function UtilityEvnImportPage({ mode, onToggleMode }: UtilityEvnImportPag
         // đã ghi → phải kiểm tra lại trước khi import tiếp
         setChecked(null)
         setImported(result)
-        // màn So sánh EVN tải lại số mới ở lần xem sau
+        // các kỳ khác của màn So sánh tải lại số mới ở lần xem sau
         clearQueryCache('utility-evn:')
+        onImported?.(result)
       }
     } catch (err) {
       if (ctrl.signal.aborted) return
       setError(err instanceof Error ? err.message : String(err))
     } finally {
       inFlight.current = false
-      if (!ctrl.signal.aborted) setBusy(null)
+      if (!ctrl.signal.aborted) setRequest(null)
     }
   }
 
   function confirmImport() {
     setConfirmOpen(false)
     void run(false)
+  }
+
+  function handleCalibrated() {
+    // BE đã xóa cache; FE bỏ cache các kỳ đã xem + màn So sánh tải lại kỳ đang xem
+    clearQueryCache('utility-evn:')
+    onCalibrated?.()
   }
 
   const shown = imported ?? checked
@@ -263,24 +275,8 @@ export function UtilityEvnImportPage({ mode, onToggleMode }: UtilityEvnImportPag
   )
 
   return (
-    <PageShell>
-      <PageHeader
-        title={labels.title}
-        subtitle={labels.subtitle}
-        mode={mode}
-        onToggleMode={onToggleMode}
-      />
-
-      <Box
-        sx={{
-          flex: 1,
-          minHeight: 0,
-          overflowY: 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: uiTokens.page.gap,
-        }}
-      >
+    <>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: uiTokens.page.gap }}>
         <EvnSection
           title={labels.stepFile}
           extra={importedBy && (
@@ -370,11 +366,11 @@ export function UtilityEvnImportPage({ mode, onToggleMode }: UtilityEvnImportPag
                 {labels.import}
               </AppButton>
 
-              {busy && (
+              {request && (
                 <Stack direction="row" sx={{ alignItems: 'center', gap: 1 }}>
                   <CircularProgress size={16} />
                   <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
-                    {busy === 'check' ? labels.checking : labels.importing}
+                    {request === 'check' ? labels.checking : labels.importing}
                   </Typography>
                 </Stack>
               )}
@@ -386,7 +382,21 @@ export function UtilityEvnImportPage({ mode, onToggleMode }: UtilityEvnImportPag
           </Stack>
         </EvnSection>
 
-        {shown && !busy && <EvnImportResultView key={runId} result={shown} />}
+        {shown && !request && (
+          <EvnImportResultView key={runId} result={shown}>
+            {/* Bước B: chỉ sau import thật; key=runId → mỗi lần import mới mở lại nút tính */}
+            {!shown.dryRun && (
+              <EvnCalibrationSection
+                calibration={shown.calibration}
+                dataChanged={shown.inserted + shown.updated > 0}
+                createdBy={importedBy}
+                locked={Boolean(request)}
+                onBusyChange={setCalibrating}
+                onCalibrated={handleCalibrated}
+              />
+            )}
+          </EvnImportResultView>
+        )}
       </Box>
 
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} maxWidth="xs" fullWidth>
@@ -421,6 +431,6 @@ export function UtilityEvnImportPage({ mode, onToggleMode }: UtilityEvnImportPag
           </AppButton>
         </DialogActions>
       </Dialog>
-    </PageShell>
+    </>
   )
 }

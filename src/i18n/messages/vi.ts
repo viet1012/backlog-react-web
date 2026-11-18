@@ -341,6 +341,9 @@ export const vi: Messages = {
         viewTable: 'Bảng',
         viewChart: 'Biểu đồ',
         viewOverview: 'Toàn bộ fac',
+        sectionAria: 'Chức năng',
+        sectionCompare: 'So sánh',
+        sectionImport: 'Import Excel',
         overview: {
             pctTitle: '% lệch theo ngày — cả 3 phạm vi (điện lưới, ngày có GM)',
             linesTitle: 'Điện lưới theo ngày — GM vs thực tế từng phạm vi',
@@ -477,7 +480,6 @@ export const vi: Messages = {
     },
 
     utilityEvnImport: {
-        title: 'Utility · Import EVN daily',
         subtitle: 'Nạp số điện EVN theo ngày từ file "F2 electric consumption.xlsx" — server tự đọc và kiểm tra file',
         stepFile: '1. Chọn file',
         stepResult: '2. Kết quả',
@@ -544,6 +546,51 @@ export const vi: Messages = {
             note: 'Dòng không đổi và ngày chưa có số sẽ không bị ghi.',
             cancel: 'Hủy',
             ok: 'Import',
+        },
+        calibration: {
+            title: 'Hiệu chỉnh tổn thất',
+            unavailable: 'Chưa có ngày EVN nào trong khoảng có số đo, chưa thể tính hiệu chỉnh.',
+            unchanged: 'Dữ liệu EVN không đổi, chỉ cần tính lại nếu muốn.',
+            window: (from, to, days, lastEvnDay) =>
+                `Khoảng tính: ${from} → ${to} (${days} ngày), ngày EVN cuối: ${lastEvnDay}`,
+            button: 'Tính hiệu chỉnh tổn thất',
+            running: (scope) => `Đang tính ${scope}…`,
+            done: 'Đã tính xong. Import lần mới để tính lại.',
+            pending: 'Đang chờ',
+            failed: 'Lỗi',
+            confirm: {
+                title: 'Tính hiệu chỉnh tổn thất?',
+                body: 'Sẽ thêm 1 dòng hiệu chỉnh mới cho FAC_AB và FAC_C, áp dụng từ ngày bắt đầu trở đi.',
+                cancel: 'Hủy',
+                ok: 'Tính',
+            },
+            card: {
+                lossPerHour: 'Tổn thất / giờ',
+                lossPerDay: 'Tổn thất / ngày',
+                lossPct: '% tải trung bình',
+                sampleDays: 'Số ngày mẫu',
+                effectiveFrom: 'Áp dụng từ',
+                meta: (id, from, to, notUsed) =>
+                    `#${id} · cửa sổ ${from} → ${to} · ${notUsed} ngày EVN không dùng`,
+            },
+            excluded: {
+                title: (count) => `Ngày bị loại (${count})`,
+                day: 'Ngày',
+                reason: 'Lý do',
+                coverage: 'Độ phủ %',
+                reasons: {
+                    NO_MEASURED_DATA: 'Không có số đo',
+                    COVERAGE_BELOW_100: 'Độ phủ đồng hồ dưới 100%',
+                },
+            },
+            samples: {
+                title: (count) => `Ngày mẫu (${count})`,
+                day: 'Ngày',
+                evn: 'EVN (kWh)',
+                grid: 'Đo lưới (kWh)',
+                load: 'Đo tải (kWh)',
+                diff: 'Chênh (kWh/h)',
+            },
         },
         errors: {
             badExtension: 'Chỉ nhận file .xlsx.',
@@ -613,8 +660,7 @@ export const vi: Messages = {
             odbfSimulation: 'Tiến độ PO và số lượng theo ngày',
             machineLocator: 'Bố trí máy trên bản đồ xưởng',
             aiLogs: 'Câu hỏi, lỗi và thời gian phản hồi của trợ lý AI',
-            utilityEvnCompare: 'So sánh số GM EVN với số đồng hồ theo ngày',
-            utilityEvnImport: 'Import số EVN theo ngày từ file Excel',
+            utilityEvnCompare: 'So sánh số GM EVN với số đồng hồ theo ngày, import Excel EVN',
             pcTraining: 'Tài liệu đào tạo Production Control',
         },
         graphics: {
