@@ -94,7 +94,9 @@ export function EvnImportPanel({ onImported, onCalibrated }: EvnImportPanelProps
 
   const canCheck = Boolean(file) && !busy && !monthInvalid
   const writable = checked ? checked.inserted + checked.updated : 0
-  const canImport = Boolean(file) && !busy && checked !== null && writable > 0
+  // writable = 0 vẫn cho import: DB không đổi nhưng cần response thật (dryRun=false)
+  // để mở bước Hiệu chỉnh tổn thất khi dữ liệu EVN đã có sẵn trong DB
+  const canImport = Boolean(file) && !busy && checked !== null
 
   function resetResults() {
     setChecked(null)
@@ -422,6 +424,9 @@ export function EvnImportPanel({ onImported, onCalibrated }: EvnImportPanelProps
               </li>
             </Box>
             <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>{labels.confirm.note}</Typography>
+            {writable === 0 && (
+              <Alert severity="info" sx={{ mt: 1 }}>{labels.confirm.noChange}</Alert>
+            )}
           </DialogContent>
         )}
         <DialogActions sx={{ px: 3, py: 1.5 }}>

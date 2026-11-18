@@ -500,7 +500,7 @@ export const vi: Messages = {
         checking: 'Đang kiểm tra file… (khoảng 5 giây)',
         importing: 'Đang ghi vào DB…',
         needCheck: 'Bấm "Kiểm tra" trước khi import.',
-        nothingToImport: 'Không có dòng mới hoặc cần cập nhật – không cần import.',
+        nothingToImport: 'Không có dòng mới hoặc cần cập nhật – DB sẽ không đổi. Vẫn có thể Import để tính lại hiệu chỉnh tổn thất.',
         result: {
             dryRunTitle: 'Kết quả kiểm tra (chưa ghi DB)',
             importTitle: 'Kết quả import',
@@ -544,6 +544,7 @@ export const vi: Messages = {
             update: (count) => `Cập nhật (ghi đè kWh) ${count} dòng`,
             rejected: (count) => `Bỏ qua ${count} dòng do lỗi (không được lưu)`,
             note: 'Dòng không đổi và ngày chưa có số sẽ không bị ghi.',
+            noChange: '0 dòng thêm mới / 0 dòng cập nhật – DB không đổi. Import lần này chỉ để mở bước tính hiệu chỉnh tổn thất.',
             cancel: 'Hủy',
             ok: 'Import',
         },

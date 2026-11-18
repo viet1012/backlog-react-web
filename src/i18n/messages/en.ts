@@ -593,7 +593,7 @@ export const en = {
         checking: 'Checking file… (about 5 seconds)',
         importing: 'Writing to the DB…',
         needCheck: 'Run "Check" before importing.',
-        nothingToImport: 'No new or changed rows – nothing to import.',
+        nothingToImport: 'No new or changed rows – the DB will not change. You can still import to recompute the loss calibration.',
         result: {
             dryRunTitle: 'Check result (not written to DB)',
             importTitle: 'Import result',
@@ -637,6 +637,7 @@ export const en = {
             update: (count: string) => `Update (overwrite kWh) ${count} rows`,
             rejected: (count: string) => `Skip ${count} rows with errors (not saved)`,
             note: 'Unchanged rows and days without a number are not written.',
+            noChange: '0 new / 0 updated rows – the DB does not change. This import only opens the loss calibration step.',
             cancel: 'Cancel',
             ok: 'Import',
         },
