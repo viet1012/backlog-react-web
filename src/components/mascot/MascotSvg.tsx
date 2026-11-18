@@ -1,4 +1,5 @@
 import styles from './Mascot.module.css'
+import type { MascotState } from './mascotConfig'
 import { useMascotSkin } from './mascotContext'
 import { shade } from './mascotSkin'
 import type { MascotHat, MascotSkin } from './mascotSkin'
@@ -19,33 +20,70 @@ export const MASCOT_VIEWBOX = { width: 160, height: 200 }
 const FULL_VIEWBOX = `0 0 ${MASCOT_VIEWBOX.width} ${MASCOT_VIEWBOX.height}`
 const HEAD_VIEWBOX = '38 24 84 84'
 
-/** idle: cười · thinking: mắt liếc lên, miệng chữ "o", chấm suy nghĩ · sad: lông mày chau, miệng mếu */
-export type MascotMood = 'idle' | 'thinking' | 'sad'
+/** Biểu cảm = trạng thái mascot (xem MascotState trong mascotConfig) */
+export type MascotMood = MascotState
+
+const EYE = '#2B1A0E'
+const MOUTH = '#8A3B1F'
+
+// lông mày [trái, phải] theo biểu cảm
+const BROWS: Record<MascotMood, [string, string]> = {
+  idle: ['M64 67 Q69.5 63.5 75 66.5', 'M85 66.5 Q90.5 63.5 96 67'],
+  talking: ['M64 67 Q69.5 63.5 75 66.5', 'M85 66.5 Q90.5 63.5 96 67'],
+  greeting: ['M64 65.5 Q69.5 62 75 65', 'M85 65 Q90.5 62 96 65.5'],
+  happy: ['M64 65.5 Q69.5 62 75 65', 'M85 65 Q90.5 62 96 65.5'],
+  thinking: ['M64 67 Q69.5 63.5 75 66.5', 'M85 64.5 Q90.5 61 96 64'],
+  sad: ['M64 67.5 Q69.5 66 75 63.5', 'M85 63.5 Q90.5 66 96 67.5'],
+  confused: ['M64 65 Q69.5 61.5 75 64.5', 'M85 67.5 L96 65.5'],
+  sleepy: ['M64 68 Q69.5 66.5 75 68', 'M85 68 Q90.5 66.5 96 68'],
+}
+
+/** biểu cảm mà mắt được nhìn theo con trỏ (thinking có hướng liếc riêng, sleepy nhắm mắt…) */
+const FOLLOW_MOODS: MascotMood[] = ['idle', 'greeting', 'talking', 'confused']
 
 interface MascotSvgProps {
   waving: boolean
   /** chỉ hiện phần đầu – dùng cho avatar khi thu nhỏ */
   headOnly?: boolean
   mood?: MascotMood
+  /**
+   * Chớp mắt do cha điều khiển (chớp ngẫu nhiên): true → chớp 1 lần (animationend 'blinkOnce').
+   * Bỏ trống → tự chớp đều theo CSS.
+   */
+  blink?: boolean
+  /** mắt nhìn theo con trỏ (chỉ các biểu cảm mở mắt bình thường) */
+  followCursor?: boolean
   /** skin xem trước (Phòng thay đồ); bỏ trống → skin đang áp dụng */
   skin?: MascotSkin
   className?: string
 }
 
-export function MascotSvg({ waving, headOnly = false, mood = 'idle', skin: skinProp, className }: MascotSvgProps) {
+export function MascotSvg({
+  waving,
+  headOnly = false,
+  mood = 'idle',
+  blink,
+  followCursor = false,
+  skin: skinProp,
+  className,
+}: MascotSvgProps) {
   const appliedSkin = useMascotSkin()
   const skin = skinProp ?? appliedSkin
   const thinking = mood === 'thinking'
   const sad = mood === 'sad'
+  const confused = mood === 'confused'
+  const [browLeft, browRight] = BROWS[mood] ?? BROWS.idle
 
   const pocket = shade(skin.overallColor, -0.2)
   const neck = shade(skin.skinTone, -0.07)
   const nose = shade(skin.skinTone, -0.12)
   const beard = shade(skin.hairColor, 0.12)
+  const eyesClass = blink === undefined ? styles.eyes : blink ? styles.blinkOnce : styles.eyesStatic
 
   return (
     <svg
       className={className}
+      data-mood={mood}
       viewBox={headOnly ? HEAD_VIEWBOX : FULL_VIEWBOX}
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
@@ -57,6 +95,8 @@ export function MascotSvg({ waving, headOnly = false, mood = 'idle', skin: skinP
       <rect x="54" y="184" width="25" height="10" rx="5" fill="#4A3A2A" />
       <rect x="81" y="184" width="25" height="10" rx="5" fill="#4A3A2A" />
 
+      {/* phần trên (thân + tay + đầu) thở nhẹ */}
+      <g className={headOnly ? undefined : styles.upper}>
       {/* ---- Tay trái buông ---- */}
       <line x1="58" y1="110" x2="47" y2="146" stroke={skin.shirtColor} strokeWidth="12" strokeLinecap="round" />
       <circle cx="46" cy="152" r="6.5" fill={skin.skinTone} />
@@ -80,6 +120,8 @@ export function MascotSvg({ waving, headOnly = false, mood = 'idle', skin: skinP
 
       {/* ---- Cổ + đầu ---- */}
       <rect x="73" y="92" width="14" height="12" rx="3" fill={neck} />
+      {/* đầu: nghiêng khi hover (CSS) */}
+      <g className={headOnly ? undefined : styles.head}>
       <circle cx="80" cy="68" r="30" fill={skin.skinTone} />
 
       {/* tóc xoăn: mái + thái dương (+ đỉnh đầu khi không đội mũ) */}
@@ -111,27 +153,17 @@ export function MascotSvg({ waving, headOnly = false, mood = 'idle', skin: skinP
         />
       )}
 
-      {/* lông mày: buồn → đầu trong nhướng lên; suy nghĩ → một bên nhướng */}
-      <path
-        d={sad ? 'M64 67.5 Q69.5 66 75 63.5' : 'M64 67 Q69.5 63.5 75 66.5'}
-        fill="none"
-        stroke={skin.hairColor}
-        strokeWidth="2.2"
-        strokeLinecap="round"
-      />
-      <path
-        d={sad ? 'M85 63.5 Q90.5 66 96 67.5' : thinking ? 'M85 64.5 Q90.5 61 96 64' : 'M85 66.5 Q90.5 63.5 96 67'}
-        fill="none"
-        stroke={skin.hairColor}
-        strokeWidth="2.2"
-        strokeLinecap="round"
-      />
+      {/* lông mày theo biểu cảm */}
+      <g fill="none" stroke={skin.hairColor} strokeWidth="2.2" strokeLinecap="round">
+        <path d={browLeft} />
+        <path d={browRight} />
+      </g>
 
-      {/* mắt (chớp); suy nghĩ → liếc lên phải */}
+      {/* mắt; suy nghĩ → liếc lên phải */}
       <g transform={thinking ? 'translate(1.6 -1.6)' : undefined}>
-        <g className={styles.eyes} fill="#2B1A0E">
-          <circle cx="70" cy="73" r="2.6" />
-          <circle cx="90" cy="73" r="2.6" />
+        {/* nhìn theo con trỏ: độ lệch lấy từ CSS var --eye-x / --eye-y (Mascot ghi lên phần tử gốc) */}
+        <g className={followCursor && FOLLOW_MOODS.includes(mood) ? styles.look : undefined}>
+          <Eyes mood={mood} className={eyesClass} />
         </g>
       </g>
 
@@ -164,23 +196,13 @@ export function MascotSvg({ waving, headOnly = false, mood = 'idle', skin: skinP
       {skin.beard && (
         <path d="M72 82.6 Q76 80.4 80 82 Q84 80.4 88 82.6" fill="none" stroke={beard} strokeWidth="2" strokeLinecap="round" />
       )}
-      {thinking
-        ? <ellipse cx="82" cy="87.5" rx="2.4" ry="2.1" fill="#8A3B1F" />
-        : (
-          <path
-            d={sad ? 'M74 89.5 Q80 84.5 86 89.5' : 'M73.5 86 Q80 92.5 86.5 86'}
-            fill="none"
-            stroke="#8A3B1F"
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
-        )}
+      <Mouth mood={mood} />
 
       {/* ---- Mũ ---- */}
       <Hat hat={skin.hat} color={skin.hatColor} />
 
-      {/* buồn: giọt mồ hôi bên thái dương */}
-      {sad && (
+      {/* bối rối: giọt mồ hôi bên thái dương */}
+      {confused && (
         <path
           className={styles.sweat}
           d="M108 70 Q104.5 75.5 106.2 78 Q108 80 109.8 78 Q111.5 75.5 108 70 Z"
@@ -188,6 +210,41 @@ export function MascotSvg({ waving, headOnly = false, mood = 'idle', skin: skinP
           stroke="#5A9BD8"
           strokeWidth="0.8"
         />
+      )}
+
+      {/* buồn: giọt nước mắt dưới mắt trái */}
+      {sad && (
+        <path
+          className={styles.tear}
+          d="M66 77 Q63.8 80.8 64.9 82.4 Q66 83.6 67.1 82.4 Q68.2 80.8 66 77 Z"
+          fill="#8EC5F4"
+          stroke="#5A9BD8"
+          strokeWidth="0.7"
+        />
+      )}
+      </g>
+      </g>
+
+      {/* bối rối: dấu "?" trên đầu */}
+      {confused && !headOnly && (
+        <text className={styles.floatMark} x="116" y="40" fontSize="20" fontWeight="700" fill="#E0A030" stroke="#fff" strokeWidth="0.6">?</text>
+      )}
+
+      {/* buồn ngủ: "z z Z" bay lên */}
+      {mood === 'sleepy' && !headOnly && (
+        <g fill="#6B8CC7" fontWeight="700">
+          <text className={styles.zzz} x="110" y="46" fontSize="9">z</text>
+          <text className={styles.zzz} x="118" y="36" fontSize="12" style={{ animationDelay: '0.6s' }}>z</text>
+          <text className={styles.zzz} x="128" y="24" fontSize="15" style={{ animationDelay: '1.2s' }}>Z</text>
+        </g>
+      )}
+
+      {/* vui: lấp lánh hai bên đầu */}
+      {mood === 'happy' && !headOnly && (
+        <g fill="#F5C342">
+          <path className={styles.sparkle} d="M36 44 L38 49 L43 51 L38 53 L36 58 L34 53 L29 51 L34 49 Z" />
+          <path className={styles.sparkle} d="M124 30 L125.5 34 L129.5 35.5 L125.5 37 L124 41 L122.5 37 L118.5 35.5 L122.5 34 Z" style={{ animationDelay: '0.35s' }} />
+        </g>
       )}
 
       {/* suy nghĩ: 3 chấm bong bóng suy nghĩ phía trên phải đầu (không hiện ở avatar) */}
@@ -209,6 +266,85 @@ export function MascotSvg({ waving, headOnly = false, mood = 'idle', skin: skinP
       )}
     </svg>
   )
+}
+
+function Eyes({ mood, className }: { mood: MascotMood; className?: string }) {
+  // vui / chào lúc hover: mắt cười "^ ^"
+  if (mood === 'happy') {
+    return (
+      <g className={className} fill="none" stroke={EYE} strokeWidth="2.2" strokeLinecap="round">
+        <path d="M66.5 74.5 Q70 69.5 73.5 74.5" />
+        <path d="M86.5 74.5 Q90 69.5 93.5 74.5" />
+      </g>
+    )
+  }
+  // buồn ngủ: mắt nhắm
+  if (mood === 'sleepy') {
+    return (
+      <g fill="none" stroke={EYE} strokeWidth="2" strokeLinecap="round">
+        <path d="M66.5 73.5 Q70 76 73.5 73.5" />
+        <path d="M86.5 73.5 Q90 76 93.5 73.5" />
+      </g>
+    )
+  }
+  if (mood === 'sad') {
+    return (
+      <g className={className} fill={EYE}>
+        <circle cx="70" cy="74" r="2.3" />
+        <circle cx="90" cy="74" r="2.3" />
+      </g>
+    )
+  }
+  // bối rối: một mắt nheo
+  if (mood === 'confused') {
+    return (
+      <g className={className} fill={EYE}>
+        <circle cx="70" cy="73" r="2.7" />
+        <ellipse cx="90" cy="73.5" rx="2.4" ry="1.5" />
+      </g>
+    )
+  }
+  return (
+    <g className={className} fill={EYE}>
+      <circle cx="70" cy="73" r="2.6" />
+      <circle cx="90" cy="73" r="2.6" />
+    </g>
+  )
+}
+
+function Mouth({ mood }: { mood: MascotMood }) {
+  switch (mood) {
+    case 'greeting':
+    case 'happy':
+      // cười mở miệng + lưỡi
+      return (
+        <g>
+          <path d="M73 85.5 Q80 95 87 85.5 Z" fill={MOUTH} />
+          <ellipse cx="80" cy="88.6" rx="2.8" ry="1.2" fill="#E46F6F" />
+        </g>
+      )
+    case 'talking':
+      // miệng mấp máy
+      return <ellipse className={styles.talkMouth} cx="80" cy="88" rx="3.6" ry="2.6" fill={MOUTH} />
+    case 'thinking':
+      return <ellipse cx="82" cy="87.5" rx="2.4" ry="2.1" fill={MOUTH} />
+    case 'sleepy':
+      return <ellipse className={styles.yawn} cx="80" cy="88" rx="2" ry="2.4" fill={MOUTH} />
+    case 'sad':
+      return <path d="M74 89.5 Q80 84.5 86 89.5" fill="none" stroke={MOUTH} strokeWidth="2" strokeLinecap="round" />
+    case 'confused':
+      return (
+        <path
+          d="M73.5 88 Q76.75 85.5 80 88 Q83.25 90.5 86.5 88"
+          fill="none"
+          stroke={MOUTH}
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+      )
+    default:
+      return <path d="M73.5 86 Q80 92.5 86.5 86" fill="none" stroke={MOUTH} strokeWidth="2" strokeLinecap="round" />
+  }
 }
 
 function Hat({ hat, color }: { hat: MascotHat; color: string }) {

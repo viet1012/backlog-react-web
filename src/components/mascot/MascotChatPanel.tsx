@@ -14,6 +14,7 @@ import CloudOffRoundedIcon from '@mui/icons-material/CloudOffRounded'
 import ErrorOutlineRoundedIcon from '@mui/icons-material/ErrorOutlineRounded'
 import HourglassTopRoundedIcon from '@mui/icons-material/HourglassTopRounded'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
+import SentimentDissatisfiedRoundedIcon from '@mui/icons-material/SentimentDissatisfiedRounded'
 import {
   Box,
   Button,
@@ -31,7 +32,9 @@ import {
 import { alpha } from '@mui/material/styles'
 import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useI18n } from '../../i18n/useI18n'
+import { getSupportedScreens, MASCOT_TEXTS } from './mascotConfig'
 import { loadPreference, savePreference } from '../../utils/uiPreferences'
 import { ASSISTANT_TIMEOUT_MS } from '../../services/assistantService'
 import type {
@@ -66,7 +69,15 @@ const RECONNECTED_BANNER_MS = 2500
 
 export type ChatItem =
   | { id: number; kind: 'user'; text: string }
-  | { id: number; kind: 'assistant'; text: string; sources: AssistantSource[]; answeredMonth?: string }
+  | {
+    id: number
+    kind: 'assistant'
+    text: string
+    sources: AssistantSource[]
+    answeredMonth?: string
+    /** trả lời tại chỗ (màn chưa hỗ trợ, không gọi API) */
+    local?: boolean
+  }
   | {
     id: number
     kind: 'error'
@@ -80,6 +91,8 @@ export type ChatItem =
 
 interface MascotChatPanelProps {
   id: string
+  /** câu điền sẵn vào ô nhập (mở từ speech bubble) */
+  initialDraft?: string
   /** null → đang tải câu chào từ API (hiện bubble "đang gõ") */
   greeting: string | null
   screen: MascotScreen
@@ -111,6 +124,7 @@ const SKELETON_WIDTHS = ['72%', '58%', '64%', '46%']
 
 export function MascotChatPanel({
   id,
+  initialDraft,
   greeting,
   screen,
   items,
@@ -133,9 +147,11 @@ export function MascotChatPanel({
   const offline = status === 'offline' || reconnecting
   // lần đầu (chưa có tên lưu) đang tải → skeleton thay vì hiện tên mặc định rồi đổi
   const nameLoading = status === 'loading' && loadedName === null
+  // màn chưa hỗ trợ: vẫn cho nhập, Mascot trả lời tại chỗ (không gọi API) + banner giới hạn
   const chatEnabled = Boolean(screen.screenKey)
-  const canSend = chatEnabled && !offline
-  const [draft, setDraft] = useState('')
+  const inputOffline = chatEnabled && offline
+  const canSend = !inputOffline
+  const [draft, setDraft] = useState(initialDraft ?? '')
   // chế độ rộng 720px × 85vh, nhớ qua localStorage
   const [wide, setWide] = useState(() => loadPreference(WIDE_KEY) === true)
 
@@ -171,12 +187,16 @@ export function MascotChatPanel({
   }, [items, pending, slow])
 
   useEffect(() => {
-    inputRef.current?.focus()
+    const input = inputRef.current
+    if (!input) return
+    input.focus()
+    // câu điền sẵn → con trỏ ở cuối để sửa / gửi luôn
+    input.setSelectionRange(input.value.length, input.value.length)
   }, [canSend])
 
   function submit(text: string) {
     const question = text.trim()
-    if (!question || pending || offline) return
+    if (!question || pending || !canSend) return
     onSend(question.slice(0, MAX_QUESTION_LENGTH))
     setDraft('')
   }
@@ -272,19 +292,17 @@ export function MascotChatPanel({
             </Typography>
           )}
         </Box>
-        {chatEnabled && (
-          <IconButton
-            size="small"
-            aria-label={t.mascot.chat.newConversation}
-            title={t.mascot.chat.newConversation}
-            onClick={() => {
-              onNewConversation()
-              inputRef.current?.focus()
-            }}
-          >
-            <AddCommentOutlinedIcon fontSize="small" />
-          </IconButton>
-        )}
+        <IconButton
+          size="small"
+          aria-label={t.mascot.chat.newConversation}
+          title={t.mascot.chat.newConversation}
+          onClick={() => {
+            onNewConversation()
+            inputRef.current?.focus()
+          }}
+        >
+          <AddCommentOutlinedIcon fontSize="small" />
+        </IconButton>
         <IconButton
           size="small"
           aria-label={wide ? t.mascot.chat.collapse : t.mascot.chat.expand}
@@ -302,7 +320,7 @@ export function MascotChatPanel({
       </Stack>
 
       {/* Mất kết nối API / vừa kết nối lại */}
-      {chatEnabled && <ConnectionBanner name={name} />}
+      {chatEnabled ? <ConnectionBanner name={name} /> : <LimitBanner />}
 
       {/* Tin nhắn */}
       <Box
@@ -385,12 +403,6 @@ export function MascotChatPanel({
           </Stack>
         )}
 
-        {!chatEnabled && (
-          <Typography color="text.secondary" sx={{ fontSize: 12, fontStyle: 'italic', px: 0.5 }}>
-            {t.mascot.chat.notSupported}
-          </Typography>
-        )}
-
         {items.map((item, index) => {
           if (item.kind === 'divider') {
             return (
@@ -410,7 +422,7 @@ export function MascotChatPanel({
             // chỉ lỗi cuối cùng (ứng với câu hỏi cuối) mới có nút "Thử lại"
             const canRetry = Boolean(item.question) && index === items.length - 1
             return (
-              <AssistantRow key={item.id} mood="sad">
+              <AssistantRow key={item.id} mood="confused">
                 <ErrorCard
                   code={item.code}
                   message={t.mascot.chat.errors[item.code](name)}
@@ -430,6 +442,14 @@ export function MascotChatPanel({
             )
           }
           if (item.kind === 'assistant') {
+            // trả lời tại chỗ ở màn chưa hỗ trợ: mascot buồn, không có nguồn / nút đổi tháng
+            if (item.local) {
+              return (
+                <AssistantRow key={item.id} mood="sad" className={styles.fadeIn}>
+                  <Bubble from="assistant" nested>{item.text}</Bubble>
+                </AssistantRow>
+              )
+            }
             const otherMonth = item.answeredMonth && item.answeredMonth !== viewingMonth
               ? item.answeredMonth
               : undefined
@@ -524,8 +544,7 @@ export function MascotChatPanel({
         </Stack>
       )}
 
-      {/* Ô nhập */}
-      {chatEnabled && (
+      {/* Ô nhập (màn chưa hỗ trợ vẫn hiện – câu hỏi được trả lời tại chỗ) */}
         <Box
           sx={{
             px: 1.25,
@@ -552,13 +571,13 @@ export function MascotChatPanel({
                 : theme.palette.grey[50],
               border: `1px solid ${theme.palette.divider}`,
               transition: 'border-color 0.15s, box-shadow 0.15s, background-color 0.15s',
-              '&:hover': { borderColor: offline ? theme.palette.divider : alpha(theme.palette.primary.main, 0.5) },
+              '&:hover': { borderColor: inputOffline ? theme.palette.divider : alpha(theme.palette.primary.main, 0.5) },
               '&:focus-within': {
                 borderColor: theme.palette.primary.main,
                 bgcolor: theme.palette.background.paper,
                 boxShadow: `0 0 0 3px ${alpha(theme.palette.primary.main, 0.15)}`,
               },
-              ...(offline && { opacity: 0.6, cursor: 'not-allowed' }),
+              ...(inputOffline && { opacity: 0.6, cursor: 'not-allowed' }),
             })}
           >
             <InputBase
@@ -566,8 +585,8 @@ export function MascotChatPanel({
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={offline ? t.mascot.chat.offlinePlaceholder : t.mascot.chat.placeholder(name)}
-              disabled={offline}
+              placeholder={inputOffline ? t.mascot.chat.offlinePlaceholder : t.mascot.chat.placeholder(name)}
+              disabled={inputOffline}
               multiline
               maxRows={5}
               fullWidth
@@ -596,7 +615,7 @@ export function MascotChatPanel({
               <IconButton
                 aria-label={t.mascot.chat.send}
                 title={t.mascot.chat.send}
-                disabled={offline || draft.trim().length === 0}
+                disabled={inputOffline || draft.trim().length === 0}
                 onClick={(event) => {
                   event.stopPropagation()
                   submit(draft)
@@ -637,7 +656,6 @@ export function MascotChatPanel({
             )}
           </Stack>
         </Box>
-      )}
     </Paper>
   )
 }
@@ -875,6 +893,66 @@ function ConnectionBanner({ name }: { name: string }) {
         </Stack>
       )}
     </Collapse>
+  )
+}
+
+/** Banner dưới header ở màn chưa hỗ trợ: báo giới hạn + link chuyển sang màn đang hỗ trợ */
+function LimitBanner() {
+  const { language } = useI18n()
+  const navigate = useNavigate()
+  const texts = MASCOT_TEXTS[language]
+  const screens = getSupportedScreens(language)
+  const label = screens.map((s) => s.name).join(', ')
+
+  return (
+    <Stack
+      direction="row"
+      role="note"
+      sx={(theme) => ({
+        alignItems: 'center',
+        gap: 1.25,
+        px: 1.5,
+        py: 1,
+        bgcolor: alpha(theme.palette.warning.main, theme.palette.mode === 'dark' ? 0.14 : 0.08),
+        borderBottom: `1px solid ${alpha(theme.palette.warning.main, 0.3)}`,
+      })}
+    >
+      <IconCircle color="#d9890b">
+        <SentimentDissatisfiedRoundedIcon />
+      </IconCircle>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography sx={{ fontSize: 12.5, fontWeight: 600, lineHeight: 1.35 }}>
+          {texts.limitBannerTitle}
+        </Typography>
+        <Typography color="text.secondary" sx={{ fontSize: 11.5, lineHeight: 1.35 }}>
+          {texts.limitBannerBody(label)}
+        </Typography>
+      </Box>
+      {screens.map((screen) => (
+        <Button
+          key={screen.route}
+          size="small"
+          variant="contained"
+          color="warning"
+          disableElevation
+          endIcon={<ArrowForwardRoundedIcon sx={{ fontSize: '15px !important' }} />}
+          onClick={() => navigate(screen.route)}
+          sx={{
+            flexShrink: 0,
+            borderRadius: 999,
+            px: 1.5,
+            py: 0.375,
+            fontSize: 12,
+            fontWeight: 600,
+            textTransform: 'none',
+            whiteSpace: 'nowrap',
+            color: '#fff',
+          }}
+        >
+          {texts.goTo(screen.name)}
+        </Button>
+      ))}
+    </Stack>
   )
 }
 

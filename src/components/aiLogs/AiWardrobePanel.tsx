@@ -38,6 +38,7 @@ import {
   useMascotName,
 } from '../mascot'
 import type { MascotGlasses, MascotHat, MascotMood, MascotSkin } from '../mascot'
+import { MASCOT_STATES, MASCOT_TEXTS } from '../mascot/mascotConfig'
 import { AssistantSkinError, saveAssistantSkin } from '../../services/assistantService'
 import { useI18n } from '../../i18n/useI18n'
 import { uiTokens } from '../../theme/uiTokens'
@@ -45,7 +46,7 @@ import styles from './AiWardrobe.module.css'
 
 const HATS: MascotHat[] = ['helmet', 'cap', 'beanie', 'none']
 const GLASSES: MascotGlasses[] = ['none', 'round', 'sunglasses']
-const MOODS: MascotMood[] = ['idle', 'thinking', 'sad']
+const MOODS: MascotMood[] = MASCOT_STATES
 const SPARKLES = [
   { left: '30%', top: '30%', delay: '0s' },
   { left: '66%', top: '22%', delay: '0.15s' },
@@ -82,7 +83,7 @@ function randomSkin(): MascotSkin {
  * Lưu → PUT /api/assistant/config/skin, áp dụng cho mọi người dùng.
  */
 export function AiWardrobePanel() {
-  const { t } = useI18n()
+  const { t, language } = useI18n()
   const w = t.aiLogs.wardrobe
   const name = useMascotName()
   const { skin: applied, applySkin } = useMascotContext()
@@ -221,7 +222,7 @@ export function AiWardrobePanel() {
             sx={{ '& .MuiToggleButton-root': { textTransform: 'none', px: 1.25, py: 0.25, fontSize: 12 } }}
           >
             {MOODS.map((m) => (
-              <ToggleButton key={m} value={m}>{w.moods[m]}</ToggleButton>
+              <ToggleButton key={m} value={m}>{MASCOT_TEXTS[language].states[m]}</ToggleButton>
             ))}
           </ToggleButtonGroup>
           <Button

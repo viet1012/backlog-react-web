@@ -6,6 +6,8 @@ export const API_BASE_URL =
 export const UTILITY_API_BASE_URL =
   import.meta.env.VITE_UTILITY_API_BASE || 'http://192.168.122.16:9093'
 
+// export const UTILITY_API_BASE_URL =
+//   import.meta.env.VITE_UTILITY_API_BASE || 'http://localhost:9999'
 // Ảnh HSE: url = base + tên file
 export const HSE_IMAGE_BASE_URL =
   import.meta.env.VITE_HSE_IMAGE_BASE_URL || 'http://192.168.122.16:8002/images/'

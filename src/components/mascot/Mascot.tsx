@@ -2,29 +2,56 @@ import CloudOffRoundedIcon from '@mui/icons-material/CloudOffRounded'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import { useEffect, useRef, useState } from 'react'
 import type { AnimationEvent, CSSProperties } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useI18n } from '../../i18n/useI18n'
 import { AssistantApiError, normalizeMonth, postAssistantChat } from '../../services/assistantService'
 import type { AssistantChatTurn } from '../../services/assistantService'
 import { loadPreference, savePreference } from '../../utils/uiPreferences'
 import { MascotChatPanel } from './MascotChatPanel'
 import type { ChatItem } from './MascotChatPanel'
+import {
+  getSupportedScreens,
+  MASCOT_EYE_FOLLOW,
+  MASCOT_SELECTION,
+  MASCOT_TEXTS,
+  MASCOT_TIMING,
+} from './mascotConfig'
+import type { MascotLine } from './mascotConfig'
 import { useMascotContext, useMascotName } from './mascotContext'
 import { getMascotScreen } from './mascotMessages'
+import { MascotSpeechBubble } from './MascotSpeechBubble'
 import { MASCOT_VIEWBOX, MascotSvg } from './MascotSvg'
-import type { MascotMood } from './MascotSvg'
+import {
+  prefersReducedMotion,
+  useEyeFollow,
+  useMascotBubble,
+  useMascotState,
+  useRandomInterval,
+  useTextSelection,
+  useUserActivity,
+  useMascotDrag,
+  useWelcomeBack,
+} from './useMascotBehavior'
+import type { BubbleDraft, MascotBubble } from './useMascotBehavior'
 import { FOLLOW_UP_COUNT, INITIAL_COUNT, useMascotSuggestions } from './useMascotSuggestions'
 import styles from './Mascot.module.css'
 
 /** Chiều cao mascot (px) – chiều rộng tính theo tỉ lệ viewBox 160:200 */
 const MASCOT_HEIGHT = 140
 const MASCOT_WIDTH = Math.round((MASCOT_HEIGHT * MASCOT_VIEWBOX.width) / MASCOT_VIEWBOX.height)
+const MASCOT_SIZE = { width: MASCOT_WIDTH, height: MASCOT_HEIGHT }
 
 const HOVER_WAVES = 2
 const CLICK_WAVES = 3
 const HISTORY_SIZE = 6
 const MINIMIZED_KEY = 'mascot:minimized'
 const PANEL_ID = 'mascot-chat-panel'
+/** loại bubble mà mascot vẫy tay khi hiện */
+const WAVE_BUBBLES: MascotBubble['kind'][] = ['entry', 'idle', 'welcome']
+
+function pickRandom<T>(items: T[]): T {
+  return items[Math.floor(Math.random() * items.length)]
+}
 
 type ChatItemInput =
   | Omit<Extract<ChatItem, { kind: 'user' }>, 'id'>
@@ -32,14 +59,10 @@ type ChatItemInput =
   | Omit<Extract<ChatItem, { kind: 'error' }>, 'id'>
   | Omit<Extract<ChatItem, { kind: 'divider' }>, 'id'>
 
-function prefersReducedMotion() {
-  return typeof window !== 'undefined'
-    && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-}
-
 export function Mascot() {
   const { t, language } = useI18n()
   const { pathname } = useLocation()
+  const navigate = useNavigate()
   const { params, monthControl, openChatSeq, elevated, status, retry, reportStatus, skin } = useMascotContext()
   const offline = status === 'offline'
   const reconnecting = status === 'reconnecting'
@@ -48,11 +71,22 @@ export function Mascot() {
   const name = useMascotName()
   // tháng đang xem trên màn hình, dạng "YYYY.MM"
   const viewingMonth = normalizeMonth(params.month)
-  const screen = getMascotScreen(pathname, t)
+  const screen = getMascotScreen(pathname, t, language, name)
+  const supported = Boolean(screen.screenKey)
+  const texts = MASCOT_TEXTS[language]
+  const supportedScreens = getSupportedScreens(language)
+  const supportedLabel = supportedScreens.map((s) => s.name).join(', ')
 
   const [minimized, setMinimized] = useState(() => loadPreference(MINIMIZED_KEY) === true)
   const [waveCount, setWaveCount] = useState(0) // 0 = không vẫy
   const [open, setOpen] = useState(false)
+  const [hovered, setHovered] = useState(false)
+  const [blink, setBlink] = useState(false)
+  // bấm bubble có câu hỏi gợi ý → mở chat điền sẵn câu này
+  const [prefill, setPrefill] = useState<string | undefined>(undefined)
+  const { lastActivityRef, sleepy } = useUserActivity()
+  // kéo thả mascot đi chỗ khác (vị trí lưu localStorage)
+  const dragApi = useMascotDrag(MASCOT_SIZE)
   // hover / focus vào mascot → tải trước gợi ý, mở panel là có ngay câu chào + gợi ý từ API
   const [warm, setWarm] = useState(false)
   const suggestions = useMascotSuggestions({
@@ -62,8 +96,6 @@ export function Mascot() {
     lang: language,
     staticSuggestions: screen.suggestions,
   })
-  const [greetIdx, setGreetIdx] = useState(0)
-
   // vừa kết nối lại → mascot vẫy tay báo hiệu + tải lại gợi ý nếu lần trước bị lỗi
   const [prevStatus, setPrevStatus] = useState(status)
   if (status !== prevStatus) {
@@ -90,7 +122,10 @@ export function Mascot() {
   const [prevOpen, setPrevOpen] = useState(open)
   if (open !== prevOpen) {
     setPrevOpen(open)
-    if (!open) setWarm(false)
+    if (!open) {
+      setWarm(false)
+      setPrefill(undefined)
+    }
   }
 
   // Trang yêu cầu mở chat (vd nút "Hỏi … về khung này") → bỏ thu nhỏ + mở panel
@@ -146,12 +181,14 @@ export function Mascot() {
   function handleMouseEnter() {
     if (waveCount === 0) startWave(HOVER_WAVES)
     setWarm(true)
+    setHovered(true)
   }
 
   function handleClick() {
+    // vừa kéo thả xong → không tính là click mở chat
+    if (dragApi.consumeClick()) return
     if (!open) {
       startWave(CLICK_WAVES)
-      setGreetIdx((i) => i + 1)
       // mở panel lúc đang offline → kiểm tra lại kết nối ngay
       if (offline) retry()
     }
@@ -161,6 +198,8 @@ export function Mascot() {
   function handleAnimationEnd(event: AnimationEvent) {
     // tên keyframes bị CSS module băm → so theo chuỗi con
     if (event.animationName.includes('wave')) setWaveCount(0)
+    if (event.animationName.includes('blinkOnce')) setBlink(false)
+    if (event.animationName.includes('landBounce')) dragApi.clearLanded()
   }
 
   function toggleMinimized(next: boolean) {
@@ -175,8 +214,19 @@ export function Mascot() {
    * (không thêm bubble user mới, history chỉ tính các lượt trước câu đó).
    */
   async function send(question: string, retryOf?: Extract<ChatItem, { kind: 'error' }>) {
+    if (pending || !question) return
     const screenKey = screen.screenKey
-    if (!screenKey || pending || !question) return
+    // màn chưa hỗ trợ: trả lời tại chỗ, không gọi API
+    if (!screenKey) {
+      appendItem(currentKey, { kind: 'user', text: question })
+      appendItem(currentKey, {
+        kind: 'assistant',
+        text: texts.outOfScopeReply(name, supportedLabel),
+        sources: [],
+        local: true,
+      })
+      return
+    }
 
     const userIndex = retryOf?.userId !== undefined
       ? items.findIndex((item) => item.id === retryOf.userId)
@@ -273,16 +323,166 @@ export function Mascot() {
   const greeting = screen.screenKey
     ? suggestions.greeting
       ?? (suggestions.initialLoading && !offline ? null : screen.greeting ?? screen.lines[0])
-    : screen.lines[greetIdx % screen.lines.length]
+    : texts.unsupportedGreeting(name)
 
-  // biểu cảm: đang chờ trả lời → suy nghĩ; mất kết nối / câu cuối lỗi → buồn
-  const mood: MascotMood = pending ? 'thinking' : offlineUi || last?.kind === 'error' ? 'sad' : 'idle'
+  // ---- Speech bubble tự hiện ----
+  // màn chưa hỗ trợ: khóa theo đoạn đầu của path → mỗi màn chào 1 lần / phiên
+  const routeKey = screen.route ?? `/${pathname.split('/')[1] ?? ''}`
+  const lastIdleLine = useRef<number>(-1)
+
+  function buildEntry(): BubbleDraft | null {
+    if (!supported) {
+      const target = supportedScreens[0]
+      return {
+        kind: 'unsupported',
+        text: texts.unsupportedBubble(supportedLabel),
+        link: target ? { label: texts.goTo(target.name), to: target.route } : undefined,
+        visibleMs: MASCOT_TIMING.unsupportedBubbleVisibleMs,
+      }
+    }
+    const question = screen.suggestions[0]
+    return {
+      kind: 'entry',
+      text: screen.greeting ?? '',
+      hint: question ? texts.tryAsking(question) : undefined,
+      question,
+      visibleMs: MASCOT_TIMING.entryBubbleVisibleMs,
+    }
+  }
+
+  function buildIdle(): BubbleDraft | null {
+    const lines = screen.idleLines
+    if (lines.length === 0) return null
+    // tránh lặp lại đúng câu vừa nói
+    let index = Math.floor(Math.random() * lines.length)
+    if (lines.length > 1 && index === lastIdleLine.current) index = (index + 1) % lines.length
+    lastIdleLine.current = index
+    return { kind: 'idle', ...lines[index], visibleMs: MASCOT_TIMING.idleBubbleVisibleMs }
+  }
+
+  const speech = useMascotBubble({
+    routeKey,
+    enabled: !open && !minimized,
+    canIdle: supported && !offlineUi && !pending,
+    lastActivityRef,
+    buildEntry,
+    buildIdle,
+  })
+  const bubble = speech.bubble
+  const { push: pushBubble, hide: hideBubble } = speech
+
+  // bubble chào / bắt chuyện / chào mừng quay lại → vẫy tay
+  const [prevBubbleId, setPrevBubbleId] = useState(bubble?.id)
+  if (bubble?.id !== prevBubbleId) {
+    setPrevBubbleId(bubble?.id)
+    if (bubble && WAVE_BUBBLES.includes(bubble.kind) && !prefersReducedMotion()) setWaveCount(HOVER_WAVES)
+  }
+
+  /** câu thoại → bubble; màn chưa hỗ trợ thì bỏ câu hỏi gợi ý (không hỏi được) */
+  function lineBubble(line: MascotLine, kind: MascotBubble['kind'], visibleMs: number): BubbleDraft {
+    const question = supported ? line.question : undefined
+    return { kind, text: line.text, question, hint: question ? texts.tryAsking(question) : undefined, visibleMs }
+  }
+
+  // ---- Tương tác: tỉnh ngủ → chào lại ----
+  const prevSleepyRef = useRef(sleepy)
+  useEffect(() => {
+    const wasSleepy = prevSleepyRef.current
+    prevSleepyRef.current = sleepy
+    if (wasSleepy && !sleepy) {
+      pushBubble(lineBubble(pickRandom(texts.wakeUp(name)), 'welcome', MASCOT_TIMING.reactionBubbleVisibleMs))
+    }
+    // chỉ phản ứng khi sleepy đổi
+  }, [sleepy])
+
+  // ---- Tương tác: quay lại tab sau thời gian dài ----
+  useWelcomeBack(() => {
+    pushBubble(lineBubble(pickRandom(texts.welcomeBack(name)), 'welcome', MASCOT_TIMING.reactionBubbleVisibleMs))
+  })
+
+  // ---- Tương tác: đổi tháng trên màn → gợi ý tóm tắt tháng mới (phản hồi trực tiếp thao tác của user) ----
+  const prevMonthRef = useRef(viewingMonth)
+  useEffect(() => {
+    const prevMonth = prevMonthRef.current
+    prevMonthRef.current = viewingMonth
+    if (!prevMonth || !viewingMonth || prevMonth === viewingMonth || !screen.monthChanged) return
+    pushBubble(lineBubble(screen.monthChanged(viewingMonth), 'reaction', MASCOT_TIMING.reactionBubbleVisibleMs), true)
+    // chỉ phản ứng khi tháng đổi
+  }, [viewingMonth])
+
+  // ---- Tương tác: bôi đen văn bản → "Hỏi mình về …?" ----
+  const rootRef = useRef<HTMLDivElement>(null)
+  useTextSelection(
+    supported && !open && !minimized,
+    rootRef,
+    MASCOT_SELECTION.minChars,
+    MASCOT_SELECTION.maxChars,
+    (text) => {
+      const preview = text.length > MASCOT_SELECTION.previewChars
+        ? `${text.slice(0, MASCOT_SELECTION.previewChars).trimEnd()}…`
+        : text
+      pushBubble({
+        kind: 'selection',
+        text: texts.selectionAsk(preview),
+        question: texts.selectionQuestion(text),
+        visibleMs: MASCOT_TIMING.selectionBubbleVisibleMs,
+      }, true)
+    },
+    () => hideBubble('selection'),
+  )
+
+  // ---- Tương tác: mắt nhìn theo con trỏ ----
+  useEyeFollow(!minimized, rootRef, MASCOT_EYE_FOLLOW.maxOffset, MASCOT_EYE_FOLLOW.fullAtPx)
+
+  // ---- State machine biểu cảm ----
+  const mood = useMascotState({
+    pending,
+    lastIsAnswer: last?.kind === 'assistant' && !last.local,
+    lastIsError: last?.kind === 'error',
+    offline: offlineUi,
+    supported,
+    greeting: Boolean(bubble && bubble.kind !== 'unsupported'),
+    hovered,
+    sleepy: sleepy && !open,
+    dragging: dragApi.dragging,
+  })
+
+  // chớp mắt ngẫu nhiên; vẫy tay ngẫu nhiên lúc rảnh
+  useRandomInterval(!minimized, MASCOT_TIMING.blinkMinMs, MASCOT_TIMING.blinkMaxMs, () => setBlink(true))
+  useRandomInterval(
+    !minimized && !open && mood === 'idle',
+    MASCOT_TIMING.randomWaveMinMs,
+    MASCOT_TIMING.randomWaveMaxMs,
+    () => setWaveCount((count) => count || 1),
+  )
+
+  function openFromBubble() {
+    const question = bubble?.question
+    speech.accept()
+    if (question) setPrefill(question)
+    if (offline) retry()
+    setOpen(true)
+  }
+
+  function followBubbleLink(to: string) {
+    speech.accept()
+    navigate(to)
+  }
 
   // nổi trên Drawer (1200) / Modal (1300) của MUI khi trang bật elevated
   const elevatedStyle = {
     ...(elevated && { zIndex: 1350 }),
     // nền avatar tròn khi thu nhỏ theo skin
     '--mascot-avatar-bg': skin.avatarBg,
+    // vị trí sau khi kéo (null → góc mặc định trong CSS)
+    ...(dragApi.offset && {
+      '--mascot-right': `${dragApi.offset.right}px`,
+      '--mascot-bottom': `${dragApi.offset.bottom}px`,
+    }),
+    ...(dragApi.space && {
+      '--space-above': `${dragApi.space.above}px`,
+      '--space-below': `${dragApi.space.below}px`,
+    }),
   } as CSSProperties
 
   if (minimized) {
@@ -295,7 +495,7 @@ export function Mascot() {
           title={t.mascot.expand}
           onClick={() => toggleMinimized(false)}
         >
-          <MascotSvg waving={false} headOnly mood={offlineUi ? 'sad' : 'idle'} className={styles.avatarSvg} />
+          <MascotSvg waving={false} headOnly mood={mood} className={styles.avatarSvg} />
         </button>
         {/* thu nhỏ mà mất kết nối → chấm vàng báo hiệu */}
         {offlineUi && <span className={styles.avatarDot} aria-hidden="true" />}
@@ -311,10 +511,36 @@ export function Mascot() {
   } as CSSProperties
 
   return (
-    <div className={styles.root} style={sizeVars}>
+    <div
+      ref={rootRef}
+      className={[
+        styles.root,
+        supported ? '' : styles.dim,
+        dragApi.dragging ? styles.dragging : '',
+        dragApi.landed ? styles.landed : '',
+      ].filter(Boolean).join(' ')}
+      // hướng mở panel / bubble theo vị trí mascot (màn hẹp: bỏ, dùng bố cục CSS cho màn hẹp)
+      data-side={dragApi.offset ? dragApi.layout.side : undefined}
+      data-vert={dragApi.offset ? dragApi.layout.vert : undefined}
+      style={sizeVars}
+    >
+      {!open && bubble && (
+        <MascotSpeechBubble
+          key={bubble.id}
+          bubble={bubble}
+          texts={texts}
+          name={name}
+          onOpen={openFromBubble}
+          onLink={followBubbleLink}
+          onDismiss={speech.dismiss}
+          onMute={speech.mute}
+        />
+      )}
+
       {open && (
         <MascotChatPanel
           id={PANEL_ID}
+          initialDraft={prefill}
           greeting={greeting}
           screen={screen}
           items={items}
@@ -344,6 +570,29 @@ export function Mascot() {
         </svg>
       </button>
 
+      {/* đã kéo đi chỗ khác → nút đưa về góc (hiện khi hover, cạnh nút thu nhỏ) */}
+      {dragApi.moved && (
+        <button
+          type="button"
+          className={`${styles.minimize} ${styles.resetPosition}`}
+          aria-label={texts.resetPosition}
+          title={texts.resetPosition}
+          onClick={dragApi.reset}
+        >
+          <svg viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+            <path
+              d="M3 9 L9 3 M9 3 H5 M9 3 V7"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              transform="rotate(90 6 6)"
+            />
+          </svg>
+        </button>
+      )}
+
       {/* Mất kết nối → nút tròn trên đầu mascot: bấm để kết nối lại (không cần mở panel) */}
       {offlineUi && (
         <button
@@ -366,12 +615,15 @@ export function Mascot() {
         aria-label={open ? t.mascot.chat.close : t.mascot.chat.open(name)}
         aria-expanded={open}
         aria-controls={open ? PANEL_ID : undefined}
+        title={texts.dragHint(name)}
+        {...dragApi.handlers}
         onMouseEnter={handleMouseEnter}
+        onMouseLeave={() => setHovered(false)}
         onFocus={() => setWarm(true)}
         onClick={handleClick}
         onAnimationEnd={handleAnimationEnd}
       >
-        <MascotSvg waving={waveCount > 0} mood={mood} className={styles.svg} />
+        <MascotSvg waving={waveCount > 0} mood={mood} blink={blink} followCursor className={styles.svg} />
       </button>
     </div>
   )

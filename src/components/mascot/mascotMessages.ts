@@ -1,20 +1,23 @@
-import type { Messages } from '../../i18n/i18nContext'
+import type { Language, Messages } from '../../i18n/i18nContext'
+import { findMascotRoute, MASCOT_ROUTES, MASCOT_TEXTS } from './mascotConfig'
+import type { MascotLine } from './mascotConfig'
 
 type MascotI18n = Messages['mascot']
 type ScreenId = Extract<keyof MascotI18n['lines'], keyof MascotI18n['screens']>
 
 interface RouteConfig {
-  /** khóa i18n: câu thoại (lines), tên trang + câu gợi ý (screens) */
+  /** khóa i18n: tên trang (divider, AI Logs) */
   id: ScreenId
   /** screenKey gửi lên /api/assistant/chat */
   screenKey: string
 }
 
-// Route → cấu hình mascot. Khớp theo tiền tố; route không có trong map
-// dùng câu chào mặc định và ẩn ô chat.
-const ROUTES: Record<string, RouteConfig> = {
-  '/cost-monitoring': { id: 'costMonitoring', screenKey: 'cost-monitoring' },
-}
+// Route → cấu hình mascot: lấy từ mascotConfig (chỉ các màn supported).
+const ROUTES: Record<string, RouteConfig> = Object.fromEntries(
+  Object.entries(MASCOT_ROUTES)
+    .filter(([, config]) => config.supported && config.screenId && config.screenKey)
+    .map(([route, config]) => [route, { id: config.screenId!, screenKey: config.screenKey! }]),
+)
 
 export interface AssistantScreenDef {
   screenKey: string
@@ -42,28 +45,40 @@ export interface MascotScreen {
   /** câu chào trung tính khi API suggestions chưa trả / lỗi */
   greeting?: string
   suggestions: string[]
+  /** route khớp trong mascotConfig (undefined → không có trong map) */
+  route?: string
+  /** câu bắt chuyện khi idle (mascotConfig) */
+  idleLines: MascotLine[]
+  /** phản ứng khi đổi tháng (mascotConfig); undefined → không phản ứng */
+  monthChanged?: (month: string) => MascotLine
 }
 
-function findRoute(pathname: string): RouteConfig | undefined {
-  const prefix = Object.keys(ROUTES).find(
-    (route) => pathname === route || pathname.startsWith(`${route}/`),
-  )
-  return prefix ? ROUTES[prefix] : undefined
-}
-
-export function getMascotScreen(pathname: string, t: Messages): MascotScreen {
-  const route = findRoute(pathname)
+/** name: tên mascot (useMascotName) để điền vào câu chào trong mascotConfig */
+export function getMascotScreen(pathname: string, t: Messages, language: Language, name: string): MascotScreen {
+  const match = findMascotRoute(pathname)
   const defaults = t.mascot.lines.default
+  const supported = match?.config.supported && match.config.screenKey && match.config.screenId
+    ? match.config
+    : undefined
 
-  if (!route) return { lines: defaults, suggestions: [] }
+  if (!match || !supported) {
+    return { lines: defaults, suggestions: [], route: match?.route, idleLines: [] }
+  }
 
-  const lines = t.mascot.lines[route.id]
+  const id = supported.screenId!
+  const texts = supported.texts?.[language]
+  const lines = t.mascot.lines[id]
   return {
     lines: lines.length > 0 ? lines : defaults,
-    screenKey: route.screenKey,
-    screenId: route.id,
-    greeting: t.mascot.screens[route.id].greeting,
-    suggestions: t.mascot.screens[route.id].suggestions,
+    screenKey: supported.screenKey,
+    screenId: id,
+    greeting: texts
+      ? texts.greeting(name, MASCOT_TEXTS[language].timeGreeting(new Date().getHours()))
+      : t.mascot.screens[id].greeting,
+    suggestions: texts ? texts.suggestedQuestions : t.mascot.screens[id].suggestions,
+    route: match.route,
+    idleLines: texts ? texts.idleLines(name) : [],
+    monthChanged: texts?.monthChanged ?? undefined,
   }
 }
 

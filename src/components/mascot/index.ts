@@ -2,6 +2,8 @@ export { Mascot } from './Mascot'
 export { MascotProvider } from './MascotProvider'
 export { MascotSvg } from './MascotSvg'
 export type { MascotMood } from './MascotSvg'
+export { MASCOT_ROUTES, MASCOT_STATES, MASCOT_TEXTS, MASCOT_TIMING } from './mascotConfig'
+export type { MascotState } from './mascotConfig'
 export {
   useMascotContext,
   useMascotElevated,

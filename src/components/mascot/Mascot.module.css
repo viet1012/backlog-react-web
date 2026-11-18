@@ -2,8 +2,9 @@
    --mascot-h / --mascot-w do Mascot.tsx set từ MASCOT_HEIGHT. */
 .root {
   position: fixed;
-  right: 16px;
-  bottom: 16px;
+  /* --mascot-right / --mascot-bottom: vị trí sau khi kéo (Mascot.tsx set) */
+  right: var(--mascot-right, 16px);
+  bottom: var(--mascot-bottom, 16px);
   /* trên nội dung trang nhưng dưới Drawer (1200) / Modal / Tooltip của MUI */
   z-index: 1000;
   pointer-events: none;
@@ -22,6 +23,104 @@
 .body {
   display: block;
   background: none;
+  /* cho kéo bằng cảm ứng (pointer events) thay vì cuộn trang */
+  touch-action: none;
+  user-select: none;
+}
+
+/* ---------- Kéo thả ---------- */
+.dragging .body {
+  cursor: grabbing;
+}
+
+/* đang bị nhấc lên: nghiêng, to hơn chút, bóng xa hơn */
+.dragging .svg {
+  transform: rotate(-8deg) scale(1.06);
+  filter: drop-shadow(0 10px 10px rgba(0, 0, 0, 0.22));
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+/* vừa thả: nảy nhẹ khi "chạm đất" */
+.landed .svg {
+  transform-origin: 50% 100%;
+  animation: landBounce 0.45s ease-out;
+}
+
+/* nút "Đưa về góc" – cạnh nút thu nhỏ */
+.resetPosition {
+  right: 26px;
+}
+
+/* ---------- Đổi hướng panel / bubble theo vị trí mascot ---------- */
+/* mascot ở nửa trái → panel mở sang phải */
+.root[data-side='left'] .panel {
+  right: auto;
+  left: calc(var(--mascot-w, 112px) + 8px);
+}
+
+.root[data-side='left'] .tail {
+  right: auto;
+  left: -7px;
+  border-top: 0;
+  border-right: 0;
+  border-bottom: 1px solid var(--tail-border);
+  border-left: 1px solid var(--tail-border);
+  border-top-right-radius: 0;
+  border-bottom-left-radius: 3px;
+}
+
+/* mascot ở nửa trên → panel mép trên ngang đầu mascot, mở xuống dưới */
+.root[data-vert='top'] .panel {
+  bottom: auto;
+  top: 0;
+  max-height: min(70vh, calc(var(--space-below, 100vh) - 16px));
+}
+
+.root[data-vert='top'] .panelWide {
+  max-height: min(85vh, calc(var(--space-below, 100vh) - 16px));
+}
+
+.root[data-vert='bottom'] .panel {
+  max-height: min(70vh, calc(var(--space-above, 100vh) - 16px));
+}
+
+.root[data-vert='bottom'] .panelWide {
+  max-height: min(85vh, calc(var(--space-above, 100vh) - 16px));
+}
+
+.root[data-vert='top'] .tail {
+  bottom: auto;
+  top: 45px;
+}
+
+/* bubble: mascot ở nửa trái → neo trái */
+.root[data-side='left'] .speech {
+  right: auto;
+  left: calc(var(--mascot-w, 112px) * 0.25);
+  transform-origin: 15% 100%;
+}
+
+.root[data-side='left'] .speechTail {
+  right: auto;
+  left: 22%;
+}
+
+/* mascot sát mép trên → bubble nằm dưới chân, đuôi chỉ lên */
+.root[data-vert='top'] .speech {
+  bottom: auto;
+  top: calc(var(--mascot-h, 140px) + 4px);
+  transform-origin: 85% 0;
+}
+
+.root[data-vert='top'] .speechTail {
+  bottom: auto;
+  top: -6px;
+  border-right: 0;
+  border-bottom: 0;
+  border-top: 1px solid var(--tail-border);
+  border-left: 1px solid var(--tail-border);
+  border-bottom-right-radius: 0;
+  border-top-left-radius: 2px;
 }
 
 .body:focus-visible,
@@ -41,13 +140,126 @@
   height: var(--mascot-h, 140px);
   overflow: visible;
   filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.18));
-  animation: bob 2.4s ease-in-out infinite;
+  transition: filter 0.4s ease, opacity 0.4s ease;
+}
+
+/* Màn chưa hỗ trợ: mascot hơi xám / mờ */
+.dim .svg {
+  filter: grayscale(0.6) drop-shadow(0 3px 4px rgba(0, 0, 0, 0.12));
+  opacity: 0.78;
+}
+
+/* Thở nhẹ: phần trên cơ thể phồng lên / hạ xuống quanh bàn chân */
+.upper {
+  transform-box: view-box;
+  transform-origin: 80px 190px;
+  animation: breathe 3.2s ease-in-out infinite;
+}
+
+/* buồn ngủ → thở chậm, sâu hơn */
+.svg[data-mood='sleepy'] .upper {
+  animation-duration: 5s;
+}
+
+/* Đầu nghiêng khi hover / focus mascot */
+.head {
+  transform-box: view-box;
+  transform-origin: 80px 96px;
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.body:hover .head,
+.body:focus-visible .head {
+  transform: rotate(-7deg);
 }
 
 .eyes {
   transform-box: fill-box;
   transform-origin: center;
   animation: blink 4s infinite;
+}
+
+/* chớp mắt 1 lần (mascot chính – thời điểm ngẫu nhiên do JS quyết định) */
+.blinkOnce {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: blinkOnce 0.18s ease-in-out;
+}
+
+/* mắt nhìn theo con trỏ (--eye-x / --eye-y do Mascot ghi, đơn vị = đơn vị SVG) */
+.look {
+  transform: translate(var(--eye-x, 0px), var(--eye-y, 0px));
+  transition: transform 0.12s ease-out;
+}
+
+.eyesStatic {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* miệng "đang nói" mấp máy */
+.talkMouth {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: talk 0.28s ease-in-out infinite alternate;
+}
+
+/* buồn ngủ: ngáp chậm */
+.yawn {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: yawn 3s ease-in-out infinite;
+}
+
+/* nước mắt (buồn) */
+.tear {
+  animation: sweat 2.2s ease-in-out infinite;
+}
+
+/* dấu "?" (bối rối) nhún lên xuống */
+.floatMark {
+  animation: thought 1.2s ease-in-out infinite;
+}
+
+/* "z z Z" bay lên rồi mờ dần */
+.zzz {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: zzz 2.4s ease-in infinite;
+  opacity: 0;
+}
+
+/* lấp lánh (vui) */
+.sparkle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sparkle 0.9s ease-in-out infinite alternate;
+}
+
+/* ---------- Speech bubble tự hiện (phía trên đầu mascot) ---------- */
+.speech {
+  position: absolute;
+  right: calc(var(--mascot-w, 112px) * 0.25);
+  bottom: calc(var(--mascot-h, 140px) + 2px);
+  width: max-content;
+  max-width: 260px;
+  pointer-events: auto;
+  transform-origin: 85% 100%;
+  animation: bubbleIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* đuôi chỉ xuống đầu mascot */
+.speechTail {
+  position: absolute;
+  right: 22%;
+  bottom: -6px;
+  width: 11px;
+  height: 11px;
+  transform: rotate(45deg);
+  border-right: 1px solid var(--tail-border);
+  border-bottom: 1px solid var(--tail-border);
+  border-bottom-right-radius: 2px;
+  pointer-events: none;
 }
 
 .arm {
@@ -391,6 +603,94 @@
   }
 }
 
+@keyframes landBounce {
+  0% {
+    transform: scale(1.08, 0.88);
+  }
+  45% {
+    transform: scale(0.97, 1.05) translateY(-3px);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes blinkOnce {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: translateY(0) scaleY(1);
+  }
+  50% {
+    transform: translateY(-1.2px) scaleY(1.012);
+  }
+}
+
+@keyframes talk {
+  from {
+    transform: scaleY(0.35);
+  }
+  to {
+    transform: scaleY(1.1);
+  }
+}
+
+@keyframes yawn {
+  0%,
+  70%,
+  100% {
+    transform: scale(1);
+  }
+  82% {
+    transform: scale(1.35, 1.6);
+  }
+}
+
+@keyframes zzz {
+  0% {
+    opacity: 0;
+    transform: translate(0, 4px) scale(0.7);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(4px, -8px) scale(1.1);
+  }
+}
+
+@keyframes sparkle {
+  from {
+    opacity: 0.35;
+    transform: scale(0.7) rotate(0deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.1) rotate(20deg);
+  }
+}
+
+@keyframes bubbleIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @keyframes wave {
   0%,
   100% {
@@ -493,6 +793,14 @@
 @media (prefers-reduced-motion: reduce) {
   .svg,
   .eyes,
+  .blinkOnce,
+  .upper,
+  .talkMouth,
+  .yawn,
+  .tear,
+  .floatMark,
+  .sparkle,
+  .speech,
   .waving,
   .panel,
   .fadeIn,
@@ -514,9 +822,33 @@
     animation-duration: 2.5s;
   }
 
+  /* "z" đứng yên, vẫn nhìn thấy */
+  .zzz {
+    animation: none;
+    opacity: 0.85;
+  }
+
   .minimize,
-  .avatar {
+  .avatar,
+  .svg,
+  .head,
+  .look,
+  .dragging .svg {
     transition: none;
+  }
+
+  .landed .svg {
+    animation: none;
+  }
+
+  .look {
+    transform: none;
+  }
+
+  /* không nghiêng đầu – biểu cảm cười khi hover vẫn giữ */
+  .body:hover .head,
+  .body:focus-visible .head {
+    transform: none;
   }
 }
 
