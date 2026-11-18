@@ -16,7 +16,7 @@ import {
   MASCOT_TEXTS,
   MASCOT_TIMING,
 } from './mascotConfig'
-import type { MascotLine } from './mascotConfig'
+import type { MascotLine, MascotState } from './mascotConfig'
 import { useMascotContext, useMascotName } from './mascotContext'
 import { getMascotScreen } from './mascotMessages'
 import { MascotSpeechBubble } from './MascotSpeechBubble'
@@ -48,6 +48,13 @@ const MINIMIZED_KEY = 'mascot:minimized'
 const PANEL_ID = 'mascot-chat-panel'
 /** loại bubble mà mascot vẫy tay khi hiện */
 const WAVE_BUBBLES: MascotBubble['kind'][] = ['entry', 'idle', 'welcome']
+/** huy hiệu nhỏ cạnh avatar thu nhỏ theo biểu cảm */
+const MINI_BADGES: Partial<Record<MascotState, string>> = {
+  thinking: '…',
+  sleepy: 'z',
+  confused: '?',
+  happy: '✦',
+}
 
 function pickRandom<T>(items: T[]): T {
   return items[Math.floor(Math.random() * items.length)]
@@ -432,7 +439,14 @@ export function Mascot() {
   )
 
   // ---- Tương tác: mắt nhìn theo con trỏ ----
-  useEyeFollow(!minimized, rootRef, MASCOT_EYE_FOLLOW.maxOffset, MASCOT_EYE_FOLLOW.fullAtPx)
+  useEyeFollow(
+    true,
+    rootRef,
+    MASCOT_EYE_FOLLOW.maxOffset,
+    MASCOT_EYE_FOLLOW.fullAtPx,
+    minimized ? 0.58 : 0.36,
+    minimized,
+  )
 
   // ---- State machine biểu cảm ----
   const mood = useMascotState({
@@ -448,7 +462,7 @@ export function Mascot() {
   })
 
   // chớp mắt ngẫu nhiên; vẫy tay ngẫu nhiên lúc rảnh
-  useRandomInterval(!minimized, MASCOT_TIMING.blinkMinMs, MASCOT_TIMING.blinkMaxMs, () => setBlink(true))
+  useRandomInterval(true, MASCOT_TIMING.blinkMinMs, MASCOT_TIMING.blinkMaxMs, () => setBlink(true))
   useRandomInterval(
     !minimized && !open && mood === 'idle',
     MASCOT_TIMING.randomWaveMinMs,
@@ -486,17 +500,50 @@ export function Mascot() {
   } as CSSProperties
 
   if (minimized) {
+    const badge = MINI_BADGES[mood]
     return (
-      <div className={styles.root} style={elevatedStyle}>
+      <div
+        ref={rootRef}
+        className={[
+          styles.root,
+          styles.mini,
+          supported ? '' : styles.dim,
+          dragApi.dragging ? styles.dragging : '',
+          dragApi.landed ? styles.landed : '',
+        ].filter(Boolean).join(' ')}
+        style={elevatedStyle}
+      >
         <button
           type="button"
-          className={styles.avatar}
+          className={`${styles.avatar} ${mood === 'thinking' ? styles.avatarPulse : ''}`}
           aria-label={t.mascot.expand}
-          title={t.mascot.expand}
-          onClick={() => toggleMinimized(false)}
+          title={`${t.mascot.expand} · ${texts.dragHint(name)}`}
+          {...dragApi.handlers}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          onClick={() => {
+            // vừa kéo thả xong → không mở rộng
+            if (dragApi.consumeClick()) return
+            setHovered(false)
+            toggleMinimized(false)
+          }}
+          onAnimationEnd={handleAnimationEnd}
         >
-          <MascotSvg waving={false} headOnly mood={mood} className={styles.avatarSvg} />
+          <MascotSvg
+            waving={false}
+            headOnly
+            mood={mood}
+            blink={blink}
+            followCursor
+            className={`${styles.avatarSvg} ${styles.miniSvg}`}
+          />
         </button>
+        {/* huy hiệu biểu cảm nhỏ (suy nghĩ / buồn ngủ / bối rối / vui) – thay cho hiệu ứng của mascot đầy đủ */}
+        {badge && (
+          <span key={mood} className={styles.miniBadge} aria-hidden="true">
+            {badge}
+          </span>
+        )}
         {/* thu nhỏ mà mất kết nối → chấm vàng báo hiệu */}
         {offlineUi && <span className={styles.avatarDot} aria-hidden="true" />}
       </div>

@@ -532,6 +532,10 @@ export function useEyeFollow(
   targetRef: { current: HTMLElement | null },
   maxOffset: number,
   fullAtPx: number,
+  /** vị trí dọc của mắt theo tỉ lệ chiều cao phần tử (0.36: mascot đầy đủ, ~0.58: avatar chỉ có đầu) */
+  eyeY = 0.36,
+  /** đổi giá trị khi ref trỏ sang phần tử khác (vd. thu nhỏ ↔ đầy đủ) để gắn lại */
+  elementKey?: unknown,
 ) {
   useEffect(() => {
     const target = targetRef.current
@@ -545,7 +549,7 @@ export function useEyeFollow(
       const rect = target.getBoundingClientRect()
       // tâm mắt ≈ 50% ngang, 36% dọc của mascot (viewBox 160×200, mắt ở y≈73)
       const dx = pointer.x - (rect.left + rect.width * 0.5)
-      const dy = pointer.y - (rect.top + rect.height * 0.36)
+      const dy = pointer.y - (rect.top + rect.height * eyeY)
       const dist = Math.hypot(dx, dy) || 1
       const strength = Math.min(1, dist / fullAtPx) * maxOffset
       target.style.setProperty('--eye-x', `${((dx / dist) * strength).toFixed(2)}px`)
@@ -564,5 +568,5 @@ export function useEyeFollow(
       target.style.removeProperty('--eye-x')
       target.style.removeProperty('--eye-y')
     }
-  }, [enabled, targetRef, maxOffset, fullAtPx])
+  }, [enabled, targetRef, maxOffset, fullAtPx, eyeY, elementKey])
 }

@@ -404,11 +404,13 @@
   animation: spin 0.9s linear infinite;
 }
 
-/* Avatar tròn 40px khi thu nhỏ */
+/* Avatar tròn khi thu nhỏ (kéo thả được như mascot đầy đủ) */
 .avatar {
   display: block;
-  width: 40px;
-  height: 40px;
+  width: var(--mascot-mini-size, 56px);
+  height: var(--mascot-mini-size, 56px);
+  touch-action: none;
+  user-select: none;
   border-radius: 50%;
   overflow: hidden;
   background: var(--mascot-avatar-bg, #dbeafb);
@@ -425,6 +427,81 @@
   display: block;
   width: 100%;
   height: 100%;
+}
+
+/* ---------- Avatar thu nhỏ: thở nhẹ, nghiêng đầu khi hover, phản ứng khi kéo ---------- */
+.miniSvg {
+  transform-origin: 50% 100%;
+  animation: miniBreathe 3.6s ease-in-out infinite;
+  transition: rotate 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), scale 0.2s ease;
+}
+
+.miniSvg[data-mood='sleepy'] {
+  animation-duration: 5.5s;
+}
+
+.mini .avatar:hover .miniSvg,
+.mini .avatar:focus-visible .miniSvg {
+  rotate: -8deg;
+}
+
+.mini .avatar:hover {
+  transform: scale(1.06);
+}
+
+.dragging .avatar {
+  cursor: grabbing;
+  transform: rotate(-8deg) scale(1.08);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
+}
+
+.landed .avatar {
+  animation: landBounce 0.45s ease-out;
+}
+
+.dim .avatar {
+  filter: grayscale(0.6);
+  opacity: 0.85;
+}
+
+/* huy hiệu biểu cảm cạnh avatar (… / z / ? / ✦) */
+.miniBadge {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font: 700 12px/1 system-ui, sans-serif;
+  color: #378add;
+  background: #e3f0fc;
+  border: 1.5px solid #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  pointer-events: none;
+  animation: bubbleIn 0.25s ease-out, miniBadgeFloat 2.2s ease-in-out 0.25s infinite;
+}
+
+@keyframes miniBreathe {
+  0%,
+  100% {
+    scale: 1;
+  }
+  50% {
+    scale: 1.03 1.045;
+  }
+}
+
+@keyframes miniBadgeFloat {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -3px;
+  }
 }
 
 /* Chat panel – bên trái mascot, đáy ngang chân mascot.
@@ -837,8 +914,21 @@
     transition: none;
   }
 
-  .landed .svg {
+  .landed .svg,
+  .landed .avatar,
+  .miniSvg,
+  .miniBadge {
     animation: none;
+  }
+
+  .miniSvg,
+  .dragging .avatar {
+    transition: none;
+  }
+
+  .mini .avatar:hover .miniSvg,
+  .mini .avatar:focus-visible .miniSvg {
+    rotate: none;
   }
 
   .look {
