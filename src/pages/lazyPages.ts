@@ -33,6 +33,7 @@ export const SalesStatusPage = lazyPage(() => import('./SalesStatusPage').then((
 export const ShipmentPage = lazyPage(() => import('./ShipmentPage').then((m) => m.ShipmentPage))
 export const SphPage = lazyPage(() => import('./SphPage').then((m) => m.SphPage))
 export const UtilityEvnComparePage = lazyPage(() => import('./UtilityEvnComparePage').then((m) => m.UtilityEvnComparePage))
+export const UtilityEvnImportPage = lazyPage(() => import('./UtilityEvnImportPage').then((m) => m.UtilityEvnImportPage))
 export const UserHomePage = lazyPage(() => import('./UserHomePage').then((m) => m.UserHomePage))
 
 // Default routes after sign-in (getDefaultAuthRoute) and sidebar hover:
@@ -62,6 +63,7 @@ const pagesByRoute: Record<string, { preload: () => Promise<unknown> }> = {
   '/settings/machine-locator': MachineLocatorPage,
   '/settings/ai-logs': AiLogsPage,
   '/utility-evn-compare': UtilityEvnComparePage,
+  '/utility-evn-import': UtilityEvnImportPage,
 }
 
 export function preloadRoute(path: string) {

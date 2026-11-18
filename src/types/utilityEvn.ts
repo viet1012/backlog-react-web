@@ -144,3 +144,60 @@ export interface UtilityEvnCompareData {
   measured: UtilityMeasuredResponse
   official: UtilityOfficialResponse
 }
+
+// =========================================================
+// IMPORT EVN DAILY TỪ EXCEL
+// POST {UTILITY_API_BASE_URL}/api/utility/evn-daily/import (multipart, field "file")
+// BE tự đọc file "F2 electric consumption.xlsx"; FE chỉ upload nguyên file.
+// =========================================================
+
+export interface EvnImportSheet {
+  sheet: string
+  // yyyy-MM
+  billMonth: string
+  // yyyy-MM-dd, inclusive
+  from: string
+  // yyyy-MM-dd, exclusive
+  to: string
+  rows: number
+}
+
+export interface EvnImportError {
+  sheet: string
+  // yyyy-MM-dd; null = cả block / sheet
+  day: string | null
+  scope: UtilityScopeCode | null
+  // vd "BS28:BS31"
+  cell: string | null
+  message: string
+}
+
+export interface EvnImportResult {
+  sourceFile: string
+  dryRun: boolean
+  // các sheet đã dùng
+  sheets: EvnImportSheet[]
+  // dòng (ngày × scope) mới
+  inserted: number
+  // dòng đã có, kWh khác → ghi đè
+  updated: number
+  // dòng đã có, giống hệt → bỏ qua
+  unchanged: number
+  // ngày chưa nhập số (total trống / 0)
+  skipped: number
+  // dòng bị từ chối do kiểm tra (xem errors)
+  rejected: number
+  errors: EvnImportError[]
+  warnings: string[]
+}
+
+export interface EvnImportOptions {
+  // true = chỉ kiểm tra và đếm, không ghi DB
+  dryRun: boolean
+  // tối đa 100 ký tự
+  importedBy?: string
+  // tên sheet chính xác; bỏ trống = mọi sheet tháng
+  sheet?: string
+  // yyyy-MM, ghi đè tháng hóa đơn của sheet; chỉ dùng khi có sheet
+  month?: string
+}

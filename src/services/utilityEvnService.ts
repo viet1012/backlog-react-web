@@ -1,18 +1,23 @@
 import { UTILITY_API_BASE_URL } from '../config/api'
 import { getMessages } from '../i18n/i18nContext'
-import type {
-  UtilityBillPeriod,
-  UtilityEnergyBreakdown,
-  UtilityEvnCompareData,
-  UtilityMeasuredDay,
-  UtilityMeasuredResponse,
-  UtilityMeasuredScope,
-  UtilityMeterIssue,
-  UtilityMissingMeter,
-  UtilityOfficialDay,
-  UtilityOfficialResponse,
-  UtilityOfficialScope,
-  UtilityOfficialSource,
+import {
+  UTILITY_SCOPE_CODES,
+  type EvnImportError,
+  type EvnImportOptions,
+  type EvnImportResult,
+  type EvnImportSheet,
+  type UtilityBillPeriod,
+  type UtilityEnergyBreakdown,
+  type UtilityEvnCompareData,
+  type UtilityMeasuredDay,
+  type UtilityMeasuredResponse,
+  type UtilityMeasuredScope,
+  type UtilityMeterIssue,
+  type UtilityMissingMeter,
+  type UtilityOfficialDay,
+  type UtilityOfficialResponse,
+  type UtilityOfficialScope,
+  type UtilityOfficialSource,
 } from '../types/utilityEvn'
 
 // BE tính tổng hợp theo kỳ khá lâu
@@ -263,5 +268,149 @@ export async function getUtilityEvnCompare(
   return {
     measured: measuredResponse(measured),
     official: officialResponse(official),
+  }
+}
+
+// =========================================================
+// IMPORT EVN DAILY TỪ EXCEL – POST /api/utility/evn-daily/import
+// FE không đọc Excel: upload nguyên file, BE đọc + kiểm tra + ghi DB.
+// Lỗi 400: { status, error, message, timestamp } → hiện message (tiếng Anh, giữ nguyên).
+// =========================================================
+
+export const EVN_IMPORT_MAX_BYTES = 30 * 1024 * 1024
+// BE đọc file ~5 giây, cả file ~4.300 dòng
+export const EVN_IMPORT_TIMEOUT_MS = 120_000
+
+const IMPORTED_BY_MAX_LENGTH = 100
+// Gần giới hạn mà mất kết nối: server thường cắt request quá lớn thay vì trả 413
+const NEAR_LIMIT_BYTES = EVN_IMPORT_MAX_BYTES - 1024 * 1024
+
+export class UtilityApiError extends Error {
+  readonly status?: number
+
+  constructor(message: string, status?: number, options?: ErrorOptions) {
+    super(message, options)
+    this.name = 'UtilityApiError'
+    this.status = status
+  }
+}
+
+function importSheet(value: unknown): EvnImportSheet | null {
+  if (!isObject(value)) return null
+  const sheet = str(value.sheet)
+  if (!sheet) return null
+
+  return {
+    sheet,
+    billMonth: str(value.billMonth) ?? '',
+    from: dateKey(value.from) ?? '',
+    to: dateKey(value.to) ?? '',
+    rows: num(value.rows) ?? 0,
+  }
+}
+
+function importError(value: unknown): EvnImportError | null {
+  if (!isObject(value)) return null
+  const scope = str(value.scope)
+
+  return {
+    sheet: str(value.sheet) ?? '',
+    day: dateKey(value.day),
+    scope: UTILITY_SCOPE_CODES.find((code) => code === scope) ?? null,
+    cell: str(value.cell),
+    message: str(value.message) ?? '',
+  }
+}
+
+function importResult(raw: unknown): EvnImportResult {
+  if (!isObject(raw)) {
+    throw new UtilityApiError(getMessages().utilityEvnImport.errors.invalidResponse)
+  }
+
+  return {
+    sourceFile: str(raw.sourceFile) ?? '',
+    dryRun: raw.dryRun === true,
+    sheets: arr(raw.sheets).map(importSheet).filter((s): s is EvnImportSheet => s !== null),
+    inserted: num(raw.inserted) ?? 0,
+    updated: num(raw.updated) ?? 0,
+    unchanged: num(raw.unchanged) ?? 0,
+    skipped: num(raw.skipped) ?? 0,
+    rejected: num(raw.rejected) ?? 0,
+    errors: arr(raw.errors).map(importError).filter((e): e is EvnImportError => e !== null),
+    warnings: arr(raw.warnings).map(str).filter((w): w is string => w !== null),
+  }
+}
+
+function importHttpError(status: number, body: unknown): string {
+  const errors = getMessages().utilityEvnImport.errors
+  const message = isObject(body) ? str(body.message) : null
+
+  if (status === 413) return errors.tooLarge
+  if (status === 400) return message ?? errors.badRequest
+  return message ? `${errors.http(status)} ${message}` : errors.http(status)
+}
+
+function parseJson(text: string): unknown {
+  try {
+    return JSON.parse(text) as unknown
+  } catch {
+    return null
+  }
+}
+
+// file .xlsx ≤ 30 MB (FE đã kiểm trước khi gọi)
+export async function importEvnDaily(
+  file: File,
+  opts: EvnImportOptions,
+  signal?: AbortSignal,
+): Promise<EvnImportResult> {
+  const errors = getMessages().utilityEvnImport.errors
+
+  const params = new URLSearchParams({ dryRun: String(opts.dryRun) })
+  const importedBy = opts.importedBy?.trim().slice(0, IMPORTED_BY_MAX_LENGTH)
+  if (importedBy) params.set('importedBy', importedBy)
+
+  // month chỉ hợp lệ khi có sheet (thiếu sheet BE trả 400)
+  const sheet = opts.sheet?.trim()
+  if (sheet) {
+    params.set('sheet', sheet)
+    if (opts.month) params.set('month', opts.month)
+  }
+
+  const form = new FormData()
+  form.append('file', file)
+
+  const timeout = AbortSignal.timeout(EVN_IMPORT_TIMEOUT_MS)
+
+  try {
+    // body FormData: KHÔNG set Content-Type – browser tự thêm boundary
+    const response = await fetch(`${UTILITY_API_BASE_URL}/api/utility/evn-daily/import?${params}`, {
+      method: 'POST',
+      body: form,
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+      signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+    })
+
+    // đọc body vẫn nằm trong timeout
+    const body = parseJson(await response.text())
+
+    if (!response.ok) {
+      throw new UtilityApiError(importHttpError(response.status, body), response.status)
+    }
+
+    return importResult(body)
+  } catch (error) {
+    if (error instanceof UtilityApiError) throw error
+    // người dùng rời trang / hủy → để caller tự bỏ qua
+    if (signal?.aborted) throw error
+    if (timeout.aborted) {
+      throw new UtilityApiError(errors.timeout(EVN_IMPORT_TIMEOUT_MS / 1000), undefined, { cause: error })
+    }
+    throw new UtilityApiError(
+      file.size >= NEAR_LIMIT_BYTES ? errors.tooLarge : errors.network,
+      undefined,
+      { cause: error },
+    )
   }
 }

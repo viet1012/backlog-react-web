@@ -26,6 +26,7 @@ import {
     SmartToyOutlined,
     TrackChangesOutlined,
     ElectricBoltOutlined,
+    UploadFileOutlined,
 } from '@mui/icons-material'
 import type { UserRole } from '../../services/authService'
 import type { Messages } from '../../i18n/messages/en'
@@ -355,6 +356,17 @@ export const menuGroups:
                     roles: ['ADMIN'],
                     icon: (
                         <ElectricBoltOutlined />
+                    ),
+                },
+
+                {
+                    labelKey: 'utilityEvnImport',
+                    path: '/utility-evn-import',
+                    status: 'ready',
+                    action: 'input',
+                    roles: ['ADMIN'],
+                    icon: (
+                        <UploadFileOutlined />
                     ),
                 },
             ],
