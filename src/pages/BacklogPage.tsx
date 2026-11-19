@@ -21,6 +21,7 @@ import {
 import { DataTable } from '../components/DataTable'
 import { BacklogFilterBar } from '../components/backlog/BacklogFilterBar'
 import { BacklogSummary } from '../components/backlog/BacklogSummary'
+import { describeBacklogFilters } from '../components/backlog/backlogFilterLabels'
 import { PageHeader } from '../components/common/PageHeader'
 import { PageShell } from '../components/common/PageShell'
 import { HeaderAction, HeaderActionBar, HeaderActionDivider } from '../components/common/headerActions'
@@ -30,6 +31,7 @@ import { useBacklogData } from '../hooks/useBacklogData'
 import { useBacklogSummary } from '../hooks/useBacklogSummary'
 import { useCachedQuery } from '../hooks/useCachedQuery'
 import { useGridPreferences } from '../hooks/useGridPreferences'
+import { readUrlParams, urlParam, useUrlFilters, type UrlParams } from '../hooks/useUrlFilters'
 
 import {
   exportBacklogExcel,
@@ -49,6 +51,19 @@ const initialFilters: ReportFilters = {
   currentProcess: '',
   shipBy: '',
   productionDate: '',
+}
+
+const BACKLOG_PATH = '/backlog'
+
+// ?q=…&status=…&div=…&process=…&shipBy=…&prodD=YYYY-MM-DD (bỏ trống = không lọc).
+// Lọc theo cột (Excel) và ô Summary không đưa lên URL.
+const BACKLOG_URL_PARAMS: UrlParams<ReportFilters> = {
+  search: urlParam.text('q'),
+  status: urlParam.text('status'),
+  div: urlParam.text('div'),
+  currentProcess: urlParam.text('process'),
+  shipBy: urlParam.text('shipBy'),
+  productionDate: urlParam.date('prodD', ''),
 }
 
 
@@ -190,7 +205,14 @@ export function BacklogPage({
     setFilters,
   ] =
     useState<ReportFilters>(
-      initialFilters,
+      // link chia sẻ / F5: lấy bộ lọc trên URL
+      () => ({
+        ...initialFilters,
+        ...readUrlParams(
+          BACKLOG_PATH,
+          BACKLOG_URL_PARAMS,
+        ),
+      }),
     )
 
 
@@ -559,6 +581,43 @@ export function BacklogPage({
       },
       [],
     )
+
+
+  // Có bộ lọc nào đang bật (ô lọc, lọc cột, ô Summary)
+  const hasAnyFilter =
+    Object.values(filters).some((value) => value.trim() !== '')
+    || excelFilters.length > 0
+    || summaryCellFilter != null
+
+  const filterSummary =
+    [
+      describeBacklogFilters(filters, t),
+      summaryCellFilter
+        ? `${t.columns.status}: ${summaryCellFilter.status} · ${t.columns.exportDate}: ${summaryCellFilter.date}`
+        : '',
+      excelFilters.length > 0
+        ? t.backlog.columnFilters(excelFilters.length)
+        : '',
+    ]
+      .filter(Boolean)
+      .join(' · ')
+
+
+  // =======================================================
+  // URL ⇄ BỘ LỌC: link từ ngoài => áp bộ lọc của link
+  // =======================================================
+
+  useUrlFilters({
+    path: BACKLOG_PATH,
+    params: BACKLOG_URL_PARAMS,
+    values: filters,
+    onUrlChange: (next) => {
+      setFilters(next)
+      setExcelFilters([])
+      setSummaryCellFilter(null)
+      setPage(0)
+    },
+  })
 
 
   // =======================================================
@@ -1025,6 +1084,17 @@ export function BacklogPage({
 
           onRetry={
             handleRefresh
+          }
+
+          // Trống vì bộ lọc (vd link cũ mà PO không còn) => nói rõ + Xóa bộ lọc
+          onClearFilters={
+            hasAnyFilter
+              ? handleClearFilters
+              : undefined
+          }
+
+          filterSummary={
+            filterSummary
           }
         />
       </Card>

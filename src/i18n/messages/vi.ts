@@ -43,6 +43,15 @@ export const vi: Messages = {
         undo: 'Hoàn tác',
         dismiss: 'Đóng',
         clearFilters: 'Xóa bộ lọc',
+        activeFilterCount: (count) => `Đang lọc: ${count}`,
+        noMatchTitle: 'Không tìm thấy kết quả phù hợp',
+        noMatchHint: (filters) => (filters
+            ? `Không có dữ liệu khớp ${filters}. Dữ liệu có thể đã thay đổi hoặc không còn. Thử xóa bộ lọc.`
+            : 'Không có dữ liệu khớp bộ lọc hiện tại. Dữ liệu có thể đã thay đổi hoặc không còn. Thử xóa bộ lọc.'),
+        goToday: 'Về hôm nay',
+        invalidLinkFilters: 'Một số bộ lọc trong link không hợp lệ nên đã bỏ qua',
+        dateFrom: 'Từ ngày',
+        dateTo: 'Đến ngày',
         noDataHint: 'Chưa có gì để hiển thị. Bấm Làm mới để kiểm tra lại.',
         exportProgress: (pct) => (pct == null ? 'Đang xuất...' : `Đang xuất... ${pct}%`),
         exportDone: (fileName) => (fileName ? `Đã xuất ${fileName}` : 'Đã xuất xong'),

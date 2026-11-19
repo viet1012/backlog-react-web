@@ -20,6 +20,7 @@ import CompareArrowsOutlinedIcon from '@mui/icons-material/CompareArrowsOutlined
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined'
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { readUrlParams, urlParam, useUrlFilters, type UrlParams } from '../hooks/useUrlFilters'
 import { FactoryNoRowsOverlay } from '../components/common/FactoryNoRowsOverlay'
 import { HeaderAction, HeaderActionBar, HeaderActionDivider } from '../components/common/headerActions'
 import { PageHeader } from '../components/common/PageHeader'
@@ -93,6 +94,23 @@ const sectionTabsSx = {
   },
 } as const
 
+const EVN_PATH = '/utility-evn-compare'
+
+interface EvnUrlFilters {
+  month: string
+  scope: UtilityScopeCode
+  unit: EvnUnit
+  view: EvnViewMode
+}
+
+// ?month=YYYY-MM&scope=KVH&unit=MWh&view=overview[&tab=import]
+const EVN_URL_PARAMS: UrlParams<EvnUrlFilters> = {
+  month: urlParam.month('month'),
+  scope: urlParam.oneOf('scope', UTILITY_SCOPE_CODES),
+  unit: urlParam.oneOf('unit', EVN_UNITS),
+  view: urlParam.oneOf('view', VIEW_MODES),
+}
+
 function loadView(): EvnViewMode {
   const stored = loadPreference(VIEW_PREF_KEY)
   return VIEW_MODES.find((v) => v === stored) ?? 'overview'
@@ -112,11 +130,14 @@ export function UtilityEvnComparePage({ mode, onToggleMode }: UtilityEvnCompareP
   const { t } = useI18n()
   const labels = t.utilityEvn
 
+  // link chia sẻ / F5: tháng, phạm vi, đơn vị, chế độ xem lấy từ URL
+  const [urlInit] = useState(() => readUrlParams(EVN_PATH, EVN_URL_PARAMS))
+
   // YYYY-MM; mặc định tháng hiện tại
-  const [month, setMonth] = useState(() => dayjs().format('YYYY-MM'))
-  const [scope, setScope] = useState<UtilityScopeCode>(loadScope)
-  const [unit, setUnit] = useState<EvnUnit>(loadUnit)
-  const [view, setView] = useState<EvnViewMode>(loadView)
+  const [month, setMonth] = useState(() => urlInit.month ?? dayjs().format('YYYY-MM'))
+  const [scope, setScope] = useState<UtilityScopeCode>(() => urlInit.scope ?? loadScope())
+  const [unit, setUnit] = useState<EvnUnit>(() => urlInit.unit ?? loadUnit())
+  const [view, setView] = useState<EvnViewMode>(() => urlInit.view ?? loadView())
 
   const [searchParams, setSearchParams] = useSearchParams()
   const section: EvnSectionTab = searchParams.get('tab') === 'import' ? 'import' : 'compare'
@@ -126,8 +147,14 @@ export function UtilityEvnComparePage({ mode, onToggleMode }: UtilityEvnCompareP
   const [importMounted, setImportMounted] = useState(section === 'import')
   if (section === 'import' && !importMounted) setImportMounted(true)
 
+  // chỉ đổi ?tab, giữ nguyên các tham số bộ lọc khác trên URL
   function changeSection(next: EvnSectionTab) {
-    setSearchParams(next === 'import' ? { tab: 'import' } : {}, { replace: true })
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev)
+      if (next === 'import') params.set('tab', 'import')
+      else params.delete('tab')
+      return params
+    }, { replace: true })
   }
 
   const { data, loading, error, lastUpdated, refresh } = useUtilityEvnCompare(month)
@@ -178,6 +205,19 @@ export function UtilityEvnComparePage({ mode, onToggleMode }: UtilityEvnCompareP
     setView(next)
     savePreference(VIEW_PREF_KEY, next)
   }
+
+  // URL ⇄ tháng / phạm vi / đơn vị / chế độ xem; link từ ngoài => áp theo link
+  useUrlFilters({
+    path: EVN_PATH,
+    params: EVN_URL_PARAMS,
+    values: { month, scope, unit, view },
+    onUrlChange: (next) => {
+      setMonth(next.month)
+      changeScope(next.scope)
+      changeUnit(next.unit)
+      changeView(next.view)
+    },
+  })
 
   // từ thẻ Tổng quan → xem chi tiết 1 phạm vi ở chế độ Bảng
   function openScope(code: UtilityScopeCode) {

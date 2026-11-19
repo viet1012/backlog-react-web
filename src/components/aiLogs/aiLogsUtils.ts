@@ -5,6 +5,7 @@ import {
   type AiLogFilters,
   type AiLogSummary,
 } from '../../types/assistantLogs'
+import { urlParam, type UrlParam, type UrlParams } from '../../hooks/useUrlFilters'
 
 // eval ghi rid = "-" → không mở chi tiết được
 export function hasDetail(row: AiLogSummary): row is AiLogSummary & { rid: string } {
@@ -66,6 +67,53 @@ export function defaultFilters(): AiLogFilters {
 // screenKey hợp lệ để lưu/khôi phục tab con (chặn giá trị rác trong localStorage)
 export function isValidScreenKey(value: unknown): value is string {
   return typeof value === 'string' && (value === '' || /^[\w.-]{1,64}$/.test(value))
+}
+
+/** Số bộ lọc khác mặc định (tab màn hình không tính – nằm ở hàng tab riêng) */
+export function countAiLogFilters(value: AiLogFilters): number {
+  const defaults = defaultFilters()
+
+  return [
+    value.from !== defaults.from || value.to !== defaults.to,
+    value.userId.trim() !== '',
+    value.q.trim() !== '',
+    value.ok !== defaults.ok,
+    value.source !== defaults.source,
+    value.slowerThanSec != null,
+  ].filter(Boolean).length
+}
+
+/** Khoảng ngày từ link: from ≤ to, ≤ MAX_RANGE_DAYS ngày (BE trả 400 nếu vượt) */
+export function isValidAiLogRange(from: string, to: string): boolean {
+  const days = dayjs(to).diff(dayjs(from), 'day') + 1
+  return from <= to && days <= MAX_RANGE_DAYS
+}
+
+export const AI_LOGS_PATH = '/settings/ai-logs'
+
+// "Tất cả" nguồn = '' nhưng mặc định là chat → trên URL ghi "all" để không lẫn với mặc định
+const sourceParam: UrlParam<AiLogFilters['source']> = {
+  key: 'source',
+  parse: (raw) => (raw === 'all' ? '' : raw === 'chat' || raw === 'eval' ? raw : undefined),
+  format: (value) => value || 'all',
+  empty: 'chat',
+}
+
+// ?from=…&to=…[&user=…][&q=…][&ok=true|false][&source=all|eval][&slower=N][&screen=…]
+export const AI_LOGS_URL_PARAMS: UrlParams<AiLogFilters> = {
+  from: urlParam.date('from'),
+  to: urlParam.date('to'),
+  userId: urlParam.text('user'),
+  q: urlParam.text('q'),
+  ok: urlParam.oneOf<AiLogFilters['ok']>('ok', ['', 'true', 'false'], ''),
+  source: sourceParam,
+  slowerThanSec: urlParam.positiveNumber('slower'),
+  screenKey: {
+    key: 'screen',
+    parse: (raw) => (isValidScreenKey(raw) ? raw : undefined),
+    format: (value) => value,
+    empty: '',
+  },
 }
 
 export type StepKind = 'context' | 'askedMonths' | 'prefetch' | 'prefetchTool' | 'llm' | 'tool'

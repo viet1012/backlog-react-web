@@ -10,6 +10,7 @@ import { ShipmentFilterBar } from '../components/shipment/ShipmentFilterBar'
 import { ShipmentHeatmap } from '../components/shipment/ShipmentHeatmap'
 import { buildDateRange, buildShipmentRows, getDefaultShipmentDateRange } from '../components/shipment/shipmentHeatmapUtils'
 import { useShipmentData } from '../hooks/useShipmentData'
+import { readUrlParams, urlParam, useUrlFilters, type UrlParams } from '../hooks/useUrlFilters'
 import type { ShipmentHeatmapRow } from '../types/shipment'
 import { useI18n } from '../i18n/useI18n'
 interface ShipmentPageProps {
@@ -17,7 +18,26 @@ interface ShipmentPageProps {
   onToggleMode: () => void
 }
 
-const defaultRange = getDefaultShipmentDateRange()
+const SHIPMENT_PATH = '/shipping-schedule'
+
+interface ShipmentRange {
+  fromD: string
+  toD: string
+}
+
+// ?from=YYYY-MM-DD&to=YYYY-MM-DD: khoảng ĐANG ÁP DỤNG (sau khi bấm Áp dụng)
+const SHIPMENT_URL_PARAMS: UrlParams<ShipmentRange> = {
+  fromD: urlParam.date('from'),
+  toD: urlParam.date('to'),
+}
+
+// Khoảng ban đầu: từ link (nếu hợp lệ) hoặc 2 tuần mặc định
+function initialRange(): ShipmentRange {
+  const fromUrl = readUrlParams(SHIPMENT_PATH, SHIPMENT_URL_PARAMS)
+  const range = { ...getDefaultShipmentDateRange(), ...fromUrl }
+
+  return range.fromD <= range.toD ? range : getDefaultShipmentDateRange()
+}
 
 export function ShipmentPage({
   mode,
@@ -28,10 +48,11 @@ export function ShipmentPage({
   // =========================================================
   const { t } = useI18n()
 
-  const [fromD, setFromD] = useState(defaultRange.fromD)
-  const [toD, setToD] = useState(defaultRange.toD)
-  const [appliedFromD, setAppliedFromD] = useState(defaultRange.fromD)
-  const [appliedToD, setAppliedToD] = useState(defaultRange.toD)
+  const [startRange] = useState(initialRange)
+  const [fromD, setFromD] = useState(startRange.fromD)
+  const [toD, setToD] = useState(startRange.toD)
+  const [appliedFromD, setAppliedFromD] = useState(startRange.fromD)
+  const [appliedToD, setAppliedToD] = useState(startRange.toD)
   const [validationError, setValidationError] = useState<string | null>(null)
   const [selectedRowKey, setSelectedRowKey] = useState<string | null>(null)
   const [selectedCellKey, setSelectedCellKey] = useState<string | null>(null)
@@ -77,6 +98,21 @@ export function ShipmentPage({
     setValidationError(null)
   }
 
+  // URL ⇄ khoảng đang áp dụng; link từ ngoài => áp khoảng của link
+  useUrlFilters({
+    path: SHIPMENT_PATH,
+    params: SHIPMENT_URL_PARAMS,
+    values: { fromD: appliedFromD, toD: appliedToD },
+    onUrlChange: (next) => {
+      if (next.fromD > next.toD) return
+      setFromD(next.fromD)
+      setToD(next.toD)
+      setAppliedFromD(next.fromD)
+      setAppliedToD(next.toD)
+      setValidationError(null)
+    },
+  })
+
   function handleRowClick(row: ShipmentHeatmapRow) {
     setSelectedRowKey(row.key)
     setSelectedCellKey(null)
@@ -114,7 +150,11 @@ export function ShipmentPage({
       />
       <ShipmentFilterBar
         fromD={fromD} toD={toD} loading={loading}
-        onFromDateChange={setFromD} onToDateChange={setToD}
+        filtered={!isDefaultRange}
+        onRangeChange={(from, to) => {
+          setFromD(from)
+          setToD(to)
+        }}
         onApply={handleApplyDate} onReset={handleResetTwoWeeks}
       />
 
@@ -130,6 +170,7 @@ export function ShipmentPage({
           hasData={data.length > 0}
           onRetry={handleRefresh}
           onClearFilters={isDefaultRange ? undefined : handleResetTwoWeeks}
+          filterSummary={`${t.shipment.from}: ${appliedFromD} → ${t.shipment.to}: ${appliedToD}`}
           skeleton="heatmap"
           skeletonProps={{ columns: Math.min(Math.max(dates.length, 7), 21) }}
         >

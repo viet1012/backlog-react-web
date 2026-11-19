@@ -20,6 +20,7 @@ import type {
 } from '../../types/assistantLogs'
 import { useI18n } from '../../i18n/useI18n'
 import { getScreenNameByKey } from '../mascot/mascotMessages'
+import { FilteredEmptyState } from '../common/loadState'
 import {
   AI_LOGS_PAGE_SIZES,
   hasDetail,
@@ -41,6 +42,8 @@ interface AiLogsTableProps {
   onSelect: (rid: string) => void
   // hiện chip màn hình mỗi dòng (tab con "Tất cả")
   showScreen: boolean
+  // chỉ truyền khi đang có bộ lọc: bảng trống => "Không tìm thấy" + Xóa bộ lọc
+  onClearFilters?: () => void
 }
 
 const cellSx = { ...TABULAR_NUMS, fontSize: 12.5, py: 0.75, px: 1 } as const
@@ -55,6 +58,7 @@ export function AiLogsTable({
   selectedRid,
   onSelect,
   showScreen,
+  onClearFilters,
 }: AiLogsTableProps) {
   const { t } = useI18n()
   const labels = t.aiLogs.table
@@ -121,8 +125,13 @@ export function AiLogsTable({
           <TableBody>
             {rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ ...cellSx, py: 4, color: 'text.secondary' }}>
-                  {loading ? '…' : labels.empty}
+                <TableCell colSpan={6} align="center" sx={{ ...cellSx, py: onClearFilters && !loading ? 1 : 4, color: 'text.secondary' }}>
+                  {loading
+                    ? '…'
+                    : onClearFilters
+                      // trống vì bộ lọc (vd link cũ): nói rõ + Xóa bộ lọc
+                      ? <FilteredEmptyState variant="compact" minHeight={160} onClearFilters={onClearFilters} />
+                      : labels.empty}
                 </TableCell>
               </TableRow>
             ) : rows.map((row, index) => {

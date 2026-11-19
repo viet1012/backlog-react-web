@@ -1,7 +1,4 @@
-import { Box, Stack, TextField, Typography } from '@mui/material'
-import type { SxProps, Theme } from '@mui/material'
-import { GlassPanel } from '../common/GlassPanel'
-import { uiTokens } from '../../theme/uiTokens'
+import { FilterBar, FilterDateRange } from '../common/filterBar'
 import { ShipmentLegend } from './ShipmentLegend'
 import { AppButton } from '../common/AppButton'
 import { useI18n } from '../../i18n/useI18n'
@@ -10,44 +7,33 @@ interface ShipmentFilterBarProps {
   fromD: string
   toD: string
   loading: boolean
-  onFromDateChange: (value: string) => void
-  onToDateChange: (value: string) => void
+  /** Khoảng đang áp dụng khác 2 tuần mặc định */
+  filtered: boolean
+  onRangeChange: (fromD: string, toD: string) => void
   onApply: () => void
+  /** Về 2 tuần mặc định */
   onReset: () => void
 }
 
 export function ShipmentFilterBar({
-  fromD, toD, loading, onFromDateChange, onToDateChange, onApply, onReset,
+  fromD, toD, loading, filtered, onRangeChange, onApply, onReset,
 }: ShipmentFilterBarProps) {
   const { t } = useI18n()
 
-  const controlSx = { height: uiTokens.control.height, fontSize: uiTokens.control.fontSize }
-  const dateFieldSx: SxProps<Theme> = (theme) => ({
-    width: 145,
-    '& .MuiInputBase-root': controlSx,
-    '& input::-webkit-calendar-picker-indicator': {
-      filter: theme.palette.mode === 'dark' ? 'invert(1) opacity(0.8)' : 'none',
-    },
-  })
-
   return (
-    <GlassPanel sx={{ px: 1.5, py: 1 }}>
-      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', overflowX: 'auto' }}>
-        <Typography sx={{ fontSize: uiTokens.typography.inputLabel, fontWeight: 700, color: 'text.secondary', mr: 0.5 }}>
-          {t.shipment.dateRange}
-        </Typography>
-        <TextField label={t.shipment.from} type="date" size="small" value={fromD}
-          onChange={(event) => onFromDateChange(event.target.value)}
-          slotProps={{ inputLabel: { shrink: true } }} sx={dateFieldSx} />
-        <Typography color="text.secondary" sx={{ fontSize: 12 }}>→</Typography>
-        <TextField label={t.shipment.to} type="date" size="small" value={toD}
-          onChange={(event) => onToDateChange(event.target.value)}
-          slotProps={{ inputLabel: { shrink: true } }} sx={dateFieldSx} />
-        <AppButton appearance="action" disabled={loading} onClick={onApply}>{t.common.apply}</AppButton>
-        <AppButton disabled={loading} onClick={onReset}>{t.shipment.last14Days}</AppButton>
-        <Box sx={{ flex: 1 }} />
-        <ShipmentLegend />
-      </Stack>
-    </GlassPanel>
+    <FilterBar
+      activeCount={filtered ? 1 : 0}
+      onClear={onReset}
+      trailing={<ShipmentLegend />}
+    >
+      <FilterDateRange
+        from={fromD}
+        to={toD}
+        fromLabel={t.shipment.from}
+        toLabel={t.shipment.to}
+        onChange={onRangeChange}
+      />
+      <AppButton appearance="action" disabled={loading} onClick={onApply}>{t.common.apply}</AppButton>
+    </FilterBar>
   )
 }

@@ -1,7 +1,7 @@
 import { Box, Typography } from '@mui/material'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 
 import dayBackground from '../assets/login-scene-day.webp'
 // Same night photo as the logout gate scene (one download for both)
@@ -39,8 +39,21 @@ import { preloadRoute } from './lazyPages'
 
 type AuthMode = 'login' | 'register'
 
+// Chỉ nhận đường dẫn nội bộ ("/backlog?q=…"): chặn "//site-khac" hay URL đầy đủ
+// (tránh bị lợi dụng chuyển hướng ra ngoài) và chính trang /login
+function getReturnPath(state: unknown): string | null {
+  const from = (state as { from?: unknown } | null)?.from
+
+  if (typeof from !== 'string' || !from.startsWith('/') || from.startsWith('//') || from.startsWith('/\\')) {
+    return null
+  }
+
+  return /^\/login(?:[/?#]|$)/.test(from) ? null : from
+}
+
 export function LoginPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { t } = useI18n()
   const [mode, setMode] = useState<AuthMode>('login')
   const [employeeId, setEmployeeId] = useState('')
@@ -79,8 +92,11 @@ export function LoginPage() {
     }
   }, [])
 
+  // Link đã mở trước khi bị chuyển sang đăng nhập (ProtectedRoute gửi kèm)
+  const returnTo = getReturnPath(location.state)
+
   if (isAuthenticated()) {
-    return <Navigate to={getDefaultAuthRoute()} replace />
+    return <Navigate to={returnTo ?? getDefaultAuthRoute()} replace />
   }
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
@@ -90,11 +106,13 @@ export function LoginPage() {
 
     try {
       const session = await login(employeeId.trim(), password, remember)
-      const target = getDefaultAuthRoute(session)
+      // Quay lại đúng link đã mở (kèm bộ lọc); không có thì về trang chủ.
+      // Không đủ quyền với trang đó thì RoleRoute tự đưa về trang chủ.
+      const target = returnTo ?? getDefaultAuthRoute(session)
       const username = getAuthenticatedUsername() ?? employeeId.trim()
 
       // Download the landing page while the shutter is down
-      preloadRoute(target)
+      preloadRoute(target.split(/[?#]/)[0])
 
       // New random factory character on every sign-in (sidebar, logout, animations)
       writeAvatarSeed(username, randomAvatarSeed())

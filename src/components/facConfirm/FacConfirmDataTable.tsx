@@ -214,6 +214,13 @@ interface FacConfirmDataTableProps {
 
   onRetry?:
   () => void
+
+  // Bảng trống: số bộ lọc của trang (tìm, loại hàng, Heat Type, lọc cột),
+  // mô tả bộ lọc, xóa hết; "Về hôm nay" chỉ truyền khi Export Date khác hôm nay
+  pageFilterCount: number
+  filterSummary?: string
+  onClearPageFilters: () => void
+  onGoToday?: () => void
 }
 // =========================================================
 // TOOLBAR
@@ -382,6 +389,10 @@ function FacConfirmDataTableInner({
   onSaved,
   error,
   onRetry,
+  pageFilterCount,
+  filterSummary,
+  onClearPageFilters,
+  onGoToday,
 }: FacConfirmDataTableProps) {
 
   // =======================================================
@@ -1124,21 +1135,44 @@ function FacConfirmDataTableInner({
   // KHÔNG CÓ DỮ LIỆU
   // =======================================================
 
-  const hasExcelFilters =
-    excelFilters.length > 0
+  // Callback đổi mỗi render không làm overlay mount lại (chạy lại hoạt cảnh)
+  const emptyActionsRef = useRef({
+    clear: onClearPageFilters,
+    goToday: onGoToday,
+  })
+
+  useEffect(() => {
+    emptyActionsRef.current = {
+      clear: onClearPageFilters,
+      goToday: onGoToday,
+    }
+  }, [onClearPageFilters, onGoToday])
+
+  const filtered =
+    pageFilterCount > 0
+
+  const canGoToday =
+    Boolean(onGoToday)
 
   const noRowsOverlay = useMemo(
     () => function FacConfirmTableNoRowsOverlay() {
       return (
         <FacConfirmNoRowsOverlay
-          hasFilters={hasExcelFilters}
-          onClearFilters={handleClearFilters}
+          filtered={filtered}
+          filterSummary={filterSummary}
+          onClearFilters={() => emptyActionsRef.current.clear()}
+          onGoToday={
+            canGoToday
+              ? () => emptyActionsRef.current.goToday?.()
+              : undefined
+          }
         />
       )
     },
     [
-      handleClearFilters,
-      hasExcelFilters,
+      canGoToday,
+      filterSummary,
+      filtered,
     ],
   )
 

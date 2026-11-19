@@ -22,10 +22,15 @@ import { AiLogsKpi } from '../components/aiLogs/AiLogsKpi'
 import { AiLogsTable } from '../components/aiLogs/AiLogsTable'
 import {
   AI_LOGS_PAGE_SIZES,
+  AI_LOGS_PATH,
+  AI_LOGS_URL_PARAMS,
   TABULAR_NUMS,
+  countAiLogFilters,
   defaultFilters,
+  isValidAiLogRange,
   isValidScreenKey,
 } from '../components/aiLogs/aiLogsUtils'
+import { readUrlParams, useUrlFilters } from '../hooks/useUrlFilters'
 import { ASSISTANT_SCREENS, getScreenNameByKey } from '../components/mascot/mascotMessages'
 import { useAiLogDetail, useAiLogList, useAiLogStats } from '../hooks/useAssistantLogs'
 import { exportAiLogsExcel } from '../services/assistantLogService'
@@ -206,11 +211,15 @@ export function AiLogsPage({ mode, onToggleMode }: AiLogsPageProps) {
     })
   }
 
-  // tab con màn hình được nhớ qua lần tải lại → khởi tạo cùng bộ lọc
-  const [filters, setFilters] = useState<AiLogFilters>(() => ({
-    ...defaultFilters(),
-    screenKey: loadScreenKey(),
-  }))
+  // tab con màn hình được nhớ qua lần tải lại → khởi tạo cùng bộ lọc;
+  // link chia sẻ / F5: bộ lọc trên URL thắng (khoảng ngày sai thì bỏ)
+  const [filters, setFilters] = useState<AiLogFilters>(() => {
+    const fromUrl = readUrlParams(AI_LOGS_PATH, AI_LOGS_URL_PARAMS)
+    const next = { ...defaultFilters(), screenKey: loadScreenKey(), ...fromUrl }
+    const defaults = defaultFilters()
+
+    return isValidAiLogRange(next.from, next.to) ? next : { ...next, from: defaults.from, to: defaults.to }
+  })
   const [query, setQuery] = useState<AiLogListQuery>(DEFAULT_QUERY)
   const [refreshKey, setRefreshKey] = useState(0)
 
@@ -232,10 +241,27 @@ export function AiLogsPage({ mode, onToggleMode }: AiLogsPageProps) {
     setQuery((prev) => ({ ...prev, page: 0 }))
   }
 
+  // về mặc định, giữ tab màn hình đang chọn
+  function resetFilters() {
+    changeFilters({ ...defaultFilters(), screenKey: filters.screenKey })
+  }
+
   function changeScreen(screenKey: string) {
     savePreference(SCREEN_PREF_KEY, screenKey)
     changeFilters({ ...filters, screenKey })
   }
+
+  // URL ⇄ bộ lọc: link từ ngoài => áp bộ lọc của link (khoảng ngày sai thì giữ khoảng cũ)
+  useUrlFilters({
+    path: AI_LOGS_PATH,
+    params: AI_LOGS_URL_PARAMS,
+    values: filters,
+    onUrlChange: (next) => {
+      const range = isValidAiLogRange(next.from, next.to) ? next : filters
+      savePreference(SCREEN_PREF_KEY, next.screenKey)
+      changeFilters({ ...next, from: range.from, to: range.to })
+    },
+  })
 
   async function handleExport() {
     setExporting(true)
@@ -325,7 +351,7 @@ export function AiLogsPage({ mode, onToggleMode }: AiLogsPageProps) {
                 <AiLogsFilterBar
                   value={filters}
                   onChange={changeFilters}
-                  onReset={() => changeFilters({ ...defaultFilters(), screenKey: filters.screenKey })}
+                  onReset={resetFilters}
                 />
               </>
             )}
@@ -418,6 +444,8 @@ export function AiLogsPage({ mode, onToggleMode }: AiLogsPageProps) {
           total={total}
           // BE bỏ qua lọc màn hình → vẫn hiện chip để người xem phân biệt
           showScreen={filters.screenKey === '' || screenFilterIgnored}
+          // trống vì bộ lọc (vd link cũ): Xóa bộ lọc, giữ tab màn hình
+          onClearFilters={countAiLogFilters(filters) > 0 ? resetFilters : undefined}
           loading={list.loading}
           query={query}
           onQueryChange={setQuery}

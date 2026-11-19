@@ -1,23 +1,4 @@
-import {
-  Box,
-  FormControl,
-  IconButton,
-  InputAdornment,
-  InputLabel,
-  MenuItem,
-  Select,
-  TextField,
-} from '@mui/material'
-
-import SearchRoundedIcon
-  from '@mui/icons-material/SearchRounded'
-
-import CloseRoundedIcon
-  from '@mui/icons-material/CloseRounded'
-
-import type {
-  SelectChangeEvent,
-} from '@mui/material/Select'
+import { Box } from '@mui/material'
 
 import type {
   FacConfirmClassify,
@@ -26,10 +7,19 @@ import type {
   FacConfirmProcessGroupSummary,
 } from '../../types/facConfirm'
 
-import { GlassPanel } from '../common/GlassPanel'
+import {
+  FilterBar,
+  FilterDate,
+  FilterSearch,
+  FilterSelect,
+} from '../common/filterBar'
 import { FacConfirmClassifyControl } from './FacConfirmClassifyControl'
 import { FacConfirmProcessGroupStrip } from './FacConfirmProcessGroupStrip'
+import { FAC_CONFIRM_DIVS, getHeatTypeOptions } from './facConfirmFilters'
 import { useI18n } from '../../i18n/useI18n'
+
+// Chờ người dùng ngừng gõ rồi mới gọi API
+const SEARCH_DEBOUNCE_MS = 300
 
 interface FacConfirmFilterBarProps {
   div: string
@@ -44,6 +34,10 @@ interface FacConfirmFilterBarProps {
   // Đang tải số liệu thẻ công đoạn
   summaryLoading: boolean
 
+  // Số bộ lọc đang bật (tìm, loại hàng, Heat Type, lọc cột) + xóa hết
+  activeCount: number
+  onClear: () => void
+
   onDivChange: (value: string) => void
   onDateChange: (value: string) => void
   onProcessGroupChange: (
@@ -55,35 +49,8 @@ interface FacConfirmFilterBarProps {
   onHeatTypeChange: (
     value: FacConfirmHeatType
   ) => void
+  // Đã debounce
   onSearchChange: (value: string) => void
-}
-
-function getHeatTypeOptions(
-  div: string,
-): FacConfirmHeatType[] {
-  switch (div) {
-    case 'MO':
-      return [
-        'All',
-      ]
-
-    case 'GU':
-      return [
-        'All',
-        'Normal',
-        'Molypden',
-      ]
-
-    case 'PR':
-    case 'PR-RET':
-    default:
-      return [
-        'All',
-        'Normal',
-        'DC53',
-        'TD',
-      ]
-  }
 }
 
 export function FacConfirmFilterBar({
@@ -96,6 +63,8 @@ export function FacConfirmFilterBar({
   processGroups,
   loading,
   summaryLoading,
+  activeCount,
+  onClear,
   onDivChange,
   onDateChange,
   onProcessGroupChange,
@@ -106,209 +75,76 @@ export function FacConfirmFilterBar({
 
   const { t } = useI18n()
 
-  const heatTypeOptions =
-    getHeatTypeOptions(div)
-
-  const handleHeatTypeChange = (
-    event: SelectChangeEvent<FacConfirmHeatType>,
-  ) => {
-    onHeatTypeChange(event.target.value)
-  }
-
   return (
-    <GlassPanel
-      sx={{
-        p: 1,
-        flexShrink: 0,
-      }}
+    <FilterBar
+      activeCount={activeCount}
+      onClear={onClear}
     >
+      <FilterSelect
+        tour="fac-div"
+        label={t.columns.division}
+        value={div}
+        options={FAC_CONFIRM_DIVS}
+        disabled={loading}
+        width={{ sm: 125 }}
+        onChange={onDivChange}
+      />
+
+      <FilterDate
+        tour="fac-date"
+        label={t.columns.exportDate}
+        value={expD}
+        disabled={loading}
+        width={{ sm: 158 }}
+        onChange={onDateChange}
+      />
+
       <Box
+        data-tour="fac-classify"
         sx={{
           display: 'flex',
-          flexDirection: {
-            xs: 'column',
-            sm: 'row',
-          },
-          alignItems: {
-            xs: 'stretch',
-            sm: 'center',
-          },
-          gap: 0.75,
+          flexShrink: 0,
         }}
       >
-        <FormControl
-          data-tour="fac-div"
-          size="small"
+        <FacConfirmClassifyControl
+          value={classify}
           disabled={loading}
-          sx={{
-            width: {
-              xs: '100%',
-              sm: 125,
-            },
-            flexShrink: 0,
-          }}
-        >
-          <InputLabel>
-            {t.columns.division}
-          </InputLabel>
-
-          <Select
-            label={t.columns.division}
-            value={div}
-            onChange={(event) =>
-              onDivChange(event.target.value)
-            }
-          >
-            <MenuItem value="PR">
-              PRESS
-            </MenuItem>
-
-            <MenuItem value="PR-RET">
-              PRESS Retainer
-            </MenuItem>
-
-            <MenuItem value="MO">
-              MOLD
-            </MenuItem>
-
-            <MenuItem value="GU">
-              GUIDE
-            </MenuItem>
-          </Select>
-        </FormControl>
-
-        <TextField
-          data-tour="fac-date"
-          label={t.columns.exportDate}
-          type="date"
-          size="small"
-          value={expD}
-          disabled={loading}
-          onChange={(event) =>
-            onDateChange(event.target.value)
-          }
-          slotProps={{
-            inputLabel: {
-              shrink: true,
-            },
-          }}
-          sx={{
-            width: {
-              xs: '100%',
-              sm: 158,
-            },
-            flexShrink: 0,
-          }}
+          onChange={onClassifyChange}
         />
-
-        <Box
-          data-tour="fac-classify"
-          sx={{
-            display: 'flex',
-            flexShrink: 0,
-          }}
-        >
-          <FacConfirmClassifyControl
-            value={classify}
-            disabled={loading}
-            onChange={onClassifyChange}
-          />
-        </Box>
-
-        <FormControl
-          data-tour="fac-heat"
-          size="small"
-          disabled={loading}
-          sx={{
-            width: {
-              xs: '100%',
-              sm: 135,
-            },
-            flexShrink: 0,
-          }}
-        >
-          <InputLabel>
-            {t.facConfirm.heatType}
-          </InputLabel>
-
-          <Select<FacConfirmHeatType>
-            label={t.facConfirm.heatType}
-            value={heatType}
-            onChange={handleHeatTypeChange}
-          >
-            {heatTypeOptions.map((option) => (
-              <MenuItem key={option} value={option}>
-                {option}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <TextField
-          data-tour="fac-search"
-          placeholder={t.facConfirm.searchPlaceholder}
-          size="small"
-          value={search}
-          onChange={(event) =>
-            onSearchChange(event.target.value)
-          }
-          slotProps={{
-            input: {
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchRoundedIcon
-                    sx={{
-                      fontSize: 19,
-                    }}
-                  />
-                </InputAdornment>
-              ),
-
-              endAdornment: search
-                ? (
-                  <InputAdornment position="end">
-                    <IconButton
-                      size="small"
-                      onClick={() =>
-                        onSearchChange('')
-                      }
-                    >
-                      <CloseRoundedIcon
-                        sx={{
-                          fontSize: 17,
-                        }}
-                      />
-                    </IconButton>
-                  </InputAdornment>
-                )
-                : null,
-            },
-          }}
-          sx={{
-            width: {
-              xs: '100%',
-              sm: 260,
-            },
-            flexShrink: 1,
-          }}
-        />
-
-        <Box
-          data-tour="fac-procgrp"
-          sx={{
-            display: 'flex',
-            flex: '1 1 420px',
-            minWidth: 0,
-          }}
-        >
-          <FacConfirmProcessGroupStrip
-            value={procGrp}
-            items={processGroups}
-            loading={summaryLoading}
-            onChange={onProcessGroupChange}
-          />
-        </Box>
       </Box>
-    </GlassPanel>
+
+      <FilterSelect<FacConfirmHeatType>
+        tour="fac-heat"
+        label={t.facConfirm.heatType}
+        value={heatType}
+        options={getHeatTypeOptions(div)}
+        disabled={loading}
+        onChange={onHeatTypeChange}
+      />
+
+      <FilterSearch
+        tour="fac-search"
+        placeholder={t.facConfirm.searchPlaceholder}
+        value={search}
+        debounceMs={SEARCH_DEBOUNCE_MS}
+        onChange={onSearchChange}
+      />
+
+      <Box
+        data-tour="fac-procgrp"
+        sx={{
+          display: 'flex',
+          flex: '1 1 420px',
+          minWidth: 0,
+        }}
+      >
+        <FacConfirmProcessGroupStrip
+          value={procGrp}
+          items={processGroups}
+          loading={summaryLoading}
+          onChange={onProcessGroupChange}
+        />
+      </Box>
+    </FilterBar>
   )
 }

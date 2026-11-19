@@ -48,6 +48,20 @@ Frontend thuần (SPA). Dữ liệu và đăng nhập đi qua backend `backlog-b
   - Tải lại khi đã có dữ liệu thì chỉ quay icon ⟳ trên header, dữ liệu cũ vẫn hiện.
   - Lỗi khi chưa có dữ liệu: cảnh lỗi kèm nút *Thử lại*. Lỗi khi còn dữ liệu cũ: thanh báo lỗi phía trên nội dung.
   - Không có dữ liệu: luôn có nút hành động, là *Xóa bộ lọc* khi đang lọc, còn lại là *Làm mới*.
+- **Thanh bộ lọc** giống nhau ở Backlog, Fac Confirm, Shipment, AI Logs:
+  - Bên phải có nhãn *"Đang lọc: N"* và nút *Xóa bộ lọc*.
+  - "Đang lọc" chỉ đếm bộ lọc thu hẹp dữ liệu (ô tìm, loại hàng, trạng thái, lọc cột…). Phạm vi xem như Division, ngày xuất, công đoạn không tính và được giữ nguyên khi xóa.
+  - Ô tìm chỉ lọc sau khi ngừng gõ 300–400 ms.
+- **Bộ lọc nằm trên URL** (Backlog, Fac Confirm, Shipment, AI Logs, EVN), ví dụ `/fac-confirm?div=PR&expD=2026-11-19&procGrp=Rough&heat=DC53`:
+  - Copy link gửi đồng nghiệp là mở đúng màn hình đang xem. Bấm F5 không mất bộ lọc.
+  - Giá trị mặc định không ghi lên link cho gọn (vd Heat Type = All). Riêng Division / ngày / công đoạn (Fac Confirm) và tháng / phạm vi (EVN) luôn có trên link.
+  - Lọc theo cột kiểu Excel và ô Summary của Backlog chưa đưa lên URL.
+  - **Link cũ, dữ liệu không còn** (vd PO đã xoá):
+    - Bảng hiện *"Không tìm thấy kết quả phù hợp"*, ghi rõ bộ lọc không khớp, kèm nút *Xóa bộ lọc*.
+    - Fac Confirm có thêm nút *Về hôm nay* khi Export Date khác hôm nay.
+  - **Bộ lọc sai trong link** (vd `?expD=2026-13-45`, `?div=XX`): bỏ qua giá trị đó, dùng mặc định, và hiện toast cảnh báo kèm tham số bị bỏ.
+    - Khoảng ngày ngược hoặc quá dài (AI Logs, Shipment) thì lặng lẽ về khoảng mặc định.
+    - Giá trị ô chọn không còn trong danh sách (vd Status cũ) vẫn hiện trong ô chọn để người dùng thấy và bỏ được.
 - **Thông báo (toast)** sau khi lưu / nhập file / xuất file hiện ở giữa đáy màn hình, cùng một kiểu trên mọi trang:
   - Thành công tự đóng sau 4 giây, cảnh báo sau 6 giây, lỗi sau 8 giây. Rê chuột vào toast thì tạm dừng đếm giờ.
   - Lỗi có thêm dòng lý do từ server.
@@ -74,6 +88,7 @@ Frontend thuần (SPA). Dữ liệu và đăng nhập đi qua backend `backlog-b
 - Có nút hiện/ẩn mật khẩu và cảnh báo khi đang bật **Caps Lock**.
 - **Remember me**: khi bật, phiên được giữ cả sau khi đóng trình duyệt. Khi tắt, phiên mất khi đóng tab.
 - Trang chuyển tiếp theo role: ADMIN / PC / PRO vào `/odbf`, USER vào `/user-home`. Nếu đã đăng nhập sẵn thì trang tự chuyển luôn.
+- **Mở link khi chưa đăng nhập** (vd `/backlog?q=4200002732`): trang chuyển sang đăng nhập; đăng nhập xong thì quay lại đúng link đó, giữ nguyên bộ lọc và `#hash`. Nếu tài khoản không có quyền với trang đó thì về trang chủ. Chỉ nhận đường dẫn nội bộ, không chuyển hướng ra site ngoài.
 - **Đăng ký**: nhập MSNV và mật khẩu hai lần. Đăng ký xong, trang quay về form đăng nhập với MSNV đã điền sẵn.
 - Ảnh nền tự đổi **ngày / đêm** theo giờ máy (6h–17h là ban ngày).
 
@@ -372,7 +387,8 @@ src/
   pages/            Mỗi route một file *Page.tsx
   components/       UI theo tính năng (backlog, facConfirm, machineLocator, machineMonitor, shipment, odbf, training, userHome...)
     common/         Thành phần dùng chung: PageShell, PageHeader, dataGrid/ (Data Grid có lọc kiểu Excel),
-                    headerActions/ (nút header), loadState/ (skeleton, tải/trống/lỗi), notify/ (toast)
+                    headerActions/ (nút header), loadState/ (skeleton, tải/trống/lỗi), notify/ (toast),
+                    filterBar/ (thanh bộ lọc + ô lọc)
     layout/         MainLayout, LeftSidebar, cấu hình menu
     auth/           Form đăng nhập/đăng ký, guard route
   services/         Gọi API (fetch), mỗi tính năng một file
@@ -397,11 +413,21 @@ Quy ước:
   - `<AsyncContent loading error hasData onRetry onClearFilters skeleton="table|heatmap|charts|kpi|map|block">` tự chọn giữa nội dung, skeleton, cảnh lỗi và cảnh trống.
   - Cần skeleton riêng lẻ thì dùng `<PageSkeleton variant="…" />`. Đã có sẵn độ trễ 300 ms (`useDelayedFlag`, `LOADING_DELAY_MS`).
   - Cảnh trống / lỗi vẽ bằng `FactoryNoRowsOverlay`. Nút mặc định của cảnh trống là `EmptyStateAction`.
+  - Trống **vì bộ lọc** dùng `FilteredEmptyState` (nhận `summary`, `onClearFilters`, `extraAction`). Với `AsyncContent`, chỉ truyền `onClearFilters` / `filterSummary` khi đang có bộ lọc.
 - **Phản hồi sau thao tác** dùng [notify/](src/components/common/notify/), không tự đặt `Snackbar` / `Alert` riêng trong trang:
   - `notify.success | error | warning | info(message, { detail?, action?, undo?, duration?, key? })` gọi được từ mọi nơi, cả ngoài component.
   - `key` giống nhau thì toast mới thay toast cũ thay vì chồng lên (vd lỗi nhập liên tiếp).
   - Xuất file: bọc bằng `notifyExport((onProgress) => exportXxx(..., onProgress))`. Hàm này tự hiện tiến trình / xong / lỗi và không bao giờ throw.
   - `<NotifyHost />` đã gắn một lần trong `App.tsx`.
+- **Thanh bộ lọc** dùng [filterBar/](src/components/common/filterBar/), không tự dựng TextField / Select riêng:
+  - `<FilterBar activeCount onClear trailing? footer? variant="panel|plain">` bọc các ô lọc.
+  - Ô lọc: `FilterSearch` / `FilterText` (có `debounceMs`), `FilterSelect` (`allOption` thêm mục *Tất cả*), `FilterDate`, `FilterDateRange` (tự giữ from ≤ to, `maxDays`). Truyền `tour` để gắn `data-tour` cho hướng dẫn.
+- **Bộ lọc ⇄ URL** dùng [useUrlFilters](src/hooks/useUrlFilters.ts):
+  - Khai báo tham số bằng `urlParam.text | oneOf | date | month | list | positiveNumber`. Có `empty` thì bằng giá trị đó sẽ không ghi lên URL; không có `empty` thì luôn ghi.
+  - Khởi tạo state bằng `readUrlParams(path, params)`, rồi gọi `useUrlFilters({ path, params, values, onUrlChange })`.
+  - State của trang vẫn là nguồn chính (trang được giữ sống khi chuyển trang). URL chỉ phản chiếu state (replace, không thêm lịch sử).
+  - Link từ ngoài có tham số thì `onUrlChange` áp bộ lọc của link. Quay lại trang bằng sidebar (URL trống) thì giữ bộ lọc đang có và ghi lại lên URL.
+  - Tham số không khai báo trên URL được giữ nguyên. Code khác muốn đổi URL của trang thì phải giữ các tham số đang có (xem `changeSection` ở trang EVN).
 - **Tải file từ server** dùng [utils/download.ts](src/utils/download.ts): `readBlobWithProgress` (đọc kèm tiến trình theo `Content-Length`), `fileNameFromDisposition`, `saveBlob`. Service export nhận tham số `onProgress` và trả về tên file.
 - Comment viết tiếng Việt.
 
@@ -436,6 +462,36 @@ npm run build      # kết quả ở dist/
 `dist/` là site tĩnh. App dùng `BrowserRouter`, nên web server phải trả `index.html` cho mọi đường dẫn không phải file tĩnh (SPA fallback). Nếu không, bấm F5 ở route con sẽ ra lỗi 404.
 
 ## Lịch sử thay đổi
+
+### 2026-11-19 — Thanh bộ lọc dùng chung và bộ lọc trên URL
+
+Đợt 2 trong kế hoạch cải thiện UI (đề xuất 2). Cách dùng xem ở mục [Quy ước](#cấu-trúc-thư-mục).
+
+#### Thêm mới
+
+| File | Nội dung |
+| --- | --- |
+| [components/common/filterBar/](src/components/common/filterBar/) | `FilterBar` (khung + "Đang lọc: N" + *Xóa bộ lọc*), `FilterSearch`, `FilterText`, `FilterSelect`, `FilterDate`, `FilterDateRange` |
+| [hooks/useUrlFilters.ts](src/hooks/useUrlFilters.ts) | Đồng bộ bộ lọc ⇄ URL (`readUrlParams`, `useUrlFilters`, `urlParam.*`) |
+| [hooks/useDebouncedField.ts](src/hooks/useDebouncedField.ts) | Ô nhập chỉ đẩy giá trị lên sau khi ngừng gõ (tách từ AI Logs) |
+| [facConfirm/facConfirmFilters.ts](src/components/facConfirm/facConfirmFilters.ts) | Division, Heat Type theo Division, tham số URL của Fac Confirm |
+
+#### Thay đổi theo trang
+
+| Trang | Tham số URL | Thay đổi khác |
+| --- | --- | --- |
+| Fac Confirm | `div`, `expD`, `procGrp`, `classify`, `heat`, `q` | Thêm "Đang lọc" + *Xóa bộ lọc* (xóa tìm, loại hàng, Heat Type, lọc cột; giữ Division / ngày / công đoạn) |
+| Backlog | `q`, `status`, `div`, `process`, `shipBy`, `prodD` | Ô tìm có debounce 300 ms (trước đây mỗi phím gõ gọi API một lần); bỏ nút *Clear all* trùng ở hàng chip |
+| Shipment | `from`, `to` (khoảng đang áp dụng) | Nút *14 Days* thay bằng *Xóa bộ lọc* (về 2 tuần mặc định); chọn ngày tự giữ from ≤ to |
+| AI Logs | `from`, `to`, `user`, `q`, `ok`, `source`, `slower`, `screen` | Ô ngày đổi từ DatePicker sang ô ngày chung; *Đặt lại* thành *Xóa bộ lọc* (vẫn giữ tab màn hình) |
+| EVN | `month`, `scope`, `unit`, `view` (cùng `tab` đã có) | Đổi tab Import không còn xóa các tham số khác |
+| Đăng nhập | — | Mở link khi chưa đăng nhập: đăng nhập xong quay lại đúng link (trước đây chỉ giữ pathname và luôn về trang chủ) — `ProtectedRoute`, `LoginPage` |
+| Backlog, Fac Confirm, Shipment, AI Logs | — | Link cũ không còn dữ liệu: cảnh *"Không tìm thấy kết quả phù hợp"* + mô tả bộ lọc + *Xóa bộ lọc* (Fac Confirm thêm *Về hôm nay*). Tham số sai trên link: bỏ qua + toast cảnh báo. Thêm `FilteredEmptyState`, `EmptyStateAction` tách file riêng |
+
+#### Chưa làm / còn lại
+
+- Lọc theo cột kiểu Excel và ô Summary (Backlog) chưa lên URL vì dữ liệu dài và phức tạp.
+- Đợt tiếp theo: đề xuất 4 (DataGrid: mật độ dòng, ghim cột mã, tô màu thống nhất) và đề xuất 5 (Trang chủ "Việc của tôi hôm nay", thẻ bấm vào đi thẳng tới trang đã lọc sẵn bằng link URL ở trên).
 
 ### 2026-11-19 — Thống nhất trạng thái tải / trống / lỗi và thông báo
 

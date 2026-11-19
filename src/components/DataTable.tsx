@@ -5,7 +5,8 @@ import {
   type GridPaginationModel,
   type GridSortModel,
 } from '@mui/x-data-grid'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
+import { FilteredEmptyState } from './common/loadState'
 import { createBacklogColumns } from './backlog/backlogColumns'
 import { useI18n } from '../i18n/useI18n'
 import { ExcelColumnFilterProvider } from './common/dataGrid/ExcelColumnFilter'
@@ -44,6 +45,10 @@ interface DataTableProps {
   // Lỗi tải => cảnh lỗi API trong bảng + nút Thử lại
   error?: string | null
   onRetry?: () => void
+  // Chỉ truyền khi đang có bộ lọc: bảng trống => "Không tìm thấy kết quả"
+  // (vd link cũ mà PO không còn) + nút Xóa bộ lọc
+  onClearFilters?: () => void
+  filterSummary?: string
 }
 
 function BacklogToolbar() {
@@ -91,9 +96,33 @@ export function DataTable({
   onPaginationChange,
   error,
   onRetry,
+  onClearFilters,
+  filterSummary,
 }: DataTableProps) {
   const { t } = useI18n()
   const columns = useMemo(() => createBacklogColumns(t), [t])
+
+  // Overlay ổn định theo (có lọc, mô tả): callback đổi mỗi render không làm
+  // overlay mount lại (chạy lại hoạt cảnh)
+  const clearRef = useRef(onClearFilters)
+  useEffect(() => {
+    clearRef.current = onClearFilters
+  }, [onClearFilters])
+
+  const filtered = Boolean(onClearFilters)
+  const noRowsOverlay = useMemo(
+    () => filtered
+      ? function BacklogNoMatchOverlay() {
+        return (
+          <FilteredEmptyState
+            summary={filterSummary}
+            onClearFilters={() => clearRef.current?.()}
+          />
+        )
+      }
+      : undefined,
+    [filtered, filterSummary],
+  )
 
   return (
     <ExcelColumnFilterProvider
@@ -128,6 +157,7 @@ export function DataTable({
         onColumnHeaderClick={preventColumnHeaderSort}
         error={error}
         onRetry={onRetry}
+        noRowsOverlay={noRowsOverlay}
       />
     </ExcelColumnFilterProvider>
   )

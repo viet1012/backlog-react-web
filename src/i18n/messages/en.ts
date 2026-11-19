@@ -44,6 +44,15 @@ export const en = {
         undo: 'Undo',
         dismiss: 'Dismiss',
         clearFilters: 'Clear filters',
+        activeFilterCount: (count: number) => `Filtering: ${count}`,
+        noMatchTitle: 'No matching results',
+        noMatchHint: (filters: string) => (filters
+            ? `Nothing matches ${filters}. The data may have changed or no longer exists. Try clearing the filters.`
+            : 'Nothing matches the current filters. The data may have changed or no longer exists. Try clearing the filters.'),
+        goToday: 'Back to today',
+        invalidLinkFilters: 'Some filters in the link are invalid and were ignored',
+        dateFrom: 'From',
+        dateTo: 'To',
         noDataHint: 'Nothing to show yet. Refresh to check again.',
         exportProgress: (pct: number | null) => (pct == null ? 'Exporting...' : `Exporting... ${pct}%`),
         exportDone: (fileName?: string) => (fileName ? `Exported ${fileName}` : 'Export complete'),

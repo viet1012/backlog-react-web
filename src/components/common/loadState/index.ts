@@ -1,3 +1,5 @@
-export { AsyncContent, EmptyStateAction } from './AsyncContent'
+export { AsyncContent } from './AsyncContent'
+export { EmptyStateAction } from './EmptyStateAction'
+export { FilteredEmptyState } from './FilteredEmptyState'
 export { PageSkeleton } from './PageSkeleton'
 export type { PageSkeletonVariant } from './PageSkeleton'

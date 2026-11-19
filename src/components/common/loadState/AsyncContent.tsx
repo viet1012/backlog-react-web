@@ -1,10 +1,9 @@
 import type { ReactNode } from 'react'
-import { Box, Button, type SxProps, type Theme } from '@mui/material'
-import FilterAltOffOutlinedIcon from '@mui/icons-material/FilterAltOffOutlined'
-import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
+import { Box, type SxProps, type Theme } from '@mui/material'
 
-import { useI18n } from '../../../i18n/useI18n'
 import { FactoryNoRowsOverlay } from '../FactoryNoRowsOverlay'
+import { EmptyStateAction } from './EmptyStateAction'
+import { FilteredEmptyState } from './FilteredEmptyState'
 import { PageSkeleton, type PageSkeletonVariant } from './PageSkeleton'
 
 /**
@@ -33,8 +32,10 @@ interface AsyncContentProps {
   skeletonProps?: { rows?: number, columns?: number, count?: number }
 
   onRetry?: () => void
-  /** Shown as the empty-state action when filters are active */
+  /** Pass only while filters are active: empty then means "no match" + Clear filters */
   onClearFilters?: () => void
+  /** Active filters in words, shown in the "no match" hint */
+  filterSummary?: string
   emptyTitle?: ReactNode
   emptyHint?: ReactNode | null
   /** Replaces the default empty-state action */
@@ -56,6 +57,7 @@ export function AsyncContent({
   skeletonProps,
   onRetry,
   onClearFilters,
+  filterSummary,
   emptyTitle,
   emptyHint,
   emptyAction,
@@ -93,43 +95,27 @@ export function AsyncContent({
     return frame(skeletonNode ?? <PageSkeleton variant={skeleton} {...skeletonProps} minHeight={minHeight} />)
   }
 
+  // Trống vì bộ lọc (vd link cũ, dữ liệu không còn): nói rõ + Xóa bộ lọc
+  if (onClearFilters && !emptyAction) {
+    return frame(
+      <FilteredEmptyState
+        variant={variant}
+        minHeight={minHeight}
+        summary={filterSummary}
+        title={emptyTitle}
+        hint={emptyHint ?? undefined}
+        onClearFilters={onClearFilters}
+      />,
+    )
+  }
+
   return frame(
     <FactoryNoRowsOverlay
       variant={variant}
       title={emptyTitle}
       hint={emptyHint}
       minHeight={minHeight}
-      action={emptyAction ?? <EmptyStateAction onClearFilters={onClearFilters} onRefresh={onRetry} />}
+      action={emptyAction ?? <EmptyStateAction onRefresh={onRetry} />}
     />,
-  )
-}
-
-/**
- * Default empty-state button: "Clear filters" if the view is filtered,
- * otherwise "Refresh". Renders nothing when neither handler is given.
- */
-export function EmptyStateAction({
-  onClearFilters,
-  onRefresh,
-}: {
-  onClearFilters?: () => void
-  onRefresh?: () => void
-}) {
-  const { t } = useI18n()
-
-  if (!onClearFilters && !onRefresh) return null
-
-  const clear = Boolean(onClearFilters)
-
-  return (
-    <Button
-      variant="outlined"
-      size="small"
-      onClick={clear ? onClearFilters : onRefresh}
-      startIcon={clear ? <FilterAltOffOutlinedIcon /> : <RefreshRoundedIcon />}
-      sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 700 }}
-    >
-      {clear ? t.common.clearFilters : t.common.refresh}
-    </Button>
   )
 }

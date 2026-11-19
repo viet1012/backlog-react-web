@@ -2,7 +2,6 @@ import {
   Suspense,
   lazy,
   useCallback,
-  useEffect,
   useMemo,
   useRef,
   useState,
@@ -35,6 +34,18 @@ import {
 import {
   FacConfirmFilterBar,
 } from '../components/facConfirm/FacConfirmFilterBar'
+
+import {
+  ALL_CLASSIFY,
+  FAC_CONFIRM_PATH,
+  FAC_CONFIRM_URL_PARAMS,
+  normalizeHeatType,
+} from '../components/facConfirm/facConfirmFilters'
+
+import {
+  readUrlParams,
+  useUrlFilters,
+} from '../hooks/useUrlFilters'
 
 import {
   FacConfirmDailyStats,
@@ -104,10 +115,6 @@ interface FacConfirmPageProps {
 }
 
 
-// Chờ người dùng ngừng gõ rồi mới gọi API
-const SEARCH_DEBOUNCE_MS = 300
-
-
 function getToday(): string {
   const now = new Date()
 
@@ -129,20 +136,32 @@ export function FacConfirmPage({
   const [pagePreferences] =
     useState(loadFacConfirmPreferences)
 
+  // Link chia sẻ / F5: bộ lọc trên URL thắng giá trị nhớ trong máy
+  const [urlFilters] =
+    useState(() => readUrlParams(
+      FAC_CONFIRM_PATH,
+      FAC_CONFIRM_URL_PARAMS,
+    ))
+
 
   const [div, setDiv] =
     useState(
-      pagePreferences.div
+      urlFilters.div
+      ?? pagePreferences.div
     )
 
 
   const [expD, setExpD] =
-    useState(getToday)
+    useState(
+      () => urlFilters.expD
+        ?? getToday(),
+    )
 
 
   const [procGrp, setProcGrp] =
     useState<FacConfirmProcessGroup>(
-      pagePreferences.procGrp,
+      urlFilters.procGrp
+      ?? pagePreferences.procGrp,
     )
 
 
@@ -157,10 +176,10 @@ export function FacConfirmPage({
   const [
     classify,
     setClassify,
-  ] = useState<FacConfirmClassify[]>([
-    'Sale',
-    'Stock',
-  ])
+  ] = useState<FacConfirmClassify[]>(
+    () => urlFilters.classify
+      ?? ALL_CLASSIFY,
+  )
 
 
   const [
@@ -177,19 +196,15 @@ export function FacConfirmPage({
     useState<FacConfirmFilterItem[]>([])
 
 
-  // searchInput: giá trị ô nhập (cập nhật ngay)
-  // search: giá trị gửi API (sau debounce)
-  const [
-    searchInput,
-    setSearchInput,
-  ] =
-    useState('')
-
+  // Giá trị gửi API (ô tìm đã debounce trong FilterSearch)
   const [
     search,
     setSearch,
   ] =
-    useState('')
+    useState(
+      urlFilters.search
+      ?? '',
+    )
 
 
   const tableRef =
@@ -281,7 +296,10 @@ export function FacConfirmPage({
     heatType,
     setHeatType,
   ] = useState<FacConfirmHeatType>(
-    'All',
+    () => normalizeHeatType(
+      urlFilters.div ?? pagePreferences.div,
+      urlFilters.heatType ?? 'All',
+    ),
   )
   // =========================================================
   // DATA
@@ -377,46 +395,13 @@ export function FacConfirmPage({
         nextDiv: string,
       ) => {
 
-        let nextHeatType: FacConfirmHeatType =
-          heatType
-
-        // =========================================
-        // MOLD
-        // Chỉ được All
-        // =========================================
-        if (nextDiv === 'MO') {
-          nextHeatType = 'All'
-        }
-
-        // =========================================
-        // GUIDE
-        // All / Normal / Molypden
-        // =========================================
-        else if (nextDiv === 'GU') {
-
-          const allowedGuideHeatTypes:
-            FacConfirmHeatType[] = [
-              'All',
-              'Normal',
-              'Molypden',
-            ]
-
-          if (
-            !allowedGuideHeatTypes.includes(
-              heatType
-            )
-          ) {
-            nextHeatType = 'All'
-          }
-        }
-
-        // =========================================
-        // PRESS / PRESS RETAINER
-        // Giữ Heat Type hiện tại
-        // =========================================
-
+        // MOLD chỉ có All; GUIDE: All / Normal / Molypden;
+        // PRESS giữ Heat Type hiện tại nếu còn hợp lệ
         setHeatType(
-          nextHeatType
+          normalizeHeatType(
+            nextDiv,
+            heatType,
+          )
         )
 
         setDiv(
@@ -702,7 +687,7 @@ export function FacConfirmPage({
 
 
   // =========================================================
-  // SEARCH
+  // SEARCH (đã debounce ở ô tìm)
   // =========================================================
 
   const handleSearchChange =
@@ -711,37 +696,105 @@ export function FacConfirmPage({
         value: string,
       ) => {
 
-        setSearchInput(
-          value
-        )
-
-      },
-      [],
-    )
-
-
-  useEffect(() => {
-    if (searchInput === search) {
-      return
-    }
-
-    const timer = window.setTimeout(
-      () => {
         setSearch(
-          searchInput
+          value
         )
 
         resetPage()
       },
-      SEARCH_DEBOUNCE_MS,
+      [
+        resetPage,
+      ],
     )
 
-    return () => window.clearTimeout(timer)
-  }, [
-    resetPage,
-    search,
-    searchInput,
-  ])
+
+  // =========================================================
+  // ĐANG LỌC / XÓA BỘ LỌC
+  //
+  // Chỉ đếm bộ lọc thu hẹp dữ liệu; Division / ngày / công đoạn
+  // là phạm vi xem nên giữ nguyên khi xóa.
+  // =========================================================
+
+  const activeFilterCount =
+    (search.trim() ? 1 : 0)
+    + (classify.length !== ALL_CLASSIFY.length ? 1 : 0)
+    + (heatType !== 'All' ? 1 : 0)
+    + excelFilters.length
+
+  const handleClearFilters =
+    useCallback(
+      () => {
+        setSearch('')
+        setClassify(ALL_CLASSIFY)
+        setHeatType('All')
+        setExcelFilters([])
+        resetPage()
+      },
+      [
+        resetPage,
+      ],
+    )
+
+  // Mô tả bộ lọc cho cảnh "không tìm thấy" (vd mở link cũ, dữ liệu không còn)
+  const filterSummary =
+    [
+      search.trim() ? `${t.common.search}: ${search.trim()}` : '',
+      classify.length === 1 ? classify[0] : '',
+      heatType !== 'All' ? `${t.facConfirm.heatType}: ${heatType}` : '',
+      excelFilters.length > 0 ? t.backlog.columnFilters(excelFilters.length) : '',
+    ]
+      .filter(Boolean)
+      .join(' · ')
+
+  // Export Date khác hôm nay (vd link cũ) => bảng trống có nút "Về hôm nay"
+  const handleGoToday =
+    useCallback(
+      () => handleDateChange(getToday()),
+      [
+        handleDateChange,
+      ],
+    )
+
+
+  // =========================================================
+  // URL ⇄ BỘ LỌC
+  //
+  // ?div=PR&expD=2026-11-19&procGrp=Rough[&classify=Sale][&heat=DC53][&q=…]
+  // Link từ ngoài (chia sẻ, Trang chủ) => áp bộ lọc của link.
+  // =========================================================
+
+  useUrlFilters({
+    path: FAC_CONFIRM_PATH,
+    params: FAC_CONFIRM_URL_PARAMS,
+    values: {
+      div,
+      expD,
+      procGrp,
+      classify,
+      heatType,
+      search,
+    },
+    onUrlChange: (next) => {
+      setDiv(next.div)
+      setExpD(next.expD)
+      setProcGrp(next.procGrp)
+      setClassify(next.classify)
+      setHeatType(
+        normalizeHeatType(
+          next.div,
+          next.heatType,
+        ),
+      )
+      setSearch(next.search)
+      setExcelFilters([])
+      resetPage()
+
+      saveFacConfirmPreferences({
+        div: next.div,
+        procGrp: next.procGrp,
+      })
+    },
+  })
 
 
   // =========================================================
@@ -946,10 +999,12 @@ export function FacConfirmPage({
           procGrp={procGrp}
           classify={classify}
           heatType={heatType}
-          search={searchInput}
+          search={search}
           processGroups={processGroups}
           loading={loading}
           summaryLoading={summaryLoading}
+          activeCount={activeFilterCount}
+          onClear={handleClearFilters}
 
           onDivChange={handleDivChange}
           onDateChange={handleDateChange}
@@ -1066,6 +1121,14 @@ export function FacConfirmPage({
           onSaved={handleRefreshAll}
           error={error}
           onRetry={handleRefresh}
+          pageFilterCount={activeFilterCount}
+          filterSummary={filterSummary}
+          onClearPageFilters={handleClearFilters}
+          onGoToday={
+            expD !== getToday()
+              ? handleGoToday
+              : undefined
+          }
         />
       </Box>
 
