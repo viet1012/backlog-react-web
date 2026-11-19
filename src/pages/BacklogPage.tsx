@@ -1096,6 +1096,22 @@ export function BacklogPage({
           filterSummary={
             filterSummary
           }
+
+          density={
+            preferences.density
+          }
+
+          onDensityChange={
+            preferences.setDensity
+          }
+
+          pinnedColumns={
+            preferences.pinnedColumns
+          }
+
+          onTogglePinnedColumn={
+            preferences.togglePinnedColumn
+          }
         />
       </Card>
 

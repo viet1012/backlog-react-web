@@ -9,6 +9,22 @@ export interface GridPreferences {
   columnOrder: string[]
   columnWidths: Record<string, number>
   pageSize: number
+  // Cột ghim bên trái; undefined = chưa chỉnh (dùng mặc định của bảng)
+  pinnedColumns?: string[]
+}
+
+export type GridDensity = 'compact' | 'standard' | 'comfortable'
+
+const GRID_DENSITIES: readonly GridDensity[] = ['compact', 'standard', 'comfortable']
+
+// Mật độ dòng nhớ theo TỪNG NGƯỜI (máy dùng chung ở xưởng): khóa gồm mã nhân viên
+export function loadGridDensity(gridKey: string, userKey: string): GridDensity {
+  const stored = loadPreference(`grid-density:${userKey}:${gridKey}`)
+  return GRID_DENSITIES.find((density) => density === stored) ?? 'compact'
+}
+
+export function saveGridDensity(gridKey: string, userKey: string, density: GridDensity): void {
+  savePreference(`grid-density:${userKey}:${gridKey}`, density)
 }
 
 function storageKey(key: string) {
@@ -105,11 +121,16 @@ export function loadGridPreferences(
     ? stored.pageSize
     : defaultPageSize
 
+  const pinned = Array.isArray(stored.pinnedColumns)
+    ? [...new Set(stored.pinnedColumns.filter((field): field is string => typeof field === 'string'))]
+    : undefined
+
   return {
     columnVisibilityModel: visibility,
     columnOrder: [...new Set(order)],
     columnWidths: widths,
     pageSize,
+    pinnedColumns: pinned,
   }
 }
 

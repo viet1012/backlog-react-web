@@ -212,6 +212,8 @@ export const vi: Messages = {
         sortAsc: 'Sắp xếp A → Z',
         sortDesc: 'Sắp xếp Z → A',
         filterMenu: 'Lọc...',
+        pinColumn: 'Ghim cột',
+        unpinColumn: 'Bỏ ghim cột',
         selectAll: '(Chọn tất cả)',
         blanks: '(Trống)',
         noValues: 'Không tìm thấy giá trị',
@@ -658,6 +660,23 @@ export const vi: Messages = {
     userHome: {
         title: 'Trang chủ',
         subtitle: 'Production Control',
+        today: {
+            title: 'Việc của tôi hôm nay',
+            open: (page) => `Mở ${page}`,
+            loadFailed: 'Không tải được',
+            facConfirm: 'Fac Confirm chưa xác nhận',
+            facConfirmSub: (div, parts) => `${div} · hôm nay · ${parts}`,
+            facConfirmDone: (div) => `${div} · hôm nay đã xác nhận hết`,
+            cost: 'Khung Cost đang vượt',
+            costSub: (willExceed, month) => (willExceed > 0
+                ? `+${willExceed} dự báo vượt · ${month}`
+                : `Tháng ${month}`),
+            machine: 'Máy đang cảnh báo an toàn',
+            machineSub: (overdue, floor) => [
+                overdue > 0 ? `${overdue} quá hạn` : 'không có quá hạn',
+                floor ? `nhiều nhất ở ${floor}` : null,
+            ].filter(Boolean).join(' · '),
+        },
         brand: 'PRODUCTION CONTROL',
         workspace: 'Không gian làm việc Production Control của bạn',
         employeeId: 'Mã nhân viên',

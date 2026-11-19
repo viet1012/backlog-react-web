@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
-  GridToolbarColumnsButton, GridToolbarContainer,
+  GridToolbarColumnsButton, GridToolbarContainer, GridToolbarDensitySelector,
   type GridPaginationModel, type GridSortModel,
 } from '@mui/x-data-grid'
 import { createBacklogColumns } from '../backlog/backlogColumns'
@@ -12,7 +12,8 @@ import type { ProductionOrder } from '../../types/report'
 
 function ShipmentToolbar() {
   return (
-    <GridToolbarContainer sx={{ justifyContent: 'flex-end', minHeight: 40, px: 1, py: 0.5 }}>
+    <GridToolbarContainer sx={{ justifyContent: 'flex-end', minHeight: 40, px: 1, py: 0.5, gap: 0.5 }}>
+      <GridToolbarDensitySelector />
       <GridToolbarColumnsButton />
     </GridToolbarContainer>
   )
@@ -67,6 +68,8 @@ export function ShipmentDataTable({ rows, loading, error, onRetry }: ShipmentDat
       toolbar={ShipmentToolbar}
       error={error}
       onRetry={onRetry}
+      density={preferences.density}
+      onDensityChange={preferences.setDensity}
     />
   )
 }

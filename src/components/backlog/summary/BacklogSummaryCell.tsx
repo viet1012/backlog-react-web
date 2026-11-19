@@ -3,6 +3,7 @@ import { alpha } from '@mui/material/styles'
 
 import type { BacklogStatusSummaryRow } from '../../../services/reportService'
 import { formatNumber, getCell } from './backlogSummaryUtils'
+import { deadlineTone } from '../../../theme/statusTones'
 
 interface BacklogSummaryCellProps {
   row: BacklogStatusSummaryRow
@@ -35,7 +36,8 @@ export function BacklogSummaryCell({
   const isToday = date === today
   const isFinished = statusKey === 'FINISHED'
   const isZero = poCount === 0
-  const isOverdue = !isFinished && poCount > 0 && date <= today
+  // Cùng quy tắc trễ hạn với bảng chi tiết (theme/statusTones.ts)
+  const isOverdue = poCount > 0 && deadlineTone(date, isFinished, today) === 'overdue'
   const showTodayCellHighlight =
     isToday && !isFinished && !isZero && !isOverdue
   const selected =

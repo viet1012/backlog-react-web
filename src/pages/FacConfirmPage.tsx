@@ -1129,6 +1129,10 @@ export function FacConfirmPage({
               ? handleGoToday
               : undefined
           }
+          density={preferences.density}
+          onDensityChange={preferences.setDensity}
+          pinnedColumns={preferences.pinnedColumns}
+          onTogglePinnedColumn={preferences.togglePinnedColumn}
         />
       </Box>
 

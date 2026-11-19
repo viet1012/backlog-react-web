@@ -247,6 +247,8 @@ export const en = {
         sortAsc: 'Sort A to Z',
         sortDesc: 'Sort Z to A',
         filterMenu: 'Filter...',
+        pinColumn: 'Pin column',
+        unpinColumn: 'Unpin column',
         selectAll: '(Select All)',
         blanks: '(Blanks)',
         noValues: 'No values found',
@@ -750,6 +752,24 @@ export const en = {
     userHome: {
         title: 'User Home',
         subtitle: 'Production Control',
+        // "My work today" board: each card opens the page already filtered
+        today: {
+            title: 'My work today',
+            open: (page: string) => `Open ${page}`,
+            loadFailed: 'Could not load',
+            facConfirm: 'Fac Confirm to do',
+            facConfirmSub: (div: string, parts: string) => `${div} · today · ${parts}`,
+            facConfirmDone: (div: string) => `${div} · all confirmed today`,
+            cost: 'Cost frames over',
+            costSub: (willExceed: number, month: string) => (willExceed > 0
+                ? `+${willExceed} forecast to exceed · ${month}`
+                : `Month ${month}`),
+            machine: 'Machines with safety alerts',
+            machineSub: (overdue: number, floor: string | null) => [
+                overdue > 0 ? `${overdue} overdue` : 'none overdue',
+                floor ? `most at ${floor}` : null,
+            ].filter(Boolean).join(' · '),
+        },
         brand: 'PRODUCTION CONTROL',
         workspace: 'Your Production Control workspace',
         employeeId: 'Employee ID',

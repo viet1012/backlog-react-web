@@ -1,12 +1,14 @@
 import {
   GridToolbarColumnsButton,
   GridToolbarContainer,
+  GridToolbarDensitySelector,
   type GridColumnVisibilityModel,
   type GridPaginationModel,
   type GridSortModel,
 } from '@mui/x-data-grid'
 import { useEffect, useMemo, useRef } from 'react'
 import { FilteredEmptyState } from './common/loadState'
+import type { GridDensity } from '../utils/uiPreferences'
 import { createBacklogColumns } from './backlog/backlogColumns'
 import { useI18n } from '../i18n/useI18n'
 import { ExcelColumnFilterProvider } from './common/dataGrid/ExcelColumnFilter'
@@ -49,11 +51,17 @@ interface DataTableProps {
   // (vd link cũ mà PO không còn) + nút Xóa bộ lọc
   onClearFilters?: () => void
   filterSummary?: string
+  // Mật độ dòng (nhớ theo người dùng) + cột ghim khi cuộn ngang
+  density: GridDensity
+  onDensityChange: (density: GridDensity) => void
+  pinnedColumns: readonly string[]
+  onTogglePinnedColumn: (field: string) => void
 }
 
 function BacklogToolbar() {
   return (
-    <GridToolbarContainer sx={{ justifyContent: 'flex-end', minHeight: 40, px: 1, py: 0.5 }}>
+    <GridToolbarContainer sx={{ justifyContent: 'flex-end', minHeight: 40, px: 1, py: 0.5, gap: 0.5 }}>
+      <GridToolbarDensitySelector />
       <GridToolbarColumnsButton />
     </GridToolbarContainer>
   )
@@ -98,6 +106,10 @@ export function DataTable({
   onRetry,
   onClearFilters,
   filterSummary,
+  density,
+  onDensityChange,
+  pinnedColumns,
+  onTogglePinnedColumn,
 }: DataTableProps) {
   const { t } = useI18n()
   const columns = useMemo(() => createBacklogColumns(t), [t])
@@ -158,6 +170,10 @@ export function DataTable({
         error={error}
         onRetry={onRetry}
         noRowsOverlay={noRowsOverlay}
+        density={density}
+        onDensityChange={onDensityChange}
+        pinnedColumns={pinnedColumns}
+        onTogglePinnedColumn={onTogglePinnedColumn}
       />
     </ExcelColumnFilterProvider>
   )

@@ -23,6 +23,7 @@ import { buildHomeMenu } from '../components/userHome/userHomeMenu'
 import { UserHomeIdBadge } from '../components/userHome/warehouse/UserHomeIdBadge'
 import { UserHomeLedBoard } from '../components/userHome/warehouse/UserHomeLedBoard'
 import { UserHomeRack } from '../components/userHome/warehouse/UserHomeRack'
+import { UserHomeTodayTasks } from '../components/userHome/todayTasks/UserHomeTodayTasks'
 import { loadWarehouse3D } from '../components/userHome/warehouse3d/loadWarehouse3D'
 import { Warehouse3DLoading } from '../components/userHome/warehouse3d/Warehouse3DLoading'
 import { WebGLBoundary } from '../components/userHome/warehouse3d/WebGLBoundary'
@@ -63,6 +64,8 @@ export function UserHomePage({ mode, onToggleMode }: UserHomePageProps) {
   const menu = useMemo(() => buildHomeMenu(), [])
   const [gpu] = useState(detectGpu)
   const wide = useMediaQuery((theme: Theme) => theme.breakpoints.up('md'))
+  // Đủ chỗ (kể cả sidebar) để treo "Việc của tôi hôm nay" giữa bảng LED và thẻ nhân viên
+  const roomy = useMediaQuery((theme: Theme) => theme.breakpoints.up('lg'))
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
 
   const [setting, setSetting] = useState<GraphicsSetting>(loadGraphicsSetting)
@@ -188,8 +191,20 @@ export function UserHomePage({ mode, onToggleMode }: UserHomePageProps) {
               }}
             >
               <UserHomeLedBoard />
+
+              {/* Việc của tôi hôm nay (màn rộng): treo vào khoảng trống giữa bảng LED và
+                  thẻ nhân viên => không lấy chiều cao, kệ hàng giữ nguyên kích thước */}
+              {roomy && (
+                <Box sx={{ flex: '1 1 260px', maxWidth: 330, minWidth: 0 }}>
+                  <UserHomeTodayTasks layout="column" />
+                </Box>
+              )}
+
               <UserHomeIdBadge />
             </Box>
+
+            {/* Màn hẹp hơn: dải ngang bên dưới hàng đầu */}
+            {!roomy && <UserHomeTodayTasks layout="strip" />}
 
             {rack}
           </Box>

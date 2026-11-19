@@ -38,6 +38,7 @@ import {
   GridCellModes,
   GridToolbarColumnsButton,
   GridToolbarContainer,
+  GridToolbarDensitySelector,
   type GridEventListener,
   type GridColumnVisibilityModel,
   type GridPaginationModel,
@@ -128,6 +129,7 @@ import {
 import { AppButton } from '../common/AppButton'
 import { ClearButton } from '../common/ClearButton'
 import { notify } from '../common/notify'
+import type { GridDensity } from '../../utils/uiPreferences'
 import { useI18n } from '../../i18n/useI18n'
 import { getMessages } from '../../i18n/i18nContext'
 
@@ -221,6 +223,12 @@ interface FacConfirmDataTableProps {
   filterSummary?: string
   onClearPageFilters: () => void
   onGoToday?: () => void
+
+  // Mật độ dòng (nhớ theo người dùng) + cột ghim khi cuộn ngang (mặc định Aufnr)
+  density: GridDensity
+  onDensityChange: (density: GridDensity) => void
+  pinnedColumns: readonly string[]
+  onTogglePinnedColumn: (field: string) => void
 }
 // =========================================================
 // TOOLBAR
@@ -338,6 +346,9 @@ function FacConfirmToolbar({
           />
         )}
 
+        {/* Mật độ dòng gọn / vừa / thoáng (nhớ theo người dùng) */}
+        <GridToolbarDensitySelector />
+
         <Box
           component="span"
           data-tour="fac-columns"
@@ -393,6 +404,10 @@ function FacConfirmDataTableInner({
   filterSummary,
   onClearPageFilters,
   onGoToday,
+  density,
+  onDensityChange,
+  pinnedColumns,
+  onTogglePinnedColumn,
 }: FacConfirmDataTableProps) {
 
   // =======================================================
@@ -1752,6 +1767,11 @@ function FacConfirmDataTableInner({
           onColumnHeaderClick={
             preventColumnHeaderSort
           }
+
+          density={density}
+          onDensityChange={onDensityChange}
+          pinnedColumns={pinnedColumns}
+          onTogglePinnedColumn={onTogglePinnedColumn}
 
         />
         </FacConfirmToolbarContext.Provider>

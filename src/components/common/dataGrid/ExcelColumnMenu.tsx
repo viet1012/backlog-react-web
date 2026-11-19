@@ -25,9 +25,19 @@ import type {
     MouseEvent,
 } from 'react'
 
+import PushPinOutlinedIcon
+    from '@mui/icons-material/PushPinOutlined'
+
+import PushPinRoundedIcon
+    from '@mui/icons-material/PushPinRounded'
+
 import {
     useExcelColumnFilter,
 } from './excelFilterContext'
+
+import {
+    useGridPin,
+} from './gridPinContext'
 
 import { useI18n } from '../../../i18n/useI18n'
 
@@ -146,6 +156,27 @@ export function ExcelColumnMenu(
 
 
     // =======================================================
+    // PIN / UNPIN (giữ cột khi cuộn ngang)
+    // =======================================================
+
+    const pin =
+        useGridPin()
+
+    const pinned =
+        pin?.pinnedColumns.includes(colDef.field) ?? false
+
+    function togglePin(
+        event: MouseEvent<HTMLElement>,
+    ) {
+        event.stopPropagation()
+
+        pin?.togglePinnedColumn(colDef.field)
+
+        hideMenu(event)
+    }
+
+
+    // =======================================================
     // COMMON ITEM STYLE
     // =======================================================
 
@@ -258,6 +289,32 @@ export function ExcelColumnMenu(
                         primary={t.dataGrid.filterMenu}
                     />
                 </ListItemButton>
+
+
+                {/* =================================================
+            PIN (bảng có hỗ trợ ghim cột)
+        ================================================= */}
+
+                {pin && (
+                    <>
+                        <Divider />
+
+                        <ListItemButton
+                            onClick={togglePin}
+                            sx={itemSx}
+                        >
+                            <ListItemIcon>
+                                {pinned
+                                    ? <PushPinRoundedIcon fontSize="small" />
+                                    : <PushPinOutlinedIcon fontSize="small" />}
+                            </ListItemIcon>
+
+                            <ListItemText
+                                primary={pinned ? t.dataGrid.unpinColumn : t.dataGrid.pinColumn}
+                            />
+                        </ListItemButton>
+                    </>
+                )}
 
             </List>
         </Box>

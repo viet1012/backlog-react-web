@@ -7,6 +7,10 @@ import type {
   GridEventListener,
 } from '@mui/x-data-grid'
 
+import {
+  DEADLINE_CELL_CLASS,
+} from './statusTones'
+
 // =====================================================
 // PREVENT COLUMN HEADER SORT
 // =====================================================
@@ -81,6 +85,19 @@ export const dataGridHeaderSx =
       isDark
         ? alpha('#FFFFFF', 0.94)
         : '#1E293B'
+
+    // Nền đặc cho cột ghim, gần đúng màu kính của dòng / header phía sau
+    const pinnedBackground =
+      isDark ? '#141d2e' : '#fbfcfe'
+
+    const pinnedBackgroundAlt =
+      isDark ? '#172235' : '#f6f8fb'
+
+    const pinnedBackgroundHover =
+      isDark ? '#1b2a45' : '#eef3fb'
+
+    const pinnedHeaderBackground =
+      isDark ? '#111827' : '#F8FAFC'
 
     return {
       width: '100%',
@@ -438,6 +455,81 @@ export const dataGridHeaderSx =
       '& .MuiDataGrid-cell:focus, & .MuiDataGrid-cell:focus-within':
       {
         outline: 'none',
+      },
+
+      // Số và ngày: chữ số cùng độ rộng => cột số thẳng hàng, không "nhảy"
+      '& .MuiDataGrid-cell, & .MuiDataGrid-columnHeaderTitle': {
+        fontVariantNumeric:
+          'tabular-nums',
+      },
+
+      // =====================================================
+      // TÔ MÀU HẠN (dùng chung mọi bảng – theme/statusTones.ts)
+      // Trễ hạn: đỏ · Sắp tới hạn: cam
+      // =====================================================
+
+      [`& .${DEADLINE_CELL_CLASS.overdue}`]: {
+        color:
+          `${theme.palette.error.main} !important`,
+
+        fontWeight: 700,
+
+        backgroundColor:
+          alpha(theme.palette.error.main, isDark ? 0.14 : 0.07),
+      },
+
+      [`& .${DEADLINE_CELL_CLASS.dueSoon}`]: {
+        color:
+          `${theme.palette.warning.main} !important`,
+
+        fontWeight: 700,
+
+        backgroundColor:
+          alpha(theme.palette.warning.main, isDark ? 0.14 : 0.08),
+      },
+
+      // =====================================================
+      // CỘT GHIM (sticky, xem ReusableDataGrid)
+      // Nền phải đặc: nền kính trong suốt sẽ lộ chữ của cột cuộn bên dưới
+      // =====================================================
+
+      '& .MuiDataGrid-cell.app-pinned': {
+        position: 'sticky',
+
+        zIndex: 3,
+
+        backgroundColor:
+          pinnedBackground,
+      },
+
+      '& .MuiDataGrid-row:nth-of-type(even) .MuiDataGrid-cell.app-pinned': {
+        backgroundColor:
+          pinnedBackgroundAlt,
+      },
+
+      '& .MuiDataGrid-row:hover .MuiDataGrid-cell.app-pinned': {
+        backgroundColor:
+          pinnedBackgroundHover,
+      },
+
+      '& .MuiDataGrid-columnHeader.app-pinned': {
+        position: 'sticky',
+
+        zIndex: 5,
+
+        background:
+          `${pinnedHeaderBackground} !important`,
+      },
+
+      // Cột ghim cuối: đường viền + bóng báo hiệu phía sau còn cột đang cuộn
+      '& .app-pinned-last': {
+        borderRight:
+          `1px solid ${alpha(accent, isDark ? 0.35 : 0.28)} !important`,
+
+        boxShadow:
+          isDark
+            ? '4px 0 8px -4px rgba(0,0,0,0.55)'
+            : '4px 0 8px -4px rgba(15,23,42,0.18)',
       },
 
       // =====================================================

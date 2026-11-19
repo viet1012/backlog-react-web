@@ -76,7 +76,10 @@ export function FacConfirmFilterBar({
   const { t } = useI18n()
 
   return (
+    // compact: thanh này đã chật vì dải công đoạn – không lọc thì bố cục y như cũ,
+    // có lọc thì chỉ thêm 1 nút icon nhỏ
     <FilterBar
+      compact
       activeCount={activeCount}
       onClear={onClear}
     >

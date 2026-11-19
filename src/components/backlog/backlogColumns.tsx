@@ -19,7 +19,8 @@ import type {
 } from '../../types/report'
 import { DATA_GRID_COLUMN_WIDTHS } from '../common/dataGrid/dataGridColumnWidths'
 import { useOptionalExcelColumnFilter } from '../common/dataGrid/excelFilterContext'
-import { getBacklogStatusColor } from './backlogStatus'
+import { getBacklogStatusColor, normalizeBacklogStatus } from './backlogStatus'
+import { deadlineCellClass } from '../../theme/statusTones'
 import type { Messages } from '../../i18n/messages/en'
 
 
@@ -439,11 +440,20 @@ export function createBacklogColumns(
       h.promiseDate,
     ),
 
-    dateColumn(
-      'ExportD',
-      h.exportDate,
-      DATA_GRID_COLUMN_WIDTHS.date,
-    ),
+    {
+      ...dateColumn(
+        'ExportD',
+        h.exportDate,
+        DATA_GRID_COLUMN_WIDTHS.date,
+      ),
+
+      // Trễ hạn đỏ / sắp tới hạn cam (quy tắc chung: theme/statusTones.ts)
+      cellClassName: ({ value, row }) =>
+        deadlineCellClass(
+          value,
+          normalizeBacklogStatus(row.Status) === 'FINISHED',
+        ),
+    },
 
     dateColumn(
       'ORG_Date',

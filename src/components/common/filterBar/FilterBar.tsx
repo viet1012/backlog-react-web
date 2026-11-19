@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
-import { Box, Chip, type SxProps, type Theme } from '@mui/material'
+import { Badge, Box, Chip, IconButton, Tooltip, type SxProps, type Theme } from '@mui/material'
 import { alpha } from '@mui/material/styles'
+import FilterAltOffRoundedIcon from '@mui/icons-material/FilterAltOffRounded'
 import FilterAltRoundedIcon from '@mui/icons-material/FilterAltRounded'
 
 import { useI18n } from '../../../i18n/useI18n'
@@ -29,6 +30,11 @@ interface FilterBarProps {
   footer?: ReactNode
   /** plain: không có khung kính (đặt trong header) */
   variant?: 'panel' | 'plain'
+  /**
+   * Gọn cho thanh đã chật (Fac Confirm): không bộ lọc thì không hiện gì (giữ
+   * nguyên bố cục cũ); có bộ lọc thì chỉ 1 nút icon "Xóa bộ lọc" kèm số
+   */
+  compact?: boolean
   tour?: string
   sx?: SxProps<Theme>
 }
@@ -40,17 +46,21 @@ export function FilterBar({
   trailing,
   footer,
   variant = 'panel',
+  compact = false,
   tour,
   sx,
 }: FilterBarProps) {
   const { t } = useI18n()
+
+  const showRight = Boolean(trailing) || (compact ? activeCount > 0 && Boolean(onClear) : true)
 
   const content = (
     <>
       <Box
         sx={{
           display: 'flex',
-          flexWrap: 'wrap',
+          // compact (Fac Confirm): 1 hàng như bố cục cũ, ô co lại thay vì xuống dòng
+          flexWrap: compact ? { xs: 'wrap', sm: 'nowrap' } : 'wrap',
           alignItems: 'center',
           gap: 0.75,
           minWidth: 0,
@@ -58,30 +68,61 @@ export function FilterBar({
       >
         {children}
 
-        <Box sx={{ flex: '1 0 0', minWidth: 0 }} />
+        {/* Đẩy sang phải bằng margin-left: auto, KHÔNG dùng khoảng trống co giãn:
+            khoảng trống flex-grow sẽ chia mất chỗ của ô lọc co giãn (vd dải công đoạn Fac Confirm) */}
+        {showRight && (
+          <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 0.75, flexShrink: 0 }}>
+            {compact ? (
+              // Gọn: 1 nút icon có số bộ lọc (không lấy chỗ của ô lọc bên cạnh)
+              onClear && (
+                <Tooltip title={`${t.common.clearFilters} (${activeCount})`}>
+                  <IconButton
+                    size="small"
+                    aria-label={`${t.common.clearFilters} (${activeCount})`}
+                    onClick={onClear}
+                    sx={(theme) => ({
+                      color: theme.palette.primary.main,
+                      border: `1px solid ${alpha(theme.palette.primary.main, 0.35)}`,
+                      bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.18 : 0.08),
+                      borderRadius: '10px',
+                    })}
+                  >
+                    <Badge
+                      badgeContent={activeCount}
+                      color="primary"
+                      sx={{ '& .MuiBadge-badge': { fontSize: 10, height: 16, minWidth: 16, px: 0.5 } }}
+                    >
+                      <FilterAltOffRoundedIcon fontSize="small" />
+                    </Badge>
+                  </IconButton>
+                </Tooltip>
+              )
+            ) : (
+              <>
+                {activeCount > 0 && (
+                  <Chip
+                    size="small"
+                    icon={<FilterAltRoundedIcon />}
+                    label={t.common.activeFilterCount(activeCount)}
+                    sx={(theme) => ({
+                      height: 26,
+                      fontWeight: 700,
+                      fontVariantNumeric: 'tabular-nums',
+                      color: theme.palette.primary.main,
+                      bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.18 : 0.08),
+                      border: `1px solid ${alpha(theme.palette.primary.main, 0.35)}`,
+                      '& .MuiChip-icon': { color: 'inherit', fontSize: 16 },
+                    })}
+                  />
+                )}
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexShrink: 0 }}>
-          {activeCount > 0 && (
-            <Chip
-              size="small"
-              icon={<FilterAltRoundedIcon />}
-              label={t.common.activeFilterCount(activeCount)}
-              sx={(theme) => ({
-                height: 26,
-                fontWeight: 700,
-                fontVariantNumeric: 'tabular-nums',
-                color: theme.palette.primary.main,
-                bgcolor: alpha(theme.palette.primary.main, theme.palette.mode === 'dark' ? 0.18 : 0.08),
-                border: `1px solid ${alpha(theme.palette.primary.main, 0.35)}`,
-                '& .MuiChip-icon': { color: 'inherit', fontSize: 16 },
-              })}
-            />
-          )}
+                {onClear && <ClearButton disabled={activeCount === 0} onClick={onClear} />}
+              </>
+            )}
 
-          {onClear && <ClearButton disabled={activeCount === 0} onClick={onClear} />}
-
-          {trailing}
-        </Box>
+            {trailing}
+          </Box>
+        )}
       </Box>
 
       {footer}

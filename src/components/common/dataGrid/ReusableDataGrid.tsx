@@ -29,6 +29,10 @@ import {
 import { FactoryNoRowsOverlay } from '../FactoryNoRowsOverlay'
 import { appScrollbarSx } from '../../../theme/scrollbarStyle'
 import type { Theme } from '@mui/material/styles'
+import type { GridDensity } from '../../../utils/uiPreferences'
+import { GridPinContext } from './gridPinContext'
+
+const NO_PINNED: readonly string[] = []
 
 
 // Module-level (stable) sx: an inline function made Emotion re-resolve the
@@ -149,6 +153,81 @@ export interface ReusableDataGridProps<
   // Còn dòng cũ thì DataGrid không hiện overlay, trang tự báo lỗi.
   error?: string | null
   onRetry?: () => void
+
+  // Mật độ dòng (gọn / vừa / thoáng), nhớ theo người dùng – xem useGridPreferences
+  density?: GridDensity
+  onDensityChange?: (density: GridDensity) => void
+
+  // Cột ghim bên trái khi cuộn ngang (vd mã PO / Aufnr). Bản Community không
+  // có pinning => tự làm bằng position: sticky (cùng cách bản Pro làm)
+  pinnedColumns?: readonly string[]
+  // Có thì menu tiêu đề cột hiện mục "Ghim cột / Bỏ ghim"
+  onTogglePinnedColumn?: (field: string) => void
+}
+
+// =========================================================
+// GHIM CỘT (position: sticky)
+//
+// Cột ghim được đưa lên đầu, mỗi cột nhận class app-pinned + app-pinned-<i>;
+// `left` của từng cột = tổng độ rộng các cột ghim trước nó. Tắt ảo hóa cột
+// để cột ghim luôn được vẽ khi cuộn xa sang phải.
+// =========================================================
+
+const PINNED_CLASS = 'app-pinned'
+const PINNED_LAST_CLASS = 'app-pinned-last'
+const DEFAULT_COLUMN_WIDTH = 100
+const PINNED_COLUMN_BUFFER_PX = 100_000
+
+function joinClass(...names: (string | false | undefined)[]) {
+  return names.filter(Boolean).join(' ')
+}
+
+function withPinnedClass<T extends GridValidRowModel>(
+  column: GridColDef<T>,
+  className: string,
+): GridColDef<T> {
+  const { cellClassName, headerClassName } = column
+
+  return {
+    ...column,
+    cellClassName: typeof cellClassName === 'function'
+      ? (params) => joinClass(cellClassName(params), className)
+      : joinClass(cellClassName, className),
+    headerClassName: typeof headerClassName === 'function'
+      ? (params) => joinClass(headerClassName(params), className)
+      : joinClass(headerClassName, className),
+  }
+}
+
+function applyPinnedColumns<T extends GridValidRowModel>(
+  columns: GridColDef<T>[],
+  pinned: readonly string[],
+  visibility: GridColumnVisibilityModel,
+): { columns: GridColDef<T>[], offsets: number[] } {
+  // chỉ cột có thật và đang hiện
+  const fields = pinned.filter((field) =>
+    visibility[field] !== false && columns.some((column) => column.field === field))
+
+  if (fields.length === 0) return { columns, offsets: [] }
+
+  const offsets: number[] = []
+  let left = 0
+
+  const pinnedColumns = fields.map((field, index) => {
+    const column = columns.find((item) => item.field === field)!
+    offsets.push(left)
+    left += column.width ?? DEFAULT_COLUMN_WIDTH
+
+    return withPinnedClass(
+      column,
+      joinClass(PINNED_CLASS, `${PINNED_CLASS}-${index}`, index === fields.length - 1 && PINNED_LAST_CLASS),
+    )
+  })
+
+  return {
+    columns: [...pinnedColumns, ...columns.filter((column) => !fields.includes(column.field))],
+    offsets,
+  }
 }
 
 
@@ -211,6 +290,12 @@ function ReusableDataGridInner<
 
   error,
   onRetry,
+
+  density = 'compact',
+  onDensityChange,
+
+  pinnedColumns = NO_PINNED,
+  onTogglePinnedColumn,
 
 }: ReusableDataGridProps<T>) {
 
@@ -275,6 +360,60 @@ function ReusableDataGridInner<
     )
 
 
+  // Cột ghim lên đầu + class sticky; offsets = `left` của từng cột ghim
+  const pinned =
+    useMemo(
+      () =>
+        applyPinnedColumns(
+          preferredColumns,
+          pinnedColumns,
+          columnVisibilityModel,
+        ),
+      [
+        preferredColumns,
+        pinnedColumns,
+        columnVisibilityModel,
+      ],
+    )
+
+  const displayColumns =
+    pinned.columns
+
+  const pinnedOffsetsKey =
+    pinned.offsets.join(',')
+
+  const sx = useMemo(
+    () => {
+      const offsets = pinnedOffsetsKey
+        ? pinnedOffsetsKey.split(',').map(Number)
+        : []
+
+      if (offsets.length === 0) return gridSx
+
+      const leftRules = Object.fromEntries(
+        offsets.map((left, index) => [
+          `& .${PINNED_CLASS}-${index}`,
+          { left },
+        ]),
+      )
+
+      return [gridSx, leftRules]
+    },
+    [pinnedOffsetsKey],
+  )
+
+  const pinContext =
+    useMemo(
+      () => (onTogglePinnedColumn
+        ? {
+          pinnedColumns,
+          togglePinnedColumn: onTogglePinnedColumn,
+        }
+        : null),
+      [pinnedColumns, onTogglePinnedColumn],
+    )
+
+
   // =====================================================
   // COLUMN ORDER
   // =====================================================
@@ -285,7 +424,7 @@ function ReusableDataGridInner<
   ) => {
 
     const nextOrder =
-      preferredColumns.map(
+      displayColumns.map(
         (column) =>
           column.field,
       )
@@ -311,7 +450,7 @@ function ReusableDataGridInner<
     onColumnOrderChange(
       nextOrder,
     )
-  }, [preferredColumns, onColumnOrderChange])
+  }, [displayColumns, onColumnOrderChange])
 
 
   // =====================================================
@@ -371,6 +510,7 @@ function ReusableDataGridInner<
   // =====================================================
 
   return (
+    <GridPinContext.Provider value={pinContext}>
     <DataGrid<T>
 
       apiRef={apiRef}
@@ -380,7 +520,16 @@ function ReusableDataGridInner<
       }
 
       columns={
-        preferredColumns
+        displayColumns
+      }
+
+      // Cột ghim (sticky) phải luôn được vẽ, kể cả khi cuộn xa sang phải:
+      // v9 không còn disableColumnVirtualization => vùng đệm cột rất lớn
+      // (vẫn ảo hóa theo dòng)
+      columnBufferPx={
+        pinned.offsets.length > 0
+          ? PINNED_COLUMN_BUFFER_PX
+          : undefined
       }
 
       getRowId={
@@ -474,16 +623,19 @@ function ReusableDataGridInner<
         Boolean(toolbar)
       }
 
-      density="compact"
+      density={density}
+
+      onDensityChange={onDensityChange}
 
       disableRowSelectionOnClick
 
       onColumnHeaderClick={
         onColumnHeaderClick
       }
-      sx={gridSx}
+      sx={sx}
 
     />
+    </GridPinContext.Provider>
   )
 }
 

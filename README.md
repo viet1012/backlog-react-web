@@ -76,6 +76,12 @@ Frontend thuần (SPA). Dữ liệu và đăng nhập đi qua backend `backlog-b
   - Number: =, ≠, >, ≥, <, ≤
   - Date: Equals / Before / After
 - **Ghi nhớ cấu hình** riêng cho từng bảng trên trình duyệt: thứ tự cột, cột ẩn/hiện, độ rộng cột, số dòng mỗi trang.
+- **Mật độ dòng** *gọn / vừa / thoáng* (nút *Mật độ* trên thanh công cụ của bảng). Nhớ theo **từng người đăng nhập**, nên máy dùng chung ở xưởng mỗi người giữ lựa chọn riêng.
+- **Ghim cột** khi cuộn ngang (Backlog, Fac Confirm): **chỉ khi người dùng chọn**, bằng mục *Ghim cột* ở menu tiêu đề cột (vd ghim Aufnr). Mặc định không ghim gì nên thứ tự cột giữ như cũ. Cột ghim được đưa lên đầu bảng.
+- **Tô màu theo hạn**, cùng một quy tắc cho mọi bảng và Backlog Summary:
+  - Chưa xong mà ngày xuất là hôm nay hoặc đã qua: **đỏ**.
+  - Ngày xuất trong 2 ngày tới: **cam**.
+- **Số và ngày** dùng chữ số cùng độ rộng (tabular-nums). Cột số canh phải.
 
 ---
 
@@ -303,6 +309,19 @@ API: `GET /api/machine-locator/floors[/{id}]`, `PUT|DELETE …/machines/{code}`,
 
 Trang chào cho tài khoản **USER** (không có quyền nghiệp vụ).
 
+**Việc của tôi hôm nay**: bảng LED treo giữa bảng lời chào và thẻ nhân viên (màn ≥ 1200px, không lấy thêm chiều cao nên kệ hàng giữ nguyên). Màn hẹp hơn thì thành dải ngang bên dưới. Bấm vào thẻ nào là mở thẳng trang đã lọc sẵn bằng link URL:
+
+| Thẻ | Số liệu | Mở |
+| --- | --- | --- |
+| Fac Confirm chưa xác nhận (chỉ PC / PRO / ADMIN) | PO cần xác nhận hôm nay chưa xác nhận, theo Division đang dùng ở Fac Confirm, chia theo công đoạn | `/fac-confirm?div=…&expD=hôm nay&procGrp=<công đoạn còn nhiều nhất>` |
+| Khung Cost đang vượt | Số khung tháng này có `forecast.status = OVER`, kèm số khung dự báo vượt. Tháng này chưa có số thì lấy tháng mới nhất | `/cost-monitoring` |
+| Máy đang cảnh báo an toàn | Máy / nhóm lỗi HSE chưa đóng trên mọi tầng, kèm số quá hạn | `/monitoring/machine?tab=hse&layout=<tầng nhiều nhất>` |
+
+- Số > 0 sáng đỏ, = 0 sáng xanh. Lỗi tải thì hiện `--`, bấm vẫn mở trang.
+- Số liệu được cache theo phiên và tải lại ngầm sau 2 phút.
+
+**Phần còn lại**
+
 - Lời chào kèm 4 thẻ thông tin: Employee ID, Department, Section, Role.
 - **Hoạt cảnh nhà máy** gồm 4 cảnh: Production Line, Dev Team, Inspection, Packing.
   - Cảnh tự đổi sau mỗi 15 giây. Rê chuột vào để dừng; bấm các chấm để chọn cảnh.
@@ -422,6 +441,9 @@ Quy ước:
 - **Thanh bộ lọc** dùng [filterBar/](src/components/common/filterBar/), không tự dựng TextField / Select riêng:
   - `<FilterBar activeCount onClear trailing? footer? variant="panel|plain">` bọc các ô lọc.
   - Ô lọc: `FilterSearch` / `FilterText` (có `debounceMs`), `FilterSelect` (`allOption` thêm mục *Tất cả*), `FilterDate`, `FilterDateRange` (tự giữ from ≤ to, `maxDays`). Truyền `tour` để gắn `data-tour` cho hướng dẫn.
+- **Bảng DataGrid**: `useGridPreferences(key, pageSize, { defaultPinned })` trả về cả `density` / `setDensity` (nhớ theo người dùng) và `pinnedColumns` / `togglePinnedColumn`. Truyền vào `ReusableDataGrid` qua `density`, `onDensityChange`, `pinnedColumns`, `onTogglePinnedColumn`. `defaultPinned` phải là hằng số ngoài component.
+  - Ghim cột tự làm bằng `position: sticky`, vì bản Community không có. Khi có cột ghim, bảng đặt `columnBufferPx` lớn để cột ghim luôn được vẽ.
+  - Tô màu hạn: `deadlineCellClass(date, done)` / `deadlineTone(...)` trong [theme/statusTones.ts](src/theme/statusTones.ts). Không tự chọn màu đỏ / cam riêng.
 - **Bộ lọc ⇄ URL** dùng [useUrlFilters](src/hooks/useUrlFilters.ts):
   - Khai báo tham số bằng `urlParam.text | oneOf | date | month | list | positiveNumber`. Có `empty` thì bằng giá trị đó sẽ không ghi lên URL; không có `empty` thì luôn ghi.
   - Khởi tạo state bằng `readUrlParams(path, params)`, rồi gọi `useUrlFilters({ path, params, values, onUrlChange })`.
@@ -462,6 +484,29 @@ npm run build      # kết quả ở dist/
 `dist/` là site tĩnh. App dùng `BrowserRouter`, nên web server phải trả `index.html` cho mọi đường dẫn không phải file tĩnh (SPA fallback). Nếu không, bấm F5 ở route con sẽ ra lỗi 404.
 
 ## Lịch sử thay đổi
+
+### 2026-11-19 — Nâng cấp bảng dữ liệu và "Việc của tôi hôm nay"
+
+Đợt 3 trong kế hoạch cải thiện UI (đề xuất 4 và 5).
+
+#### Bảng dữ liệu (đề xuất 4)
+
+| Nội dung | File |
+| --- | --- |
+| Mật độ dòng gọn / vừa / thoáng, nhớ theo người đăng nhập (`grid-density:<MSNV>:<bảng>`) | `uiPreferences.ts`, `useGridPreferences.ts`, toolbar của Backlog / Fac Confirm / Shipment |
+| Ghim cột bằng CSS sticky, chỉ khi người dùng chọn ở menu cột (mặc định không ghim, giữ nguyên giao diện cũ) | `ReusableDataGrid.tsx`, `gridPinContext.ts`, `ExcelColumnMenu.tsx`, `dataGridHeaderStyles.ts` |
+| Tô màu hạn thống nhất (đỏ trễ hạn, cam ≤ 2 ngày): cột Export Date của Backlog / Shipment, Backlog Summary dùng cùng hàm | [theme/statusTones.ts](src/theme/statusTones.ts), `backlogColumns.tsx`, `BacklogSummaryCell.tsx` |
+| Chữ số cùng độ rộng cho mọi ô của bảng | `dataGridHeaderStyles.ts` |
+
+#### Trang chủ (đề xuất 5)
+
+- Thêm bảng **Việc của tôi hôm nay** (`components/userHome/todayTasks/`) với 3 thẻ: Fac Confirm, Cost, Máy cảnh báo. Bấm vào là mở trang đã lọc sẵn (dùng link URL của Đợt 2).
+
+#### Chưa làm / còn lại
+
+- Ghim cột chưa áp cho các bảng không dùng `ReusableDataGrid` (EVN, ODBF, AI Logs) và bảng chi tiết Shipment (dùng menu cột mặc định).
+- Cost Monitoring chưa có bộ lọc trên URL, nên thẻ Cost chỉ mở trang (tháng mặc định).
+- Đề xuất 6–10: dark mode / độ tương phản, phím tắt, design token, đo hiệu năng, việc tồn (API "tháng mới nhất" của Cost, Machine Monitor tải lại sơ đồ).
 
 ### 2026-11-19 — Thanh bộ lọc dùng chung và bộ lọc trên URL
 

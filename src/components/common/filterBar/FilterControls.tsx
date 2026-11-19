@@ -15,9 +15,11 @@ import { useI18n } from '../../../i18n/useI18n'
 
 type Width = number | string | { xs?: number | string, sm?: number | string }
 
-const widthSx = (width: Width | undefined): SxProps<Theme> => ({
+const widthSx = (width: Width | undefined, shrink = false): SxProps<Theme> => ({
   width: typeof width === 'object' ? { xs: '100%', ...width } : { xs: '100%', sm: width ?? 'auto' },
-  flexShrink: 0,
+  // ô tìm được co lại khi thanh chật (giống bố cục cũ), ô khác giữ nguyên cỡ
+  flexShrink: shrink ? 1 : 0,
+  minWidth: shrink ? 140 : undefined,
 })
 
 // icon lịch của input date: sáng lên trong chế độ tối
@@ -102,7 +104,7 @@ export function FilterText({
           }
           : undefined,
       }}
-      sx={widthSx(width)}
+      sx={widthSx(width, search)}
     />
   )
 }
