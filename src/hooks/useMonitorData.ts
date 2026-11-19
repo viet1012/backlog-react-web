@@ -6,7 +6,7 @@ import {
 
 import type { MonitorRange } from '../components/machineMonitor/monitorRange'
 import type { MonitorTabDef } from '../components/machineMonitor/monitorTypes'
-import { loadMachineStore } from '../services/machineLocatorService'
+import { loadMachineStore, onMachineStoreWrite } from '../services/machineLocatorService'
 import type {
   LayoutData,
   MachineLayoutConfig,
@@ -21,6 +21,10 @@ import {
 const AUTO_REFRESH_MS = 5 * 60 * 1000
 // dữ liệu trong cache mới hơn mức này: quay lại tab / floor thì không tải lại
 const FRESH_MS = 60 * 1000
+// Sơ đồ tầng (khung máy từ Machine Locator) hiếm khi đổi: dùng lại trong 10 phút.
+// Trước đây mỗi lần tải dữ liệu (mở lại trang sau 1 phút, tự làm mới 5 phút) đều tải
+// lại cả sơ đồ. Bấm nút Làm mới thì vẫn tải lại sơ đồ.
+const FLOOR_FRESH_MS = 10 * 60 * 1000
 
 export interface MonitorFloor {
   data: LayoutData
@@ -30,6 +34,11 @@ export interface MonitorFloor {
 // Cache theo phiên (sống qua remount khi đổi tab / floor / trang):
 // mở lại tab đã xem thì hiện ngay dữ liệu cũ, tải lại ngầm nếu đã cũ
 const floorCache = new Map<string, MonitorFloor>()
+// lúc tải sơ đồ của từng tầng (ms)
+const floorLoadedAt = new Map<string, number>()
+
+// ADMIN vừa sửa khung máy ở Machine Locator => lần tải sau của Monitor lấy sơ đồ mới
+onMachineStoreWrite(() => floorLoadedAt.clear())
 const dataCache = new Map<string, { data: unknown, at: Date }>()
 // request đang chạy: prefetch và lúc mở tab dùng chung 1 request.
 // Không huỷ khi rời tab: kết quả vẫn vào cache cho lần mở sau
@@ -57,6 +66,7 @@ function fetchFloor(layout: MachineLayoutConfig): Promise<MonitorFloor> {
     }
 
     floorCache.set(layout.id, f)
+    floorLoadedAt.set(layout.id, Date.now())
 
     return f
   }))
@@ -98,6 +108,8 @@ export function useMonitorData<T>(layout: MachineLayoutConfig, tab: MonitorTabDe
   const busy = useRef(false)
   // seq đã xử lý: seq đổi = làm mới tay / tự động -> luôn tải lại
   const doneSeq = useRef(seq)
+  // lượt tải do bấm nút Làm mới (tự động làm mới thì không tải lại sơ đồ)
+  const manualRefresh = useRef(false)
 
   useEffect(() => {
     const ctrl = new AbortController()
@@ -105,8 +117,15 @@ export function useMonitorData<T>(layout: MachineLayoutConfig, tab: MonitorTabDe
     const hit = dataCache.get(key)
     const cachedFloor = floorCache.get(layout.id)
     const forced = doneSeq.current !== seq
+    const manual = manualRefresh.current
 
     doneSeq.current = seq
+    manualRefresh.current = false
+
+    // sơ đồ: chỉ tải lại khi chưa có, đã cũ (> 10 phút) hoặc người dùng bấm Làm mới
+    const floorStale = !cachedFloor
+      || manual
+      || Date.now() - (floorLoadedAt.get(layout.id) ?? 0) > FLOOR_FRESH_MS
 
     // có cache: hiện ngay (đổi history về khoảng đã xem)
     if (hit && cachedFloor) {
@@ -114,7 +133,7 @@ export function useMonitorData<T>(layout: MachineLayoutConfig, tab: MonitorTabDe
       setData(hit.data as T)
       setLoadedAt(hit.at)
 
-      if (!forced && Date.now() - hit.at.getTime() < FRESH_MS) {
+      if (!forced && !floorStale && Date.now() - hit.at.getTime() < FRESH_MS) {
         setLoading(false)
         return
       }
@@ -124,7 +143,7 @@ export function useMonitorData<T>(layout: MachineLayoutConfig, tab: MonitorTabDe
     setLoading(true)
 
     Promise.all([
-      fetchFloor(layout),
+      floorStale ? fetchFloor(layout) : Promise.resolve(cachedFloor),
       fetchData(layout, tab, history),
     ]).then(
       ([f, d]) => {
@@ -166,6 +185,10 @@ export function useMonitorData<T>(layout: MachineLayoutConfig, tab: MonitorTabDe
     error,
     loading,
     loadedAt,
-    refresh: () => setSeq((s) => s + 1),
+    // bấm nút Làm mới: tải lại cả sơ đồ lẫn dữ liệu
+    refresh: () => {
+      manualRefresh.current = true
+      setSeq((s) => s + 1)
+    },
   }
 }

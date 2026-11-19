@@ -21,6 +21,7 @@ import {
   getCostMonitoringPlWeeks,
   toApiMonth,
 } from '../services/costMonitoringService'
+import dayjs from 'dayjs'
 import { getMessages } from '../i18n/i18nContext'
 import { clearQueryCache } from '../utils/queryCache'
 import { useCachedQuery } from './useCachedQuery'
@@ -274,8 +275,10 @@ export function useCostMonitoring() {
       : plWeeksQuery.data
 
   // ---------- chart ----------
+  const chartKey = (value: string) => `cost:chart:${value}|${simuWeek}|${dataVersion}`
+
   const chartQuery = useCachedQuery(
-    month ? `cost:chart:${month}|${simuWeek}|${dataVersion}` : null,
+    month ? chartKey(month) : null,
     (signal, force) => getCostMonitoringChart(
       toApiMonth(month!),
       simuWeek,
@@ -286,6 +289,20 @@ export function useCostMonitoring() {
       refreshKey,
       fallbackError: () => getMessages().cost.chartLoadFailed,
     },
+  )
+
+  // ---------- tải trước chart tháng hiện tại, song song với /months ----------
+  // Trước đây: chờ /months xong mới biết tháng mới nhất rồi mới gọi /chart (2 lượt nối tiếp).
+  // Thường tháng mới nhất chính là tháng hiện tại => gọi luôn /chart tháng này cùng lúc với
+  // /months, cùng key cache với chartQuery. /months về mà đúng tháng này thì chartQuery dùng
+  // lại request đang chạy / kết quả đã có. Khác tháng thì chỉ tốn 1 request, giao diện
+  // không đổi (tháng hiển thị vẫn do /months quyết định như cũ).
+  const [guessMonth] = useState(() => dayjs().format('YYYY.MM'))
+  const monthsKnown = monthsQuery.data !== null || monthsQuery.error !== null
+
+  useCachedQuery(
+    !monthsKnown && selectedMonth === null ? chartKey(guessMonth) : null,
+    (signal) => getCostMonitoringChart(toApiMonth(guessMonth), simuWeek, signal),
   )
 
   const lastUpdated = useMemo(

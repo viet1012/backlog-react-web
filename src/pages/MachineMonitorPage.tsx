@@ -60,7 +60,7 @@ import type {
 } from '../components/machineMonitor/monitorTypes'
 import { prefetchMonitor, useMonitorData } from '../hooks/useMonitorData'
 import { useStableCallback } from '../hooks/useStableCallback'
-import { listFloors } from '../services/machineLocatorService'
+import { listFloors, onMachineStoreWrite } from '../services/machineLocatorService'
 import { appScrollbarSx } from '../theme/scrollbarStyle'
 import { uiTokens } from '../theme/uiTokens'
 import type { MachineLayoutConfig } from '../types/machineLocator'
@@ -85,6 +85,13 @@ const DEFAULT_LAYOUT_ID = 'factory-b-f1'
 
 // danh sách floor của lần mở trước (sống qua lần chuyển trang)
 let layoutsCache: MachineLayoutConfig[] | null = null
+let layoutsLoadedAt = 0
+const LAYOUTS_FRESH_MS = 10 * 60 * 1000
+
+// có ghi ở Machine Locator => lần mở sau tải lại danh sách tầng
+onMachineStoreWrite(() => {
+  layoutsLoadedAt = 0
+})
 
 // khoảng lịch sử của tab: nhớ theo tab; giá trị cũ dạng chuỗi -> về mặc định
 const historyPref = (tab: MonitorTabDef<unknown>) => `machine-monitor:${tab.id}:history`
@@ -129,10 +136,15 @@ export function MachineMonitorPage({
   const [layoutsSeq, setLayoutsSeq] = useState(0)
 
   useEffect(() => {
+    // Trang được giữ sống: mỗi lần quay lại effect chạy lại. Danh sách tầng hiếm khi đổi
+    // => vừa tải trong 10 phút thì không gọi lại (bấm Thử lại vẫn tải: layoutsSeq > 0)
+    if (layoutsCache && layoutsSeq === 0 && Date.now() - layoutsLoadedAt < LAYOUTS_FRESH_MS) return
+
     let alive = true
 
     listFloors().then(
       (ls) => {
+        layoutsLoadedAt = Date.now()
         if (!alive) return
         // giữ nguyên object cũ nếu không đổi -> MonitorView không tải lại vô ích
         if (JSON.stringify(ls) !== JSON.stringify(layoutsCache)) {

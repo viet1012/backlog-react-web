@@ -127,12 +127,27 @@ function toState(f: FloorDto): MachineStoreState {
   return { data: { crop: f.crop, page: f.page, ppp: f.ppp, m: f.m }, version: f.version }
 }
 
+// Báo cho nơi đang giữ sơ đồ trong cache (Machine Monitor) khi có ghi thành công
+const writeListeners = new Set<() => void>()
+
+export function onMachineStoreWrite(listener: () => void): () => void {
+  writeListeners.add(listener)
+  return () => {
+    writeListeners.delete(listener)
+  }
+}
+
 function write(
   url: string,
   method: 'PUT' | 'POST' | 'DELETE',
   body?: object,
 ): Promise<MachineStoreState> {
-  return request<FloorDto>(url, { method, body: body && JSON.stringify(body) }, true).then(toState)
+  return request<FloorDto>(url, { method, body: body && JSON.stringify(body) }, true)
+    .then(toState)
+    .then((state) => {
+      for (const listener of writeListeners) listener()
+      return state
+    })
 }
 
 // =========================================================

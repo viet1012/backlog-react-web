@@ -271,6 +271,9 @@ Nút `?` trên trang mở bảng chú giải màu.
 **Khác**
 
 - Dữ liệu **tự làm mới mỗi 5 phút**; có nút làm mới tay.
+- **Sơ đồ tầng và danh sách tầng được giữ 10 phút**, không tải lại mỗi lần mở trang hay mỗi lần tự làm mới (chỉ dữ liệu HSE được tải lại).
+  - Bấm nút *Làm mới* thì tải lại cả sơ đồ.
+  - ADMIN vừa sửa ở Machine Locator thì lần tải sau lấy sơ đồ / danh sách tầng mới.
 - **Chia sẻ link**: link có dạng `?tab=hse&layout=<floor>`, người nhận mở ra đúng tab và đúng tầng.
 - **Esc** đóng panel chi tiết.
 - **Tải / lỗi**: chưa có bản đồ thì hiện skeleton dạng bản đồ + danh sách (thay cho dòng chữ "Đang tải…"). Lỗi thì hiện cảnh lỗi chung kèm *Thử lại*. Không có tầng nào thì hiện cảnh trống kèm *Làm mới*.
@@ -378,6 +381,9 @@ Theo dõi chi phí theo khung (xưởng × hạng mục OT / T&SL / RM) trong th
 - **Nạp Actual OT** (ADMIN): nạp xong hiện toast *"Đã nạp N dòng OT"*, thay cho Snackbar riêng trước đây.
 - **Xuất CSV giao dịch** trong drawer chi tiết khung: toast tiến trình theo số trang đã tải, xong / lỗi đều báo bằng toast.
 - Trang chủ có thẻ **"Khung Cost đang vượt"** đếm số khung `OVER` của tháng này. Bấm thẻ mở trang này.
+- **Mở trang nhanh hơn**: lần đầu vào trang, chart của tháng hiện tại được tải song song với danh sách tháng, thay vì chờ danh sách tháng xong mới tải chart.
+  - Tháng hiển thị vẫn là tháng mới nhất trong danh sách, như trước.
+  - Nếu tháng mới nhất khác tháng hiện tại thì chart được tải sau như cũ, chỉ tốn thêm 1 request.
 - Chưa có bộ lọc trên URL.
 
 API: `GET /api/cost-monitoring/months`, `/chart`, `/pl-weeks`, `/detail`, `/ot/…`
@@ -564,9 +570,21 @@ npm run build      # kết quả ở dist/
 | 1 | `4712d8e` | 1 + 3 | Trạng thái tải / trống / lỗi dùng chung (skeleton, cảnh lỗi + Thử lại, cảnh trống luôn có nút). Toast dùng chung, xuất file có tiến trình. Fac Confirm báo "Đã lưu N ô", không hoàn tác. |
 | 2 | `72f167f` | 2 | Thanh bộ lọc dùng chung ("Đang lọc: N", Xóa bộ lọc). Bộ lọc trên URL ở 5 trang. Đăng nhập xong quay lại đúng link. Xử lý link cũ / link sai. |
 | 3 | `f15b72c` | 4 + 5 | Mật độ dòng nhớ theo người dùng, ghim cột (tự bật), tô màu hạn thống nhất, chữ số đều. Trang chủ "Việc của tôi hôm nay". Sửa thanh lọc Fac Confirm về bố cục cũ. |
-| — | — | 6 – 10 | Chưa làm: dark mode / độ tương phản, phím tắt, design token, đo hiệu năng (web-vitals), việc tồn (API "tháng mới nhất" của Cost, Machine Monitor tải lại sơ đồ). |
+| 4 | (chưa commit) | 10 | Việc tồn: Cost tải chart song song với danh sách tháng; Machine Monitor không tải lại sơ đồ / danh sách tầng mỗi lần mở trang. |
+| — | — | 6 – 9 | Chưa làm: dark mode / độ tương phản, phím tắt, design token, đo hiệu năng (web-vitals). |
 
 Nguyên tắc chung của cả 3 đợt: **mặc định giao diện như cũ**, phần mới chỉ thêm vào hoặc để người dùng tự bật.
+
+### 2026-11-19 — Việc tồn: tải nhanh hơn ở Cost Monitoring và Machine Monitor
+
+Đợt 4 (đề xuất 10). Không đổi giao diện, chỉ bớt lượt chờ và request thừa.
+
+| Trang | Trước | Sau | File |
+| --- | --- | --- | --- |
+| Cost Monitoring | Chờ `/months` xong mới gọi `/chart` (2 lượt nối tiếp) | Gọi `/chart` tháng hiện tại song song với `/months`, cùng key cache. Đúng tháng mới nhất thì dùng lại luôn; khác tháng thì tải như cũ | `hooks/useCostMonitoring.ts` |
+| Machine Monitor | Mỗi lần tải dữ liệu (mở lại trang sau 1 phút, tự làm mới 5 phút) đều tải lại sơ đồ tầng; mỗi lần quay lại trang đều gọi `/floors` | Sơ đồ tầng và danh sách tầng giữ 10 phút. Nút *Làm mới* vẫn tải lại sơ đồ. Có ghi ở Machine Locator thì tự hết hạn | `hooks/useMonitorData.ts`, `pages/MachineMonitorPage.tsx`, `services/machineLocatorService.ts` (`onMachineStoreWrite`) |
+
+- Không cần backend thêm API "tháng mới nhất". Backend `/chart` không truyền `month` sẽ trả tháng hiện tại, chứ không phải tháng mới nhất trong `/months`, nên frontend tự tải trước như trên.
 
 ### 2026-11-19 — Nâng cấp bảng dữ liệu và "Việc của tôi hôm nay"
 
