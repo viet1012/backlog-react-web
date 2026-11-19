@@ -27,6 +27,7 @@ import type {
 import { TABULAR_NUMS } from './costChartConfig'
 import { formatNum } from './costDetailUtils'
 import { useI18n } from '../../i18n/useI18n'
+import { notifyExport } from '../common/notify'
 
 interface CostDetailTransactionTableProps {
   // "2026.11"
@@ -68,7 +69,6 @@ export function CostDetailTransactionTable({
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(COST_TX_DEFAULT_PAGE_SIZE)
   const [exporting, setExporting] = useState(false)
-  const [exportError, setExportError] = useState<string | null>(null)
 
   // đổi bộ lọc ngày / dữ liệu gốc (refresh, đổi khung) → về trang đầu
   const [prevFilter, setPrevFilter] = useState(filterDate)
@@ -103,10 +103,10 @@ export function CostDetailTransactionTable({
     if (!month) return
 
     setExporting(true)
-    setExportError(null)
 
     try {
-      await exportCostTransactionsExcel(
+      // toast tiến trình theo số trang đã tải; lỗi cũng báo qua toast
+      await notifyExport((onProgress) => exportCostTransactionsExcel(
         toApiMonth(month),
         target,
         simuWeek,
@@ -125,9 +125,8 @@ export function CostDetailTransactionTable({
           machine: labels.machine,
         },
         `${exportName}${filterDate ? `_${filterDate}` : ''}.csv`,
-      )
-    } catch (err) {
-      setExportError(err instanceof Error ? err.message : labels.exportFailed)
+        onProgress,
+      ))
     } finally {
       setExporting(false)
     }
@@ -182,8 +181,8 @@ export function CostDetailTransactionTable({
         </Typography>
       )}
 
-      {(error || exportError) && (
-        <Alert severity="error" sx={{ py: 0 }}>{error ?? exportError}</Alert>
+      {error && (
+        <Alert severity="error" sx={{ py: 0 }}>{error}</Alert>
       )}
 
       <TableContainer

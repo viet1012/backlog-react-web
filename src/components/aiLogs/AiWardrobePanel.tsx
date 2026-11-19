@@ -7,7 +7,6 @@ import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded'
 import SaveRoundedIcon from '@mui/icons-material/SaveRounded'
 import UndoRoundedIcon from '@mui/icons-material/UndoRounded'
 import {
-  Alert,
   Box,
   Button,
   ButtonBase,
@@ -15,7 +14,6 @@ import {
   CircularProgress,
   Divider,
   Paper,
-  Snackbar,
   Stack,
   Switch,
   Tab,
@@ -40,6 +38,7 @@ import {
 import type { MascotGlasses, MascotHat, MascotMood, MascotSkin } from '../mascot'
 import { MASCOT_STATES, MASCOT_TEXTS } from '../mascot/mascotConfig'
 import { AssistantSkinError, saveAssistantSkin } from '../../services/assistantService'
+import { errorDetail, notify } from '../common/notify'
 import { useI18n } from '../../i18n/useI18n'
 import { uiTokens } from '../../theme/uiTokens'
 import styles from './AiWardrobe.module.css'
@@ -56,8 +55,6 @@ const SPARKLES = [
 ]
 
 type Section = 'outfit' | 'face' | 'background'
-type Toast = { severity: 'success' | 'warning' | 'error'; text: string }
-
 function pick<T>(list: readonly T[]): T {
   return list[Math.floor(Math.random() * list.length)]
 }
@@ -104,7 +101,6 @@ export function AiWardrobePanel() {
   const [sparkleSeq, setSparkleSeq] = useState(0)
   const [section, setSection] = useState<Section>('outfit')
   const [saving, setSaving] = useState(false)
-  const [toast, setToast] = useState<Toast | null>(null)
 
   /** animate: đổi kiểu (mũ / kính) → hình "pop" nhẹ; đổi màu thì không (kéo color picker sẽ giật) */
   function update(patch: Partial<MascotSkin>, animate = false) {
@@ -125,18 +121,15 @@ export function AiWardrobePanel() {
       setDraft(saved)
       setSparkleSeq((seq) => seq + 1)
       setWaving(true)
-      setToast({ severity: 'success', text: w.saved(name) })
+      notify.success(w.saved(name))
     } catch (error) {
       if (error instanceof AssistantSkinError && error.unsupported) {
         // backend chưa có endpoint → áp dụng tạm trên máy này để xem thử
         applySkin(draft)
         setSparkleSeq((seq) => seq + 1)
-        setToast({ severity: 'warning', text: w.savedLocal })
+        notify.warning(w.savedLocal)
       } else {
-        setToast({
-          severity: 'error',
-          text: `${w.saveFailed}: ${error instanceof Error ? error.message : String(error)}`,
-        })
+        notify.error(w.saveFailed, { detail: errorDetail(error) })
       }
     } finally {
       setSaving(false)
@@ -440,17 +433,6 @@ export function AiWardrobePanel() {
           </Button>
         </Stack>
       </Paper>
-
-      <Snackbar
-        open={toast !== null}
-        autoHideDuration={toast?.severity === 'success' ? 4000 : 8000}
-        onClose={() => setToast(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert severity={toast?.severity ?? 'success'} onClose={() => setToast(null)} variant="filled">
-          {toast?.text ?? ''}
-        </Alert>
-      </Snackbar>
     </Box>
   )
 }

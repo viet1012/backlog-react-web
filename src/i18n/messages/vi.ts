@@ -40,6 +40,13 @@ export const vi: Messages = {
         exportExcel: 'Xuất Excel',
         exportCsv: 'Xuất CSV',
         print: 'In',
+        undo: 'Hoàn tác',
+        dismiss: 'Đóng',
+        clearFilters: 'Xóa bộ lọc',
+        noDataHint: 'Chưa có gì để hiển thị. Bấm Làm mới để kiểm tra lại.',
+        exportProgress: (pct) => (pct == null ? 'Đang xuất...' : `Đang xuất... ${pct}%`),
+        exportDone: (fileName) => (fileName ? `Đã xuất ${fileName}` : 'Đã xuất xong'),
+        exportFailed: 'Xuất file thất bại',
     },
 
     language: {
@@ -259,6 +266,7 @@ export const vi: Messages = {
         accountUnknown: 'Không xác định được tài khoản, vui lòng đăng nhập lại.',
         otherProcessUnsaved: 'Có thay đổi chưa lưu của công đoạn khác. Vui lòng chọn lại công đoạn đó để lưu, hoặc Hủy thay đổi.',
         saveFailed: 'Không lưu được Fac Confirm.',
+        savedCells: (count) => `Đã lưu ${count} ô`,
         invalidValue: 'Giá trị không hợp lệ.',
         loadingData: 'Đang tải dữ liệu',
         heatType: 'Loại nhiệt luyện',

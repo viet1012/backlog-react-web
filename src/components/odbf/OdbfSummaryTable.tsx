@@ -1,4 +1,4 @@
-import { Box, CircularProgress, Typography } from '@mui/material'
+import { Box, Typography } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { useMemo } from 'react'
 import type { ReactNode } from 'react'
@@ -16,6 +16,7 @@ import {
 import { appScrollbarSx } from '../../theme/scrollbarStyle'
 import { useI18n } from '../../i18n/useI18n'
 import { FactoryNoRowsOverlay } from '../common/FactoryNoRowsOverlay'
+import { PageSkeleton } from '../common/loadState'
 
 interface OdbfSummaryTableProps {
     title: string
@@ -350,9 +351,8 @@ export function OdbfSummaryTable({
             </Typography>
 
             {loading && items.length === 0 ? (
-                <TableState minHeight={160}>
-                    <CircularProgress size={24} />
-                </TableState>
+                <PageSkeleton variant="table" rows={6} columns={12} />
+
             ) : matrix.products.length === 0 ? (
                 <TableState minHeight={120}>
                     <FactoryNoRowsOverlay variant="compact" title={t.odbf.noData} />

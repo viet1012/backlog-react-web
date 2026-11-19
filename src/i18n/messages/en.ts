@@ -41,6 +41,13 @@ export const en = {
         exportExcel: 'Export Excel',
         exportCsv: 'Export CSV',
         print: 'Print',
+        undo: 'Undo',
+        dismiss: 'Dismiss',
+        clearFilters: 'Clear filters',
+        noDataHint: 'Nothing to show yet. Refresh to check again.',
+        exportProgress: (pct: number | null) => (pct == null ? 'Exporting...' : `Exporting... ${pct}%`),
+        exportDone: (fileName?: string) => (fileName ? `Exported ${fileName}` : 'Export complete'),
+        exportFailed: 'Export failed',
     },
 
     language: {
@@ -353,6 +360,7 @@ export const en = {
         accountUnknown: 'Cannot identify your account. Please sign in again.',
         otherProcessUnsaved: 'There are unsaved changes in another process. Select that process again to save them, or use Cancel Changes.',
         saveFailed: 'Unable to save Fac Confirm.',
+        savedCells: (count: number) => `Saved ${count} ${count === 1 ? 'cell' : 'cells'}`,
         invalidValue: 'Invalid value.',
         loadingData: 'Loading data',
         heatType: 'Heat Type',

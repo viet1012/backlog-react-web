@@ -2,6 +2,13 @@ import {
     API_BASE_URL,
 } from '../config/api'
 
+import {
+    fileNameFromDisposition,
+    readBlobWithProgress,
+    saveBlob,
+    type DownloadProgress,
+} from '../utils/download'
+
 import type {
     FacConfirmPageResponse,
     FacConfirmProcessGroupRequest,
@@ -515,7 +522,8 @@ export async function saveFacConfirmProcessTimes(
 
 export async function exportFacConfirmExcel(
     request: FacConfirmExcelExportRequest,
-): Promise<void> {
+    onProgress?: DownloadProgress,
+): Promise<string> {
 
     const response = await fetch(
         `${API_BASE_URL}/api/fac-confirm/export/excel`,
@@ -545,55 +553,15 @@ export async function exportFacConfirmExcel(
 
 
     const blob =
-        await response.blob()
+        await readBlobWithProgress(response, onProgress)
 
-    let fileName =
-        'fac-confirm.xlsx'
-
-    const contentDisposition =
-        response.headers.get(
-            'Content-Disposition',
+    const fileName =
+        fileNameFromDisposition(
+            response.headers.get('Content-Disposition'),
+            'fac-confirm.xlsx',
         )
 
-    if (contentDisposition) {
-        const utf8Match =
-            contentDisposition.match(
-                /filename\*=UTF-8''([^;]+)/i,
-            )
+    saveBlob(blob, fileName)
 
-        if (utf8Match?.[1]) {
-            try {
-                fileName =
-                    decodeURIComponent(
-                        utf8Match[1],
-                    )
-            } catch {
-                // Keep the fallback file name.
-            }
-        } else {
-            const normalMatch =
-                contentDisposition.match(
-                    /filename="?([^";]+)"?/i,
-                )
-
-            if (normalMatch?.[1]) {
-                fileName =
-                    normalMatch[1]
-            }
-        }
-    }
-
-
-    const downloadUrl =
-        URL.createObjectURL(blob)
-
-    const anchor =
-        document.createElement('a')
-
-    anchor.href = downloadUrl
-    anchor.download = fileName
-    document.body.appendChild(anchor)
-    anchor.click()
-    anchor.remove()
-    URL.revokeObjectURL(downloadUrl)
+    return fileName
 }

@@ -3,8 +3,6 @@ import CheckroomRoundedIcon from '@mui/icons-material/CheckroomRounded'
 import {
   Alert,
   Box,
-  CircularProgress,
-  Snackbar,
   Tab,
   Tabs,
 } from '@mui/material'
@@ -12,6 +10,8 @@ import type { PaletteMode } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { Suspense, lazy, startTransition, useState } from 'react'
 import { HeaderAction, HeaderActionBar, HeaderActionDivider } from '../components/common/headerActions'
+import { PageSkeleton } from '../components/common/loadState'
+import { notifyExport } from '../components/common/notify'
 import { PageHeader } from '../components/common/PageHeader'
 import { PageShell } from '../components/common/PageShell'
 import { UpdatedStatus } from '../components/common/UpdatedStatus'
@@ -41,11 +41,7 @@ const AiWardrobePanel = lazy(() => import('../components/aiLogs/AiWardrobePanel'
 const AiFlowPanel = lazy(() => import('../components/aiLogs/AiFlowPanel').then((m) => ({ default: m.AiFlowPanel })))
 
 function TabLoading() {
-  return (
-    <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', py: 6 }}>
-      <CircularProgress size={28} />
-    </Box>
-  )
+  return <PageSkeleton variant="block" minHeight={240} />
 }
 
 interface AiLogsPageProps {
@@ -229,7 +225,6 @@ export function AiLogsPage({ mode, onToggleMode }: AiLogsPageProps) {
   const [flowLog, setFlowLog] = useState<AiLogDetail | null>(null)
 
   const [exporting, setExporting] = useState(false)
-  const [exportError, setExportError] = useState<string | null>(null)
 
   // đổi bộ lọc → về trang đầu
   function changeFilters(next: AiLogFilters) {
@@ -244,12 +239,10 @@ export function AiLogsPage({ mode, onToggleMode }: AiLogsPageProps) {
 
   async function handleExport() {
     setExporting(true)
-    setExportError(null)
 
     try {
-      await exportAiLogsExcel(filters, query)
-    } catch (err) {
-      setExportError(`${t.aiLogs.exportFailed}: ${err instanceof Error ? err.message : String(err)}`)
+      // Progress / done / failed toast (notifyExport never throws)
+      await notifyExport((onProgress) => exportAiLogsExcel(filters, query, onProgress))
     } finally {
       setExporting(false)
     }
@@ -449,17 +442,6 @@ export function AiLogsPage({ mode, onToggleMode }: AiLogsPageProps) {
           changeTab('flow')
         }}
       />
-
-      <Snackbar
-        open={exportError !== null}
-        autoHideDuration={6000}
-        onClose={() => setExportError(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert severity="error" onClose={() => setExportError(null)}>
-          {exportError ?? ''}
-        </Alert>
-      </Snackbar>
     </PageShell>
   )
 }

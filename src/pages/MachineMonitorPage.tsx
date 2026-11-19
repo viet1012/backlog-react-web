@@ -34,6 +34,7 @@ import {
 
 import { AppButton } from '../components/common/AppButton'
 import { GlassPanel } from '../components/common/GlassPanel'
+import { AsyncContent } from '../components/common/loadState'
 import { PageHeader } from '../components/common/PageHeader'
 import { PageShell } from '../components/common/PageShell'
 import { RefreshButton } from '../components/common/RefreshButton'
@@ -269,11 +270,10 @@ export function MachineMonitorPage({
         {header()}
 
         <LoadState
-          text={layoutsError
-            ? tr.monitor.layoutsFailed(layoutsError)
-            : layouts ? tr.monitor.noLayouts : tr.monitor.loadingLayouts}
-          error={!!layoutsError}
-          onRetry={layoutsError ? () => setLayoutsSeq((s) => s + 1) : undefined}
+          loading={!layouts && !layoutsError}
+          error={layoutsError ? tr.monitor.layoutsFailed(layoutsError) : null}
+          emptyTitle={tr.monitor.noLayouts}
+          onRetry={() => setLayoutsSeq((s) => s + 1)}
         />
       </PageShell>
     )
@@ -287,18 +287,19 @@ export function MachineMonitorPage({
   )
 }
 
-// Đang tải / lỗi tải dữ liệu từ server (thay cho bản đồ)
+// Đang tải / lỗi / trống khi chưa có bản đồ: trạng thái dùng chung
+// (skeleton bản đồ + danh sách, cảnh lỗi + Thử lại, cảnh trống + Làm mới)
 function LoadState({
-  text,
+  loading,
   error,
+  emptyTitle,
   onRetry,
 }: {
-  text: string
-  error: boolean
-  onRetry?: () => void
+  loading: boolean
+  error: string | null
+  emptyTitle?: string
+  onRetry: () => void
 }) {
-  const { t } = useI18n()
-
   return (
     <GlassPanel
       sx={{
@@ -306,21 +307,19 @@ function LoadState({
         minHeight: 0,
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 1.5,
-        p: 3,
+        p: 1,
       }}
     >
-      <Typography role="status" sx={{ fontSize: 13, color: error ? 'error.main' : 'text.secondary' }}>
-        {text}
-      </Typography>
-
-      {onRetry && (
-        <AppButton onClick={onRetry}>
-          {t.common.retry}
-        </AppButton>
-      )}
+      <AsyncContent
+        loading={loading}
+        error={error}
+        hasData={false}
+        onRetry={onRetry}
+        skeleton="map"
+        emptyTitle={emptyTitle}
+      >
+        {null}
+      </AsyncContent>
     </GlassPanel>
   )
 }
@@ -563,9 +562,9 @@ function MonitorView({ layout, tab, header }: MonitorViewProps) {
       <>
         {page}
         <LoadState
-          text={error ? tr.monitor.dataFailed(error) : tr.monitor.loadingData}
-          error={!!error}
-          onRetry={error ? refresh : undefined}
+          loading={!error}
+          error={error ? tr.monitor.dataFailed(error) : null}
+          onRetry={refresh}
         />
       </>
     )

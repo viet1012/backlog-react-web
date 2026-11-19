@@ -1,5 +1,6 @@
 import { API_BASE_URL } from '../config/api'
 import { getCurrentEmployeeId } from './authService'
+import { fileNameFromDisposition, readBlobWithProgress, saveBlob, type DownloadProgress } from '../utils/download'
 import type {
   AiLogDetail,
   AiLogFilters,
@@ -138,15 +139,11 @@ export async function getAiLogDetail(
 // EXPORT .xlsx – cùng bộ lọc + sort/order của bảng
 // =========================================================
 
-function fileNameFrom(disposition: string | null): string | null {
-  const match = disposition ? /filename="?([^";]+)"?/i.exec(disposition) : null
-  return match ? match[1].trim() : null
-}
-
 export async function exportAiLogsExcel(
   filters: AiLogFilters,
   query: Pick<AiLogListQuery, 'sort' | 'order'>,
-): Promise<void> {
+  onProgress?: DownloadProgress,
+): Promise<string> {
   const params = filterParams(filters)
   params.set('sort', query.sort)
   params.set('order', query.order)
@@ -157,17 +154,13 @@ export async function exportAiLogsExcel(
 
   if (!response.ok) await throwApiError(response)
 
-  const blob = await response.blob()
-  const fileName =
-    fileNameFrom(response.headers.get('Content-Disposition'))
-    ?? `assistant-logs_${filters.from}_${filters.to}.xlsx`
+  const blob = await readBlobWithProgress(response, onProgress)
+  const fileName = fileNameFromDisposition(
+    response.headers.get('Content-Disposition'),
+    `assistant-logs_${filters.from}_${filters.to}.xlsx`,
+  )
 
-  const url = URL.createObjectURL(blob)
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = fileName
-  document.body.appendChild(anchor)
-  anchor.click()
-  anchor.remove()
-  URL.revokeObjectURL(url)
+  saveBlob(blob, fileName)
+
+  return fileName
 }

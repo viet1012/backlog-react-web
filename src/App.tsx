@@ -20,6 +20,7 @@ import { MainLayout } from './components/layout/MainLayout'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
 import { RoleRoute } from './components/auth/RoleRoute'
 import { ClockInOverlay } from './components/shift/ClockInOverlay'
+import { NotifyHost } from './components/common/notify'
 
 import { LoginPage } from './pages/LoginPage'
 import {
@@ -140,6 +141,9 @@ function App() {
         <CssBaseline />
 
         <ClockInOverlay />
+
+        {/* Toasts from notify.* (save / import / export feedback on every page) */}
+        <NotifyHost />
 
         <BrowserRouter>
 

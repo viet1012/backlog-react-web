@@ -10,7 +10,6 @@ import {
   ListSubheader,
   MenuItem,
   Select,
-  Snackbar,
   Stack,
   Tooltip,
   Typography,
@@ -23,6 +22,7 @@ import { CostOtImportDialog } from '../components/costMonitoring/CostOtImportDia
 import { hasAnyRole } from '../services/authService'
 import { FactoryNoRowsOverlay } from '../components/common/FactoryNoRowsOverlay'
 import { HeaderAction, HeaderActionBar, HeaderActionDivider } from '../components/common/headerActions'
+import { notify } from '../components/common/notify'
 import { PageHeader } from '../components/common/PageHeader'
 import { PageShell } from '../components/common/PageShell'
 import { UpdatedStatus } from '../components/common/UpdatedStatus'
@@ -113,7 +113,6 @@ export function CostMonitoringPage({
   // Nạp Actual OT – nút chỉ hiện với ADMIN (BE vẫn kiểm quyền, 403 hiện trong dialog)
   const canImportOt = hasAnyRole(['ADMIN'])
   const [otImportOpen, setOtImportOpen] = useState(false)
-  const [toast, setToast] = useState<string | null>(null)
 
   const detailLabel = detailTarget
     ? `${COST_ROWS.find((r) => r.div === detailTarget.div)?.label ?? detailTarget.div} · ${detailTarget.chart}`
@@ -439,24 +438,13 @@ export function CostMonitoringPage({
           onClose={() => setOtImportOpen(false)}
           onImported={(result) => {
             setOtImportOpen(false)
-            setToast(t.costOt.success(result.rowsWritten))
+            notify.success(t.costOt.success(result.rowsWritten))
             // BE đã xóa cache → gọi /chart như bình thường (không refresh=true);
             // trạng thái OT tải lại ở lần mở dialog sau
             reloadData()
           }}
         />
       )}
-
-      <Snackbar
-        open={toast !== null}
-        autoHideDuration={5000}
-        onClose={() => setToast(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert severity="success" variant="filled" onClose={() => setToast(null)}>
-          {toast ?? ''}
-        </Alert>
-      </Snackbar>
     </PageShell>
   )
 }

@@ -24,6 +24,7 @@ import { BacklogSummary } from '../components/backlog/BacklogSummary'
 import { PageHeader } from '../components/common/PageHeader'
 import { PageShell } from '../components/common/PageShell'
 import { HeaderAction, HeaderActionBar, HeaderActionDivider } from '../components/common/headerActions'
+import { notifyExport } from '../components/common/notify'
 import { UpdatedStatus } from '../components/common/UpdatedStatus'
 import { useBacklogData } from '../hooks/useBacklogData'
 import { useBacklogSummary } from '../hooks/useBacklogSummary'
@@ -718,34 +719,30 @@ export function BacklogPage({
           ]
 
 
-          await exportBacklogExcel({
-            filter: {
-              filters:
-                allFilters,
+          // Progress / done / failed toast (notifyExport never throws)
+          await notifyExport((onProgress) => exportBacklogExcel(
+            {
+              filter: {
+                filters:
+                  allFilters,
 
-              logicOperator:
-                'and',
+                logicOperator:
+                  'and',
+              },
+
+              search:
+                effectiveFilters
+                  .search
+                  .trim(),
+
+              sort:
+                exportSort,
+
+              columns:
+                exportColumns,
             },
-
-            search:
-              effectiveFilters
-                .search
-                .trim(),
-
-            sort:
-              exportSort,
-
-            columns:
-              exportColumns,
-          })
-
-
-        } catch (error) {
-
-          console.error(
-            'Export backlog Excel failed:',
-            error,
-          )
+            onProgress,
+          ))
 
         } finally {
 

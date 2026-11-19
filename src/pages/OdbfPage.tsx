@@ -1,6 +1,7 @@
 import { Alert, Box, Stack } from '@mui/material'
 import type { PaletteMode } from '@mui/material'
 import { FactoryNoRowsOverlay } from '../components/common/FactoryNoRowsOverlay'
+import { EmptyStateAction } from '../components/common/loadState'
 import { PageHeader } from '../components/common/PageHeader'
 import { PageShell } from '../components/common/PageShell'
 import { RefreshButton } from '../components/common/RefreshButton'
@@ -87,7 +88,10 @@ export function OdbfPage({
                 bgcolor: theme.palette.background.paper,
               })}
             >
-              <FactoryNoRowsOverlay title={t.odbf.noData} />
+              <FactoryNoRowsOverlay
+                title={t.odbf.noData}
+                action={<EmptyStateAction onRefresh={refresh} />}
+              />
             </Box>
           ) : (
             <Box

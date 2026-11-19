@@ -262,12 +262,13 @@ export interface FacConfirmProcessTimeRequest {
 // SAVE RESPONSE
 // =========================================================
 
+// Khớp FacConfirmController.saveProcessTimes (backlog-be)
 export interface FacConfirmProcessTimeResponse {
-    success: boolean
+    updated: number
 
-    updatedCount: number
+    clientIp: string
 
-    message: string
+    machineName: string
 }
 
 

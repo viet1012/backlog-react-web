@@ -10,7 +10,6 @@ import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded'
 import ReplayRoundedIcon from '@mui/icons-material/ReplayRounded'
 import StopRoundedIcon from '@mui/icons-material/StopRounded'
 import {
-  Alert,
   Box,
   Button,
   Chip,
@@ -22,7 +21,6 @@ import {
   ListItemText,
   Menu,
   MenuItem,
-  Snackbar,
   Stack,
   Tab,
   Table,
@@ -47,6 +45,7 @@ import PlaylistAddRoundedIcon from '@mui/icons-material/PlaylistAddRounded'
 import { Fragment, memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { SIMU_WEEK_OPTIONS } from '../costMonitoring/costChartConfig'
 import { MascotMarkdown } from '../mascot/MascotMarkdown'
+import { errorDetail, notify } from '../common/notify'
 import { ASSISTANT_SCREENS, getScreenNameByKey } from '../mascot/mascotMessages'
 import {
   MAX_PER_MINUTE,
@@ -606,9 +605,12 @@ export function AiTestSuitePanel() {
   const [dialog, setDialog] = useState<{ open: boolean; initial: AiTestCase | null }>({ open: false, initial: null })
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null)
   // câu từ file JSON mới (src/data/aiTestSuites) được tự nạp lúc mở tab → báo 1 lần
-  const [message, setMessage] = useState<{ severity: 'success' | 'error'; text: string } | null>(() => (
-    suite.autoAdded > 0 ? { severity: 'success', text: labels.suites.autoAdded(suite.autoAdded) } : null
-  ))
+  // key: StrictMode chạy effect 2 lần → toast thay thế, không nhân đôi
+  const autoAddedText = suite.autoAdded > 0 ? labels.suites.autoAdded(suite.autoAdded) : null
+  const autoAddedTextRef = useRef(autoAddedText)
+  useEffect(() => {
+    if (autoAddedTextRef.current) notify.success(autoAddedTextRef.current, { key: 'ai-tests-auto-added' })
+  }, [])
   const fileInput = useRef<HTMLInputElement>(null)
 
   // ---- tab theo màn hình: màn hình đã khai báo + screenKey lạ có trong bộ test ----
@@ -746,9 +748,9 @@ export function AiTestSuitePanel() {
     try {
       const next = parseSuiteFile(await file.text())
       suite.importState(next)
-      setMessage({ severity: 'success', text: labels.imported(next.cases.length) })
+      notify.success(labels.imported(next.cases.length))
     } catch (err) {
-      setMessage({ severity: 'error', text: `${labels.importFailed}: ${err instanceof Error ? err.message : String(err)}` })
+      notify.error(labels.importFailed, { detail: errorDetail(err) })
     }
   }
 
@@ -890,7 +892,7 @@ export function AiTestSuitePanel() {
           <MenuItem
             onClick={() => closeMenuThen(() => {
               const added = suite.mergeDefaults()
-              setMessage({ severity: 'success', text: labels.mergedDefaults(added) })
+              notify.success(labels.mergedDefaults(added))
             })}
           >
             <ListItemIcon><PlaylistAddRoundedIcon fontSize="small" /></ListItemIcon>
@@ -1055,17 +1057,6 @@ export function AiTestSuitePanel() {
           if (testCase.screenKey !== screenKey) selectScreen(testCase.screenKey)
         }}
       />
-
-      <Snackbar
-        open={message !== null}
-        autoHideDuration={5000}
-        onClose={() => setMessage(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert severity={message?.severity ?? 'success'} onClose={() => setMessage(null)}>
-          {message?.text ?? ''}
-        </Alert>
-      </Snackbar>
     </Box>
   )
 }

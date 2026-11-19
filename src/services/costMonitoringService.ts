@@ -4,6 +4,7 @@ import {
 
 import { getMessages } from '../i18n/i18nContext'
 import { getCurrentEmployeeId } from './authService'
+import { saveBlob } from '../utils/download'
 
 import {
     OT_SUB_DIVS,
@@ -452,9 +453,13 @@ export async function exportCostTransactionsExcel(
     filterDate: string | null,
     headers: CostTxExportHeaders,
     fileName: string,
-): Promise<void> {
+    // trang đã tải / tổng số trang (BE trả totalPages ở trang đầu)
+    onProgress?: (fraction: number | null) => void,
+): Promise<string> {
 
     const rows: CostDetailTransaction[] = []
+
+    onProgress?.(null)
 
     for (let page = 0; page < EXPORT_MAX_PAGES; page++) {
         const result = await getCostMonitoringDetailTransactions(
@@ -465,6 +470,9 @@ export async function exportCostTransactionsExcel(
         )
 
         rows.push(...result.items)
+
+        const pages = Math.min(result.totalPages, EXPORT_MAX_PAGES)
+        if (pages > 0) onProgress?.((page + 1) / pages)
 
         if (page + 1 >= result.totalPages || result.items.length === 0) break
     }
@@ -487,14 +495,9 @@ export async function exportCostTransactionsExcel(
         { type: 'text/csv;charset=utf-8' },
     )
 
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = fileName
-    document.body.appendChild(anchor)
-    anchor.click()
-    anchor.remove()
-    URL.revokeObjectURL(url)
+    saveBlob(blob, fileName)
+
+    return fileName
 }
 
 

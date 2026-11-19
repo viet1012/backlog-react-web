@@ -58,6 +58,7 @@ import {
   HeaderActionBar,
   HeaderActionDivider,
 } from '../components/common/headerActions'
+import { notifyExport } from '../components/common/notify'
 
 import {
   PageHeader,
@@ -844,23 +845,22 @@ export function FacConfirmPage({
         try {
           setExporting(true)
 
-          await exportFacConfirmExcel({
-            div,
-            expD,
-            procGrp,
-            classify: apiClassify,
-            heatType,
-            search: search.trim(),
-            filters: excelFilters,
-            logicOperator: 'and',
-            sort: exportSort,
-            columns: exportColumns,
-          })
-        } catch (exportError) {
-          console.error(
-            'Export Fac Confirm Excel failed:',
-            exportError,
-          )
+          // Progress / done / failed toast (notifyExport never throws)
+          await notifyExport((onProgress) => exportFacConfirmExcel(
+            {
+              div,
+              expD,
+              procGrp,
+              classify: apiClassify,
+              heatType,
+              search: search.trim(),
+              filters: excelFilters,
+              logicOperator: 'and',
+              sort: exportSort,
+              columns: exportColumns,
+            },
+            onProgress,
+          ))
         } finally {
           setExporting(false)
         }

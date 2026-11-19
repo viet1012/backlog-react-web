@@ -12,6 +12,13 @@ import {
   type ExcelFilterField,
 } from '../config/backlogFilterFields'
 
+import {
+  fileNameFromDisposition,
+  readBlobWithProgress,
+  saveBlob,
+  type DownloadProgress,
+} from '../utils/download'
+
 
 // =========================================================
 // COMMON TYPES
@@ -1250,7 +1257,8 @@ export async function getBacklogStatusSummary(
 
 export async function exportBacklogExcel(
   request: BacklogExcelExportRequest,
-): Promise<void> {
+  onProgress?: DownloadProgress,
+): Promise<string> {
 
   const response =
     await fetch(
@@ -1303,95 +1311,23 @@ export async function exportBacklogExcel(
 
 
   const blob =
-    await response.blob()
-
-
-  // =======================================================
-  // FILE NAME
-  // =======================================================
-
-  let fileName =
-    'backlog.xlsx'
-
-
-  const contentDisposition =
-    response.headers.get(
-      'Content-Disposition',
+    await readBlobWithProgress(
+      response,
+      onProgress,
     )
 
-
-  if (contentDisposition) {
-
-    const utf8Match =
-      contentDisposition.match(
-        /filename\*=UTF-8''([^;]+)/i,
-      )
-
-
-    if (utf8Match?.[1]) {
-
-      try {
-
-        fileName =
-          decodeURIComponent(
-            utf8Match[1],
-          )
-
-      } catch {
-        // fallback
-      }
-
-    } else {
-
-      const normalMatch =
-        contentDisposition.match(
-          /filename="?([^";]+)"?/i,
-        )
-
-
-      if (normalMatch?.[1]) {
-        fileName =
-          normalMatch[1]
-      }
-    }
-  }
-
-
-  // =======================================================
-  // DOWNLOAD
-  // =======================================================
-
-  const downloadUrl =
-    URL.createObjectURL(
-      blob,
+  const fileName =
+    fileNameFromDisposition(
+      response.headers.get(
+        'Content-Disposition',
+      ),
+      'backlog.xlsx',
     )
 
-
-  const anchor =
-    document.createElement(
-      'a',
-    )
-
-
-  anchor.href =
-    downloadUrl
-
-  anchor.download =
-    fileName
-
-
-  document.body.appendChild(
-    anchor,
+  saveBlob(
+    blob,
+    fileName,
   )
 
-
-  anchor.click()
-
-
-  anchor.remove()
-
-
-  URL.revokeObjectURL(
-    downloadUrl,
-  )
+  return fileName
 }

@@ -1,6 +1,6 @@
-import { Alert, Box, CircularProgress } from '@mui/material'
+import { Alert, Box } from '@mui/material'
 import { useMemo, useState } from 'react'
-import { FactoryNoRowsOverlay } from '../components/common/FactoryNoRowsOverlay'
+import { AsyncContent } from '../components/common/loadState'
 import { PageHeader } from '../components/common/PageHeader'
 import { PageShell } from '../components/common/PageShell'
 import { RefreshButton } from '../components/common/RefreshButton'
@@ -46,6 +46,8 @@ export function ShipmentPage({
   } = useShipmentData(appliedFromD, appliedToD)
 
   const error = validationError ?? dataError
+  const currentDefault = getDefaultShipmentDateRange()
+  const isDefaultRange = appliedFromD === currentDefault.fromD && appliedToD === currentDefault.toD
   const dates = useMemo(() => buildDateRange(appliedFromD, appliedToD), [appliedFromD, appliedToD])
   const rows = useMemo(() => buildShipmentRows(data), [data])
 
@@ -120,20 +122,24 @@ export function ShipmentPage({
       {(validationError || (dataError && data.length > 0)) && <Alert severity="error">{error}</Alert>}
 
       <Box sx={{ flex: 1, minWidth: 0, minHeight: 0, position: 'relative' }}>
-        {loading && data.length === 0 ? (
-          <Box sx={{ height: '100%', display: 'grid', placeItems: 'center' }}>
-            <CircularProgress size={28} />
-          </Box>
-        ) : dataError && data.length === 0 ? (
-          <FactoryNoRowsOverlay tone="error" detail={dataError} onRetry={handleRefresh} />
-        ) : (
+        {/* Tải lần đầu: skeleton heatmap; lỗi khi chưa có dữ liệu: cảnh lỗi + Thử lại;
+            trống: "Xóa bộ lọc" (về 2 tuần mặc định) nếu đang chọn khoảng khác, còn lại "Làm mới" */}
+        <AsyncContent
+          loading={loading}
+          error={dataError}
+          hasData={data.length > 0}
+          onRetry={handleRefresh}
+          onClearFilters={isDefaultRange ? undefined : handleResetTwoWeeks}
+          skeleton="heatmap"
+          skeletonProps={{ columns: Math.min(Math.max(dates.length, 7), 21) }}
+        >
           <ShipmentHeatmap
             dates={dates} rows={rows}
             selectedRowKey={selectedRowKey} selectedCellKey={selectedCellKey}
             onRowClick={handleRowClick}
             onCellClick={handleCellClick}
           />
-        )}
+        </AsyncContent>
       </Box>
 
       <ShipmentDetailDialog

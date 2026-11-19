@@ -11,6 +11,7 @@ Frontend thuần (SPA). Dữ liệu và đăng nhập đi qua backend `backlog-b
 - [Công nghệ](#công-nghệ) · [Bắt đầu](#bắt-đầu) · [Cấu hình môi trường](#cấu-hình-môi-trường)
 - [Đăng nhập & phân quyền](#đăng-nhập--phân-quyền) · [Cấu trúc thư mục](#cấu-trúc-thư-mục)
 - [Script Machine Locator](#script-machine-locator) · [Build & triển khai](#build--triển-khai)
+- [Lịch sử thay đổi](#lịch-sử-thay-đổi)
 
 ---
 
@@ -41,6 +42,16 @@ Frontend thuần (SPA). Dữ liệu và đăng nhập đi qua backend `backlog-b
   - Sidebar thu gọn được thành dạng chỉ còn icon.
 - **Chế độ sáng / tối** đổi bằng nút ở đầu mỗi trang và được ghi nhớ.
 - **Đăng xuất** ở chân sidebar, có hộp thoại xác nhận.
+- **Trạng thái tải / trống / lỗi** giống nhau ở mọi trang:
+  - Tải dưới 300 ms thì không hiện gì.
+  - Tải lần đầu hiện **skeleton** theo hình dạng nội dung (bảng, heatmap, lưới chart, thẻ KPI, bản đồ).
+  - Tải lại khi đã có dữ liệu thì chỉ quay icon ⟳ trên header, dữ liệu cũ vẫn hiện.
+  - Lỗi khi chưa có dữ liệu: cảnh lỗi kèm nút *Thử lại*. Lỗi khi còn dữ liệu cũ: thanh báo lỗi phía trên nội dung.
+  - Không có dữ liệu: luôn có nút hành động, là *Xóa bộ lọc* khi đang lọc, còn lại là *Làm mới*.
+- **Thông báo (toast)** sau khi lưu / nhập file / xuất file hiện ở giữa đáy màn hình, cùng một kiểu trên mọi trang:
+  - Thành công tự đóng sau 4 giây, cảnh báo sau 6 giây, lỗi sau 8 giây. Rê chuột vào toast thì tạm dừng đếm giờ.
+  - Lỗi có thêm dòng lý do từ server.
+  - Xuất file hiện tiến trình *"Đang xuất… 45%"*, xong thì đổi thành *"Đã xuất <tên file>"* hoặc *"Xuất file thất bại"*.
 
 ### Lưới dữ liệu kiểu Excel (dùng ở Backlog, Fac Confirm, Shipment)
 
@@ -135,6 +146,8 @@ Mỗi công đoạn chỉ sửa được cột của mình:
   - Hàng **TD**: To CLG phải ≥ Heat Start + 2 ngày.
 - **Lưu**:
   - *Confirm Changes (n)* lưu toàn bộ, kèm MSNV người xác nhận. *Cancel Changes* huỷ toàn bộ.
+  - Lưu xong hiện toast *"Đã lưu N ô"*. Lỗi nhập hoặc lỗi lưu hiện toast cảnh báo / lỗi, các thay đổi chưa lưu vẫn được giữ.
+  - **Đã xác nhận thì không hoàn tác.** Muốn bỏ thay đổi thì dùng *Cancel Changes* trước khi lưu. Backend cũng không nhận giá trị rỗng và không có API xoá xác nhận.
   - Nếu đổi công đoạn khi còn thay đổi chưa lưu, trang hỏi: *Lưu ngay / Bỏ thay đổi / Ở lại*.
 
 **Khác**
@@ -358,7 +371,8 @@ URL của Remain PO Control đang hard-code trong [src/pages/RemainPoControlPage
 src/
   pages/            Mỗi route một file *Page.tsx
   components/       UI theo tính năng (backlog, facConfirm, machineLocator, machineMonitor, shipment, odbf, training, userHome...)
-    common/         Thành phần dùng chung: PageShell, PageHeader, dataGrid/ (Data Grid có lọc kiểu Excel)
+    common/         Thành phần dùng chung: PageShell, PageHeader, dataGrid/ (Data Grid có lọc kiểu Excel),
+                    headerActions/ (nút header), loadState/ (skeleton, tải/trống/lỗi), notify/ (toast)
     layout/         MainLayout, LeftSidebar, cấu hình menu
     auth/           Form đăng nhập/đăng ký, guard route
   services/         Gọi API (fetch), mỗi tính năng một file
@@ -378,6 +392,17 @@ Quy ước:
 - Gọi API đặt trong `services/`; component không gọi `fetch` trực tiếp.
 - Bảng dữ liệu dùng [ReusableDataGrid](src/components/common/dataGrid/ReusableDataGrid.tsx) để có lọc cột kiểu Excel và lưu cấu hình cột.
 - Chế độ sáng/tối giữ ở `App.tsx`, truyền xuống từng trang qua prop `mode` / `onToggleMode`.
+- Nút trên header dùng `<HeaderAction kind="…" />` ([headerActionRegistry.tsx](src/components/common/headerActions/headerActionRegistry.tsx)). Trang chỉ chọn `kind`, không tự chọn icon hay chữ.
+- **Tải / trống / lỗi** dùng [loadState/](src/components/common/loadState/), không tự viết spinner hay dòng "Đang tải…":
+  - `<AsyncContent loading error hasData onRetry onClearFilters skeleton="table|heatmap|charts|kpi|map|block">` tự chọn giữa nội dung, skeleton, cảnh lỗi và cảnh trống.
+  - Cần skeleton riêng lẻ thì dùng `<PageSkeleton variant="…" />`. Đã có sẵn độ trễ 300 ms (`useDelayedFlag`, `LOADING_DELAY_MS`).
+  - Cảnh trống / lỗi vẽ bằng `FactoryNoRowsOverlay`. Nút mặc định của cảnh trống là `EmptyStateAction`.
+- **Phản hồi sau thao tác** dùng [notify/](src/components/common/notify/), không tự đặt `Snackbar` / `Alert` riêng trong trang:
+  - `notify.success | error | warning | info(message, { detail?, action?, undo?, duration?, key? })` gọi được từ mọi nơi, cả ngoài component.
+  - `key` giống nhau thì toast mới thay toast cũ thay vì chồng lên (vd lỗi nhập liên tiếp).
+  - Xuất file: bọc bằng `notifyExport((onProgress) => exportXxx(..., onProgress))`. Hàm này tự hiện tiến trình / xong / lỗi và không bao giờ throw.
+  - `<NotifyHost />` đã gắn một lần trong `App.tsx`.
+- **Tải file từ server** dùng [utils/download.ts](src/utils/download.ts): `readBlobWithProgress` (đọc kèm tiến trình theo `Content-Length`), `fileNameFromDisposition`, `saveBlob`. Service export nhận tham số `onProgress` và trả về tên file.
 - Comment viết tiếng Việt.
 
 ## Script Machine Locator
@@ -409,3 +434,42 @@ npm run build      # kết quả ở dist/
 ```
 
 `dist/` là site tĩnh. App dùng `BrowserRouter`, nên web server phải trả `index.html` cho mọi đường dẫn không phải file tĩnh (SPA fallback). Nếu không, bấm F5 ở route con sẽ ra lỗi 404.
+
+## Lịch sử thay đổi
+
+### 2026-11-19 — Thống nhất trạng thái tải / trống / lỗi và thông báo
+
+Đợt 1 trong kế hoạch cải thiện UI (đề xuất 1 + 3). Cách dùng xem ở mục [Quy ước](#cấu-trúc-thư-mục).
+
+#### Thêm mới
+
+| File | Nội dung |
+| --- | --- |
+| [components/common/loadState/](src/components/common/loadState/) | `PageSkeleton` (skeleton theo hình nội dung), `AsyncContent` (chọn nội dung / skeleton / lỗi / trống), `EmptyStateAction` (nút *Xóa bộ lọc* / *Làm mới*) |
+| [components/common/notify/](src/components/common/notify/) | `notify.*` (store toast), `NotifyHost` (hiển thị toast), `notifyExport` (toast tiến trình xuất file) |
+| [hooks/useDelayedFlag.ts](src/hooks/useDelayedFlag.ts) | Chỉ bật cờ khi trạng thái kéo dài quá 300 ms |
+| [utils/download.ts](src/utils/download.ts) | Đọc file tải về kèm tiến trình, lấy tên file từ `Content-Disposition`, lưu file |
+
+#### Thay đổi theo trang
+
+| Trang | Trước | Sau |
+| --- | --- | --- |
+| Shipment | Spinner; không có trạng thái trống | Skeleton heatmap; cảnh trống có *Xóa bộ lọc* (về 2 tuần mặc định) / *Làm mới* |
+| ODBF | Spinner trong từng ma trận | Skeleton bảng; cảnh trống có *Làm mới* |
+| Machine Monitor | Dòng chữ "Đang tải…" | Skeleton bản đồ + danh sách; cảnh lỗi chung kèm *Thử lại* |
+| AI Logs | Spinner khi mở tab; Snackbar lỗi xuất file | Skeleton; toast tiến trình xuất Excel |
+| Backlog, Fac Confirm | Lỗi xuất Excel chỉ ghi ra console | Toast tiến trình / xong / lỗi |
+| Fac Confirm | `FacConfirmEditErrorSnackbar` riêng (đã xoá) | Toast cảnh báo / lỗi; lưu xong báo *"Đã lưu N ô"*, **không có Hoàn tác** |
+| Cost Monitoring | Snackbar nạp OT; Alert lỗi xuất CSV giao dịch | Toast; xuất CSV có tiến trình theo số trang đã tải |
+| AI Logs › Phòng thay đồ, Bộ test | Snackbar riêng | Toast |
+
+#### Service
+
+- `exportBacklogExcel`, `exportFacConfirmExcel`, `exportAiLogsExcel` và `exportCostTransactionsExcel` nhận thêm `onProgress` và trả về tên file. Phần tải file trùng lặp được gom về `utils/download.ts`.
+- Sửa kiểu `FacConfirmProcessTimeResponse` cho khớp response thật của backend: `{ updated, clientIp, machineName }`.
+
+#### Chưa làm / còn lại
+
+- Skeleton có sẵn ở Cost Monitoring và EVN chưa áp độ trễ 300 ms.
+- Giữ nguyên Snackbar gợi ý chất lượng đồ hoạ (User Home) và thanh thông báo của Machine Locator, vì đó không phải phản hồi lưu / nhập / xuất.
+- Đợt tiếp theo: `FilterBar` dùng chung và lưu bộ lọc lên URL (đề xuất 2).

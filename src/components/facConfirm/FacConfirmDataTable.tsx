@@ -105,10 +105,6 @@ import {
 } from './facConfirmColumns'
 
 import {
-  FacConfirmEditErrorSnackbar,
-} from './FacConfirmEditErrorSnackbar'
-
-import {
   FacConfirmNoRowsOverlay,
 } from './FacConfirmNoRowsOverlay'
 
@@ -131,6 +127,7 @@ import {
 
 import { AppButton } from '../common/AppButton'
 import { ClearButton } from '../common/ClearButton'
+import { notify } from '../common/notify'
 import { useI18n } from '../../i18n/useI18n'
 import { getMessages } from '../../i18n/i18nContext'
 
@@ -398,10 +395,11 @@ function FacConfirmDataTableInner({
     setSaving,
   ] = useState(false)
 
-  const [
-    editError,
-    setEditError,
-  ] = useState('')
+  // Lỗi sửa / lưu => toast dùng chung (cùng key: lỗi mới thay lỗi cũ, không chồng)
+  const showEditError = useCallback(
+    (message: string) => notify.warning(message, { key: 'fac-confirm-edit-error' }),
+    [],
+  )
   // =======================================================
   // FILTER OPTIONS
   // =======================================================
@@ -728,7 +726,7 @@ function FacConfirmDataTableInner({
           getCurrentEmployeeId()
 
         if (!employeeId) {
-          setEditError(
+          showEditError(
             getMessages().facConfirm.accountUnknown,
           )
 
@@ -743,7 +741,7 @@ function FacConfirmDataTableInner({
             (process) => process !== highlightProcGrp,
           )
         ) {
-          setEditError(
+          showEditError(
             getMessages().facConfirm.otherProcessUnsaved,
           )
 
@@ -768,6 +766,12 @@ function FacConfirmDataTableInner({
 
           onSaved?.()
 
+          // Đã xác nhận (đã lưu) thì không hoàn tác: chỉ báo "Đã lưu N ô".
+          // Trước khi lưu vẫn bỏ được bằng "Hủy thay đổi".
+          notify.success(
+            getMessages().facConfirm.savedCells(pendingChanges.length),
+          )
+
           return true
 
         } catch (error) {
@@ -778,10 +782,12 @@ function FacConfirmDataTableInner({
           )
 
           // Giữ nguyên các thay đổi chưa lưu
-          setEditError(
-            error instanceof Error
-              ? error.message
-              : getMessages().facConfirm.saveFailed,
+          notify.error(
+            getMessages().facConfirm.saveFailed,
+            {
+              key: 'fac-confirm-edit-error',
+              detail: error instanceof Error ? error.message : null,
+            },
           )
 
           return false
@@ -799,6 +805,7 @@ function FacConfirmDataTableInner({
         pendingProcesses,
         clearChanges,
         onSaved,
+        showEditError,
       ],
     )
 
@@ -810,12 +817,6 @@ function FacConfirmDataTableInner({
       [
         handleSaveChanges,
       ],
-    )
-
-  const handleCloseEditError =
-    useCallback(
-      () => setEditError(''),
-      [],
     )
 
 
@@ -867,7 +868,7 @@ function FacConfirmDataTableInner({
           error,
         )
 
-        setEditError(
+        showEditError(
           error instanceof Error
             ? error.message
             : getMessages().facConfirm.invalidValue,
@@ -876,6 +877,7 @@ function FacConfirmDataTableInner({
       [
         apiRef,
         highlightProcGrp,
+        showEditError,
       ],
     )
 
@@ -1721,11 +1723,6 @@ function FacConfirmDataTableInner({
         </FacConfirmToolbarContext.Provider>
 
       </Box>
-
-      <FacConfirmEditErrorSnackbar
-        message={editError}
-        onClose={handleCloseEditError}
-      />
 
     </ExcelColumnFilterProvider>
   )
