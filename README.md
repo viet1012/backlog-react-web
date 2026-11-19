@@ -570,7 +570,7 @@ npm run build      # kết quả ở dist/
 | 1 | `4712d8e` | 1 + 3 | Trạng thái tải / trống / lỗi dùng chung (skeleton, cảnh lỗi + Thử lại, cảnh trống luôn có nút). Toast dùng chung, xuất file có tiến trình. Fac Confirm báo "Đã lưu N ô", không hoàn tác. |
 | 2 | `72f167f` | 2 | Thanh bộ lọc dùng chung ("Đang lọc: N", Xóa bộ lọc). Bộ lọc trên URL ở 5 trang. Đăng nhập xong quay lại đúng link. Xử lý link cũ / link sai. |
 | 3 | `f15b72c` | 4 + 5 | Mật độ dòng nhớ theo người dùng, ghim cột (tự bật), tô màu hạn thống nhất, chữ số đều. Trang chủ "Việc của tôi hôm nay". Sửa thanh lọc Fac Confirm về bố cục cũ. |
-| 4 | (chưa commit) | 10 | Việc tồn: Cost tải chart song song với danh sách tháng; Machine Monitor không tải lại sơ đồ / danh sách tầng mỗi lần mở trang. |
+| 4 | `b9bba9b` | 10 | Việc tồn: Cost tải chart song song với danh sách tháng; Machine Monitor không tải lại sơ đồ / danh sách tầng mỗi lần mở trang. |
 | — | — | 6 – 9 | Chưa làm: dark mode / độ tương phản, phím tắt, design token, đo hiệu năng (web-vitals). |
 
 Nguyên tắc chung của cả 3 đợt: **mặc định giao diện như cũ**, phần mới chỉ thêm vào hoặc để người dùng tự bật.
