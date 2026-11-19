@@ -27,9 +27,12 @@ Frontend thuần (SPA). Dữ liệu và đăng nhập đi qua backend `backlog-b
 | `/remain-po-control` | [Remain PO Control](#6-remain-po-control) | PC | Hoạt động (iframe) |
 | `/monitoring/machine` | [Machine Monitoring – Safety (HSE)](#7-machine-monitoring--safety-hse) | Mọi user | Hoạt động |
 | `/settings/machine-locator` | [Machine Locator](#8-machine-locator) | Xem: mọi user · Sửa: ADMIN | Hoạt động |
-| `/user-home` | [User Home](#9-user-home) | USER | Hoạt động |
+| `/user-home` | [User Home](#9-user-home) | Mọi user (trang mặc định sau đăng nhập) | Hoạt động |
 | `/pc-training` | [PC Training](#10-pc-training) | Mọi user | Chạy được, ẩn khỏi menu |
-| `/sph`, `/asakai`, `/cost-monitoring`, `/bosb`, `/deadstock`, `/pl`, `/kpi`, `/ot`, `/packing-list`, `/export-list`, `/sales-status` | Trang giữ chỗ | — | Chưa làm |
+| `/cost-monitoring` | [Cost Monitoring](#11-cost-monitoring) | Mọi user | Hoạt động |
+| `/settings/ai-logs` | [AI Logs](#12-ai-logs) | ADMIN | Hoạt động |
+| `/utility-evn-compare` | [Utility · EVN Compare](#13-utility--evn-compare) | ADMIN | Hoạt động |
+| `/sph`, `/asakai`, `/bosb`, `/deadstock`, `/pl`, `/kpi`, `/ot`, `/packing-list`, `/export-list`, `/sales-status` | Trang giữ chỗ | — | Chưa làm |
 
 `ADMIN` vào được mọi màn hình. Route cũ `/machine-locator` và `/machine-monitor` tự chuyển sang route mới (giữ nguyên query và `#hash`).
 
@@ -50,8 +53,11 @@ Frontend thuần (SPA). Dữ liệu và đăng nhập đi qua backend `backlog-b
   - Không có dữ liệu: luôn có nút hành động, là *Xóa bộ lọc* khi đang lọc, còn lại là *Làm mới*.
 - **Thanh bộ lọc** giống nhau ở Backlog, Fac Confirm, Shipment, AI Logs:
   - Bên phải có nhãn *"Đang lọc: N"* và nút *Xóa bộ lọc*.
+  - Riêng **Fac Confirm** dùng kiểu gọn để giữ bố cục cũ (thanh này đã chật vì dải thẻ công đoạn):
+    - Không lọc gì thì không hiện nút nào.
+    - Đang lọc thì chỉ hiện 1 nút icon nhỏ có kèm số bộ lọc. Rê chuột vào hiện *"Xóa bộ lọc (N)"*.
   - "Đang lọc" chỉ đếm bộ lọc thu hẹp dữ liệu (ô tìm, loại hàng, trạng thái, lọc cột…). Phạm vi xem như Division, ngày xuất, công đoạn không tính và được giữ nguyên khi xóa.
-  - Ô tìm chỉ lọc sau khi ngừng gõ 300–400 ms.
+  - Ô tìm chỉ lọc sau khi ngừng gõ 300–400 ms. Ô tìm tự co lại khi thanh chật.
 - **Bộ lọc nằm trên URL** (Backlog, Fac Confirm, Shipment, AI Logs, EVN), ví dụ `/fac-confirm?div=PR&expD=2026-11-19&procGrp=Rough&heat=DC53`:
   - Copy link gửi đồng nghiệp là mở đúng màn hình đang xem. Bấm F5 không mất bộ lọc.
   - Giá trị mặc định không ghi lên link cho gọn (vd Heat Type = All). Riêng Division / ngày / công đoạn (Fac Confirm) và tháng / phạm vi (EVN) luôn có trên link.
@@ -93,7 +99,7 @@ Frontend thuần (SPA). Dữ liệu và đăng nhập đi qua backend `backlog-b
 
 - Có nút hiện/ẩn mật khẩu và cảnh báo khi đang bật **Caps Lock**.
 - **Remember me**: khi bật, phiên được giữ cả sau khi đóng trình duyệt. Khi tắt, phiên mất khi đóng tab.
-- Trang chuyển tiếp theo role: ADMIN / PC / PRO vào `/odbf`, USER vào `/user-home`. Nếu đã đăng nhập sẵn thì trang tự chuyển luôn.
+- Đăng nhập xong vào **Trang chủ** (`/user-home`) với mọi role. Nếu đã đăng nhập sẵn thì trang tự chuyển luôn.
 - **Mở link khi chưa đăng nhập** (vd `/backlog?q=4200002732`): trang chuyển sang đăng nhập; đăng nhập xong thì quay lại đúng link đó, giữ nguyên bộ lọc và `#hash`. Nếu tài khoản không có quyền với trang đó thì về trang chủ. Chỉ nhận đường dẫn nội bộ, không chuyển hướng ra site ngoài.
 - **Đăng ký**: nhập MSNV và mật khẩu hai lần. Đăng ký xong, trang quay về form đăng nhập với MSNV đã điền sẵn.
 - Ảnh nền tự đổi **ngày / đêm** theo giờ máy (6h–17h là ban ngày).
@@ -105,17 +111,23 @@ API: `POST /api/production-control/auth/login`, `POST /api/production-control/au
 Theo dõi **trạng thái sản xuất, công đoạn hiện tại và tiến độ giao hàng** của từng PO. Màn hình chỉ để xem.
 
 - **Bảng Backlog Summary** (đầu trang): mỗi dòng là một Status, mỗi cột là một ngày xuất. Mỗi ô ghi số PO và số Pcs.
-  - Ô **tô đỏ**: PO chưa FINISHED mà ngày xuất đã tới hoặc đã qua.
+  - Ô **tô đỏ**: PO chưa FINISHED mà ngày xuất đã tới hoặc đã qua. Quy tắc này dùng chung với bảng chi tiết (`theme/statusTones.ts`).
   - Cột **hôm nay** được làm nổi và bảng tự cuộn tới cột đó.
   - Bấm **tên Status** để lọc bảng chi tiết theo Status đó. Bấm **một ô** để lọc theo Status + ngày xuất của ô.
   - Bảng summary thu gọn được.
-- **Thanh lọc**:
-  - Ô tìm theo sales order / global code / product.
+- **Thanh lọc** (thanh lọc dùng chung):
+  - Ô tìm theo sales order / global code / product. Chỉ lọc sau khi ngừng gõ 300 ms.
   - Các dropdown Status, Division, Process, Ship By (có lựa chọn *(Blank)*) và Production Date.
   - Lựa chọn trong dropdown tự thu hẹp theo các bộ lọc khác đang áp dụng.
-  - Bộ lọc đang bật hiện thành **chip**; bỏ từng chip hoặc bấm *Clear all*.
-- **Bảng chi tiết**: 43 cột, lọc kiểu Excel từng cột. Phân trang và sắp xếp chạy phía server (20 / 50 / 100 dòng mỗi trang). Ẩn/hiện cột bằng nút *Columns*.
-- **Export Excel**: xuất đúng các cột đang hiện, theo thứ tự cột, bộ lọc và sắp xếp hiện tại.
+  - Bên phải có *"Đang lọc: N"* và nút *Xóa bộ lọc*. Nút này xóa cả ô lọc, lọc theo cột và ô Summary đang chọn.
+  - Bộ lọc đang bật hiện thành **chip** ở hàng dưới; bấm × để bỏ từng chip.
+- **Link chia sẻ**: `/backlog?q=…&status=…&div=…&process=…&shipBy=…&prodD=YYYY-MM-DD`. Ô trống không ghi lên link. Lọc theo cột và ô Summary chưa lên link.
+- **Bảng chi tiết**: 43 cột, lọc kiểu Excel từng cột. Phân trang và sắp xếp chạy phía server (20 / 50 / 100 dòng mỗi trang).
+  - Thanh công cụ có nút *Mật độ* (gọn / vừa / thoáng) và *Columns* (ẩn / hiện cột).
+  - Ghim cột bằng menu tiêu đề cột → *Ghim cột*.
+  - Cột **Export Date**: đỏ khi trễ hạn (hôm nay hoặc đã qua), cam khi còn ≤ 2 ngày, áp cho PO chưa FINISHED.
+  - Tải lần đầu hiện skeleton. Bảng trống vì bộ lọc thì hiện *"Không tìm thấy kết quả phù hợp"*, kèm mô tả bộ lọc và nút *Xóa bộ lọc*.
+- **Export Excel**: xuất đúng các cột đang hiện, theo thứ tự cột, bộ lọc và sắp xếp hiện tại. Có toast tiến trình *"Đang xuất… N%"*, xong thì báo tên file; lỗi thì hiện toast kèm lý do.
 - **Refresh**: tải lại bảng và summary. Đầu trang hiện thời điểm cập nhật gần nhất.
 
 API: `POST /api/backlogs/search`, `/summary/status`, `/filter-options`, `/export/excel`
@@ -130,10 +142,15 @@ Xác nhận **thời gian hoàn thành công đoạn Rough / Heat / Fine** của
 - **Export Date**: mặc định là hôm nay.
 - **Loại hàng**: Tất cả / Sale / Stock.
 - **Heat Type**, thay đổi theo Division:
-  - PRESS: Normal / DC53 / TD
-  - GUIDE: Normal / Molypden
-- **Ô tìm kiếm**.
+  - PRESS / PRESS Retainer: All / Normal / DC53 / TD
+  - GUIDE: All / Normal / Molypden
+  - MOLD: chỉ All
+- **Ô tìm kiếm**: chỉ lọc sau khi ngừng gõ 300 ms.
 - Division và công đoạn đang chọn được ghi nhớ cho lần sau.
+- **Xóa bộ lọc** (nút icon nhỏ, chỉ hiện khi đang lọc): xóa ô tìm, loại hàng, Heat Type và lọc theo cột. Division, ngày xuất và công đoạn giữ nguyên.
+- **Link chia sẻ**: `/fac-confirm?div=PR&expD=2026-11-19&procGrp=Rough[&classify=Sale][&heat=DC53][&q=…]`.
+  - `div`, `expD`, `procGrp` luôn có trên link, nên người nhận mở đúng màn hình, không phụ thuộc Division họ chọn lần trước.
+  - Mở link thì Division / công đoạn của link cũng được ghi nhớ như khi chọn tay.
 
 **Thẻ công đoạn Rough / Heat / Fine**: mỗi thẻ cho thấy số PO và Pcs cần xác nhận, số đã xác nhận, % tiến độ và dấu hoàn thành. Bấm vào thẻ để chuyển công đoạn.
 
@@ -173,9 +190,13 @@ Mỗi công đoạn chỉ sửa được cột của mình:
 
 **Khác**
 
-- Bảng có 18 cột lọc kiểu Excel.
-- **Export Excel** xuất toàn bộ dữ liệu theo bộ lọc. **Refresh** tải lại bảng và thống kê.
+- Bảng có 18 cột lọc kiểu Excel. Thanh công cụ có nút *Mật độ* (gọn / vừa / thoáng, nhớ theo người dùng) và *Cột*. Ghim cột bằng menu tiêu đề cột.
+- **Export Excel** xuất toàn bộ dữ liệu theo bộ lọc, có toast tiến trình / xong / lỗi. **Refresh** tải lại bảng và thống kê.
 - Khi tải lỗi, trang có nút *Thử lại* và dữ liệu cũ vẫn giữ trên bảng.
+- **Bảng trống**:
+  - Đang có bộ lọc: hiện *"Không tìm thấy kết quả phù hợp"*, kèm mô tả bộ lọc và nút *Xóa bộ lọc*.
+  - Không có bộ lọc: hiện *"Không có dữ liệu cần xác nhận"*.
+  - Cả hai trường hợp có thêm nút **Về hôm nay** khi Export Date khác hôm nay (vd mở link cũ).
 - **Hướng dẫn 12 bước** tự mở ở lần đầu vào trang. Mở lại bằng nút `?`.
 
 API: `GET /api/fac-confirm`, `POST /api/fac-confirm/search`, `/process-groups`, `/filter-options`, `/confirmed-processes`, `GET /daily-summary`, `PATCH /process-times`, `POST /export/excel`
@@ -189,6 +210,7 @@ Theo dõi **tỷ lệ PO giao đúng hạn / trễ hạn theo nhóm sản phẩm
 - Hôm nay và 2 ngày tới được làm nổi. Giá trị 0 hiển thị là `-`.
 - Cột tên nhóm được cố định khi cuộn ngang.
 - Có nút Refresh và thời điểm cập nhật.
+- Tải lần đầu hiện skeleton dạng bảng (thay cho spinner). Không có dữ liệu thì hiện cảnh trống kèm nút *Làm mới*; lỗi khi chưa có dữ liệu thì hiện cảnh lỗi kèm *Thử lại*.
 
 API: `GET /api/odbf/summary`
 
@@ -196,13 +218,17 @@ API: `GET /api/odbf/summary`
 
 **Heatmap tỷ lệ hoàn thành giao hàng** theo khách hàng, phương thức vận chuyển và ngày xuất.
 
-- **Khoảng ngày**: mặc định từ 6 ngày trước đến 7 ngày tới. Đổi From / To rồi bấm *Apply*, bấm *14 Days* để về mặc định.
+- **Khoảng ngày** (thanh lọc dùng chung): mặc định từ 6 ngày trước đến 7 ngày tới.
+  - Đổi From / To rồi bấm *Apply*. Chọn ngày tự giữ From ≤ To.
+  - *Xóa bộ lọc* đưa về 2 tuần mặc định (thay cho nút *14 Days* cũ). "Đang lọc: 1" khi khoảng đang áp dụng khác mặc định.
+- **Link chia sẻ**: `/shipping-schedule?from=YYYY-MM-DD&to=YYYY-MM-DD` (khoảng đang áp dụng).
+- **Tải / trống**: tải lần đầu hiện skeleton dạng heatmap. Không có dữ liệu thì hiện cảnh trống: đang chọn khoảng khác mặc định thì có *Xóa bộ lọc*, còn lại có *Làm mới*.
 - **Mỗi dòng** là một cặp khách hàng + Ship By (badge AIR / SEA / EXPRESS / N/A).
 - **Mỗi ô** ghi `%` và `Final / PO`. Rê chuột vào ô để xem PO Qty, Final Qty và Ratio.
 - **Màu ô** theo tỷ lệ: từ xanh (≥ 100%) đến đỏ (< 30%).
   - Ô gạch chéo là ngày không có lô xuất.
   - Cuối tuần và hôm nay có nền riêng.
-- **Xem chi tiết**: bấm tên khách hàng để xem mọi ngày, bấm một ô để xem đúng ngày đó. Chi tiết mở ra bảng toàn màn hình, cùng bộ cột với Backlog.
+- **Xem chi tiết**: bấm tên khách hàng để xem mọi ngày, bấm một ô để xem đúng ngày đó. Chi tiết mở ra bảng toàn màn hình, cùng bộ cột với Backlog: có nút *Mật độ* và tô màu Export Date theo hạn như Backlog.
 
 API: `GET /api/shipment-fulfillment`, `GET /api/shipment-fulfillment/detail`
 
@@ -245,8 +271,9 @@ Nút `?` trên trang mở bảng chú giải màu.
 **Khác**
 
 - Dữ liệu **tự làm mới mỗi 5 phút**; có nút làm mới tay.
-- **Chia sẻ link**: link có dạng `?tab=safety&layout=<floor>`, người nhận mở ra đúng tab và đúng tầng.
+- **Chia sẻ link**: link có dạng `?tab=hse&layout=<floor>`, người nhận mở ra đúng tab và đúng tầng.
 - **Esc** đóng panel chi tiết.
+- **Tải / lỗi**: chưa có bản đồ thì hiện skeleton dạng bản đồ + danh sách (thay cho dòng chữ "Đang tải…"). Lỗi thì hiện cảnh lỗi chung kèm *Thử lại*. Không có tầng nào thì hiện cảnh trống kèm *Làm mới*.
 
 API: `GET /api/machine-locator/floors`, `GET /api/machine-locator/floors/{id}`, `GET /api/machine-monitor/hse`
 
@@ -307,7 +334,7 @@ API: `GET /api/machine-locator/floors[/{id}]`, `PUT|DELETE …/machines/{code}`,
 
 ### 9. User Home
 
-Trang chào cho tài khoản **USER** (không có quyền nghiệp vụ).
+Trang chủ, là trang mặc định của **mọi tài khoản** sau khi đăng nhập.
 
 **Việc của tôi hôm nay**: bảng LED treo giữa bảng lời chào và thẻ nhân viên (màn ≥ 1200px, không lấy thêm chiều cao nên kệ hàng giữ nguyên). Màn hẹp hơn thì thành dải ngang bên dưới. Bấm vào thẻ nào là mở thẳng trang đã lọc sẵn bằng link URL:
 
@@ -343,6 +370,41 @@ Tài liệu **đào tạo nhập môn cho nhân viên PC**. Trang đang ẩn kh�
   7. Agreement
   8. Đăng ký / revise Master
 - Nội dung nằm sẵn trong `src/data/training/`, không gọi API.
+
+### 11. Cost Monitoring
+
+Theo dõi chi phí theo khung (xưởng × hạng mục OT / T&SL / RM) trong tháng: thực tế so với mục tiêu, kèm dự báo cuối tháng. Mục này chỉ ghi phần liên quan tới các đợt cải thiện UI; chi tiết chức năng xem hướng dẫn trong trang (nút `?`).
+
+- **Nạp Actual OT** (ADMIN): nạp xong hiện toast *"Đã nạp N dòng OT"*, thay cho Snackbar riêng trước đây.
+- **Xuất CSV giao dịch** trong drawer chi tiết khung: toast tiến trình theo số trang đã tải, xong / lỗi đều báo bằng toast.
+- Trang chủ có thẻ **"Khung Cost đang vượt"** đếm số khung `OVER` của tháng này. Bấm thẻ mở trang này.
+- Chưa có bộ lọc trên URL.
+
+API: `GET /api/cost-monitoring/months`, `/chart`, `/pl-weeks`, `/detail`, `/ot/…`
+
+### 12. AI Logs
+
+Nhật ký các câu hỏi gửi trợ lý AI (chỉ ADMIN): thống kê, bảng log, chi tiết từng request, bộ test, phòng thay đồ của mascot, sơ đồ luồng AI.
+
+- **Thanh lọc** (thanh lọc dùng chung, nằm trong header): Từ ngày → Đến ngày (tối đa 92 ngày), User, Tìm kiếm, Trạng thái, Nguồn, Chậm hơn (giây).
+  - Ô ngày đã đổi từ DatePicker sang ô ngày chung như các trang khác.
+  - *Xóa bộ lọc* thay cho *Đặt lại* và vẫn giữ tab màn hình đang chọn.
+- **Link chia sẻ**: `/settings/ai-logs?from=…&to=…[&user=…][&q=…][&ok=true|false][&source=all|eval][&slower=N][&screen=…]`.
+  - Nguồn mặc định là `chat` nên không ghi lên link. "Tất cả nguồn" ghi là `source=all`.
+  - Khoảng ngày sai trên link thì về 7 ngày gần nhất.
+- **Export Excel**: toast tiến trình / xong / lỗi (thay cho Snackbar lỗi riêng).
+- Bảng trống vì bộ lọc thì hiện *"Không tìm thấy kết quả phù hợp"* kèm *Xóa bộ lọc*.
+- Mở tab Bộ test / Phòng thay đồ / Luồng AI lần đầu thì hiện skeleton thay cho spinner. Thông báo trong 2 tab này dùng toast chung.
+
+API: `GET /api/admin/assistant-logs`, `/stats`, `/{rid}`, `/export`
+
+### 13. Utility · EVN Compare
+
+So sánh số GM (đồng hồ tổng EVN) với số đồng hồ thực tế theo ngày, gồm điện năng (MWh / kWh) và tiền (kUSD), theo tháng (chỉ ADMIN). Có tab *Import Excel* để nạp số GM. Mục này chỉ ghi phần liên quan tới các đợt cải thiện UI.
+
+- **Link chia sẻ**: `/utility-evn-compare?month=YYYY-MM&scope=KVH&unit=MWh&view=overview[&tab=import]`. Tháng, phạm vi, đơn vị và chế độ xem luôn có trên link.
+- Đổi sang tab *Import Excel* (`tab=import`) không còn xóa các tham số khác trên link.
+- Phạm vi / đơn vị / chế độ xem vẫn được ghi nhớ trên máy như trước. Link mở từ ngoài sẽ ghi đè các giá trị này.
 
 ---
 
@@ -393,6 +455,7 @@ URL của Remain PO Control đang hard-code trong [src/pages/RemainPoControlPage
 ## Đăng nhập & phân quyền
 
 - **Phiên đăng nhập** lưu ở `localStorage` khi chọn "ghi nhớ", ngược lại lưu ở `sessionStorage`. Key là `production_control_auth`. Xem [src/services/authService.ts](src/services/authService.ts).
+- **Quay lại link sau khi đăng nhập**: `ProtectedRoute` gửi kèm link đầy đủ (`pathname + search + hash`) sang `/login`. `LoginPage` chỉ nhận đường dẫn nội bộ bắt đầu bằng `/` (chặn `//…`, URL ngoài và chính `/login`). Không có link thì về `/user-home`.
 - **Role**: `ADMIN` (toàn quyền), `PC`, `PRO`, `USER`. Backend tính lại role từ dữ liệu HR mỗi lần đăng nhập.
 - **Chặn route** ở frontend bằng [ProtectedRoute](src/components/auth/ProtectedRoute.tsx) và [RoleRoute](src/components/auth/RoleRoute.tsx).
 - **Ẩn/hiện menu** theo `roles` khai báo trong [sidebarConfig.tsx](src/components/layout/sidebarConfig.tsx).
@@ -405,17 +468,22 @@ URL của Remain PO Control đang hard-code trong [src/pages/RemainPoControlPage
 src/
   pages/            Mỗi route một file *Page.tsx
   components/       UI theo tính năng (backlog, facConfirm, machineLocator, machineMonitor, shipment, odbf, training, userHome...)
-    common/         Thành phần dùng chung: PageShell, PageHeader, dataGrid/ (Data Grid có lọc kiểu Excel),
-                    headerActions/ (nút header), loadState/ (skeleton, tải/trống/lỗi), notify/ (toast),
-                    filterBar/ (thanh bộ lọc + ô lọc)
+    common/         Thành phần dùng chung: PageShell, PageHeader,
+                    dataGrid/ (Data Grid có lọc kiểu Excel, ghim cột: gridPinContext),
+                    headerActions/ (nút header), loadState/ (skeleton, tải/trống/lỗi, "không tìm thấy"),
+                    notify/ (toast + notifyExport), filterBar/ (thanh bộ lọc + ô lọc)
+    userHome/       Trang chủ; todayTasks/ = bảng "Việc của tôi hôm nay"
     layout/         MainLayout, LeftSidebar, cấu hình menu
     auth/           Form đăng nhập/đăng ký, guard route
   services/         Gọi API (fetch), mỗi tính năng một file
   hooks/            Hook tải dữ liệu & trạng thái (useBacklogData, useFacConfirmData, useMachineLocator...)
+                    + dùng chung: useUrlFilters (bộ lọc ⇄ URL), useGridPreferences (cấu hình bảng,
+                    mật độ, ghim cột), useDelayedFlag (trễ 300 ms), useDebouncedField (debounce ô nhập)
   config/           URL API, cấu hình bộ lọc, quy tắc sửa ô Fac Confirm
   types/            Kiểu dữ liệu theo tính năng
-  utils/            Hàm thuần: map API, lọc, hình học & fit khung máy (chạy trong Web Worker)
-  theme/            Theme MUI sáng/tối, token UI
+  utils/            Hàm thuần: map API, lọc, hình học & fit khung máy (chạy trong Web Worker),
+                    download.ts (tải file kèm tiến trình), uiPreferences.ts (lưu cài đặt trên máy)
+  theme/            Theme MUI sáng/tối, token UI, statusTones.ts (màu theo hạn dùng chung)
   data/             Dữ liệu tĩnh: nội dung đào tạo, dữ liệu gốc Machine Locator (dùng cho script)
 public/assets/machine-locator/   Ảnh layout nhà máy
 scripts/machine-locator/         Script Python/Node xử lý bản vẽ layout
@@ -439,9 +507,12 @@ Quy ước:
   - Xuất file: bọc bằng `notifyExport((onProgress) => exportXxx(..., onProgress))`. Hàm này tự hiện tiến trình / xong / lỗi và không bao giờ throw.
   - `<NotifyHost />` đã gắn một lần trong `App.tsx`.
 - **Thanh bộ lọc** dùng [filterBar/](src/components/common/filterBar/), không tự dựng TextField / Select riêng:
-  - `<FilterBar activeCount onClear trailing? footer? variant="panel|plain">` bọc các ô lọc.
+  - `<FilterBar activeCount onClear trailing? footer? variant="panel|plain" compact?>` bọc các ô lọc. Nhóm bên phải được đẩy bằng `margin-left: auto`; không dùng khoảng trống co giãn vì nó chiếm chỗ của ô lọc co giãn.
+  - `compact` dành cho thanh đã chật (Fac Confirm): giữ 1 hàng, không lọc thì không hiện gì, có lọc thì chỉ hiện 1 nút icon kèm số bộ lọc.
   - Ô lọc: `FilterSearch` / `FilterText` (có `debounceMs`), `FilterSelect` (`allOption` thêm mục *Tất cả*), `FilterDate`, `FilterDateRange` (tự giữ from ≤ to, `maxDays`). Truyền `tour` để gắn `data-tour` cho hướng dẫn.
-- **Bảng DataGrid**: `useGridPreferences(key, pageSize, { defaultPinned })` trả về cả `density` / `setDensity` (nhớ theo người dùng) và `pinnedColumns` / `togglePinnedColumn`. Truyền vào `ReusableDataGrid` qua `density`, `onDensityChange`, `pinnedColumns`, `onTogglePinnedColumn`. `defaultPinned` phải là hằng số ngoài component.
+- **Bảng DataGrid**: `useGridPreferences(key, pageSize, { defaultPinned? })` trả về cả `density` / `setDensity` (nhớ theo người dùng) và `pinnedColumns` / `togglePinnedColumn`. Truyền vào `ReusableDataGrid` qua `density`, `onDensityChange`, `pinnedColumns`, `onTogglePinnedColumn`.
+  - Hiện chưa bảng nào ghim sẵn (giữ giao diện cũ). Nếu dùng `defaultPinned` thì phải là hằng số ngoài component.
+  - Bảng muốn có mục *Ghim cột* phải dùng `ExcelColumnMenu`, vì mục này đọc `GridPinContext`.
   - Ghim cột tự làm bằng `position: sticky`, vì bản Community không có. Khi có cột ghim, bảng đặt `columnBufferPx` lớn để cột ghim luôn được vẽ.
   - Tô màu hạn: `deadlineCellClass(date, done)` / `deadlineTone(...)` trong [theme/statusTones.ts](src/theme/statusTones.ts). Không tự chọn màu đỏ / cam riêng.
 - **Bộ lọc ⇄ URL** dùng [useUrlFilters](src/hooks/useUrlFilters.ts):
@@ -451,6 +522,7 @@ Quy ước:
   - Link từ ngoài có tham số thì `onUrlChange` áp bộ lọc của link. Quay lại trang bằng sidebar (URL trống) thì giữ bộ lọc đang có và ghi lại lên URL.
   - Tham số không khai báo trên URL được giữ nguyên. Code khác muốn đổi URL của trang thì phải giữ các tham số đang có (xem `changeSection` ở trang EVN).
 - **Tải file từ server** dùng [utils/download.ts](src/utils/download.ts): `readBlobWithProgress` (đọc kèm tiến trình theo `Content-Length`), `fileNameFromDisposition`, `saveBlob`. Service export nhận tham số `onProgress` và trả về tên file.
+- **Giữ giao diện hiện tại**: thay đổi UI mặc định phải trông như cũ; tính năng mới chỉ thêm vào hoặc để người dùng tự bật (vd ghim cột, thanh lọc gọn ở Fac Confirm).
 - Comment viết tiếng Việt.
 
 ## Script Machine Locator
@@ -485,6 +557,17 @@ npm run build      # kết quả ở dist/
 
 ## Lịch sử thay đổi
 
+### Tổng quan kế hoạch cải thiện UI
+
+| Đợt | Commit | Đề xuất | Nội dung chính |
+| --- | --- | --- | --- |
+| 1 | `4712d8e` | 1 + 3 | Trạng thái tải / trống / lỗi dùng chung (skeleton, cảnh lỗi + Thử lại, cảnh trống luôn có nút). Toast dùng chung, xuất file có tiến trình. Fac Confirm báo "Đã lưu N ô", không hoàn tác. |
+| 2 | `72f167f` | 2 | Thanh bộ lọc dùng chung ("Đang lọc: N", Xóa bộ lọc). Bộ lọc trên URL ở 5 trang. Đăng nhập xong quay lại đúng link. Xử lý link cũ / link sai. |
+| 3 | `f15b72c` | 4 + 5 | Mật độ dòng nhớ theo người dùng, ghim cột (tự bật), tô màu hạn thống nhất, chữ số đều. Trang chủ "Việc của tôi hôm nay". Sửa thanh lọc Fac Confirm về bố cục cũ. |
+| — | — | 6 – 10 | Chưa làm: dark mode / độ tương phản, phím tắt, design token, đo hiệu năng (web-vitals), việc tồn (API "tháng mới nhất" của Cost, Machine Monitor tải lại sơ đồ). |
+
+Nguyên tắc chung của cả 3 đợt: **mặc định giao diện như cũ**, phần mới chỉ thêm vào hoặc để người dùng tự bật.
+
 ### 2026-11-19 — Nâng cấp bảng dữ liệu và "Việc của tôi hôm nay"
 
 Đợt 3 trong kế hoạch cải thiện UI (đề xuất 4 và 5).
@@ -501,6 +584,16 @@ npm run build      # kết quả ở dist/
 #### Trang chủ (đề xuất 5)
 
 - Thêm bảng **Việc của tôi hôm nay** (`components/userHome/todayTasks/`) với 3 thẻ: Fac Confirm, Cost, Máy cảnh báo. Bấm vào là mở trang đã lọc sẵn (dùng link URL của Đợt 2).
+- Vị trí: màn ≥ 1200px treo giữa bảng LED và thẻ nhân viên, không lấy chiều cao của kệ hàng. Màn hẹp hơn thành dải ngang bên dưới.
+- Số liệu lấy từ API có sẵn: `/fac-confirm/process-groups`, `/cost-monitoring/chart` (`/months` khi tháng này chưa có số), `/machine-locator/floors` + `/machine-monitor/hse` từng tầng.
+
+#### Sửa giao diện sau khi kiểm tra
+
+- **Thanh lọc Fac Confirm bị chật**, dải thẻ Rough / Heat / Fine bị cắt (lỗi từ Đợt 2):
+  - Bỏ khoảng trống co giãn trong `FilterBar`, nhóm bên phải đẩy bằng `margin-left: auto`.
+  - Thêm chế độ `compact` cho Fac Confirm: giữ 1 hàng, không lọc thì không hiện nút, có lọc thì chỉ 1 nút icon kèm số.
+  - Ô tìm được co lại như trước (tối thiểu 140px).
+- **Ghim cột đổi sang tự bật**: lúc đầu ghim sẵn Aufnr và đưa lên đầu bảng, làm đổi thứ tự cột quen thuộc. Giờ mặc định không ghim gì.
 
 #### Chưa làm / còn lại
 
@@ -525,7 +618,7 @@ npm run build      # kết quả ở dist/
 
 | Trang | Tham số URL | Thay đổi khác |
 | --- | --- | --- |
-| Fac Confirm | `div`, `expD`, `procGrp`, `classify`, `heat`, `q` | Thêm "Đang lọc" + *Xóa bộ lọc* (xóa tìm, loại hàng, Heat Type, lọc cột; giữ Division / ngày / công đoạn) |
+| Fac Confirm | `div`, `expD`, `procGrp`, `classify`, `heat`, `q` | Thêm "Đang lọc" + *Xóa bộ lọc* (xóa tìm, loại hàng, Heat Type, lọc cột; giữ Division / ngày / công đoạn). Đợt 3 đổi sang kiểu gọn (nút icon) để giữ bố cục cũ |
 | Backlog | `q`, `status`, `div`, `process`, `shipBy`, `prodD` | Ô tìm có debounce 300 ms (trước đây mỗi phím gõ gọi API một lần); bỏ nút *Clear all* trùng ở hàng chip |
 | Shipment | `from`, `to` (khoảng đang áp dụng) | Nút *14 Days* thay bằng *Xóa bộ lọc* (về 2 tuần mặc định); chọn ngày tự giữ from ≤ to |
 | AI Logs | `from`, `to`, `user`, `q`, `ok`, `source`, `slower`, `screen` | Ô ngày đổi từ DatePicker sang ô ngày chung; *Đặt lại* thành *Xóa bộ lọc* (vẫn giữ tab màn hình) |
