@@ -1758,6 +1758,7 @@ export const en = {
             timeline: 'Time per step',
             timelineNote: 'Steps run one after another; positions add up step durations (small gaps between steps are not shown). Prefetch tools are drawn inside the prefetch step.',
             noTimeline: 'No step timings',
+            showFlow: 'Show on flow',
             context: 'Context',
             askedMonths: 'Asked months',
             prefetch: 'Prefetch',
@@ -1786,6 +1787,7 @@ export const en = {
             logs: 'Logs',
             tests: 'Test suite',
             wardrobe: 'Dressing room',
+            flow: 'AI flow',
         },
         screenTabs: {
             ariaLabel: 'Choose screen',

@@ -1,8 +1,10 @@
+import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
 import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded'
 import {
   Alert,
   Box,
+  Button,
   Chip,
   Drawer,
   IconButton,
@@ -39,6 +41,8 @@ interface AiLogDetailDrawerProps {
   loading: boolean
   error: string | null
   onClose: () => void
+  // phát lại request này trên tab "Luồng AI"
+  onShowFlow?: (detail: AiLogDetail) => void
 }
 
 const cellSx = { ...TABULAR_NUMS, fontSize: 12.5, py: 0.5, px: 1 } as const
@@ -285,6 +289,7 @@ export function AiLogDetailDrawer({
   loading,
   error,
   onClose,
+  onShowFlow,
 }: AiLogDetailDrawerProps) {
   const { t } = useI18n()
   const labels = t.aiLogs.detail
@@ -375,6 +380,18 @@ export function AiLogDetailDrawer({
         <Typography sx={{ flex: 1, minWidth: 0, fontSize: 16, fontWeight: 800 }} noWrap>
           {labels.title}
         </Typography>
+
+        {data && onShowFlow && (
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<AccountTreeOutlinedIcon />}
+            onClick={() => onShowFlow(data)}
+            sx={{ textTransform: 'none', flexShrink: 0, whiteSpace: 'nowrap' }}
+          >
+            {labels.showFlow}
+          </Button>
+        )}
 
         {data && (
           <Chip
