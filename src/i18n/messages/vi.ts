@@ -1662,6 +1662,7 @@ export const vi: Messages = {
             timeline: 'Thời gian từng bước',
             timelineNote: 'Các bước chạy nối tiếp; vị trí = cộng dồn thời lượng (không thể hiện khoảng nghỉ nhỏ giữa các bước). Tool pre-fetch vẽ lồng trong bước Prefetch.',
             noTimeline: 'Không có dữ liệu thời gian từng bước',
+            showFlow: 'Xem trên sơ đồ',
             context: 'Context',
             askedMonths: 'Tháng được hỏi',
             prefetch: 'Prefetch',
@@ -1690,6 +1691,7 @@ export const vi: Messages = {
             logs: 'Logs',
             tests: 'Bộ test',
             wardrobe: 'Phòng thay đồ',
+            flow: 'Luồng AI',
         },
         screenTabs: {
             ariaLabel: 'Chọn màn hình',

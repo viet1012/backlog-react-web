@@ -145,4 +145,15 @@ export interface AiLogDetail {
   toolCalls: AiLogToolRun[]
   model: string | null
   reasoningEffort: string | null
+  // Các field dưới có trong dòng JSONL của BE (docs assistant mục 10) nhưng dòng cũ có thể thiếu → luôn tùy chọn
+  // "llm" | "template"; null = lỗi trước khi chọn cách trả lời
+  answerSource?: string | null
+  // loại câu hỏi màn hình nhận ra (vd overview, ranking, why, prompt_guard)
+  answerIntent?: string | null
+  // chuỗi debug phân loại câu hỏi
+  intentMatch?: string | null
+  // có chèn khối kết luận tính sẵn vào prompt không
+  forcedConclusion?: boolean | null
+  // auto | none | none+retry_without_tools
+  toolChoice?: string | null
 }

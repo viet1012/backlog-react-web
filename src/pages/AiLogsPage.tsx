@@ -1,3 +1,4 @@
+import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined'
 import CheckroomRoundedIcon from '@mui/icons-material/CheckroomRounded'
 import {
   Alert,
@@ -28,7 +29,7 @@ import {
 import { ASSISTANT_SCREENS, getScreenNameByKey } from '../components/mascot/mascotMessages'
 import { useAiLogDetail, useAiLogList, useAiLogStats } from '../hooks/useAssistantLogs'
 import { exportAiLogsExcel } from '../services/assistantLogService'
-import type { AiLogFilters, AiLogListQuery, AiLogScreenStat } from '../types/assistantLogs'
+import type { AiLogDetail, AiLogFilters, AiLogListQuery, AiLogScreenStat } from '../types/assistantLogs'
 import { uiTokens } from '../theme/uiTokens'
 import { useI18n } from '../i18n/useI18n'
 import { loadPreference, savePreference } from '../utils/uiPreferences'
@@ -37,6 +38,7 @@ import { loadPreference, savePreference } from '../utils/uiPreferences'
 // vào trang AI Logs chỉ tải tab Logs, bấm tab nào mới tải tab đó
 const AiTestSuitePanel = lazy(() => import('../components/aiLogs/AiTestSuitePanel').then((m) => ({ default: m.AiTestSuitePanel })))
 const AiWardrobePanel = lazy(() => import('../components/aiLogs/AiWardrobePanel').then((m) => ({ default: m.AiWardrobePanel })))
+const AiFlowPanel = lazy(() => import('../components/aiLogs/AiFlowPanel').then((m) => ({ default: m.AiFlowPanel })))
 
 function TabLoading() {
   return (
@@ -59,7 +61,7 @@ const DEFAULT_QUERY: AiLogListQuery = {
   order: 'desc',
 }
 
-type AiLogsTab = 'logs' | 'tests' | 'wardrobe'
+type AiLogsTab = 'logs' | 'tests' | 'wardrobe' | 'flow'
 
 // localStorage: tab con màn hình của tab Logs
 const SCREEN_PREF_KEY = 'ai-logs:logs-screen'
@@ -223,6 +225,8 @@ export function AiLogsPage({ mode, onToggleMode }: AiLogsPageProps) {
   const [detailOpen, setDetailOpen] = useState(false)
   const [detailRid, setDetailRid] = useState<string | null>(null)
   const detail = useAiLogDetail(detailRid)
+  // request đang phát lại trên tab Luồng AI (bấm "Xem trên sơ đồ" trong drawer)
+  const [flowLog, setFlowLog] = useState<AiLogDetail | null>(null)
 
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
@@ -308,6 +312,12 @@ export function AiLogsPage({ mode, onToggleMode }: AiLogsPageProps) {
                 iconPosition="start"
                 label={t.aiLogs.tabs.wardrobe}
               />
+              <Tab
+                value="flow"
+                icon={<AccountTreeOutlinedIcon sx={{ fontSize: 18 }} />}
+                iconPosition="start"
+                label={t.aiLogs.tabs.flow}
+              />
             </Tabs>
 
             {tab === 'logs' && (
@@ -371,6 +381,24 @@ export function AiLogsPage({ mode, onToggleMode }: AiLogsPageProps) {
         </Box>
       )}
 
+      {/* Luồng AI: trang giải thích tĩnh cho người không chuyên */}
+      {visited.has('flow') && (
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            // flex: panel lấp đầy chiều cao, gói gọn 1 màn hình (màn thấp thì vẫn cuộn được)
+            display: tab === 'flow' ? 'flex' : 'none',
+            flexDirection: 'column',
+          }}
+        >
+          <Suspense fallback={<TabLoading />}>
+            <AiFlowPanel log={flowLog} onClearLog={() => setFlowLog(null)} />
+          </Suspense>
+        </Box>
+      )}
+
       {/* trang cuộn dọc; bảng giữ chiều cao tối thiểu để đọc được */}
       <Box
         sx={{
@@ -415,6 +443,11 @@ export function AiLogsPage({ mode, onToggleMode }: AiLogsPageProps) {
         loading={detail.loading}
         error={detail.error}
         onClose={() => setDetailOpen(false)}
+        onShowFlow={(log) => {
+          setFlowLog(log)
+          setDetailOpen(false)
+          changeTab('flow')
+        }}
       />
 
       <Snackbar
