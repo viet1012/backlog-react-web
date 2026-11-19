@@ -19,8 +19,11 @@ export const uiTokens = {
     borderRadius: '12px',
     px: 1.5,
     py: 0.75,
-    titleFontSize: 20,
-    subtitleFontSize: 12.5,
+    // Same title row height on every page, with or without subtitle / actions
+    rowHeight: 40,
+    titleFontSize: 17,
+    subtitleFontSize: 12,
+    eyebrowFontSize: 10.5,
     metaFontSize: 11.5,
   },
 

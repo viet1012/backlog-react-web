@@ -38,6 +38,8 @@ export const vi: Messages = {
         unknown: 'Không rõ',
         exporting: 'Đang xuất...',
         exportExcel: 'Xuất Excel',
+        exportCsv: 'Xuất CSV',
+        print: 'In',
     },
 
     language: {
@@ -66,6 +68,11 @@ export const vi: Messages = {
         input: 'Nhập liệu',
         view: 'Xem',
         signOut: 'Đăng xuất',
+        settings: 'Cài đặt',
+        settingsLanguage: 'Ngôn ngữ',
+        settingsAppearance: 'Giao diện',
+        themeLight: 'Sáng',
+        themeDark: 'Tối',
         fallbackUser: 'Người dùng',
         fallbackRole: 'Hệ thống sản xuất',
         comingSoon: 'Sắp ra mắt',
@@ -230,7 +237,7 @@ export const vi: Messages = {
     columns: en.columns,
 
     backlog: {
-        title: 'BACKLOG SẢN XUẤT',
+        title: 'Backlog sản xuất',
         subtitle: 'Theo dõi trạng thái sản xuất, luồng công đoạn và tiến độ giao hàng.',
         searchPlaceholder: 'Tìm đơn hàng, mã Global, sản phẩm...',
         process: 'Công đoạn',
@@ -244,7 +251,7 @@ export const vi: Messages = {
     },
 
     facConfirm: {
-        title: 'FAC CONFIRM',
+        title: 'Fac Confirm',
         subtitle: 'Xác nhận công đoạn sản xuất.',
         saving: 'Đang lưu...',
         confirmChanges: (count) => `Xác nhận thay đổi (${count})`,
@@ -606,7 +613,7 @@ export const vi: Messages = {
     },
 
     shipment: {
-        title: 'TÌNH TRẠNG GIAO HÀNG',
+        title: 'Tình trạng giao hàng',
         subtitle: 'Theo dõi mức đáp ứng giao hàng và độ sẵn sàng xuất hàng.',
         selectDates: 'Vui lòng chọn Từ ngày và Đến ngày',
         fromAfterTo: 'Từ ngày không được sau Đến ngày',
@@ -706,7 +713,8 @@ export const vi: Messages = {
     },
 
     cost: {
-        title: 'THEO DÕI CHI PHÍ (Đơn vị: K$)',
+        title: 'Theo dõi chi phí',
+        subtitle: 'OT, T&SL, RM theo xưởng · Đơn vị: K$',
         month: 'Tháng',
         plTgtBy: 'PL TGT theo',
         latestAuto: 'Mới nhất (tự động)',
@@ -732,10 +740,6 @@ export const vi: Messages = {
         forecastWarn: {
             willExceed: (over, base) => `Dự báo vượt Fluct +${over} K$ (${base})`,
             over: (pct) => `Đã vượt Fluct (Actual ${pct}% Fluct)`,
-        },
-        banner: {
-            over: (count) => `${count} khung đã vượt Fluct`,
-            willExceed: (count) => `${count} khung dự báo vượt`,
         },
         monthsLoadFailed: 'Không tải được danh sách tháng Cost Monitoring',
         chartLoadFailed: 'Không tải được biểu đồ Cost Monitoring',
@@ -1592,6 +1596,7 @@ export const vi: Messages = {
 
     aiLogs: {
         title: 'AI Logs',
+        subtitle: 'Nhật ký câu hỏi và phản hồi của trợ lý AI',
         filters: {
             from: 'Từ ngày',
             to: 'Đến ngày',

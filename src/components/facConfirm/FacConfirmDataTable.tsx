@@ -1,11 +1,14 @@
 import {
+  createContext,
   useCallback,
+  useContext,
   useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
   useState,
   type Ref,
+  memo,
 } from 'react'
 
 import {
@@ -230,6 +233,29 @@ interface FacConfirmToolbarProps {
 }
 
 
+// The grid's toolbar slot must keep the same component identity: a component
+// created with useCallback(…, [hasChanges, changeCount, …]) was a NEW type on
+// every edit, so React unmounted and rebuilt the whole toolbar (incl. the
+// columns button). The slot is defined once; changing values flow through
+// context instead.
+const FacConfirmToolbarContext =
+  createContext<FacConfirmToolbarProps | null>(null)
+
+function FacConfirmToolbarSlot() {
+  const props = useContext(FacConfirmToolbarContext)
+
+  return props ? <FacConfirmToolbar {...props} /> : null
+}
+
+// Same for the row id: one function, not a new one per render
+function getFacConfirmRowId(row: FacConfirmRow) {
+  return [
+    row.aufnr,
+    row.zglobalCode ?? '',
+  ].join('|')
+}
+
+
 function FacConfirmToolbar({
   hasChanges,
   saving,
@@ -327,7 +353,7 @@ function FacConfirmToolbar({
 // COMPONENT
 // =========================================================
 
-export function FacConfirmDataTable({
+function FacConfirmDataTableInner({
   ref,
   rows,
   confirmedProcesses,
@@ -983,39 +1009,17 @@ export function FacConfirmDataTable({
       ],
     )
 
-  const toolbarComponent =
-    useCallback(
-      () => (
-        <FacConfirmToolbar
-          hasChanges={
-            hasChanges
-          }
-
-          saving={
-            saving
-          }
-
-          changeCount={
-            changeCount
-          }
-
-          activeFilterCount={
-            excelFilters.length
-          }
-
-          onConfirm={
-            handleOpenConfirm
-          }
-
-          onCancelChanges={
-            handleCancelChanges
-          }
-
-          onClearFilters={
-            handleClearFilters
-          }
-        />
-      ),
+  const toolbarProps =
+    useMemo<FacConfirmToolbarProps>(
+      () => ({
+        hasChanges,
+        saving,
+        changeCount,
+        activeFilterCount: excelFilters.length,
+        onConfirm: handleOpenConfirm,
+        onCancelChanges: handleCancelChanges,
+        onClearFilters: handleClearFilters,
+      }),
       [
         hasChanges,
         saving,
@@ -1592,6 +1596,7 @@ export function FacConfirmDataTable({
           />
         )}
 
+        <FacConfirmToolbarContext.Provider value={toolbarProps}>
         <ReusableDataGrid<FacConfirmRow>
 
           apiRef={apiRef}
@@ -1606,12 +1611,7 @@ export function FacConfirmDataTable({
 
           isCellEditable={isCellEditable}
 
-          getRowId={(row) =>
-            [
-              row.aufnr,
-              row.zglobalCode ?? '',
-            ].join('|')
-          }
+          getRowId={getFacConfirmRowId}
 
           loading={
             showSkeleton
@@ -1706,7 +1706,7 @@ export function FacConfirmDataTable({
           }
 
           toolbar={
-            toolbarComponent
+            FacConfirmToolbarSlot
           }
 
           columnMenu={
@@ -1718,6 +1718,7 @@ export function FacConfirmDataTable({
           }
 
         />
+        </FacConfirmToolbarContext.Provider>
 
       </Box>
 
@@ -1729,3 +1730,6 @@ export function FacConfirmDataTable({
     </ExcelColumnFilterProvider>
   )
 }
+
+// memo: typing in the search box / status updates on the page no longer re-render the whole grid
+export const FacConfirmDataTable = memo(FacConfirmDataTableInner)

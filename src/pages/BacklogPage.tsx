@@ -1,11 +1,6 @@
-import DownloadRoundedIcon
-  from '@mui/icons-material/DownloadRounded'
-
 import {
   Alert,
-  Button,
   Card,
-  Stack,
 } from '@mui/material'
 
 import type {
@@ -28,7 +23,7 @@ import { BacklogFilterBar } from '../components/backlog/BacklogFilterBar'
 import { BacklogSummary } from '../components/backlog/BacklogSummary'
 import { PageHeader } from '../components/common/PageHeader'
 import { PageShell } from '../components/common/PageShell'
-import { RefreshButton } from '../components/common/RefreshButton'
+import { HeaderAction, HeaderActionBar, HeaderActionDivider } from '../components/common/headerActions'
 import { UpdatedStatus } from '../components/common/UpdatedStatus'
 import { useBacklogData } from '../hooks/useBacklogData'
 import { useBacklogSummary } from '../hooks/useBacklogSummary'
@@ -363,13 +358,25 @@ export function BacklogPage({
       filters,
     )
 
+  // Dropdown options (4 requests, limit 500) wait until the main list has
+  // loaded once: started together they took 4 of the browser's 6 connections
+  // and queued the list – the thing the user is actually waiting for.
+  const [listLoadedOnce, setListLoadedOnce] =
+    useState(false)
+
+  if (!listLoadedOnce && (data.length > 0 || (!loading && lastUpdated != null))) {
+    setListLoadedOnce(true)
+  }
+
   const selectOptionsQuery =
     useCachedQuery<BacklogSelectOptions>(
-      `backlog:options:${JSON.stringify([
-        filters.search.trim(),
-        simpleFilters,
-        excelFilters,
-      ])}`,
+      listLoadedOnce
+        ? `backlog:options:${JSON.stringify([
+          filters.search.trim(),
+          simpleFilters,
+          excelFilters,
+        ])}`
+        : null,
       async (signal) => {
 
         const allFilters = [
@@ -823,45 +830,22 @@ export function BacklogPage({
         }
 
         actions={
-          <Stack
-            direction="row"
-            spacing={1}
-            sx={{
-              alignItems: 'center',
-            }}
-          >
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={
-                <DownloadRoundedIcon />
-              }
-              disabled={
-                exporting
-                || exportColumns.length === 0
-              }
-              onClick={
-                handleExportExcel
-              }
-            >
-              {
-                exporting
-                  ? t.common.exporting
-                  : t.common.exportExcel
-              }
-            </Button>
-
-
-            <RefreshButton
-              loading={
-                loading
-                || summaryLoading
-              }
-              onClick={
-                handleRefresh
-              }
+          <HeaderActionBar>
+            <HeaderAction
+              kind="exportExcel"
+              loading={exporting}
+              disabled={exportColumns.length === 0}
+              onClick={handleExportExcel}
             />
-          </Stack>
+
+            <HeaderActionDivider />
+
+            <HeaderAction
+              kind="refresh"
+              loading={loading || summaryLoading}
+              onClick={handleRefresh}
+            />
+          </HeaderActionBar>
         }
 
         mode={

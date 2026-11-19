@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { Box, LinearProgress } from '@mui/material'
 import { alpha, keyframes } from '@mui/material/styles'
@@ -11,6 +11,8 @@ import { KeepAliveOutlet } from './KeepAliveOutlet'
 import { LeftSidebar } from './LeftSidebar'
 import { setNavPending, useNavPending } from './navPending'
 import { recordPageVisit } from './pageUsage'
+import { SIDEBAR_DURATION, SIDEBAR_EASE } from './sidebarStyles'
+import { setLayoutSliding } from './layoutSliding'
 
 // Clock-in: the app is mounted under the shutter, then the sidebar and the
 // page come up as it rolls up ("lights on"). Dim, not invisible, while
@@ -51,7 +53,51 @@ function PageFallback() {
   )
 }
 
-export function MainLayout() {
+interface MainLayoutProps {
+  onToggleMode: () => void
+}
+
+export function MainLayout({ onToggleMode }: MainLayoutProps) {
+  const mainRef = useRef<HTMLElement>(null)
+
+  // Sidebar collapse/expand: the reserved width changes once (one layout, one
+  // chart resize); <main> is then slid from its old position with a transform,
+  // which runs on the compositor and keeps pace with the sidebar panel.
+  const slideMain = useCallback((delta: number) => {
+    const el = mainRef.current
+    if (!el || !el.animate) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+
+    el.getAnimations().forEach((animation) => animation.cancel())
+
+    // While sliding, panels drop their backdrop blur (header, cards…): a blur
+    // over a moving layer is re-sampled on every frame, which is what made the
+    // title bar stutter. The page background is a soft gradient, so the swap
+    // is not visible.
+    el.dataset.sliding = 'true'
+    // Charts (StableResponsiveContainer) hold their size until the slide ends
+    setLayoutSliding(true)
+
+    const animation = el.animate(
+      [
+        { transform: `translateX(${-delta}px)` },
+        { transform: 'translateX(0)' },
+      ],
+      // no fill: a kept transform would make <main> the containing block of
+      // every position: fixed element inside it
+      { duration: SIDEBAR_DURATION, easing: SIDEBAR_EASE },
+    )
+
+    const done = () => {
+      // a newer slide may have started meanwhile
+      if (el.getAnimations().length > 0) return
+      delete el.dataset.sliding
+      setLayoutSliding(false)
+    }
+    animation.onfinish = done
+    animation.oncancel = done
+  }, [])
+
   const run = useClockInRun()
   const { pathname } = useLocation()
   const pendingPath = useNavPending()
@@ -98,8 +144,9 @@ export function MainLayout() {
       })}
     >
       <MascotProvider>
-        <LeftSidebar />
+        <LeftSidebar onToggleMode={onToggleMode} onWidthChange={slideMain} />
         <Box
+          ref={mainRef}
           component="main"
           aria-busy={navigating}
           sx={{
@@ -109,6 +156,15 @@ export function MainLayout() {
             minWidth: 0,
             minHeight: 0,
             overflow: 'hidden',
+
+            // see slideMain
+            '&[data-sliding]': { willChange: 'transform' },
+            // Only the elements that carry a blur – a universal selector would
+            // restyle every DataGrid cell when the attribute is set and removed
+            '&[data-sliding] :is(header, .app-glass, .MuiCard-root, .MuiDataGrid-root)': {
+              backdropFilter: 'none !important',
+              WebkitBackdropFilter: 'none !important',
+            },
           }}
         >
           {/* Phản hồi tức thì khi bấm chuyển trang: thanh chạy trên cùng.

@@ -1,13 +1,22 @@
 import CloudOffRoundedIcon from '@mui/icons-material/CloudOffRounded'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import type { AnimationEvent, CSSProperties } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useI18n } from '../../i18n/useI18n'
 import { AssistantApiError, normalizeMonth, postAssistantChat } from '../../services/assistantService'
 import type { AssistantChatTurn } from '../../services/assistantService'
 import { loadPreference, savePreference } from '../../utils/uiPreferences'
-import { MascotChatPanel } from './MascotChatPanel'
+// Chat panel (react-markdown + remark-gfm) is its own chunk: it used to sit in
+// the main bundle every page loads, though it only renders once opened.
+// Preloaded when the browser is idle, so opening it is still instant.
+const loadChatPanel = () => import('./MascotChatPanel')
+const MascotChatPanel = lazy(() => loadChatPanel().then((m) => ({ default: m.MascotChatPanel })))
+
+function preloadChatPanelWhenIdle() {
+  const idle = window.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 2000))
+  idle(() => { void loadChatPanel() })
+}
 import type { ChatItem } from './MascotChatPanel'
 import {
   getSupportedScreens,
@@ -70,6 +79,7 @@ export function Mascot() {
   const { t, language } = useI18n()
   const { pathname } = useLocation()
   const navigate = useNavigate()
+  useEffect(preloadChatPanelWhenIdle, [])
   const { params, monthControl, openChatSeq, elevated, status, retry, reportStatus, skin } = useMascotContext()
   const offline = status === 'offline'
   const reconnecting = status === 'reconnecting'
@@ -585,6 +595,7 @@ export function Mascot() {
       )}
 
       {open && (
+        <Suspense fallback={null}>
         <MascotChatPanel
           id={PANEL_ID}
           initialDraft={prefill}
@@ -603,6 +614,7 @@ export function Mascot() {
           onNewConversation={startNewConversation}
           onClose={() => setOpen(false)}
         />
+        </Suspense>
       )}
 
       <button

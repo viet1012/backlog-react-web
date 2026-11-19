@@ -70,6 +70,34 @@ export function preloadRoute(path: string) {
   })
 }
 
+// Heavy chunks only loaded on intent (hover / visit), never in the background
+const NOT_IDLE_PRELOADED = new Set(['/user-home'])
+
+/**
+ * Download the given pages' code while the browser is idle, one page per idle
+ * slot, so a first visit renders straight away instead of showing an empty
+ * area while its chunk loads (page chunks are small: ~12–150 KB).
+ */
+export function preloadRoutesWhenIdle(paths: string[]) {
+  const queue = paths.filter((path) => pagesByRoute[path] && !NOT_IDLE_PRELOADED.has(path))
+  const idle = window.requestIdleCallback
+    ?? ((cb: () => void) => window.setTimeout(cb, 300))
+  let cancelled = false
+
+  const next = () => {
+    const path = queue.shift()
+    if (cancelled || !path) return
+    idle(() => {
+      pagesByRoute[path].preload().catch(() => {}).finally(next)
+    })
+  }
+
+  next()
+  return () => {
+    cancelled = true
+  }
+}
+
 // Pages not kept alive when hidden: the machine locator editor (canvas +
 // fitting worker, unsaved-edit flow). The 3D home is kept: it pauses its
 // render loop while hidden (UserHomeWarehouse3D) so coming back is instant

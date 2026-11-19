@@ -1,6 +1,8 @@
 import { Typography, useTheme } from '@mui/material'
 import dayjs from 'dayjs'
-import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { CartesianGrid, Line, LineChart, ReferenceLine, Tooltip, XAxis, YAxis } from 'recharts'
+import { ResponsiveContainer } from '../common/StableResponsiveContainer'
+
 import type { TooltipContentProps } from 'recharts'
 import { useI18n } from '../../i18n/useI18n'
 import { formatDayMonth, type EvnCompareRow } from '../../utils/utilityEvnCompare'

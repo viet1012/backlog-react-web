@@ -153,7 +153,7 @@ function App() {
             <Route element={<ProtectedRoute />}>
 
               <Route
-                element={<MainLayout />}
+                element={<MainLayout onToggleMode={toggleThemeMode} />}
               >
 
                 {/* =========================

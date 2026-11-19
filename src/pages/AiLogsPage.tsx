@@ -1,9 +1,7 @@
 import CheckroomRoundedIcon from '@mui/icons-material/CheckroomRounded'
-import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined'
 import {
   Alert,
   Box,
-  Button,
   CircularProgress,
   Snackbar,
   Tab,
@@ -12,9 +10,9 @@ import {
 import type { PaletteMode } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { Suspense, lazy, startTransition, useState } from 'react'
+import { HeaderAction, HeaderActionBar, HeaderActionDivider } from '../components/common/headerActions'
 import { PageHeader } from '../components/common/PageHeader'
 import { PageShell } from '../components/common/PageShell'
-import { RefreshButton } from '../components/common/RefreshButton'
 import { UpdatedStatus } from '../components/common/UpdatedStatus'
 import { AiLogDetailDrawer } from '../components/aiLogs/AiLogDetailDrawer'
 import { AiLogsDailyChart } from '../components/aiLogs/AiLogsDailyChart'
@@ -270,6 +268,7 @@ export function AiLogsPage({ mode, onToggleMode }: AiLogsPageProps) {
     <PageShell>
       <PageHeader
         title={t.aiLogs.title}
+        subtitle={t.aiLogs.subtitle}
         status={
           <UpdatedStatus
             updatedAt={list.updatedAt == null ? null : new Date(list.updatedAt)}
@@ -277,23 +276,22 @@ export function AiLogsPage({ mode, onToggleMode }: AiLogsPageProps) {
           />
         }
         actions={tab === 'logs' && (
-          <>
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={exporting ? <CircularProgress size={14} /> : <FileDownloadOutlinedIcon />}
-              disabled={exporting || total === 0}
+          <HeaderActionBar>
+            <HeaderAction
+              kind="exportExcel"
+              loading={exporting}
+              disabled={total === 0}
               onClick={() => void handleExport()}
-              sx={{ textTransform: 'none', flexShrink: 0, whiteSpace: 'nowrap' }}
-            >
-              {t.aiLogs.exportExcel}
-            </Button>
+            />
 
-            <RefreshButton
+            <HeaderActionDivider />
+
+            <HeaderAction
+              kind="refresh"
               loading={loading}
               onClick={() => setRefreshKey((k) => k + 1)}
             />
-          </>
+          </HeaderActionBar>
         )}
         bottom={
           <>

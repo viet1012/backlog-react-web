@@ -1,38 +1,11 @@
-import { Tooltip } from '@mui/material'
-
-import RefreshRoundedIcon
-    from '@mui/icons-material/RefreshRounded'
-
-import { useI18n } from '../../i18n/useI18n'
-import { AppButton } from './AppButton'
+import { HeaderAction } from './headerActions'
 
 interface RefreshButtonProps {
     loading?: boolean
     onClick: () => void
 }
 
-export function RefreshButton({
-    loading = false,
-    onClick,
-}: RefreshButtonProps) {
-    const { t } = useI18n()
-
-    return (
-        <Tooltip title={t.common.refresh}>
-            <span>
-                <AppButton
-                    aria-label={t.common.refresh}
-                    variant="outlined"
-                    compact
-                    loading={loading}
-                    onClick={onClick}
-                    icon={
-                        !loading
-                            ? <RefreshRoundedIcon fontSize="small" />
-                            : undefined
-                    }
-                />
-            </span>
-        </Tooltip>
-    )
+/** Shorthand for <HeaderAction kind="refresh" /> (kept for existing pages) */
+export function RefreshButton({ loading = false, onClick }: RefreshButtonProps) {
+    return <HeaderAction kind="refresh" loading={loading} onClick={onClick} />
 }

@@ -1,5 +1,8 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+// Self-hosted Inter (variable weight, all subsets incl. Vietnamese; the
+// browser only downloads the subsets a page actually uses)
+import '@fontsource-variable/inter'
 import './index.css'
 import App from './App.tsx'
 import { I18nProvider } from './i18n/I18nProvider'

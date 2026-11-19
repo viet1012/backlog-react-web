@@ -1,12 +1,9 @@
-import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined'
-import GridOnOutlinedIcon from '@mui/icons-material/GridOnOutlined'
 import InsertChartOutlinedIcon from '@mui/icons-material/InsertChartOutlined'
 import SpaceDashboardOutlinedIcon from '@mui/icons-material/SpaceDashboardOutlined'
 import TableRowsOutlinedIcon from '@mui/icons-material/TableRowsOutlined'
 import {
   Alert,
   Box,
-  Button,
   Divider,
   Stack,
   Tab,
@@ -24,9 +21,9 @@ import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined'
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { FactoryNoRowsOverlay } from '../components/common/FactoryNoRowsOverlay'
+import { HeaderAction, HeaderActionBar, HeaderActionDivider } from '../components/common/headerActions'
 import { PageHeader } from '../components/common/PageHeader'
 import { PageShell } from '../components/common/PageShell'
-import { RefreshButton } from '../components/common/RefreshButton'
 import { UpdatedStatus } from '../components/common/UpdatedStatus'
 import { EvnChartBoard } from '../components/utilityEvn/EvnChartBoard'
 import { EvnCompareChart } from '../components/utilityEvn/EvnCompareChart'
@@ -242,31 +239,25 @@ export function UtilityEvnComparePage({ mode, onToggleMode }: UtilityEvnCompareP
         subtitle={section === 'import' ? t.utilityEvnImport.subtitle : labels.subtitle}
         status={section === 'compare' && <UpdatedStatus updatedAt={lastUpdated} error={Boolean(error)} />}
         actions={section === 'compare' && (
-          <>
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<FileDownloadOutlinedIcon />}
+          <HeaderActionBar>
+            <HeaderAction
+              kind="exportCsv"
+              label={labels.exportCsv}
               disabled={view === 'overview' ? overviewRows.length === 0 : rows.length === 0}
               onClick={handleExport}
-              sx={{ textTransform: 'none', flexShrink: 0, whiteSpace: 'nowrap' }}
-            >
-              {labels.exportCsv}
-            </Button>
+            />
 
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<GridOnOutlinedIcon />}
+            <HeaderAction
+              kind="exportExcel"
+              label={labels.exportExcel}
               disabled={!data}
               onClick={handleExportExcel}
-              sx={{ textTransform: 'none', flexShrink: 0, whiteSpace: 'nowrap' }}
-            >
-              {labels.exportExcel}
-            </Button>
+            />
 
-            <RefreshButton loading={loading} onClick={refresh} />
-          </>
+            <HeaderActionDivider />
+
+            <HeaderAction kind="refresh" loading={loading} onClick={refresh} />
+          </HeaderActionBar>
         )}
         bottom={
           <Stack

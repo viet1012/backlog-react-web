@@ -1,6 +1,8 @@
 import { useTheme } from '@mui/material'
 import { alpha } from '@mui/material/styles'
-import { Bar, BarChart, CartesianGrid, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, CartesianGrid, LabelList, Tooltip, XAxis, YAxis } from 'recharts'
+import { ResponsiveContainer } from '../common/StableResponsiveContainer'
+
 import type { TooltipContentProps } from 'recharts'
 import { useI18n } from '../../i18n/useI18n'
 import {

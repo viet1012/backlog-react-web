@@ -8,11 +8,12 @@ import {
   ComposedChart,
   Line,
   ReferenceLine,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts'
+import { ResponsiveContainer } from '../common/StableResponsiveContainer'
+
 import type { TooltipContentProps } from 'recharts'
 import { useI18n } from '../../i18n/useI18n'
 import {

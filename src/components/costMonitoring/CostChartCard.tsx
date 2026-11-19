@@ -4,11 +4,12 @@ import {
   CartesianGrid,
   Line,
   LineChart,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts'
+import { ResponsiveContainer } from '../common/StableResponsiveContainer'
+
 import type { TooltipContentProps } from 'recharts'
 import type { CostChart } from '../../types/costMonitoring'
 import { CostChartOverlay } from './CostChartOverlay'

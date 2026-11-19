@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type ReactNode,
+  memo,
 } from 'react'
 
 import dayjs from 'dayjs'
@@ -188,7 +189,7 @@ interface StatsColors {
 }
 
 
-export function FacConfirmDailyStats({
+function FacConfirmDailyStatsInner({
   div,
   expD,
   classify,
@@ -1167,3 +1168,6 @@ function DailyTable({
     </Box>
   )
 }
+
+// memo: up to 30 day tiles; only re-render when its own inputs change
+export const FacConfirmDailyStats = memo(FacConfirmDailyStatsInner)

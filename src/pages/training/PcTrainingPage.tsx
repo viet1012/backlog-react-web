@@ -43,7 +43,7 @@ export function PcTrainingPage({
   return (
     <PageShell>
       <PageHeader
-        title="PC TRAINING"
+        title="PC Training"
         subtitle="Production Control onboarding · KVH Factory 2"
         mode={mode}
         onToggleMode={onToggleMode}

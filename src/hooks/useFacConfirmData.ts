@@ -99,6 +99,25 @@ function writeCache(key: string, entry: FacConfirmCacheEntry): void {
   }
 }
 
+// Cùng một khoá cho lúc đọc sẵn (useState) và lúc tải (loadProcessGroups)
+function processGroupsCacheKey(
+  scope: Pick<FacConfirmDataScope, 'div' | 'expD' | 'classify' | 'heatType'> & {
+    excelFilters?: FacConfirmFilterItem[]
+    filters?: FacConfirmFilterItem[]
+  },
+): string {
+  const request = {
+    div: scope.div,
+    expD: scope.expD,
+    classify: scope.classify,
+    heatType: scope.heatType,
+    filters: scope.filters ?? scope.excelFilters ?? [],
+    logicOperator: 'and' as const,
+  }
+
+  return `${PROCESS_GROUPS_CACHE_PREFIX}${JSON.stringify(request)}`
+}
+
 export function clearFacConfirmCache(): void {
   facConfirmCache.clear()
   clearQueryCache(PROCESS_GROUPS_CACHE_PREFIX)
@@ -178,25 +197,6 @@ export function useFacConfirmData({
   excelFilters,
   search,
 }: UseFacConfirmDataParams) {
-  const [rows, setRows] = useState<FacConfirmRow[]>([])
-  const [confirmedProcesses, setConfirmedProcesses] = useState<
-    FacConfirmConfirmedProcess[]
-  >([])
-  const [processGroups, setProcessGroups] = useState<
-    FacConfirmProcessGroupSummary[]
-  >([])
-  const [totalElements, setTotalElements] = useState(0)
-  const [loading, setLoading] = useState(false)
-  const [summaryLoading, setSummaryLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
-
-  // Bộ lọc của dữ liệu đang hiển thị (khác requestKey => đang hiện dữ liệu cũ)
-  const [loaded, setLoaded] = useState<{
-    key: string
-    procGrp: FacConfirmProcessGroup
-  } | null>(null)
-
   const requestKey = useMemo(
     () => JSON.stringify({
       div,
@@ -221,6 +221,36 @@ export function useFacConfirmData({
       search,
     ],
   )
+
+  // Khởi tạo thẳng từ cache (nếu có) ngay ở lần render đầu: vào lại tab thấy
+  // bảng ngay, không chớp "không có dữ liệu" → skeleton → dữ liệu.
+  // Không có cache → loading = true ngay từ đầu (thay vì false rồi mới bật
+  // trong effect, làm frame đầu hiện overlay "không có dữ liệu").
+  const [initialCache] = useState(() => readCache(requestKey))
+  const [initialGroups] = useState(() => readQueryCache<FacConfirmProcessGroupSummary[]>(
+    processGroupsCacheKey({ div, expD, classify, heatType, excelFilters }),
+  ))
+
+  const [rows, setRows] = useState<FacConfirmRow[]>(() => initialCache?.rows ?? [])
+  const [confirmedProcesses, setConfirmedProcesses] = useState<
+    FacConfirmConfirmedProcess[]
+  >(() => initialCache?.confirmedProcesses ?? [])
+  const [processGroups, setProcessGroups] = useState<
+    FacConfirmProcessGroupSummary[]
+  >(() => initialGroups?.data ?? [])
+  const [totalElements, setTotalElements] = useState(() => initialCache?.totalElements ?? 0)
+  const [loading, setLoading] = useState(() => initialCache == null)
+  const [summaryLoading, setSummaryLoading] = useState(() => initialGroups == null)
+  const [error, setError] = useState<string | null>(null)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(
+    () => (initialCache ? new Date(initialCache.storedAt) : null),
+  )
+
+  // Bộ lọc của dữ liệu đang hiển thị (khác requestKey => đang hiện dữ liệu cũ)
+  const [loaded, setLoaded] = useState<{
+    key: string
+    procGrp: FacConfirmProcessGroup
+  } | null>(() => (initialCache ? { key: requestKey, procGrp: initialCache.procGrp } : null))
 
   const tableRequestRef = useRef<AbortController | null>(null)
   const summaryRequestRef = useRef<AbortController | null>(null)
@@ -385,7 +415,7 @@ export function useFacConfirmData({
     }
 
     // Cache như bảng: có => hiện ngay; còn mới => không gọi API
-    const cacheKey = `${PROCESS_GROUPS_CACHE_PREFIX}${JSON.stringify(request)}`
+    const cacheKey = processGroupsCacheKey(request)
     const cached = readQueryCache<FacConfirmProcessGroupSummary[]>(cacheKey)
 
     if (cached) {

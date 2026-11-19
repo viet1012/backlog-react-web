@@ -27,11 +27,7 @@ import {
 } from './GuideInline'
 
 
-/**
- * Đổi version khi nội dung hướng dẫn thay đổi lớn
- * => user sẽ được tự động xem lại 1 lần.
- */
-export const FAC_CONFIRM_GUIDE_KEY = 'guide:fac-confirm:v1'
+export { FAC_CONFIRM_GUIDE_KEY } from './facConfirmGuideKey'
 
 
 export const facConfirmGuideSteps: GuideStep[] = [

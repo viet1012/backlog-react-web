@@ -1,7 +1,9 @@
 import { Typography, useTheme } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import dayjs from 'dayjs'
-import { Bar, BarChart, CartesianGrid, Cell, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, CartesianGrid, Cell, ReferenceLine, Tooltip, XAxis, YAxis } from 'recharts'
+import { ResponsiveContainer } from '../common/StableResponsiveContainer'
+
 import type { TooltipContentProps } from 'recharts'
 import { useI18n } from '../../i18n/useI18n'
 import {

@@ -1,5 +1,10 @@
 :root {
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* Inter is bundled (@fontsource-variable/inter, imported in main.tsx), not
+     assumed to be installed: before this, Windows fell back to Segoe UI. */
+  font-family: 'Inter Variable', Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* cv05: "l" with a tail, cv08: "I" with serifs – tells I / l / 1 apart in
+     part numbers and PO codes */
+  font-feature-settings: 'cv05', 'cv08';
   color: #172033;
   background: #eef3f8;
   font-synthesis: none;

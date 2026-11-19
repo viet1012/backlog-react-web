@@ -1,6 +1,8 @@
 import { useTheme } from '@mui/material'
 import dayjs from 'dayjs'
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis } from 'recharts'
+import { ResponsiveContainer } from '../common/StableResponsiveContainer'
+
 import type { TooltipContentProps } from 'recharts'
 import { useI18n } from '../../i18n/useI18n'
 import {

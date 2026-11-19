@@ -39,6 +39,8 @@ export const en = {
         unknown: 'Unknown',
         exporting: 'Exporting...',
         exportExcel: 'Export Excel',
+        exportCsv: 'Export CSV',
+        print: 'Print',
     },
 
     language: {
@@ -97,6 +99,11 @@ export const en = {
         input: 'Input',
         view: 'View',
         signOut: 'Sign out',
+        settings: 'Settings',
+        settingsLanguage: 'Language',
+        settingsAppearance: 'Appearance',
+        themeLight: 'Light',
+        themeDark: 'Dark',
         fallbackUser: 'Production User',
         fallbackRole: 'Production System',
         comingSoon: 'Coming soon',
@@ -324,7 +331,7 @@ export const en = {
     },
 
     backlog: {
-        title: 'PRODUCTION BACKLOG',
+        title: 'Production backlog',
         subtitle: 'Monitor production status, process flow and delivery progress.',
         searchPlaceholder: 'Search sales order, global code, product...',
         process: 'Process',
@@ -338,7 +345,7 @@ export const en = {
     },
 
     facConfirm: {
-        title: 'FAC CONFIRM',
+        title: 'Fac Confirm',
         subtitle: 'Production process confirmation.',
         saving: 'Saving...',
         confirmChanges: (count: number) => `Confirm Changes (${count})`,
@@ -699,7 +706,7 @@ export const en = {
     },
 
     shipment: {
-        title: 'SHIPMENT FULFILLMENT',
+        title: 'Shipment fulfillment',
         subtitle: 'Monitor shipment fulfillment and delivery readiness.',
         selectDates: 'Please select From Date and To Date',
         fromAfterTo: 'From Date cannot be after To Date',
@@ -801,7 +808,8 @@ export const en = {
     },
 
     cost: {
-        title: 'COST MONITORING (Unit: K$)',
+        title: 'Cost monitoring',
+        subtitle: 'OT, T&SL, RM by division · Unit: K$',
         month: 'Month',
         plTgtBy: 'PL TGT by',
         latestAuto: 'Latest (auto)',
@@ -828,10 +836,6 @@ export const en = {
         forecastWarn: {
             willExceed: (over: string, base: string) => `Forecast to exceed Fluct by +${over} K$ (${base})`,
             over: (pct: string) => `Already over Fluct (Actual ${pct}% of Fluct)`,
-        },
-        banner: {
-            over: (count: number) => `${count} ${count === 1 ? 'chart is' : 'charts are'} already over Fluct`,
-            willExceed: (count: number) => `${count} ${count === 1 ? 'chart is' : 'charts are'} forecast to exceed Fluct`,
         },
         monthsLoadFailed: 'Unable to load Cost Monitoring months',
         chartLoadFailed: 'Unable to load Cost Monitoring chart',
@@ -1693,6 +1697,7 @@ export const en = {
 
     aiLogs: {
         title: 'AI Logs',
+        subtitle: 'Questions and answers handled by the AI assistant',
         filters: {
             from: 'From',
             to: 'To',

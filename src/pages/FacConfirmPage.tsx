@@ -1,4 +1,6 @@
 import {
+  Suspense,
+  lazy,
   useCallback,
   useEffect,
   useMemo,
@@ -6,14 +8,10 @@ import {
   useState,
 } from 'react'
 
-import DownloadRoundedIcon
-  from '@mui/icons-material/DownloadRounded'
-
 import {
   Alert,
   Box,
   Button,
-  Stack,
 } from '@mui/material'
 
 import type {
@@ -43,21 +41,23 @@ import {
 } from '../components/facConfirm/FacConfirmDailyStats'
 
 import {
-  GuideTour,
-} from '../components/facConfirm/guide/GuideTour'
-
-import {
   useGuideTour,
 } from '../components/facConfirm/guide/useGuideTour'
 
 import {
   FAC_CONFIRM_GUIDE_KEY,
-  facConfirmGuideSteps,
-} from '../components/facConfirm/guide/facConfirmGuideSteps'
+} from '../components/facConfirm/guide/facConfirmGuideKey'
+
+// Tour (engine + steps + demos ~1.1k lines) loads on first open only
+const FacConfirmGuideTour = lazy(
+  () => import('../components/facConfirm/guide/FacConfirmGuideTour'),
+)
 
 import {
-  GuideButton,
-} from '../components/common/GuideButton'
+  HeaderAction,
+  HeaderActionBar,
+  HeaderActionDivider,
+} from '../components/common/headerActions'
 
 import {
   PageHeader,
@@ -66,10 +66,6 @@ import {
 import {
   PageShell,
 } from '../components/common/PageShell'
-
-import {
-  RefreshButton,
-} from '../components/common/RefreshButton'
 
 import {
   UpdatedStatus,
@@ -232,12 +228,27 @@ export function FacConfirmPage({
       FAC_CONFIRM_GUIDE_KEY,
     )
 
+  const [
+    guideMounted,
+    setGuideMounted,
+  ] =
+    useState(guide.open)
+
+  if (guide.open && !guideMounted) {
+    setGuideMounted(true)
+  }
+
 
   const preferences =
     useGridPreferences(
       'fac-confirm',
       100,
     )
+
+  const {
+    pageSize: preferredPageSize,
+    setPageSize: setPreferredPageSize,
+  } = preferences
 
 
   const [
@@ -647,17 +658,20 @@ export function FacConfirmPage({
 
         if (
           model.pageSize !==
-          preferences.pageSize
+          preferredPageSize
         ) {
 
-          preferences.setPageSize(
+          setPreferredPageSize(
             model.pageSize,
           )
         }
 
       },
+      // Not `preferences`: the hook returns a new object every render, which
+      // made this handler (and the memoized table) change on every render
       [
-        preferences,
+        preferredPageSize,
+        setPreferredPageSize,
       ],
     )
 
@@ -888,54 +902,29 @@ export function FacConfirmPage({
         }
 
         actions={
-          <Stack
-            direction="row"
-            spacing={1}
-            sx={{ alignItems: 'center' }}
-          >
-            <Button
-              data-tour="fac-export"
-              variant="outlined"
-              size="small"
-              startIcon={
-                <DownloadRoundedIcon />
-              }
-              disabled={
-                exporting
-                || exportColumns.length === 0
-              }
-              onClick={
-                handleExportExcel
-              }
-            >
-              {
-                exporting
-                  ? t.common.exporting
-                  : t.common.exportExcel
-              }
-            </Button>
-
-            <Box
-              component="span"
-              data-tour="fac-refresh"
-            >
-              <RefreshButton
-                loading={
-                  loading
-                }
-
-                onClick={
-                  handleRefreshAll
-                }
-              />
-            </Box>
-
-            <GuideButton
-              onClick={
-                guide.start
-              }
+          <HeaderActionBar>
+            <HeaderAction
+              kind="exportExcel"
+              tour="fac-export"
+              loading={exporting}
+              disabled={exportColumns.length === 0}
+              onClick={handleExportExcel}
             />
-          </Stack>
+
+            <HeaderActionDivider />
+
+            <HeaderAction
+              kind="refresh"
+              tour="fac-refresh"
+              loading={loading}
+              onClick={handleRefreshAll}
+            />
+
+            <HeaderAction
+              kind="guide"
+              onClick={guide.start}
+            />
+          </HeaderActionBar>
         }
 
         mode={
@@ -1093,11 +1082,15 @@ export function FacConfirmPage({
       />
 
 
-      <GuideTour
-        open={guide.open}
-        steps={facConfirmGuideSteps}
-        onClose={guide.close}
-      />
+      {/* Mounted from the first open on (kept afterwards so closing can animate) */}
+      {guideMounted && (
+        <Suspense fallback={null}>
+          <FacConfirmGuideTour
+            open={guide.open}
+            onClose={guide.close}
+          />
+        </Suspense>
+      )}
 
     </PageShell>
   )

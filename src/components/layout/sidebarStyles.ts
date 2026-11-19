@@ -11,18 +11,50 @@ import type {
 // TRANSITIONS
 // =========================================================
 
-export const sidebarTransition =
-    'width 180ms cubic-bezier(0.2, 0, 0, 1)'
+export const SIDEBAR_WIDTH = 238
+export const SIDEBAR_COLLAPSED_WIDTH = 64
+export const SIDEBAR_DURATION = 260
+export const SIDEBAR_EASE = 'cubic-bezier(0.2, 0, 0, 1)'
 
-export const labelTransition =
-    'opacity 140ms ease, transform 140ms ease'
+export const sidebarTransition =
+    `width ${SIDEBAR_DURATION}ms ${SIDEBAR_EASE}`
+
+/**
+ * Labels leave fast when collapsing, and come back slightly after the
+ * panel starts growing when expanding, so text never squeezes.
+ */
+export function labelTransitionFor(collapsed: boolean) {
+    return collapsed
+        ? 'opacity 90ms ease, transform 120ms ease'
+        : `opacity 180ms ease 90ms, transform 240ms ${SIDEBAR_EASE} 60ms`
+}
 
 export const iconTransition =
     'transform 160ms ease'
 
 
 // =========================================================
-// SIDEBAR ROOT
+// SIDEBAR SLOT
+// The in-flow box that reserves space next to <main>. Its width changes
+// once (no transition) so the page lays out a single time; the visual
+// panel inside animates on its own and <main> slides with a transform.
+// =========================================================
+
+export function getSidebarSlotSx(
+    collapsed: boolean,
+): SystemStyleObject<Theme> {
+    return {
+        position: 'relative',
+        zIndex: 10,
+        flexShrink: 0,
+        width: collapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH,
+        height: '100vh',
+    }
+}
+
+
+// =========================================================
+// SIDEBAR PANEL
 // =========================================================
 
 export function getSidebarSx(
@@ -33,17 +65,21 @@ export function getSidebarSx(
     return {
         width:
             collapsed
-                ? 64
-                : 238,
+                ? SIDEBAR_COLLAPSED_WIDTH
+                : SIDEBAR_WIDTH,
 
         height:
-            '100vh',
-
-        flexShrink:
-            0,
+            '100%',
 
         position:
-            'relative',
+            'absolute',
+
+        top: 0,
+        left: 0,
+        bottom: 0,
+
+        willChange:
+            'width',
 
         display:
             'flex',
@@ -199,13 +235,12 @@ export function getSidebarSx(
             pointerEvents:
                 'none',
 
+            // Wide soft gradient instead of filter: blur() – a blur is
+            // re-rasterised on every frame while the panel width animates
             background:
                 theme.palette.mode === 'dark'
-                    ? 'radial-gradient(circle, rgba(99,102,241,0.10), transparent 68%)'
-                    : 'radial-gradient(circle, rgba(99,102,241,0.08), transparent 68%)',
-
-            filter:
-                'blur(18px)',
+                    ? 'radial-gradient(closest-side, rgba(99,102,241,0.10), transparent)'
+                    : 'radial-gradient(closest-side, rgba(99,102,241,0.08), transparent)',
         },
 
         '& > *': {
@@ -227,7 +262,98 @@ export function getSidebarSx(
         },
 
         zIndex:
-            10,
+            1,
+    }
+}
+
+
+// =========================================================
+// EDGE RAIL (collapse / expand by clicking the sidebar border)
+// A thin hit zone just outside the panel edge. Idle it is invisible; on
+// hover a short accent line grows along the border. Lives in the slot
+// (outside the clipped panel) and rides the edge with a transform.
+// =========================================================
+
+const RAIL_HIT = 8
+
+export function getEdgeRailSx(
+    theme: Theme,
+    collapsed: boolean,
+): SystemStyleObject<Theme> {
+    const primary = theme.palette.primary.main
+    const x = (collapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH) - 2
+
+    return {
+        position: 'absolute',
+        top: 0,
+        bottom: 0,
+        left: 0,
+        zIndex: 2,
+        width: RAIL_HIT,
+        p: 0,
+        border: 0,
+        bgcolor: 'transparent',
+        cursor: collapsed ? 'e-resize' : 'w-resize',
+        transform: `translateX(${x}px)`,
+        transition: `transform ${SIDEBAR_DURATION}ms ${SIDEBAR_EASE}`,
+
+        // Accent line on the border itself
+        '&::after': {
+            content: '""',
+            position: 'absolute',
+            top: '50%',
+            left: 1,
+            width: 2,
+            height: '100%',
+            borderRadius: 2,
+            background: `linear-gradient(180deg, transparent, ${primary} 30%, #38bdf8 70%, transparent)`,
+            boxShadow: `0 0 10px ${primary}`,
+            opacity: 0,
+            transform: 'translateY(-50%) scaleY(0.35)',
+            transition: 'opacity 160ms ease, transform 260ms cubic-bezier(0.2, 0, 0, 1)',
+        },
+
+        '&:hover::after': {
+            opacity: 0.9,
+            transform: 'translateY(-50%) scaleY(1)',
+            transitionDelay: '80ms',
+        },
+
+        '@media (prefers-reduced-motion: reduce)': {
+            transition: 'none',
+            '&::after': { transition: 'none' },
+        },
+    }
+}
+
+
+// =========================================================
+// HEADER TOGGLE BUTTON
+// =========================================================
+
+export function getToggleButtonSx(
+    theme: Theme,
+): SystemStyleObject<Theme> {
+    const dark = theme.palette.mode === 'dark'
+    const primary = theme.palette.primary.main
+
+    return {
+        width: 30,
+        height: 30,
+        flexShrink: 0,
+        borderRadius: '9px',
+        color: 'text.secondary',
+        transition: 'color 160ms ease, background-color 160ms ease, box-shadow 160ms ease',
+
+        '&:hover, &.Mui-focusVisible': {
+            color: primary,
+            bgcolor: dark ? 'rgba(96,165,250,0.12)' : 'rgba(37,99,235,0.08)',
+            boxShadow: `inset 0 0 0 1px ${dark ? 'rgba(96,165,250,0.28)' : 'rgba(37,99,235,0.18)'}`,
+        },
+
+        '&:active': {
+            bgcolor: dark ? 'rgba(96,165,250,0.18)' : 'rgba(37,99,235,0.12)',
+        },
     }
 }
 
@@ -325,6 +451,9 @@ export function getGroupHeaderSx(
     return {
         minHeight: collapsed ? 0 : 30,
         height: collapsed ? 0 : 30,
+        // Fixed expanded width: clipped by the panel instead of reflowing
+        width: SIDEBAR_WIDTH - 16,
+        flexShrink: 0,
         mx: 1,
         mb: 0.25,
         px: 1,
@@ -336,7 +465,7 @@ export function getGroupHeaderSx(
         overflow: 'hidden',
         pointerEvents: collapsed ? 'none' : 'auto',
         // Height follows the sidebar width so items below glide instead of jumping
-        transition: `${labelTransition}, height 180ms cubic-bezier(0.2, 0, 0, 1), min-height 180ms cubic-bezier(0.2, 0, 0, 1), color 160ms ease, background-color 160ms ease`,
+        transition: `${labelTransitionFor(collapsed)}, height ${SIDEBAR_DURATION}ms ${SIDEBAR_EASE}, min-height ${SIDEBAR_DURATION}ms ${SIDEBAR_EASE}, color 160ms ease, background-color 160ms ease`,
 
         '&:hover': {
             color: 'text.primary',
@@ -414,6 +543,11 @@ export function getFooterSx(
     return {
         position: 'relative',
         overflow: 'hidden',
+        // Expanded: fixed width so the name does not re-wrap (and the footer
+        // height does not jump) while the panel grows
+        width: collapsed ? 'auto' : SIDEBAR_WIDTH - 16,
+        flexShrink: 0,
+        boxSizing: 'border-box',
         mx: 1,
         mb: 1,
         px: collapsed ? 0.5 : 1.1,

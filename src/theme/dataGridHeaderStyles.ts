@@ -445,16 +445,12 @@ export const dataGridHeaderSx =
       // =====================================================
 
       '& .MuiDataGrid-cell--editing': {
+        // Solid fill instead of a second blur nested inside the grid's own
+        // blur: same look over the grid body, no extra GPU layer per edit
         backgroundColor:
           isDark
-            ? `${alpha('#111827', 0.82)} !important`
-            : `${alpha('#FFFFFF', 0.88)} !important`,
-
-        backdropFilter:
-          'blur(18px)',
-
-        WebkitBackdropFilter:
-          'blur(18px)',
+            ? '#111827 !important'
+            : '#FFFFFF !important',
 
         boxShadow:
           `inset 0 0 0 1.5px ${alpha(accent, 0.70)} !important`,

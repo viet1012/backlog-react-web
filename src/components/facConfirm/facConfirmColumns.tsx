@@ -21,10 +21,6 @@ import {
 } from '../../utils/facConfirmDateTime'
 
 import {
-    Box,
-} from '@mui/material'
-
-import {
     FacConfirmDateTimeEditCell,
 } from './FacConfirmDateTimeEditCell'
 
@@ -134,20 +130,12 @@ const facConfirmColumnDefinitions:
                     return '-'
                 }
 
+                // Plain span + static style object: an MUI Box with an sx
+                // function ran Emotion for every visible cell on every render
                 return (
-                    <Box
-                        sx={() => ({
-                            width: '100%',
-
-                            fontSize: 12,
-                            fontWeight: 500,
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                        })}
-                    >
+                    <span style={NOTE_CELL_STYLE}>
                         {params.value}
-                    </Box>
+                    </span>
                 )
             },
         },
@@ -174,18 +162,12 @@ const facConfirmColumnDefinitions:
             headerName: 'To CLG',
             width: DATA_GRID_COLUMN_WIDTHS.date,
 
+            // valueFormatter only (the renderCell doing the same formatting
+            // sent every cell through the slower custom-render path)
             valueFormatter: (value) =>
-                formatFacConfirmDateTime(value),
-
-            renderCell: (params) => {
-                if (!params.value) {
-                    return ''
-                }
-
-                return formatFacConfirmDateTime(
-                    params.value,
-                )
-            },
+                value
+                    ? formatFacConfirmDateTime(value)
+                    : '',
 
             renderEditCell:
                 renderDateTimeEditCell,
@@ -226,6 +208,17 @@ const headerKeys: Partial<Record<string, keyof Messages['columns']>> = {
     heatFinish: 'toClg',
     toPk: 'toPk',
 }
+
+
+const NOTE_CELL_STYLE = {
+    display: 'block',
+    width: '100%',
+    fontSize: 12,
+    fontWeight: 500,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+} as const
 
 export function getFacConfirmColumns(
     activeProcess:

@@ -72,6 +72,18 @@ function getCellFromPoint(
   }
 }
 
+
+// pointermove fires many times per cell; a new Set every time changed
+// getFillClassName and made the grid re-class every visible cell even when
+// the range had not moved. Returning the previous Set lets React bail out.
+function keepIfSame<T>(next: Set<T>) {
+  return (prev: Set<T>) => (
+    prev.size === next.size && [...next].every((value) => prev.has(value))
+      ? prev
+      : next
+  )
+}
+
 export function useFacConfirmFillHandle({
   activeProcess,
   apiRef,
@@ -146,7 +158,7 @@ export function useFacConfirmFillHandle({
     const start = Math.min(sourceIndex, targetIndex)
     const end = Math.max(sourceIndex, targetIndex)
     targetIdRef.current = targetId
-    setRangeIds(new Set(ids.slice(start, end + 1)))
+    setRangeIds(keepIfSame(new Set(ids.slice(start, end + 1))))
   }, [getPageRowIds])
 
   // Chỉ trả các ô dòng này được sửa; ô bị khóa ở giữa dải tự bỏ qua.
@@ -269,7 +281,7 @@ export function useFacConfirmFillHandle({
         updateVerticalRange(target.id)
       } else {
         targetIdRef.current = null
-        setRangeIds(new Set([drag.id]))
+        setRangeIds(keepIfSame(new Set([drag.id])))
       }
       return
     }
@@ -280,10 +292,10 @@ export function useFacConfirmFillHandle({
 
     if (fields) {
       targetFieldRef.current = target?.field as FacConfirmEditableField
-      setRangeFields(new Set(fields))
+      setRangeFields(keepIfSame(new Set<string>(fields)))
     } else {
       targetFieldRef.current = null
-      setRangeFields(new Set([drag.field]))
+      setRangeFields(keepIfSame(new Set<string>([drag.field])))
       targetIdRef.current = null
     }
   }, [getHorizontalRange, updateVerticalRange])

@@ -8,11 +8,11 @@ import {
   ComposedChart,
   Line,
   ReferenceLine,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts'
+import { ResponsiveContainer } from '../common/StableResponsiveContainer'
 import type { TooltipContentProps } from 'recharts'
 import type { CostDetailDailyRow } from '../../types/costMonitoring'
 import { TABULAR_NUMS, seriesColorOf } from './costChartConfig'

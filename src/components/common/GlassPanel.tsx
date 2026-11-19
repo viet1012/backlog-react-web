@@ -13,6 +13,8 @@ export function GlassPanel({ children, sx }: GlassPanelProps) {
   return (
     <Paper
       elevation={0}
+      // marker for MainLayout: blur is paused while the page slides
+      className="app-glass"
       sx={[
         (theme) => ({
           ...glassPanelSx(theme),

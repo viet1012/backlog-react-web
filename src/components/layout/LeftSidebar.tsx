@@ -26,8 +26,6 @@ import {
 import { alpha, keyframes } from '@mui/material/styles'
 
 import {
-  ChevronLeftRounded,
-  ChevronRightRounded,
   ConstructionRounded,
   ExpandMoreRounded,
   LightModeRounded,
@@ -58,14 +56,20 @@ import {
 
 import {
   getBrandCardSx,
+  getEdgeRailSx,
+  getToggleButtonSx,
   getFooterSx,
   getGroupHeaderSx,
   getMenuItemSx,
+  getSidebarSlotSx,
   getSidebarSx,
   hazardStripe,
   iconTransition,
-  labelTransition,
+  labelTransitionFor,
+  SIDEBAR_COLLAPSED_WIDTH,
+  SIDEBAR_WIDTH,
 } from './sidebarStyles'
+import { loadPreference, savePreference } from '../../utils/uiPreferences'
 import {
   getAuthSession,
   getAuthenticatedUsername,
@@ -76,9 +80,11 @@ import {
 import { randomAvatarSeed, readAvatarSeed, writeAvatarSeed } from '../shift/workerCharacter'
 import { FactoryAvatar } from './FactoryAvatar'
 import { LogoutConfirmDialog } from './LogoutConfirmDialog'
+import { SidebarSettingsMenu } from './SidebarSettingsMenu'
+import { SidebarToggleIcon } from './SidebarToggleIcon'
 import { QuickJumpDialog, type QuickJumpItem } from './QuickJumpDialog'
 import { useI18n } from '../../i18n/useI18n'
-import { preloadRoute } from '../../pages/lazyPages'
+import { preloadRoute, preloadRoutesWhenIdle } from '../../pages/lazyPages'
 import { setNavPending } from './navPending'
 import { onOpenQuickJump } from './quickJump'
 import { useDayPeriod } from '../shift/useDayPeriod'
@@ -93,6 +99,16 @@ const UPCOMING = 'upcoming'
 const ledPulse = keyframes`
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.45; transform: scale(0.8); }
+`
+
+const fadeIn = keyframes`
+  from { opacity: 0; }
+  to { opacity: 1; }
+`
+
+const logoIn = keyframes`
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: none; }
 `
 
 const onlinePing = keyframes`
@@ -126,8 +142,8 @@ function isReady(item: MenuItemConfig) {
 }
 
 const logoutButtonSx = (theme: Theme) => ({
-  width: 32,
-  height: 32,
+  width: 28,
+  height: 28,
   flexShrink: 0,
   color: 'text.secondary',
   bgcolor: theme.palette.mode === 'dark'
@@ -150,7 +166,32 @@ const logoutButtonSx = (theme: Theme) => ({
 // SIDEBAR
 // =========================================================
 
-export function LeftSidebar() {
+const COLLAPSED_KEY = 'sidebarCollapsed'
+
+// Expanded menu item = panel − list padding (2 × 2.8px) − item margin (2 × 7.2px) = 218px.
+// Label starts at 34px and leaves 22px for the active LED.
+const ITEM_LABEL_WIDTH = SIDEBAR_WIDTH - 20 - 34 - 22
+
+// Pieces that keep their expanded width while the panel animates (the panel
+// clips them), so text never reflows mid-animation.
+const BRAND_WIDTH = SIDEBAR_WIDTH
+const SEARCH_WIDTH = SIDEBAR_WIDTH - 20
+
+function isTypingTarget(target: EventTarget | null) {
+  return target instanceof HTMLElement
+    && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
+}
+
+interface LeftSidebarProps {
+  onToggleMode: () => void
+  /**
+   * Called synchronously when the reserved width changes (px, + = wider),
+   * so the layout can slide <main> in the same frame.
+   */
+  onWidthChange?: (delta: number) => void
+}
+
+export function LeftSidebar({ onToggleMode, onWidthChange }: LeftSidebarProps) {
   const location = useLocation()
   const navigate = useNavigate()
   const theme = useTheme()
@@ -166,7 +207,23 @@ export function LeftSidebar() {
 
   const [logoutOpen, setLogoutOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsedState] = useState(() => loadPreference(COLLAPSED_KEY) === true)
+  const collapsedRef = useRef(collapsed)
+  const onWidthChangeRef = useRef(onWidthChange)
+  onWidthChangeRef.current = onWidthChange
+
+  function setCollapsed(next: boolean) {
+    if (next === collapsedRef.current) return
+    collapsedRef.current = next
+    setCollapsedState(next)
+    setFlyout(null)
+    savePreference(COLLAPSED_KEY, next)
+    const delta = SIDEBAR_WIDTH - SIDEBAR_COLLAPSED_WIDTH
+    onWidthChangeRef.current?.(next ? -delta : delta)
+  }
+
+  const toggleCollapsedRef = useRef(() => {})
+  toggleCollapsedRef.current = () => setCollapsed(!collapsedRef.current)
 
   function handleLogout() {
     setLogoutOpen(false)
@@ -203,6 +260,14 @@ export function LeftSidebar() {
 
   const activePath = activeEntry?.item.path
 
+  // After sign-in: fetch the code of every page this user can open while the
+  // browser is idle → first visits no longer wait for a chunk download
+  const readyPathsKey = groups.flatMap((group) => group.items.map((item) => item.path)).join('|')
+  useEffect(
+    () => preloadRoutesWhenIdle(readyPathsKey.split('|')),
+    [readyPathsKey],
+  )
+
   // =======================================================
   // GROUP STATE
   // =======================================================
@@ -238,9 +303,15 @@ export function LeftSidebar() {
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+      if (!(event.ctrlKey || event.metaKey) || event.shiftKey || event.altKey) return
+      const key = event.key.toLowerCase()
+
+      if (key === 'k') {
         event.preventDefault()
         setSearchOpen(true)
+      } else if (key === 'b' && !isTypingTarget(event.target)) {
+        event.preventDefault()
+        toggleCollapsedRef.current()
       }
     }
 
@@ -411,7 +482,9 @@ export function LeftSidebar() {
             sx={{
               position: 'absolute',
               left: 34,
-              right: 22,
+              // Fixed width (expanded item width − icon − LED): the panel clips
+              // the label while it animates instead of re-ellipsizing it per frame
+              width: ITEM_LABEL_WIDTH,
               overflow: 'hidden',
               opacity: collapsed ? 0 : 1,
               pointerEvents: collapsed ? 'none' : 'auto',
@@ -598,15 +671,84 @@ export function LeftSidebar() {
     </Tooltip>
   )
 
+  const settingsButton = (
+    <SidebarSettingsMenu
+      mode={mode}
+      onToggleMode={onToggleMode}
+      collapsed={collapsed}
+      buttonSx={logoutButtonSx}
+    />
+  )
+
   // =======================================================
   // RENDER
   // =======================================================
 
-  return (
+  const labelTransition = labelTransitionFor(collapsed)
+  // Tooltip: action + shortcut as key caps
+  const toggleTitle = (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+      <span>{collapsed ? t.sidebar.expand : t.sidebar.collapse}</span>
+      <Box sx={{ display: 'flex', gap: 0.3 }}>
+        {['Ctrl', 'B'].map((key) => (
+          <Box
+            key={key}
+            component="kbd"
+            sx={{
+              px: 0.5,
+              minWidth: 16,
+              textAlign: 'center',
+              borderRadius: '4px',
+              border: '1px solid rgba(255,255,255,0.28)',
+              borderBottomWidth: 2,
+              bgcolor: 'rgba(255,255,255,0.1)',
+              fontFamily: monoFont,
+              fontSize: 10,
+              lineHeight: 1.5,
+            }}
+          >
+            {key}
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  )
+
+  // Logo tile: part of the brand card when expanded, the whole header when
+  // collapsed (stays in place, so nothing jumps while the panel shrinks).
+  const logoTile = (
     <Box
-      component="aside"
-      sx={(th) => getSidebarSx(th, collapsed)}
+      sx={{
+        width: 36,
+        height: 36,
+        flexShrink: 0,
+        display: 'grid',
+        placeItems: 'center',
+        borderRadius: '10px',
+        overflow: 'hidden',
+        bgcolor: dark ? 'rgba(255,255,255,0.08)' : '#EEF4FF',
+        border: '1px solid',
+        borderColor: dark ? 'rgba(132,207,255,0.22)' : 'rgba(37,99,235,0.14)',
+        boxShadow: '0 4px 12px rgba(37,99,235,0.14)',
+      }}
     >
+      <Box
+        component="img"
+        src={logo}
+        alt="F2"
+        sx={{
+          width: 30,
+          height: 30,
+          objectFit: 'contain',
+          filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.18))',
+        }}
+      />
+    </Box>
+  )
+
+  return (
+    <Box component="aside" sx={getSidebarSlotSx(collapsed)}>
+    <Box sx={(th) => getSidebarSx(th, collapsed)}>
 
       {/* ===================================================
           HEADER
@@ -614,59 +756,90 @@ export function LeftSidebar() {
       <Box
         sx={{
           position: 'relative',
-          height: collapsed ? 52 : 68,
-          minHeight: collapsed ? 52 : 68,
+          height: 68,
+          minHeight: 68,
           display: 'flex',
           alignItems: 'center',
+          justifyContent: 'center',
           flexShrink: 0,
-          transition: 'height 180ms cubic-bezier(0.2, 0, 0, 1), min-height 180ms cubic-bezier(0.2, 0, 0, 1)',
         }}
       >
-        {/* EXPANDED */}
+        {/* COLLAPSED: the logo is the expand button – on hover it turns
+            into the side-panel glyph (logo fades, glyph fades in) */}
+        {collapsed ? (
+          <Tooltip title={toggleTitle} placement="right" arrow>
+            <ButtonBase
+              className="sidebar-toggle"
+              aria-label={t.sidebar.expand}
+              aria-expanded={false}
+              onClick={() => setCollapsed(false)}
+              sx={(th) => ({
+                position: 'relative',
+                borderRadius: '10px',
+                animation: reduceMotion ? 'none' : `${logoIn} 220ms ease-out 60ms backwards`,
+
+                '& .logo-face, & .toggle-face': {
+                  transition: 'opacity 160ms ease, transform 200ms cubic-bezier(0.2, 0, 0, 1)',
+                },
+                '& .toggle-face': {
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'grid',
+                  placeItems: 'center',
+                  borderRadius: '10px',
+                  color: 'primary.main',
+                  bgcolor: th.palette.mode === 'dark' ? 'rgba(30,58,95,0.96)' : '#EEF4FF',
+                  border: '1px solid',
+                  borderColor: th.palette.mode === 'dark' ? 'rgba(96,165,250,0.4)' : 'rgba(37,99,235,0.28)',
+                  opacity: 0,
+                  transform: 'scale(0.8)',
+                },
+                '&:hover, &.Mui-focusVisible': {
+                  '& .logo-face': { opacity: 0, transform: 'scale(0.85)' },
+                  '& .toggle-face': { opacity: 1, transform: 'none' },
+                },
+                '&.Mui-focusVisible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 2 },
+              })}
+            >
+              <Box className="logo-face">{logoTile}</Box>
+              <Box className="toggle-face" aria-hidden>
+                <SidebarToggleIcon open={false} size={20} />
+              </Box>
+            </ButtonBase>
+          </Tooltip>
+        ) : null}
+
+        {/* EXPANDED brand card */}
         <Box
+          aria-hidden={collapsed}
           sx={{
             position: 'absolute',
-            inset: 0,
+            top: 0,
+            bottom: 0,
+            left: 0,
+            width: BRAND_WIDTH,
             display: 'flex',
             alignItems: 'center',
             px: 1.25,
             opacity: collapsed ? 0 : 1,
-            transform: collapsed ? 'translateX(-6px)' : 'translateX(0)',
             visibility: collapsed ? 'hidden' : 'visible',
             pointerEvents: collapsed ? 'none' : 'auto',
-            transition: labelTransition,
+            // opacity only: the logo inside must not slide
+            transition: collapsed ? 'opacity 90ms ease, visibility 0s 90ms' : 'opacity 160ms ease',
           }}
         >
-          <Box sx={(th) => getBrandCardSx(th)}>
+          <Box sx={(th) => ({ ...getBrandCardSx(th), pr: 0.6 })}>
+            {logoTile}
+
             <Box
               sx={{
-                width: 36,
-                height: 36,
-                flexShrink: 0,
-                display: 'grid',
-                placeItems: 'center',
-                borderRadius: '10px',
-                overflow: 'hidden',
-                bgcolor: dark ? 'rgba(255,255,255,0.08)' : '#EEF4FF',
-                border: '1px solid',
-                borderColor: dark ? 'rgba(132,207,255,0.22)' : 'rgba(37,99,235,0.14)',
-                boxShadow: '0 4px 12px rgba(37,99,235,0.14)',
+                flex: 1,
+                minWidth: 0,
+                opacity: collapsed ? 0 : 1,
+                transform: collapsed ? 'translateX(-6px)' : 'none',
+                transition: labelTransition,
               }}
             >
-              <Box
-                component="img"
-                src={logo}
-                alt="F2"
-                sx={{
-                  width: 30,
-                  height: 30,
-                  objectFit: 'contain',
-                  filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.18))',
-                }}
-              />
-            </Box>
-
-            <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 800, lineHeight: 1.15, color: 'text.primary' }}>
                 {t.sidebar.appName}
               </Typography>
@@ -674,70 +847,27 @@ export function LeftSidebar() {
                 {t.sidebar.appTagline}
               </Typography>
             </Box>
+
+            <Tooltip title={toggleTitle} placement="right" arrow>
+              <ButtonBase
+                className="sidebar-toggle"
+                aria-label={t.sidebar.collapse}
+                aria-expanded
+                tabIndex={collapsed ? -1 : 0}
+                onClick={() => setCollapsed(true)}
+                sx={(th) => getToggleButtonSx(th)}
+              >
+                <SidebarToggleIcon open />
+              </ButtonBase>
+            </Tooltip>
           </Box>
-
-          <Tooltip title={t.sidebar.collapse} placement="right" arrow>
-            <IconButton
-              size="small"
-              onClick={() => setCollapsed(true)}
-              sx={{
-                position: 'absolute',
-                right: 8,
-                width: 26,
-                height: 26,
-                color: 'text.secondary',
-                bgcolor: 'action.hover',
-                border: '1px solid',
-                borderColor: 'divider',
-                '&:hover': { color: 'primary.main', bgcolor: 'action.selected' },
-              }}
-            >
-              <ChevronLeftRounded sx={{ fontSize: 18 }} />
-            </IconButton>
-          </Tooltip>
-        </Box>
-
-        {/* COLLAPSED */}
-        <Box
-          sx={{
-            position: 'absolute',
-            inset: 0,
-            display: 'grid',
-            placeItems: 'center',
-            opacity: collapsed ? 1 : 0,
-            transform: collapsed ? 'scale(1)' : 'scale(0.94)',
-            visibility: collapsed ? 'visible' : 'hidden',
-            pointerEvents: collapsed ? 'auto' : 'none',
-            transition: labelTransition,
-          }}
-        >
-          <Tooltip title={t.sidebar.expand} placement="right" arrow>
-            <IconButton
-              onClick={() => setCollapsed(false)}
-              sx={{
-                width: 34,
-                height: 34,
-                color: 'primary.main',
-                bgcolor: dark ? 'rgba(59,130,246,.12)' : 'rgba(37,99,235,.08)',
-                border: '1px solid',
-                borderColor: dark ? 'rgba(96,165,250,.22)' : 'rgba(37,99,235,.14)',
-                transition: 'background-color 150ms ease, transform 150ms ease',
-                '&:hover': {
-                  bgcolor: dark ? 'rgba(59,130,246,.20)' : 'rgba(37,99,235,.14)',
-                  transform: 'scale(1.05)',
-                },
-              }}
-            >
-              <ChevronRightRounded sx={{ fontSize: 21 }} />
-            </IconButton>
-          </Tooltip>
         </Box>
       </Box>
 
       {/* ===================================================
           QUICK JUMP TRIGGER
       =================================================== */}
-      <Box sx={{ px: collapsed ? 0 : 1.25, pb: 1, display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
+      <Box sx={{ px: collapsed ? 0 : 1.25, pb: 1, display: 'flex', justifyContent: collapsed ? 'center' : 'flex-start', flexShrink: 0 }}>
         {collapsed ? (
           <Tooltip title={t.sidebar.searchAria} placement="right" arrow>
             <IconButton
@@ -761,8 +891,10 @@ export function LeftSidebar() {
             aria-label={t.sidebar.searchAria}
             onClick={() => setSearchOpen(true)}
             sx={{
-              width: '100%',
+              width: SEARCH_WIDTH,
+              flexShrink: 0,
               height: 34,
+              animation: reduceMotion ? 'none' : `${fadeIn} 180ms ease 80ms backwards`,
               px: 1.1,
               gap: 0.9,
               justifyContent: 'flex-start',
@@ -1057,6 +1189,7 @@ export function LeftSidebar() {
             >
               {avatar}
             </Tooltip>
+            {settingsButton}
             {logoutButton}
           </>
         ) : (
@@ -1126,7 +1259,11 @@ export function LeftSidebar() {
               </Box>
             </Box>
 
-            {logoutButton}
+            {/* Settings above sign-out: keeps the badge one column narrower */}
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, flexShrink: 0 }}>
+              {settingsButton}
+              {logoutButton}
+            </Box>
           </>
         )}
 
@@ -1154,6 +1291,15 @@ export function LeftSidebar() {
           }}
         />
       )}
+    </Box>
+
+    {/* Edge handle: outside the clipped panel, rides its right edge */}
+    {/* Pointer-only shortcut (keyboard users have the header button / Ctrl+B) */}
+    <Box
+      aria-hidden
+      onClick={() => setCollapsed(!collapsed)}
+      sx={(th) => getEdgeRailSx(th, collapsed)}
+    />
     </Box>
   )
 }

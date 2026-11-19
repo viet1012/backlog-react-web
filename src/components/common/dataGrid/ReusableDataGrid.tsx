@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
 
 import {
   DataGrid,
@@ -28,7 +28,26 @@ import {
 } from '../../../theme/dataGridHeaderStyles'
 import { FactoryNoRowsOverlay } from '../FactoryNoRowsOverlay'
 import { appScrollbarSx } from '../../../theme/scrollbarStyle'
+import type { Theme } from '@mui/material/styles'
 
+
+// Module-level (stable) sx: an inline function made Emotion re-resolve the
+// ~450-line header/body styles on every parent render
+const gridSx = (theme: Theme) => ({
+  ...dataGridHeaderSx(theme),
+
+  '& .MuiDataGrid-scrollbar--vertical': {
+    width: 14,
+  },
+
+  '& .MuiDataGrid-scrollbar--horizontal': {
+    height: 14,
+  },
+
+  '& .MuiDataGrid-scrollbar': {
+    ...appScrollbarSx,
+  },
+})
 
 export interface ReusableDataGridProps<
   T extends GridValidRowModel
@@ -133,7 +152,7 @@ export interface ReusableDataGridProps<
 }
 
 
-export function ReusableDataGrid<
+function ReusableDataGridInner<
   T extends GridValidRowModel
 >({
   rows,
@@ -260,10 +279,10 @@ export function ReusableDataGrid<
   // COLUMN ORDER
   // =====================================================
 
-  function handleColumnOrderChange(
+  const handleColumnOrderChange = useCallback((
     params:
       GridColumnOrderChangeParams,
-  ) {
+  ) => {
 
     const nextOrder =
       preferredColumns.map(
@@ -292,23 +311,59 @@ export function ReusableDataGrid<
     onColumnOrderChange(
       nextOrder,
     )
-  }
+  }, [preferredColumns, onColumnOrderChange])
 
 
   // =====================================================
   // COLUMN WIDTH
   // =====================================================
 
-  function handleColumnWidthChange(
+  const handleColumnWidthChange = useCallback((
     params:
       GridColumnResizeParams,
-  ) {
+  ) => {
 
     onColumnWidthChange(
       params.colDef.field,
       params.width,
     )
-  }
+  }, [onColumnWidthChange])
+
+
+  // =====================================================
+  // STABLE OBJECT PROPS
+  // New objects every render made DataGrid re-process them on each parent
+  // render (e.g. every keystroke in a page's search box)
+  // =====================================================
+
+  const paginationModel = useMemo(
+    () => ({ page, pageSize }),
+    [page, pageSize],
+  )
+
+  const slots = useMemo(
+    () => ({
+      toolbar,
+      columnMenu,
+      noRowsOverlay:
+        errorOverlay
+        ?? noRowsOverlay
+        ?? FactoryNoRowsOverlay,
+    }),
+    [toolbar, columnMenu, errorOverlay, noRowsOverlay],
+  )
+
+  const slotProps = useMemo(
+    () => (loadingOverlayVariant
+      ? {
+        loadingOverlay: {
+          variant: loadingOverlayVariant,
+          noRowsVariant: loadingOverlayVariant,
+        },
+      }
+      : undefined),
+    [loadingOverlayVariant],
+  )
 
 
   // =====================================================
@@ -344,10 +399,7 @@ export function ReusableDataGrid<
         rowCount
       }
 
-      paginationModel={{
-        page,
-        pageSize,
-      }}
+      paginationModel={paginationModel}
 
       onPaginationModelChange={
         onPaginationChange
@@ -414,25 +466,9 @@ export function ReusableDataGrid<
         onCellKeyDown
       }
 
-      slots={{
-        toolbar,
-        columnMenu,
-        noRowsOverlay:
-          errorOverlay
-          ?? noRowsOverlay
-          ?? FactoryNoRowsOverlay,
-      }}
+      slots={slots}
 
-      slotProps={
-        loadingOverlayVariant
-          ? {
-            loadingOverlay: {
-              variant: loadingOverlayVariant,
-              noRowsVariant: loadingOverlayVariant,
-            },
-          }
-          : undefined
-      }
+      slotProps={slotProps}
 
       showToolbar={
         Boolean(toolbar)
@@ -445,22 +481,12 @@ export function ReusableDataGrid<
       onColumnHeaderClick={
         onColumnHeaderClick
       }
-      sx={(theme) => ({
-        ...dataGridHeaderSx(theme),
-
-        '& .MuiDataGrid-scrollbar--vertical': {
-          width: 14,
-        },
-
-        '& .MuiDataGrid-scrollbar--horizontal': {
-          height: 14,
-        },
-
-        '& .MuiDataGrid-scrollbar': {
-          ...appScrollbarSx,
-        },
-      })}
+      sx={gridSx}
 
     />
   )
 }
+
+// memo: a parent re-render with unchanged grid props (typing in a search box,
+// a status tick) no longer re-renders the grid at all
+export const ReusableDataGrid = memo(ReusableDataGridInner) as typeof ReusableDataGridInner

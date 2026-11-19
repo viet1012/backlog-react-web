@@ -34,7 +34,7 @@ export function createDashboardTheme(mode: PaletteMode, language: Language = 'vi
     typography: {
       fontSize: uiTokens.typography.body,
       fontFamily:
-        "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        "'Inter Variable', Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
       body1: { fontSize: uiTokens.typography.body },
       body2: { fontSize: uiTokens.typography.body },
       caption: { fontSize: uiTokens.kpi.secondaryFontSize },
@@ -61,11 +61,13 @@ export function createDashboardTheme(mode: PaletteMode, language: Language = 'vi
         styleOverrides: {
           root: {
             backgroundImage: 'none',
+            // No backdrop blur on cards: pages hold many of them (Cost: 9+),
+            // each one a GPU layer re-sampled on scroll / transitions, over a
+            // background that is only a soft gradient. Slightly more opaque
+            // fill keeps the same look.
             backgroundColor: dark
-              ? 'rgba(17,27,45,0.78)'
-              : 'rgba(255,255,255,0.76)',
-            backdropFilter: 'blur(14px)',
-            WebkitBackdropFilter: 'blur(14px)',
+              ? 'rgba(17,27,45,0.9)'
+              : 'rgba(255,255,255,0.88)',
             border: `1px solid ${dark ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.72)'}`,
             borderRadius: uiTokens.card.borderRadius,
             boxShadow: dark

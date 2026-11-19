@@ -208,6 +208,12 @@ function HeatAnimatedIcon({
                     transformOrigin:
                         'center bottom',
 
+                    // Static glow: animating filter (drop-shadow) repainted the
+                    // icon – and the blurred filter panel behind it – every frame
+                    filter: selected
+                        ? `drop-shadow(0 1px 4px ${alpha(color, 0.4)})`
+                        : 'none',
+
                     animation:
                         selected
                             ? 'facConfirmHeatMain .88s ease-in-out infinite'
@@ -277,34 +283,16 @@ function HeatAnimatedIcon({
                     '0%, 100%': {
                         transform:
                             'translate(0,0) scale(1,1) rotate(0deg)',
-
-                        filter:
-                            `drop-shadow(0 0 2px ${alpha(
-                                color,
-                                0.24,
-                            )})`,
                     },
 
                     '30%': {
                         transform:
                             'translate(.4px,-3px) scale(1.04,1.17) rotate(2deg)',
-
-                        filter:
-                            `drop-shadow(0 2px 7px ${alpha(
-                                color,
-                                0.52,
-                            )})`,
                     },
 
                     '62%': {
                         transform:
                             'translate(.4px,-2px) scale(1.03,1.14) rotate(1.5deg)',
-
-                        filter:
-                            `drop-shadow(0 2px 6px ${alpha(
-                                color,
-                                0.45,
-                            )})`,
                     },
                 },
 

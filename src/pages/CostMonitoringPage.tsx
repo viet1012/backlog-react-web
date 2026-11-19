@@ -1,4 +1,3 @@
-import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined'
 import {
   Alert,
   Box,
@@ -17,22 +16,20 @@ import {
   Typography,
 } from '@mui/material'
 import type { PaletteMode } from '@mui/material'
+import { alpha } from '@mui/material/styles'
 import dayjs from 'dayjs'
 import { useState } from 'react'
-import { AppButton } from '../components/common/AppButton'
 import { CostOtImportDialog } from '../components/costMonitoring/CostOtImportDialog'
 import { hasAnyRole } from '../services/authService'
 import { FactoryNoRowsOverlay } from '../components/common/FactoryNoRowsOverlay'
-import { GuideButton } from '../components/common/GuideButton'
+import { HeaderAction, HeaderActionBar, HeaderActionDivider } from '../components/common/headerActions'
 import { PageHeader } from '../components/common/PageHeader'
 import { PageShell } from '../components/common/PageShell'
-import { RefreshButton } from '../components/common/RefreshButton'
 import { UpdatedStatus } from '../components/common/UpdatedStatus'
 import { CostChartLegend } from '../components/costMonitoring/CostChartLegend'
 import { CostMonitoringGrid } from '../components/costMonitoring/CostMonitoringGrid'
 import { CostMonitoringGuideDrawer } from '../components/costMonitoring/CostMonitoringGuideDrawer'
 import { CostDetailDrawer } from '../components/costMonitoring/CostDetailDrawer'
-import { CostForecastBanner } from '../components/costMonitoring/CostForecastBanner'
 import { COST_ROWS, SIMU_WEEK_OPTIONS } from '../components/costMonitoring/costChartConfig'
 import type { GuideTabId } from '../components/costMonitoring/costMonitoringGuide'
 import { useMascotMonthControl, useMascotOpenChat, useMascotParams } from '../components/mascot'
@@ -183,6 +180,7 @@ export function CostMonitoringPage({
       >
         <PageHeader
           title={t.cost.title}
+          subtitle={t.cost.subtitle}
           status={
             <UpdatedStatus
               updatedAt={lastUpdated}
@@ -190,8 +188,8 @@ export function CostMonitoringPage({
             />
           }
           actions={
-            // display: contents – không đổi bố cục của PageHeader, chỉ để ẩn khi in
-            <Box className="cost-no-print" sx={{ display: 'contents' }}>
+            // cost-no-print: ẩn cả thanh khi in
+            <HeaderActionBar className="cost-no-print">
               {/* Vùng actions của PageHeader có overflowX:auto nên nhãn nổi của
                   FormControl outlined (nằm trên viền ~9px) bị cắt → chừa padding trên/dưới */}
               <Stack
@@ -306,42 +304,23 @@ export function CostMonitoringPage({
                 </Tooltip>
               </Stack>
 
+              <HeaderActionDivider />
+
               {canImportOt && (
-                <Tooltip title={t.costOt.buttonTip}>
-                  <span>
-                    <AppButton
-                      icon={<UploadFileOutlinedIcon fontSize="small" />}
-                      disabled={!month}
-                      onClick={() => setOtImportOpen(true)}
-                      sx={{ flexShrink: 0 }}
-                    >
-                      {t.costOt.button}
-                    </AppButton>
-                  </span>
-                </Tooltip>
+                <HeaderAction
+                  kind="import"
+                  label={t.costOt.button}
+                  description={t.costOt.buttonTip}
+                  disabled={!month}
+                  onClick={() => setOtImportOpen(true)}
+                />
               )}
 
-              <RefreshButton
-                loading={loading}
-                onClick={refresh}
-              />
+              {canImportOt && <HeaderActionDivider />}
 
-              <GuideButton onClick={() => setGuideOpen(true)} />
-            </Box>
-          }
-          bottom={
-            <>
-              {/* chỉ hiện khi in: dropdown tháng bị ẩn nên ghi rõ tháng + thời điểm cập nhật */}
-              <Typography className="cost-print-only" sx={{ fontSize: 12, mb: 0.5, pl: 1 }}>
-                {t.cost.printLine(month ?? '–', lastUpdated ? dayjs(lastUpdated).format('DD/MM/YYYY HH:mm') : '–')}
-              </Typography>
-
-              <CostChartLegend
-                plUnavailable={noPlWeeks}
-                estVisible={estVisible}
-                onToggleEst={() => setEstVisible((v) => !v)}
-              />
-            </>
+              <HeaderAction kind="refresh" loading={loading} onClick={refresh} />
+              <HeaderAction kind="guide" onClick={() => setGuideOpen(true)} />
+            </HeaderActionBar>
           }
           mode={mode}
           onToggleMode={onToggleMode}
@@ -354,15 +333,35 @@ export function CostMonitoringPage({
           </Alert>
         )}
 
-        {data && (
-          <CostForecastBanner
-            month={toApiMonth(data.month)}
-            charts={data.charts}
-            onOpenDetail={(target) => {
-              setDetailTarget(target)
-              setDetailOpen(true)
-            }}
-          />
+        {/* Chú thích chung của 9 chart: ngay trên lưới chart (gần nơi đọc),
+            không nằm trong header. Trạng thái vượt/OK đã có badge trên từng ô. */}
+        {!apiFailed && !noMonths && (
+          <Box
+            sx={(theme) => ({
+              flexShrink: 0,
+              display: 'flex',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              columnGap: 2,
+              rowGap: 0.5,
+              px: 1.25,
+              py: 0.6,
+              borderRadius: '10px',
+              border: `1px solid ${theme.palette.divider}`,
+              bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.4 : 0.7),
+            })}
+          >
+            {/* chỉ hiện khi in: dropdown tháng bị ẩn nên ghi rõ tháng + thời điểm cập nhật */}
+            <Typography className="cost-print-only" sx={{ fontSize: 12, width: '100%' }}>
+              {t.cost.printLine(month ?? '–', lastUpdated ? dayjs(lastUpdated).format('DD/MM/YYYY HH:mm') : '–')}
+            </Typography>
+
+            <CostChartLegend
+              plUnavailable={noPlWeeks}
+              estVisible={estVisible}
+              onToggleEst={() => setEstVisible((v) => !v)}
+            />
+          </Box>
         )}
 
         {apiFailed ? (

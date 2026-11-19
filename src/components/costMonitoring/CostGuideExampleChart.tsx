@@ -6,13 +6,14 @@ import {
   Line,
   LineChart,
   ReferenceLine,
-  ResponsiveContainer,
   XAxis,
   YAxis,
   usePlotArea,
   useXAxisScale,
   useYAxisScale,
 } from 'recharts'
+import { ResponsiveContainer } from '../common/StableResponsiveContainer'
+
 import type { CostChart } from '../../types/costMonitoring'
 import { CostChartOverlay } from './CostChartOverlay'
 import { CostChartStats } from './CostChartStats'

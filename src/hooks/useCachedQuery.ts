@@ -33,10 +33,25 @@ export interface CachedQueryResult<T> {
   data: T | null
   error: string | null
   updatedAt: number | null
+  /**
+   * Chưa có dữ liệu cho key hiện tại, hoặc người dùng bấm Làm mới.
+   * KHÔNG bật khi chỉ tải lại ngầm dữ liệu cũ (quay lại trang sau > freshMs):
+   * lúc đó dữ liệu vẫn đúng, làm mờ / quay spinner chỉ gây chớp.
+   */
   loading: boolean
+  /** Đang tải lại ngầm (đã có dữ liệu của key này) */
+  refreshing: boolean
   // data đang hiện thuộc key khác key hiện tại
   stale: boolean
 }
+
+// ---------------------------------------------------------
+// Request đang chạy, dùng chung theo key.
+// Trang bị ẩn (KeepAlive) giữa chừng: KHÔNG hủy request – kết quả vẫn được
+// ghi vào cache, quay lại trang thì dùng luôn (trước đây bị hủy và tải lại
+// từ đầu). Hai nơi cùng hỏi một key thì chỉ gọi API một lần.
+// ---------------------------------------------------------
+const inFlight = new Map<string, Promise<unknown>>()
 
 function fromCache<T>(key: string | null): Settled<T> {
   const hit = key === null ? undefined : readQueryCache<T>(key)
@@ -62,7 +77,8 @@ export function useCachedQuery<T>(
   'use no memo'
 
   const [settled, setSettled] = useState<Settled<T>>(() => fromCache<T>(key))
-  const [fetching, setFetching] = useState(false)
+  // null = không tải; 'background' = tải lại ngầm; 'foreground' = lần đầu / Làm mới
+  const [fetching, setFetching] = useState<null | 'background' | 'foreground'>(null)
 
   // refreshKey đã tải xong; khác refreshKey hiện tại = lượt do nút Làm mới.
   // Chỉ cập nhật khi tải thành công => bị hủy giữa chừng (chuyển trang) thì lần sau vẫn force
@@ -107,22 +123,41 @@ export function useCachedQuery<T>(
       }
     }
 
-    const controller = new AbortController()
+    // Chỉ bỏ qua kết quả (không hủy request): key đổi / trang ẩn
+    let ignore = false
 
-    setFetching(true)
+    // Lượt Làm mới phải gọi mới; còn lại dùng chung request đang chạy cùng key
+    const flightKey = force ? `${key}#refresh:${refreshKey}` : key
+    let request = inFlight.get(flightKey) as Promise<T> | undefined
 
-    run(controller.signal, force).then(
+    if (!request) {
+      // Không truyền signal bị hủy theo vòng đời component nữa (xem inFlight)
+      request = run(new AbortController().signal, force)
+        .then((data) => {
+          writeQueryCache(key, data)
+          return data
+        })
+        .finally(() => {
+          inFlight.delete(flightKey)
+        })
+
+      inFlight.set(flightKey, request)
+    }
+
+    setFetching(hit && !force ? 'background' : 'foreground')
+
+    request.then(
       (data) => {
-        if (controller.signal.aborted) return
+        if (ignore) return
 
-        const entry = writeQueryCache(key, data)
+        const entry = readQueryCache<T>(key)
 
         doneRefresh.current = refreshKey
-        setSettled({ key, data, error: null, updatedAt: entry.at })
-        setFetching(false)
+        setSettled({ key, data, error: null, updatedAt: entry?.at ?? Date.now() })
+        setFetching(null)
       },
       (error: unknown) => {
-        if (controller.signal.aborted) return
+        if (ignore) return
 
         const message = errorText(error)
 
@@ -130,14 +165,13 @@ export function useCachedQuery<T>(
         setSettled((prev) => (prev.key === key
           ? { ...prev, error: message }
           : { key, data: null, error: message, updatedAt: null }))
-        setFetching(false)
+        setFetching(null)
       },
     )
 
     return () => {
-      // key đổi / trang bị ẩn: request bị hủy => không còn đang tải
-      controller.abort()
-      setFetching(false)
+      ignore = true
+      setFetching(null)
     }
   }, [key, refreshKey, freshMs])
 
@@ -147,7 +181,8 @@ export function useCachedQuery<T>(
     data: settled.data,
     error: current ? settled.error : null,
     updatedAt: settled.updatedAt,
-    loading: key !== null && (fetching || !current),
+    loading: key !== null && (fetching === 'foreground' || !current),
+    refreshing: fetching === 'background',
     stale: settled.key !== key,
   }
 }
