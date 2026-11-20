@@ -12,6 +12,7 @@ import type { PaletteMode, Theme } from '@mui/material/styles'
 import type { SystemStyleObject } from '@mui/system'
 import {
   DarkModeRounded,
+  KeyboardRounded,
   LightModeRounded,
   SettingsRounded,
   TranslateRounded,
@@ -20,6 +21,7 @@ import {
 import { useI18n } from '../../i18n/useI18n'
 import { LanguageToggleButton } from '../common/LanguageToggleButton'
 import { ThemeToggleButton } from '../common/ThemeToggleButton'
+import { openShortcutHelp } from '../common/shortcuts'
 
 interface SidebarSettingsMenuProps {
   mode: PaletteMode
@@ -56,6 +58,25 @@ export function SidebarSettingsMenu({
       label: t.sidebar.settingsAppearance,
       hint: mode === 'dark' ? t.sidebar.themeDark : t.sidebar.themeLight,
       control: <ThemeToggleButton mode={mode} onToggle={onToggleMode} />,
+    },
+    {
+      key: 'shortcuts',
+      icon: <KeyboardRounded />,
+      label: t.sidebar.settingsShortcuts,
+      hint: t.sidebar.settingsShortcutsHint,
+      control: (
+        <IconButton
+          size="small"
+          aria-label={t.sidebar.settingsShortcuts}
+          onClick={() => {
+            setAnchor(null)
+            openShortcutHelp()
+          }}
+          sx={{ width: 30, height: 30, fontSize: 13, fontWeight: 800, color: 'text.primary' }}
+        >
+          ?
+        </IconButton>
+      ),
     },
   ]
 

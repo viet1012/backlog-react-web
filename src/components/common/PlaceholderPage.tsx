@@ -1,6 +1,5 @@
 import type { SvgIconComponent } from '@mui/icons-material'
 import { Box, Typography } from '@mui/material'
-import { useColorScheme } from '@mui/material/styles'
 
 import { PageHeader } from './PageHeader'
 import { PageShell } from './PageShell'
@@ -18,7 +17,6 @@ export function PlaceholderPage({
   subtitle,
   icon: Icon,
 }: PlaceholderPageProps) {
-  const { mode, setMode } = useColorScheme()
   const { t } = useI18n()
 
   return (
@@ -26,10 +24,6 @@ export function PlaceholderPage({
       <PageHeader
         title={title}
         subtitle={subtitle}
-        mode={mode === 'light' ? 'light' : 'dark'}
-        onToggleMode={() =>
-          setMode(mode === 'dark' ? 'light' : 'dark')
-        }
       />
 
       <GlassPanel

@@ -354,45 +354,28 @@ export function createBacklogColumns(
         />
       ),
 
-      renderCell: ({ value }) => {
-        const color = getBacklogStatusColor(value)
+      renderCell: ({ value }) => (
+        <Chip
+          label={value || t.common.unknown}
+          size="small"
+          variant="outlined"
+          sx={(theme) => {
+            // chế độ tối: bản sáng hơn để chữ đọc được (backlogStatus.tsx)
+            const color = getBacklogStatusColor(value, theme.palette.mode)
 
-        return (
-          <Chip
-            label={value || t.common.unknown}
-            size="small"
-            variant="outlined"
-            sx={{
+            return {
               height: 22,
               fontSize: 11,
               fontWeight: 700,
-
               color,
-
-              borderColor: alpha(
-                color,
-                0.55,
-              ),
-
-              bgcolor: alpha(
-                color,
-                0.08,
-              ),
-
-              '& .MuiChip-label': {
-                px: 1,
-              },
-
-              '&:hover': {
-                bgcolor: alpha(
-                  color,
-                  0.14,
-                ),
-              },
-            }}
-          />
-        )
-      }
+              borderColor: alpha(color, 0.55),
+              bgcolor: alpha(color, 0.08),
+              '& .MuiChip-label': { px: 1 },
+              '&:hover': { bgcolor: alpha(color, 0.14) },
+            }
+          }}
+        />
+      ),
     },
 
 

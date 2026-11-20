@@ -43,8 +43,21 @@ Frontend thuần (SPA). Dữ liệu và đăng nhập đi qua backend `backlog-b
   - Mục đang phát triển gắn nhãn *Developing*, mục chưa làm gắn nhãn *Chưa làm*; cả hai không bấm được.
   - Biểu tượng cạnh từng mục cho biết màn hình chỉ để xem (*View*) hay có nhập liệu (*Input*).
   - Sidebar thu gọn được thành dạng chỉ còn icon.
-- **Chế độ sáng / tối** đổi bằng nút ở đầu mỗi trang và được ghi nhớ.
+- **Chế độ sáng / tối** đổi trong menu cài đặt ở chân sidebar và được ghi nhớ.
+  - Chế độ tối: control gốc của trình duyệt (lịch của ô ngày, thanh cuộn, dropdown) cũng chuyển tối.
+  - Chữ màu trạng thái (trễ hạn, sắp tới hạn, chip Status của Backlog, nút trên toast) đủ tương phản ≥ 4.5:1 ở cả hai chế độ.
 - **Đăng xuất** ở chân sidebar, có hộp thoại xác nhận.
+- **Phím tắt** (bấm `?` hoặc menu cài đặt → *Phím tắt* để xem danh sách):
+  - `/` vào ô tìm kiếm của trang (Backlog, Fac Confirm, AI Logs, Machine Monitor, Machine Locator). Trang không có ô tìm thì mở hộp tìm trang.
+  - `R` làm mới dữ liệu trang, giống bấm nút ⟳. Fac Confirm còn ô sửa chưa lưu thì không làm mới, chỉ hiện cảnh báo.
+  - `Ctrl+K` tìm và mở trang, `Ctrl+B` thu gọn sidebar (đã có từ trước).
+  - Không chạy khi đang gõ trong ô nhập, đang thao tác trong bảng (DataGrid gõ chữ là sửa ô) hoặc đang mở hộp thoại / menu.
+  - **Người dùng biết phím tắt bằng cách nào** (không cần đọc tài liệu):
+    - Rê chuột lên nút ⟳: tooltip có ô phím `R`. Rê chuột lên ô tìm: gợi ý *"Bấm / để vào ô tìm nhanh"*.
+    - Lần đầu vào app sau khi có phím tắt (8 giây sau khi màn chấm công cuộn lên): toast *"Mới: có phím tắt… Bấm ? để xem danh sách"*, kèm nút *Xem phím tắt*.
+    - Bấm nút ⟳ bằng chuột lần thứ 2 trong phiên: toast *"Mẹo: bấm R để làm mới"*. Bấm chuột vào ô tìm lần thứ 2: *"Mẹo: bấm / …"*.
+    - Mỗi mẹo hiện tối đa 1 lần cho mỗi người (nhớ theo mã nhân viên), mỗi phiên tối đa 1 mẹo. Người dùng đã tự dùng phím đó thì không nhắc.
+    - Menu cài đặt ở chân sidebar có dòng *Phím tắt*.
 - **Trạng thái tải / trống / lỗi** giống nhau ở mọi trang:
   - Tải dưới 300 ms thì không hiện gì.
   - Tải lần đầu hiện **skeleton** theo hình dạng nội dung (bảng, heatmap, lưới chart, thẻ KPI, bản đồ).
@@ -424,6 +437,7 @@ So sánh số GM (đồng hồ tổng EVN) với số đồng hồ thực tế t
 | MUI Material / X Data Grid / X Date Pickers | 9 |
 | React Router | 7 |
 | dayjs | 1.11 |
+| web-vitals (đo hiệu năng, chỉ tải khi bật) | 6.2 |
 | Lint | oxlint |
 
 Yêu cầu: Node.js 22+ (đang dùng 22.20), npm 10+.
@@ -442,6 +456,32 @@ npm run dev                              # http://localhost:5173
 | `npm run build` | Type-check (`tsc -b`) rồi build ra `dist/` |
 | `npm run preview` | Chạy thử bản build |
 | `npm run lint` | oxlint |
+
+### Đo hiệu năng (web-vitals)
+
+Chỉ ghi ra **console** của trình duyệt, không gửi đi đâu. Code ở [src/utils/webVitals.ts](src/utils/webVitals.ts).
+
+- **Bật**:
+  - `npm run dev`: luôn bật.
+  - Bản build: mở link bất kỳ có `?vitals=1` một lần, ví dụ `/backlog?vitals=1`. Máy đó nhớ trong `localStorage` (key `debug:vitals`). Mở `?vitals=0` để tắt.
+  - Không bật thì không tải thư viện và không gắn listener nào, nên người dùng bình thường không tốn gì.
+- **Chỉ số đo**:
+
+  | Chỉ số | Ý nghĩa | Tốt / Cần cải thiện / Kém |
+  | --- | --- | --- |
+  | `TTFB`, `FCP`, `LCP` | Lần tải trang đầu (mở link / F5): server trả byte đầu, vẽ chữ đầu tiên, vẽ khối lớn nhất | LCP ≤ 2.5 s / ≤ 4 s / > 4 s |
+  | `INP` | Độ trễ phản hồi thao tác (bấm, gõ) lâu nhất trong phiên | ≤ 200 ms / ≤ 500 ms / > 500 ms |
+  | `CLS` | Tổng mức nhảy bố cục | ≤ 0.1 / ≤ 0.25 / > 0.25 |
+  | `READY:<trang>` | Từ lúc mở trang tới lúc dữ liệu chính hiện ra (quy ước nội bộ) | ≤ 1 s / ≤ 2.5 s / > 2.5 s |
+
+  - `READY` có ở `backlog`, `fac-confirm`, `shipment`, `cost`, `machine-monitor`.
+  - Nhãn `cold` = mở link / F5, tính từ lúc trình duyệt bắt đầu tải, gồm cả tải JS. Nhãn `nav` = chuyển trang trong app, tính từ lúc bấm.
+  - Quay lại trang đã mở (trang được giữ sống) cũng ghi `READY`, thường chỉ vài chục ms.
+  - `LCP` / `INP` / `CLS` kèm phần tử gây ra (selector), để biết cần sửa chỗ nào.
+  - `INP` / `CLS` là giá trị xấu nhất **từ lúc mở app** (không reset khi chuyển trang). Chỉ in khi giá trị tăng, trang ghi kèm là trang lúc giá trị tăng.
+  - Số đo ở `npm run dev` chậm hơn thực tế (chưa gộp file, React bản dev, StrictMode chạy effect 2 lần). Muốn số thật thì đo bản build: `npm run build`, `npm run preview`, mở với `?vitals=1`.
+- **Xem lại**: gõ `__vitals.table()` trong console để in bảng giá trị mới nhất theo chỉ số × trang. `__vitals.entries` chứa toàn bộ (tối đa 300 dòng). `READY` cũng hiện trong tab **Performance** của DevTools (mục Timings).
+- **Thêm trang**: gọi `usePageReadyMetric('<tên>', <điều kiện dữ liệu đã hiện>)` trong trang. Điều kiện chỉ bật khi tải thành công, lỗi thì không ghi.
 
 ## Cấu hình môi trường
 
@@ -489,7 +529,7 @@ src/
   types/            Kiểu dữ liệu theo tính năng
   utils/            Hàm thuần: map API, lọc, hình học & fit khung máy (chạy trong Web Worker),
                     download.ts (tải file kèm tiến trình), uiPreferences.ts (lưu cài đặt trên máy)
-  theme/            Theme MUI sáng/tối, token UI, statusTones.ts (màu theo hạn dùng chung)
+  theme/            Theme MUI sáng/tối, colorTokens.ts (token màu), uiTokens.ts (cỡ chữ / khoảng cách), statusTones.ts (màu theo hạn dùng chung)
   data/             Dữ liệu tĩnh: nội dung đào tạo, dữ liệu gốc Machine Locator (dùng cho script)
 public/assets/machine-locator/   Ảnh layout nhà máy
 scripts/machine-locator/         Script Python/Node xử lý bản vẽ layout
@@ -521,6 +561,26 @@ Quy ước:
   - Bảng muốn có mục *Ghim cột* phải dùng `ExcelColumnMenu`, vì mục này đọc `GridPinContext`.
   - Ghim cột tự làm bằng `position: sticky`, vì bản Community không có. Khi có cột ghim, bảng đặt `columnBufferPx` lớn để cột ghim luôn được vẽ.
   - Tô màu hạn: `deadlineCellClass(date, done)` / `deadlineTone(...)` trong [theme/statusTones.ts](src/theme/statusTones.ts). Không tự chọn màu đỏ / cam riêng.
+- **Design token** – không ghi mã màu, cỡ chữ, bo góc rải rác trong component:
+  - Màu: [theme/colorTokens.ts](src/theme/colorTokens.ts), mỗi chế độ sáng / tối một bộ, cùng cấu trúc.
+    - `base`: palette gốc. `surface` / `surfaceBorder` / `shadow`: lớp kính panel < card = dialog < toast. `control`: ô nhập, nút icon, chip. `statusText`: chữ trạng thái. `gridBase`: DataGrid mặc định của theme. `grid`: bảng kính dùng chung (`dataGridHeaderSx`).
+    - Trong `sx` dùng `theme.app.*`, ví dụ `sx={(theme) => ({ bgcolor: theme.app.surface.panel })}`. Ngoài `sx` dùng `appTokens(mode)`.
+  - Cỡ chữ, khoảng cách, bo góc, chiều cao control / dòng bảng: [theme/uiTokens.ts](src/theme/uiTokens.ts). Lớp kính dùng chung: `glassPanelSx(theme)`.
+  - Thứ tự ưu tiên: palette MUI (`text.secondary`, `divider`, `primary.main`…) → `theme.app.*` → thêm token mới. Đừng thêm mã màu mới vào component.
+  - Không token hoá màu minh hoạ (mascot, màn đăng nhập / chấm công, kho 3D, bảng LED, bản vẽ Machine Locator / Monitor, màu nhóm menu ở `sidebarConfig`, màu trạng thái Backlog): chúng cố định theo nội dung.
+  - `index.css` giữ bản sao nền / chữ của chế độ sáng (CSS không đọc được token TS). Đổi token `base` thì sửa cả ở đó.
+- **Chữ màu trạng thái** (đỏ / cam / xanh lá / xanh dương) dùng `statusTextColor(theme, 'error' | 'warning' | 'success' | 'info')` trong [theme/statusTones.ts](src/theme/statusTones.ts), không dùng thẳng `palette.*.main` cho chữ:
+  - `warning.main` chỉ ~2.8:1 trên nền sáng, `error.main` chỉ ~4.1:1 trên nền tối. Hàm này trả màu đạt ≥ 4.5:1.
+  - Nền tô nhạt, viền, sọc màu, icon thì vẫn dùng `palette.*.main` (chỉ cần 3:1).
+  - Màu tự chọn cho chữ (vd chip Status) phải có bản cho chế độ tối, xem `BACKLOG_STATUS_COLORS_DARK` trong `backlogStatus.tsx`.
+- **Phím tắt** ở [common/shortcuts/](src/components/common/shortcuts/). `GlobalShortcuts` (gắn trong `MainLayout`) chỉ xử lý `?`, `/`, `r`. Trang không cần đăng ký gì:
+  - `/` tìm ô `input[data-shortcut="search"]` đang hiện. `FilterSearch` tự gắn; ô tìm tự dựng thì thêm `'data-shortcut': 'search'` vào `slotProps.htmlInput`.
+  - `r` bấm nút `[data-header-action="refresh"]` đang hiện. `HeaderAction` / `RefreshButton` tự gắn.
+  - Trang có thay đổi chưa lưu gọi `useUnsavedChangesGuard(() => số thay đổi)` để phím `r` không làm mất dữ liệu.
+  - Phím riêng của trang đặt listener trên `document` và gọi `preventDefault()`. `GlobalShortcuts` nghe trên `window` nên chạy sau và bỏ qua phím đã xử lý (vd `?` ở Machine Locator mở hướng dẫn riêng).
+  - Thêm phím chung mới: sửa `GlobalShortcuts.tsx` và thêm dòng vào `ShortcutHelpDialog.tsx` (cả i18n `shortcuts.*`). Nút header có phím tắt thì khai báo `shortcut` trong `headerActionRegistry.tsx` để tooltip tự hiện ô phím.
+  - Mẹo phím tắt ở `shortcutTips.ts` (localStorage `shortcut-tips:<mã NV>`). Muốn xem lại mẹo khi test thì xoá key này.
+- **Chế độ tối** dựa vào `color-scheme` (`<CssBaseline enableColorScheme />`): không dùng `filter: invert()` cho icon lịch của input date, trình duyệt tự vẽ icon sáng.
 - **Bộ lọc ⇄ URL** dùng [useUrlFilters](src/hooks/useUrlFilters.ts):
   - Khai báo tham số bằng `urlParam.text | oneOf | date | month | list | positiveNumber`. Có `empty` thì bằng giá trị đó sẽ không ghi lên URL; không có `empty` thì luôn ghi.
   - Khởi tạo state bằng `readUrlParams(path, params)`, rồi gọi `useUrlFilters({ path, params, values, onUrlChange })`.
@@ -571,9 +631,86 @@ npm run build      # kết quả ở dist/
 | 2 | `72f167f` | 2 | Thanh bộ lọc dùng chung ("Đang lọc: N", Xóa bộ lọc). Bộ lọc trên URL ở 5 trang. Đăng nhập xong quay lại đúng link. Xử lý link cũ / link sai. |
 | 3 | `f15b72c` | 4 + 5 | Mật độ dòng nhớ theo người dùng, ghim cột (tự bật), tô màu hạn thống nhất, chữ số đều. Trang chủ "Việc của tôi hôm nay". Sửa thanh lọc Fac Confirm về bố cục cũ. |
 | 4 | `b9bba9b` | 10 | Việc tồn: Cost tải chart song song với danh sách tháng; Machine Monitor không tải lại sơ đồ / danh sách tầng mỗi lần mở trang. |
-| — | — | 6 – 9 | Chưa làm: dark mode / độ tương phản, phím tắt, design token, đo hiệu năng (web-vitals). |
+| 5 | `758b7f6` | 6 | Dark mode / độ tương phản: control gốc của trình duyệt theo chế độ tối, chữ màu trạng thái đạt ≥ 4.5:1, chip Status của Backlog có bản màu cho chế độ tối. |
+| 6 | `e5fd311` | 9 | Đo hiệu năng: Core Web Vitals (LCP, INP, CLS, FCP, TTFB) và thời gian "trang sẵn sàng" của 5 trang chính, ghi ra console khi bật (dev hoặc `?vitals=1`). |
+| 7 | `f27802c` | 7 | Phím tắt: `?` bảng phím tắt, `/` vào ô tìm, `R` làm mới (chặn khi còn thay đổi chưa lưu). Thêm mục *Phím tắt* trong menu cài đặt. |
+| 8 | `9e7f466` | 8 | Design token màu (`colorTokens.ts`, `theme.app`): theme MUI, kính panel, toast, bảng DataGrid đọc màu từ một chỗ. Giao diện giữ nguyên, đã so sánh theme sinh ra trước / sau: giống hệt. |
 
-Nguyên tắc chung của cả 3 đợt: **mặc định giao diện như cũ**, phần mới chỉ thêm vào hoặc để người dùng tự bật.
+Nguyên tắc chung của mọi đợt: **mặc định giao diện như cũ**, phần mới chỉ thêm vào hoặc để người dùng tự bật.
+
+### 2026-11-20 — Design token
+
+Đợt 8 (đề xuất 8). **Không đổi giao diện**: chỉ chuyển mã màu về một chỗ, giá trị giữ nguyên.
+
+| Phần | Trước | Sau |
+| --- | --- | --- |
+| Theme MUI (`dashboardTheme.ts`) | ~70 mã màu ghi thẳng, nhiều giá trị lặp (nền trang ghi 3 lần, viền nút icon và chip trùng nhau…) | Đọc từ `colorTokens.ts`. Theme có thêm `theme.app` = token của chế độ hiện tại |
+| Kính panel / header (`glassPanelSx`) | Ghi riêng, trùng giá trị với Card | `surface.panel`, `surfaceBorder.panel`, `shadow.surface` |
+| Toast (`NotifyHost.tsx`) | Ghi riêng | `theme.app.surface.toast`, `theme.app.shadow.toast` |
+| Bảng kính (`dataGridHeaderStyles.ts`) | 14 cặp màu sáng / tối khai báo đầu hàm | `grid.*` |
+| Chữ cam trạng thái (`statusTones.ts`) | Hằng số riêng | `statusText.warning` |
+| Lớp phủ khi đổi sáng / tối (`ThemeToggleButton.tsx`) | Ghi lại mã nền trang | `appTokens(mode).base.pageBg` |
+
+- Kiểm chứng: script dựng theme (cả 2 chế độ) cùng `dataGridHeaderSx`, `glassPanelSx`, `statusTextColor` qua Vite SSR, ghi ra JSON trước và sau khi sửa. So sánh 2 file: **giống hệt**.
+- Chưa chuyển (làm dần khi sửa tới): style riêng của sidebar (`sidebarStyles.ts`, gradient riêng), Shipment heatmap, Backlog Summary, các trang Cost / EVN / AI Logs. Màu minh hoạ thì giữ nguyên (xem quy ước).
+
+### 2026-11-20 — Phím tắt
+
+Đợt 7 (đề xuất 7). Chỉ thêm vào: không bấm phím thì giao diện như cũ. Thay đổi nhìn thấy duy nhất là thêm dòng *Phím tắt* trong menu cài đặt ở chân sidebar.
+
+| Phím | Làm gì | Ghi chú |
+| --- | --- | --- |
+| `?` | Mở bảng phím tắt (chung + phím riêng từng trang) | Ở Machine Locator, `?` vẫn mở hướng dẫn riêng của trang như trước |
+| `/` | Vào ô tìm kiếm của trang đang mở (chọn sẵn chữ cũ) | Không có ô tìm thì mở hộp tìm trang (như `Ctrl+K`) |
+| `R` | Làm mới dữ liệu (bấm nút ⟳ đang hiện) | Nút đang tải / bị khóa thì bỏ qua. Fac Confirm còn ô sửa chưa lưu thì không làm mới, hiện cảnh báo |
+
+- Không bắt phím khi đang gõ, khi focus nằm trong bảng / hộp thoại / menu, hoặc khi có hộp thoại đang mở.
+- Không thêm phím chuyển trang kiểu `g` + chữ: đã có `Ctrl+K`, và Machine Locator đang dùng `g`, `f`, `s` cho việc chỉnh khung.
+- Cho người dùng biết có phím tắt:
+  - Tooltip nút ⟳ có ô phím `R`. Ô tìm có gợi ý khi rê chuột.
+  - Toast giới thiệu 1 lần cho mỗi người.
+  - Mẹo theo ngữ cảnh khi người dùng làm bằng chuột lần thứ 2 (bấm ⟳, bấm vào ô tìm).
+  - Tối đa 1 mẹo mỗi phiên. Đã tự dùng phím đó thì không nhắc. File: `shortcuts/shortcutTips.ts`.
+- File: `components/common/shortcuts/` (mới), `HeaderAction.tsx` (`data-header-action`), `FilterControls.tsx` (`data-shortcut`), ô tìm của Machine Monitor / Machine Locator, `MainLayout.tsx`, `SidebarSettingsMenu.tsx`, `FacConfirmPage.tsx` (`useUnsavedChangesGuard`), i18n `shortcuts.*`.
+
+### 2026-11-20 — Đo hiệu năng (web-vitals)
+
+Đợt 6 (đề xuất 9). Không đổi giao diện. Chỉ chạy khi bật, cách dùng xem mục [Đo hiệu năng](#đo-hiệu-năng-web-vitals).
+
+| Phần | Nội dung | File |
+| --- | --- | --- |
+| Core Web Vitals | Thư viện `web-vitals` 6.2.3 (bản attribution). Tải lúc trình duyệt rảnh, thành chunk riêng ~5 kB gzip, chỉ khi bật. Đăng ký muộn vẫn đo đúng từ đầu vì thư viện dùng buffered PerformanceObserver | `utils/webVitals.ts`, `main.tsx` (`startWebVitals`) |
+| "Trang sẵn sàng" | `usePageReadyMetric(name, ready)` ghi thời gian từ lúc mở trang tới lần vẽ đầu tiên có dữ liệu, mỗi lần mở trang ghi 1 lần. Đã gắn ở Backlog, Fac Confirm, Shipment, Cost Monitoring, Machine Monitor | `hooks/usePageReadyMetric.ts` và 5 trang |
+| Lúc bắt đầu chuyển trang | Lấy từ Navigation API (Chrome / Edge), ngay lúc URL đổi, trước khi chunk của trang lazy tải xong. Dự phòng: lúc bấm sidebar (`setNavPending`) và lúc router đổi đường dẫn (`MainLayout`). Đổi query (bộ lọc trên URL) không tính là chuyển trang | `utils/webVitals.ts`, `layout/navPending.ts`, `layout/MainLayout.tsx` |
+| Chi tiết INP | Kèm phần tử vừa bấm (ghi lại lúc bấm, nên vẫn biết kể cả khi phần tử đã bị gỡ khỏi DOM, vd menu đã đóng), thời gian 3 pha *chờ · xử lý · vẽ* và script chạy lâu nhất | `utils/webVitals.ts` |
+| Bớt log lặp | `reportAllChanges` báo cả thay đổi rất nhỏ (CLS 0.0001 mỗi lần thanh tiến trình chạy). Cùng giá trị sau khi làm tròn thì không in lại | `utils/webVitals.ts` |
+
+**Sửa từ số đo đầu tiên: nhảy bố cục ở bảng dữ liệu.** Fac Confirm đo được CLS 0.206 (cần cải thiện), Backlog 0.066. Phần tử nhảy là `MuiDataGrid-filler`.
+
+- Nguyên nhân: style bảng tô nền màu header cho mọi `.MuiDataGrid-filler`. Ngoài phần đệm trong header, quy tắc này còn tô cả khoảng trống dưới các dòng (`flex: 1 0 auto`). Khối nền lớn này bị các dòng đẩy xuống mỗi lần dữ liệu về.
+- Sửa: chỉ tô phần đệm trong header (`.MuiDataGrid-columnHeaders .MuiDataGrid-filler`), giống mặc định của MUI. File: `theme/dataGridHeaderStyles.ts`.
+- Thay đổi nhìn thấy được: khi bảng ít dòng, khoảng trống phía dưới mang màu nền bảng thay vì màu header. Áp dụng cho bảng ở Backlog, Fac Confirm, Shipment.
+
+- Chưa có nơi thu thập tập trung (backend chưa có API nhận số liệu), nên mỗi người đo trên máy mình qua console.
+
+### 2026-11-20 — Dark mode và độ tương phản
+
+Đợt 5 (đề xuất 6). Chế độ sáng (mặc định) gần như giữ nguyên, chỉ đổi màu cam của chữ (xem bảng). Phần lớn thay đổi chỉ có tác dụng ở chế độ tối.
+
+Đo bằng tỉ lệ tương phản WCAG; chữ thường cần ≥ 4.5:1.
+
+| Chỗ | Trước | Sau | File |
+| --- | --- | --- | --- |
+| Control gốc của trình duyệt ở chế độ tối (popup lịch của ô ngày, thanh cuộn, dropdown, ô autofill) | Vẫn sáng trên nền tối | Tối theo theme (`color-scheme: dark`). Chế độ sáng không đổi | `App.tsx` (`CssBaseline enableColorScheme`) |
+| Icon lịch của ô ngày ở chế độ tối | Đảo màu bằng `filter: invert()` | Trình duyệt tự vẽ icon sáng, bỏ invert (để invert sẽ thành icon tối) | `theme/dashboardTheme.ts`, `filterBar/FilterControls.tsx` |
+| Ô "sắp tới hạn" (cam) trong bảng, **chế độ sáng** | `warning.main` #ed6c02 ≈ 2.8:1 | Cam đậm #c2410c ≈ 4.6:1 (nền tô nhạt giữ nguyên) | `theme/statusTones.ts` (`statusTextColor`), `theme/dataGridHeaderStyles.ts` |
+| Ô "trễ hạn" (đỏ) trong bảng và Backlog Summary, chế độ tối | `error.main` ≈ 4.1:1; dòng phụ của Summary (đỏ mờ 76%) ≈ 2.8:1 | `error.light` ≈ 5:1 | `dataGridHeaderStyles.ts`, `BacklogSummaryCell.tsx` |
+| Nút trên toast (vd *Thử lại*), **chế độ sáng**, toast cảnh báo | Cam #ed6c02 ≈ 3.1:1 | Cam đậm #c2410c. Sọc màu và icon giữ nguyên | `notify/NotifyHost.tsx` |
+| Chip Status của Backlog, chế độ tối | WIP #2563eb ≈ 3.1:1, NYI #64748b ≈ 3.3:1 | Bản sáng hơn cùng sắc (#60a5fa, #94a3b8, #fbbf24, #2dd4bf), ≥ 5.9:1 | `backlog/backlogStatus.tsx` (`BACKLOG_STATUS_COLORS_DARK`), `backlogColumns.tsx` |
+| Export List, Sales Status, các trang "sắp ra mắt" | Gọi `useColorScheme()` để truyền nút sáng/tối vào header, nhưng header đã bỏ nút này (đã chuyển sang sidebar) | Bỏ code thừa, giao diện không đổi | `PlaceholderPage.tsx`, `ExportListPage.tsx`, `SalesStatusPage.tsx` |
+
+- Chưa đổi (để giữ giao diện sáng như cũ): `text.secondary` #64748b trên nền trang #eef3f8 ≈ 4.3:1; chip Status *NY PROCESS* (cam #d97706 ≈ 2.9:1) và *Finished* ở chế độ sáng.
+- Các phần vốn đã tối cố định (bảng LED, "Việc của tôi hôm nay", màn đăng nhập, mascot, kho 3D) và bản vẽ nền trắng (Machine Locator / Monitor) giữ nguyên ở cả hai chế độ.
 
 ### 2026-11-19 — Việc tồn: tải nhanh hơn ở Cost Monitoring và Machine Monitor
 

@@ -4,6 +4,7 @@ import { Box, Tooltip } from '@mui/material'
 
 import { useI18n } from '../../../i18n/useI18n'
 import { AppButton, type AppButtonAppearance } from '../AppButton'
+import { Kbd } from '../shortcuts/ShortcutHelpDialog'
 import {
   HEADER_ACTIONS,
   type HeaderActionDefinition,
@@ -61,7 +62,11 @@ export function HeaderAction({
 
   const tooltip = (
     <Box sx={{ py: 0.25 }}>
-      <Box sx={{ fontWeight: 700 }}>{currentLabel}</Box>
+      <Box sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 0.75 }}>
+        {currentLabel}
+        {/* phím tắt: người dùng thấy ngay khi rê chuột lên nút */}
+        {def?.shortcut && !unavailable && <Kbd size="small" inverse>{def.shortcut}</Kbd>}
+      </Box>
       {disabled && disabledReason ? (
         <Box sx={{ opacity: 0.8 }}>{disabledReason}</Box>
       ) : description ? (
@@ -72,8 +77,9 @@ export function HeaderAction({
 
   return (
     <Tooltip title={tooltip} arrow>
-      {/* span: tooltips need a non-disabled element to listen on */}
-      <Box component="span" data-tour={tour} sx={{ display: 'inline-flex', flexShrink: 0 }}>
+      {/* span: tooltips need a non-disabled element to listen on.
+          data-header-action: keyboard shortcuts find the visible button (r = refresh) */}
+      <Box component="span" data-tour={tour} data-header-action={kind} sx={{ display: 'inline-flex', flexShrink: 0 }}>
         <AppButton
           aria-label={currentLabel}
           aria-busy={loading || undefined}

@@ -22,10 +22,11 @@ const widthSx = (width: Width | undefined, shrink = false): SxProps<Theme> => ({
   minWidth: shrink ? 140 : undefined,
 })
 
-// icon lịch của input date: sáng lên trong chế độ tối
+// icon lịch của input date. Chế độ tối: trình duyệt tự vẽ icon sáng nhờ
+// color-scheme: dark (CssBaseline enableColorScheme), không cần invert
 const dateInputSx: SxProps<Theme> = (theme) => ({
   '& input::-webkit-calendar-picker-indicator': {
-    filter: theme.palette.mode === 'dark' ? 'invert(1) opacity(0.8)' : 'none',
+    opacity: theme.palette.mode === 'dark' ? 0.8 : 1,
     cursor: 'pointer',
   },
 })
@@ -63,6 +64,7 @@ export function FilterText({
   tour,
   search = false,
 }: FilterTextProps) {
+  const { t } = useI18n()
   const [draft, setDraft] = useDebouncedField(value, onChange, debounceMs)
 
   return (
@@ -76,7 +78,12 @@ export function FilterText({
       disabled={disabled}
       onChange={(event) => setDraft(event.target.value)}
       slotProps={{
-        htmlInput: { maxLength, ...(type === 'number' ? { min: 0, step: 1 } : {}) },
+        htmlInput: {
+          maxLength,
+          ...(type === 'number' ? { min: 0, step: 1 } : {}),
+          // phím tắt "/" nhảy vào ô tìm của trang; title: rê chuột thấy gợi ý
+          ...(search ? { 'data-shortcut': 'search', title: t.shortcuts.searchTitle } : {}),
+        },
         input: search
           ? {
             startAdornment: (

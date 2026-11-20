@@ -70,6 +70,30 @@ export const en = {
         toLight: 'Switch to light mode',
     },
 
+    shortcuts: {
+        title: 'Keyboard shortcuts',
+        hint: 'Shortcuts do nothing while you are typing in a box or working inside a table.',
+        general: 'Everywhere',
+        onPage: 'On specific pages',
+        openHelp: 'Show this list',
+        focusSearch: 'Go to the search box of the page (no search box: find a page)',
+        refresh: 'Refresh the page data',
+        quickJump: 'Find and open a page',
+        toggleSidebar: 'Collapse / expand the sidebar',
+        escape: 'Close a dialog or panel',
+        costDetail: 'Cost Monitoring (chart detail): move to the next chart / back to the 9 charts',
+        monitorSearch: 'Machine Monitor, Machine Locator: in the search box, open the first result',
+        monitorEscape: 'Machine Monitor: close the detail panel, then clear the selection',
+        locatorHelp: 'Machine Locator: open the page guide (all editing shortcuts)',
+        unsavedBlocked: (count: number) => `${count} unsaved change(s). Save or discard them before refreshing.`,
+        // {key} is replaced by the key drawn as a keycap
+        tipIntro: 'New: keyboard shortcuts to work faster. Press {key} to see them.',
+        tipRefresh: 'Tip: press {key} to refresh, no need to find the button.',
+        tipSearch: 'Tip: press {key} anywhere on the page to jump to this search box.',
+        tipShowAll: 'See shortcuts',
+        searchTitle: 'Press / to jump here',
+    },
+
     nav: {
         groups: {
             production: 'PRODUCTION',
@@ -118,6 +142,8 @@ export const en = {
         settings: 'Settings',
         settingsLanguage: 'Language',
         settingsAppearance: 'Appearance',
+        settingsShortcuts: 'Keyboard shortcuts',
+        settingsShortcutsHint: 'Press ? anywhere',
         themeLight: 'Light',
         themeDark: 'Dark',
         fallbackUser: 'Production User',

@@ -69,6 +69,29 @@ export const vi: Messages = {
         toLight: 'Chuyển sang giao diện sáng',
     },
 
+    shortcuts: {
+        title: 'Phím tắt',
+        hint: 'Phím tắt không chạy khi đang gõ trong ô nhập hoặc đang thao tác trong bảng.',
+        general: 'Mọi trang',
+        onPage: 'Trên từng trang',
+        openHelp: 'Mở danh sách này',
+        focusSearch: 'Vào ô tìm kiếm của trang (trang không có ô tìm: mở tìm trang)',
+        refresh: 'Làm mới dữ liệu trang',
+        quickJump: 'Tìm và mở trang',
+        toggleSidebar: 'Thu gọn / mở sidebar',
+        escape: 'Đóng hộp thoại, panel',
+        costDetail: 'Cost Monitoring (xem chi tiết 1 chart): sang chart bên cạnh / về lưới 9 chart',
+        monitorSearch: 'Machine Monitor, Machine Locator: trong ô tìm, mở kết quả đầu tiên',
+        monitorEscape: 'Machine Monitor: đóng panel chi tiết, rồi bỏ chọn máy',
+        locatorHelp: 'Machine Locator: mở hướng dẫn của trang (đủ phím khi chỉnh khung)',
+        unsavedBlocked: (count: number) => `Còn ${count} thay đổi chưa lưu. Lưu hoặc hủy trước khi làm mới.`,
+        tipIntro: 'Mới: có phím tắt để thao tác nhanh hơn. Bấm {key} để xem danh sách.',
+        tipRefresh: 'Mẹo: bấm {key} để làm mới, không cần tìm nút.',
+        tipSearch: 'Mẹo: bấm {key} ở bất kỳ đâu trên trang để vào ô tìm này.',
+        tipShowAll: 'Xem phím tắt',
+        searchTitle: 'Bấm / để vào ô tìm nhanh',
+    },
+
     // Menu sidebar giữ tên tiếng Anh ở cả 2 ngôn ngữ
     nav: en.nav,
 
@@ -87,6 +110,8 @@ export const vi: Messages = {
         settings: 'Cài đặt',
         settingsLanguage: 'Ngôn ngữ',
         settingsAppearance: 'Giao diện',
+        settingsShortcuts: 'Phím tắt',
+        settingsShortcutsHint: 'Bấm ? ở bất kỳ đâu',
         themeLight: 'Sáng',
         themeDark: 'Tối',
         fallbackUser: 'Người dùng',

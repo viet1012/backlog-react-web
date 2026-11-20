@@ -9,6 +9,7 @@ import { ShipmentDetailDialog } from '../components/common/shipment/ShipmentDeta
 import { ShipmentFilterBar } from '../components/shipment/ShipmentFilterBar'
 import { ShipmentHeatmap } from '../components/shipment/ShipmentHeatmap'
 import { buildDateRange, buildShipmentRows, getDefaultShipmentDateRange } from '../components/shipment/shipmentHeatmapUtils'
+import { usePageReadyMetric } from '../hooks/usePageReadyMetric'
 import { useShipmentData } from '../hooks/useShipmentData'
 import { readUrlParams, urlParam, useUrlFilters, type UrlParams } from '../hooks/useUrlFilters'
 import type { ShipmentHeatmapRow } from '../types/shipment'
@@ -65,6 +66,9 @@ export function ShipmentPage({
     detailOpen, detailFilter, detailData, detailLoading, detailError,
     openShipmentDetail, handleCloseDetail,
   } = useShipmentData(appliedFromD, appliedToD)
+
+  // đo hiệu năng (chỉ khi bật): mở trang → heatmap hiện ra
+  usePageReadyMetric('shipment', !loading && lastUpdated != null)
 
   const error = validationError ?? dataError
   const currentDefault = getDefaultShipmentDateRange()

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { Box, LinearProgress } from '@mui/material'
 import { alpha, keyframes } from '@mui/material/styles'
@@ -13,6 +13,8 @@ import { setNavPending, useNavPending } from './navPending'
 import { recordPageVisit } from './pageUsage'
 import { SIDEBAR_DURATION, SIDEBAR_EASE } from './sidebarStyles'
 import { setLayoutSliding } from './layoutSliding'
+import { markNavigation } from '../../utils/webVitals'
+import { GlobalShortcuts } from '../common/shortcuts'
 
 // Clock-in: the app is mounted under the shutter, then the sidebar and the
 // page come up as it rolls up ("lights on"). Dim, not invisible, while
@@ -111,6 +113,12 @@ export function MainLayout({ onToggleMode }: MainLayoutProps) {
     recordPageVisit(pathname)
   }, [pathname])
 
+  // Đo hiệu năng: dự phòng khi không bắt được lúc bấm (link ngoài sidebar, trình
+  // duyệt không có Navigation API). Đã ghi lúc bấm thì lệnh này không đổi gì.
+  useLayoutEffect(() => {
+    markNavigation(pathname)
+  }, [pathname])
+
   // ms from mount until the shutter starts rolling up; null when not signing in
   const [riseDelay] = useState(() => run
     ? Math.max(0, run.startedAt.getTime() + clockInTimeline(run.full).riseAt - Date.now())
@@ -145,6 +153,8 @@ export function MainLayout({ onToggleMode }: MainLayoutProps) {
     >
       <MascotProvider>
         <LeftSidebar onToggleMode={onToggleMode} onWidthChange={slideMain} />
+        {/* phím tắt chung: ? / r (không hiện gì cho tới khi mở bảng phím tắt) */}
+        <GlobalShortcuts />
         <Box
           ref={mainRef}
           component="main"

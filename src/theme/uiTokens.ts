@@ -1,5 +1,11 @@
 import type { Theme } from '@mui/material/styles'
 
+import { appTokens } from './colorTokens'
+
+/*
+ * DESIGN TOKEN – CỠ CHỮ, KHOẢNG CÁCH, BO GÓC (đề xuất 8). Màu: colorTokens.ts.
+ */
+
 export const uiTokens = {
   typography: {
     body: 13,
@@ -77,19 +83,15 @@ export const uiTokens = {
   },
 } as const
 
-export const glassPanelSx = (theme: Theme) => ({
-  bgcolor:
-    theme.palette.mode === 'dark'
-      ? 'rgba(17,27,45,0.78)'
-      : 'rgba(255,255,255,0.76)',
-  backdropFilter: 'blur(14px)',
-  WebkitBackdropFilter: 'blur(14px)',
-  border: `1px solid ${theme.palette.mode === 'dark'
-      ? 'rgba(255,255,255,0.10)'
-      : 'rgba(255,255,255,0.72)'
-    }`,
-  boxShadow:
-    theme.palette.mode === 'dark'
-      ? '0 8px 24px rgba(0,0,0,0.18)'
-      : '0 8px 24px rgba(15,23,42,0.08)',
-})
+/** Lớp kính của panel / header (màu ở colorTokens.ts) */
+export const glassPanelSx = (theme: Theme) => {
+  const c = appTokens(theme.palette.mode)
+
+  return {
+    bgcolor: c.surface.panel,
+    backdropFilter: 'blur(14px)',
+    WebkitBackdropFilter: 'blur(14px)',
+    border: `1px solid ${c.surfaceBorder.panel}`,
+    boxShadow: c.shadow.surface,
+  }
+}

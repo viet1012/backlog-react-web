@@ -18,6 +18,7 @@ import type {
 } from '@mui/material/styles'
 
 import { useI18n } from '../../i18n/useI18n'
+import { appTokens } from '../../theme/colorTokens'
 
 interface ThemeToggleButtonProps {
   mode: PaletteMode
@@ -429,9 +430,8 @@ export function ThemeToggleButton({
                   ? `opacity ${revealDuration}ms ease`
                   : 'none',
               willChange: 'clip-path, opacity',
-              bgcolor: reveal.targetMode === 'dark'
-                ? '#0b1220'
-                : '#eef3f8',
+              // nền trang của chế độ sắp chuyển sang (colorTokens.ts)
+              bgcolor: appTokens(reveal.targetMode).base.pageBg,
               backgroundImage: reveal.targetMode === 'dark'
                 ? 'radial-gradient(circle at 50% 40%, rgba(37,99,235,0.10), transparent 58%)'
                 : 'radial-gradient(circle at 50% 40%, rgba(56,189,248,0.08), transparent 58%)',
