@@ -87,6 +87,7 @@ import {
   useFacConfirmData,
 } from '../hooks/useFacConfirmData'
 import { usePageReadyMetric } from '../hooks/usePageReadyMetric'
+import { useUnsavedChangesGuard } from '../components/common/shortcuts'
 
 import {
   useGridPreferences,
@@ -210,6 +211,9 @@ export function FacConfirmPage({
 
   const tableRef =
     useRef<FacConfirmDataTableHandle>(null)
+
+  // phím tắt R không làm mới khi còn ô sửa chưa lưu (bấm nút thì vẫn như cũ)
+  useUnsavedChangesGuard(() => (tableRef.current?.hasChanges ? tableRef.current.changeCount : 0))
 
 
   // Công đoạn người dùng muốn chuyển sang khi còn thay đổi chưa lưu

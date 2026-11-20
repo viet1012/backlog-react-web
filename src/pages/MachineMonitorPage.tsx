@@ -795,7 +795,7 @@ function MonitorView({ layout, tab, header }: MonitorViewProps) {
                       onRowClick({ kind: 'group', id: (openGroups[0] ?? safeGroups[0]).key })
                     }
                   }}
-                  slotProps={{ htmlInput: { 'aria-label': tr.monitor.searchAria } }}
+                  slotProps={{ htmlInput: { 'aria-label': tr.monitor.searchAria, 'data-shortcut': 'search', title: tr.shortcuts.searchTitle } }}
                   sx={{
                     mt: 1,
                     '& .MuiInputBase-input': { fontFamily: codeFontFamily, fontSize: 14 },

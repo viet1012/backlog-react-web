@@ -14,6 +14,7 @@ import { recordPageVisit } from './pageUsage'
 import { SIDEBAR_DURATION, SIDEBAR_EASE } from './sidebarStyles'
 import { setLayoutSliding } from './layoutSliding'
 import { markNavigation } from '../../utils/webVitals'
+import { GlobalShortcuts } from '../common/shortcuts'
 
 // Clock-in: the app is mounted under the shutter, then the sidebar and the
 // page come up as it rolls up ("lights on"). Dim, not invisible, while
@@ -152,6 +153,8 @@ export function MainLayout({ onToggleMode }: MainLayoutProps) {
     >
       <MascotProvider>
         <LeftSidebar onToggleMode={onToggleMode} onWidthChange={slideMain} />
+        {/* phím tắt chung: ? / r (không hiện gì cho tới khi mở bảng phím tắt) */}
+        <GlobalShortcuts />
         <Box
           ref={mainRef}
           component="main"

@@ -30,6 +30,8 @@ export interface HeaderActionDefinition {
   /** Shown in the tooltip / aria-label while `loading` */
   busyLabel?: (t: Messages) => string
   appearance?: AppButtonAppearance
+  /** Phím tắt (GlobalShortcuts) – hiện cạnh tên trong tooltip */
+  shortcut?: string
 }
 
 export const HEADER_ACTIONS = {
@@ -37,6 +39,7 @@ export const HEADER_ACTIONS = {
     icon: <RefreshRoundedIcon fontSize="small" />,
     label: (t) => t.common.refresh,
     busyLabel: (t) => t.common.loading,
+    shortcut: 'R',
   },
 
   guide: {

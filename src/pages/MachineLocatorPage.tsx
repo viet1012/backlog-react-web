@@ -551,7 +551,7 @@ function MachineLocatorView({
                   matchesMachineFilter(c, ml.machines, ml.query, ml.groups, ml.canWrite)))
               }
             }}
-            slotProps={{ htmlInput: { 'aria-label': t.locator.searchAria } }}
+            slotProps={{ htmlInput: { 'aria-label': t.locator.searchAria, 'data-shortcut': 'search', title: t.shortcuts.searchTitle } }}
             sx={{
               mt: 1.25,
               '& .MuiInputBase-input': {

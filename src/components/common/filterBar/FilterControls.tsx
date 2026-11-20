@@ -64,6 +64,7 @@ export function FilterText({
   tour,
   search = false,
 }: FilterTextProps) {
+  const { t } = useI18n()
   const [draft, setDraft] = useDebouncedField(value, onChange, debounceMs)
 
   return (
@@ -77,7 +78,12 @@ export function FilterText({
       disabled={disabled}
       onChange={(event) => setDraft(event.target.value)}
       slotProps={{
-        htmlInput: { maxLength, ...(type === 'number' ? { min: 0, step: 1 } : {}) },
+        htmlInput: {
+          maxLength,
+          ...(type === 'number' ? { min: 0, step: 1 } : {}),
+          // phím tắt "/" nhảy vào ô tìm của trang; title: rê chuột thấy gợi ý
+          ...(search ? { 'data-shortcut': 'search', title: t.shortcuts.searchTitle } : {}),
+        },
         input: search
           ? {
             startAdornment: (

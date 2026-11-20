@@ -47,6 +47,17 @@ Frontend thuần (SPA). Dữ liệu và đăng nhập đi qua backend `backlog-b
   - Chế độ tối: control gốc của trình duyệt (lịch của ô ngày, thanh cuộn, dropdown) cũng chuyển tối.
   - Chữ màu trạng thái (trễ hạn, sắp tới hạn, chip Status của Backlog, nút trên toast) đủ tương phản ≥ 4.5:1 ở cả hai chế độ.
 - **Đăng xuất** ở chân sidebar, có hộp thoại xác nhận.
+- **Phím tắt** (bấm `?` hoặc menu cài đặt → *Phím tắt* để xem danh sách):
+  - `/` vào ô tìm kiếm của trang (Backlog, Fac Confirm, AI Logs, Machine Monitor, Machine Locator). Trang không có ô tìm thì mở hộp tìm trang.
+  - `R` làm mới dữ liệu trang, giống bấm nút ⟳. Fac Confirm còn ô sửa chưa lưu thì không làm mới, chỉ hiện cảnh báo.
+  - `Ctrl+K` tìm và mở trang, `Ctrl+B` thu gọn sidebar (đã có từ trước).
+  - Không chạy khi đang gõ trong ô nhập, đang thao tác trong bảng (DataGrid gõ chữ là sửa ô) hoặc đang mở hộp thoại / menu.
+  - **Người dùng biết phím tắt bằng cách nào** (không cần đọc tài liệu):
+    - Rê chuột lên nút ⟳: tooltip có ô phím `R`. Rê chuột lên ô tìm: gợi ý *"Bấm / để vào ô tìm nhanh"*.
+    - Lần đầu vào app sau khi có phím tắt (8 giây sau khi màn chấm công cuộn lên): toast *"Mới: có phím tắt… Bấm ? để xem danh sách"*, kèm nút *Xem phím tắt*.
+    - Bấm nút ⟳ bằng chuột lần thứ 2 trong phiên: toast *"Mẹo: bấm R để làm mới"*. Bấm chuột vào ô tìm lần thứ 2: *"Mẹo: bấm / …"*.
+    - Mỗi mẹo hiện tối đa 1 lần cho mỗi người (nhớ theo mã nhân viên), mỗi phiên tối đa 1 mẹo. Người dùng đã tự dùng phím đó thì không nhắc.
+    - Menu cài đặt ở chân sidebar có dòng *Phím tắt*.
 - **Trạng thái tải / trống / lỗi** giống nhau ở mọi trang:
   - Tải dưới 300 ms thì không hiện gì.
   - Tải lần đầu hiện **skeleton** theo hình dạng nội dung (bảng, heatmap, lưới chart, thẻ KPI, bản đồ).
@@ -554,6 +565,13 @@ Quy ước:
   - `warning.main` chỉ ~2.8:1 trên nền sáng, `error.main` chỉ ~4.1:1 trên nền tối. Hàm này trả màu đạt ≥ 4.5:1.
   - Nền tô nhạt, viền, sọc màu, icon thì vẫn dùng `palette.*.main` (chỉ cần 3:1).
   - Màu tự chọn cho chữ (vd chip Status) phải có bản cho chế độ tối, xem `BACKLOG_STATUS_COLORS_DARK` trong `backlogStatus.tsx`.
+- **Phím tắt** ở [common/shortcuts/](src/components/common/shortcuts/). `GlobalShortcuts` (gắn trong `MainLayout`) chỉ xử lý `?`, `/`, `r`. Trang không cần đăng ký gì:
+  - `/` tìm ô `input[data-shortcut="search"]` đang hiện. `FilterSearch` tự gắn; ô tìm tự dựng thì thêm `'data-shortcut': 'search'` vào `slotProps.htmlInput`.
+  - `r` bấm nút `[data-header-action="refresh"]` đang hiện. `HeaderAction` / `RefreshButton` tự gắn.
+  - Trang có thay đổi chưa lưu gọi `useUnsavedChangesGuard(() => số thay đổi)` để phím `r` không làm mất dữ liệu.
+  - Phím riêng của trang đặt listener trên `document` và gọi `preventDefault()`. `GlobalShortcuts` nghe trên `window` nên chạy sau và bỏ qua phím đã xử lý (vd `?` ở Machine Locator mở hướng dẫn riêng).
+  - Thêm phím chung mới: sửa `GlobalShortcuts.tsx` và thêm dòng vào `ShortcutHelpDialog.tsx` (cả i18n `shortcuts.*`). Nút header có phím tắt thì khai báo `shortcut` trong `headerActionRegistry.tsx` để tooltip tự hiện ô phím.
+  - Mẹo phím tắt ở `shortcutTips.ts` (localStorage `shortcut-tips:<mã NV>`). Muốn xem lại mẹo khi test thì xoá key này.
 - **Chế độ tối** dựa vào `color-scheme` (`<CssBaseline enableColorScheme />`): không dùng `filter: invert()` cho icon lịch của input date, trình duyệt tự vẽ icon sáng.
 - **Bộ lọc ⇄ URL** dùng [useUrlFilters](src/hooks/useUrlFilters.ts):
   - Khai báo tham số bằng `urlParam.text | oneOf | date | month | list | positiveNumber`. Có `empty` thì bằng giá trị đó sẽ không ghi lên URL; không có `empty` thì luôn ghi.
@@ -607,9 +625,29 @@ npm run build      # kết quả ở dist/
 | 4 | `b9bba9b` | 10 | Việc tồn: Cost tải chart song song với danh sách tháng; Machine Monitor không tải lại sơ đồ / danh sách tầng mỗi lần mở trang. |
 | 5 | `758b7f6` | 6 | Dark mode / độ tương phản: control gốc của trình duyệt theo chế độ tối, chữ màu trạng thái đạt ≥ 4.5:1, chip Status của Backlog có bản màu cho chế độ tối. |
 | 6 | `e5fd311` | 9 | Đo hiệu năng: Core Web Vitals (LCP, INP, CLS, FCP, TTFB) và thời gian "trang sẵn sàng" của 5 trang chính, ghi ra console khi bật (dev hoặc `?vitals=1`). |
-| — | — | 7 – 8 | Chưa làm: phím tắt, design token. |
+| 7 | *(xem git log)* | 7 | Phím tắt: `?` bảng phím tắt, `/` vào ô tìm, `R` làm mới (chặn khi còn thay đổi chưa lưu). Thêm mục *Phím tắt* trong menu cài đặt. |
+| — | — | 8 | Chưa làm: design token. |
 
 Nguyên tắc chung của mọi đợt: **mặc định giao diện như cũ**, phần mới chỉ thêm vào hoặc để người dùng tự bật.
+
+### 2026-11-20 — Phím tắt
+
+Đợt 7 (đề xuất 7). Chỉ thêm vào: không bấm phím thì giao diện như cũ. Thay đổi nhìn thấy duy nhất là thêm dòng *Phím tắt* trong menu cài đặt ở chân sidebar.
+
+| Phím | Làm gì | Ghi chú |
+| --- | --- | --- |
+| `?` | Mở bảng phím tắt (chung + phím riêng từng trang) | Ở Machine Locator, `?` vẫn mở hướng dẫn riêng của trang như trước |
+| `/` | Vào ô tìm kiếm của trang đang mở (chọn sẵn chữ cũ) | Không có ô tìm thì mở hộp tìm trang (như `Ctrl+K`) |
+| `R` | Làm mới dữ liệu (bấm nút ⟳ đang hiện) | Nút đang tải / bị khóa thì bỏ qua. Fac Confirm còn ô sửa chưa lưu thì không làm mới, hiện cảnh báo |
+
+- Không bắt phím khi đang gõ, khi focus nằm trong bảng / hộp thoại / menu, hoặc khi có hộp thoại đang mở.
+- Không thêm phím chuyển trang kiểu `g` + chữ: đã có `Ctrl+K`, và Machine Locator đang dùng `g`, `f`, `s` cho việc chỉnh khung.
+- Cho người dùng biết có phím tắt:
+  - Tooltip nút ⟳ có ô phím `R`. Ô tìm có gợi ý khi rê chuột.
+  - Toast giới thiệu 1 lần cho mỗi người.
+  - Mẹo theo ngữ cảnh khi người dùng làm bằng chuột lần thứ 2 (bấm ⟳, bấm vào ô tìm).
+  - Tối đa 1 mẹo mỗi phiên. Đã tự dùng phím đó thì không nhắc. File: `shortcuts/shortcutTips.ts`.
+- File: `components/common/shortcuts/` (mới), `HeaderAction.tsx` (`data-header-action`), `FilterControls.tsx` (`data-shortcut`), ô tìm của Machine Monitor / Machine Locator, `MainLayout.tsx`, `SidebarSettingsMenu.tsx`, `FacConfirmPage.tsx` (`useUnsavedChangesGuard`), i18n `shortcuts.*`.
 
 ### 2026-11-20 — Đo hiệu năng (web-vitals)
 
