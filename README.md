@@ -625,7 +625,7 @@ npm run build      # kết quả ở dist/
 | 4 | `b9bba9b` | 10 | Việc tồn: Cost tải chart song song với danh sách tháng; Machine Monitor không tải lại sơ đồ / danh sách tầng mỗi lần mở trang. |
 | 5 | `758b7f6` | 6 | Dark mode / độ tương phản: control gốc của trình duyệt theo chế độ tối, chữ màu trạng thái đạt ≥ 4.5:1, chip Status của Backlog có bản màu cho chế độ tối. |
 | 6 | `e5fd311` | 9 | Đo hiệu năng: Core Web Vitals (LCP, INP, CLS, FCP, TTFB) và thời gian "trang sẵn sàng" của 5 trang chính, ghi ra console khi bật (dev hoặc `?vitals=1`). |
-| 7 | *(xem git log)* | 7 | Phím tắt: `?` bảng phím tắt, `/` vào ô tìm, `R` làm mới (chặn khi còn thay đổi chưa lưu). Thêm mục *Phím tắt* trong menu cài đặt. |
+| 7 | `f27802c` | 7 | Phím tắt: `?` bảng phím tắt, `/` vào ô tìm, `R` làm mới (chặn khi còn thay đổi chưa lưu). Thêm mục *Phím tắt* trong menu cài đặt. |
 | — | — | 8 | Chưa làm: design token. |
 
 Nguyên tắc chung của mọi đợt: **mặc định giao diện như cũ**, phần mới chỉ thêm vào hoặc để người dùng tự bật.
