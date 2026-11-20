@@ -5,6 +5,8 @@
   /* cv05: "l" with a tail, cv08: "I" with serifs – tells I / l / 1 apart in
      part numbers and PO codes */
   font-feature-settings: 'cv05', 'cv08';
+  /* = colorTokens.ts (light: base.textPrimary, base.pageBg). CSS không đọc được
+     token TS; đây chỉ là nền lúc JS chưa chạy, theme MUI ghi đè ngay sau đó. */
   color: #172033;
   background: #eef3f8;
   font-synthesis: none;

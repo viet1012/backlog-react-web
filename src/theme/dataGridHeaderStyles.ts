@@ -8,6 +8,10 @@ import type {
 } from '@mui/x-data-grid'
 
 import {
+  appTokens,
+} from './colorTokens'
+
+import {
   DEADLINE_CELL_CLASS,
   deadlineTextColor,
 } from './statusTones'
@@ -35,37 +39,30 @@ export const dataGridHeaderSx =
     const isDark =
       theme.palette.mode === 'dark'
 
+    // Màu chính của bảng: colorTokens.ts (grid). Phần còn lại bên dưới là
+    // độ mờ của trắng / đen cho viền, bóng – riêng của style này.
+    const g =
+      appTokens(theme.palette.mode).grid
+
     const accent =
-      isDark
-        ? '#7AA2F7'
-        : '#4F74B8'
+      g.accent
 
     const gridBorder =
-      isDark
-        ? alpha('#FFFFFF', 0.10)
-        : alpha('#334155', 0.10)
+      g.border
 
     // Header dính trên đầu, dòng cuộn chạy bên dưới; không còn blur nên
     // nền phải gần đặc để chữ của dòng không lộ qua header
     const headerGlass =
-      isDark
-        ? alpha('#111827', 0.94)
-        : alpha('#F8FAFC', 0.95)
+      g.headerBg
 
     const bodyGlass =
-      isDark
-        ? alpha('#0F172A', 0.44)
-        : alpha('#FFFFFF', 0.52)
+      g.bodyBg
 
     const rowGlass =
-      isDark
-        ? alpha('#172033', 0.34)
-        : alpha('#FFFFFF', 0.34)
+      g.rowBg
 
     const rowGlassAlt =
-      isDark
-        ? alpha('#1E293B', 0.26)
-        : alpha('#F8FAFC', 0.32)
+      g.rowAltBg
 
     const hoverGlass =
       isDark
@@ -73,32 +70,26 @@ export const dataGridHeaderSx =
         : alpha(accent, 0.075)
 
     const headerHoverGlass =
-      isDark
-        ? alpha('#FFFFFF', 0.06)
-        : alpha('#0F172A', 0.045)
+      g.headerHover
 
     const separatorColor =
-      isDark
-        ? alpha('#FFFFFF', 0.11)
-        : alpha('#334155', 0.11)
+      g.separator
 
     const headerText =
-      isDark
-        ? alpha('#FFFFFF', 0.94)
-        : '#1E293B'
+      g.headerText
 
     // Nền đặc cho cột ghim, gần đúng màu kính của dòng / header phía sau
     const pinnedBackground =
-      isDark ? '#141d2e' : '#fbfcfe'
+      g.pinnedBg
 
     const pinnedBackgroundAlt =
-      isDark ? '#172235' : '#f6f8fb'
+      g.pinnedAltBg
 
     const pinnedBackgroundHover =
-      isDark ? '#1b2a45' : '#eef3fb'
+      g.pinnedHoverBg
 
     const pinnedHeaderBackground =
-      isDark ? '#111827' : '#F8FAFC'
+      g.pinnedHeaderBg
 
     return {
       width: '100%',
@@ -546,9 +537,7 @@ export const dataGridHeaderSx =
         // Solid fill instead of a second blur nested inside the grid's own
         // blur: same look over the grid body, no extra GPU layer per edit
         backgroundColor:
-          isDark
-            ? '#111827 !important'
-            : '#FFFFFF !important',
+          `${g.editingBg} !important`,
 
         boxShadow:
           `inset 0 0 0 1.5px ${alpha(accent, 0.70)} !important`,

@@ -4,6 +4,7 @@ import type { } from '@mui/x-data-grid/themeAugmentation'
 import { enUS as gridEnUS, viVN as gridViVN } from '@mui/x-data-grid/locales'
 import { enUS as pickersEnUS, viVN as pickersViVN } from '@mui/x-date-pickers/locales'
 import type { Language } from '../utils/uiPreferences'
+import { appTokens } from './colorTokens'
 import { uiTokens } from './uiTokens'
 
 const muiLocales = {
@@ -11,24 +12,25 @@ const muiLocales = {
   en: [coreEnUS, gridEnUS, pickersEnUS],
 } as const
 
+// Màu lấy từ colorTokens.ts, cỡ chữ / bo góc từ uiTokens.ts: không ghi mã màu ở đây
 export function createDashboardTheme(mode: PaletteMode, language: Language = 'vi') {
   const dark = mode === 'dark'
+  const c = appTokens(mode)
 
   return createTheme({
+    app: c,
     palette: {
       mode,
-      primary: { main: dark ? '#60a5fa' : '#2563eb' },
+      primary: { main: c.base.primary },
       background: {
-        default: dark ? '#0b1220' : '#eef3f8',
-        paper: dark ? '#111b2d' : '#ffffff',
+        default: c.base.pageBg,
+        paper: c.base.paper,
       },
       text: {
-        primary: dark ? '#f8fafc' : '#172033',
-        secondary: dark ? '#94a3b8' : '#64748b',
+        primary: c.base.textPrimary,
+        secondary: c.base.textSecondary,
       },
-      divider: dark
-        ? 'rgba(148, 163, 184, 0.16)'
-        : 'rgba(71, 85, 105, 0.16)',
+      divider: c.base.divider,
     },
     shape: { borderRadius: 10 },
     typography: {
@@ -48,11 +50,11 @@ export function createDashboardTheme(mode: PaletteMode, language: Language = 'vi
       MuiCssBaseline: {
         styleOverrides: {
           'html, body, #root': {
-            backgroundColor: dark ? '#0b1220' : '#eef3f8',
+            backgroundColor: c.base.pageBg,
           },
           body: {
             fontSize: uiTokens.typography.body,
-            backgroundColor: dark ? '#0b1220' : '#eef3f8',
+            backgroundColor: c.base.pageBg,
             backgroundImage: 'none',
           },
         },
@@ -65,14 +67,10 @@ export function createDashboardTheme(mode: PaletteMode, language: Language = 'vi
             // each one a GPU layer re-sampled on scroll / transitions, over a
             // background that is only a soft gradient. Slightly more opaque
             // fill keeps the same look.
-            backgroundColor: dark
-              ? 'rgba(17,27,45,0.9)'
-              : 'rgba(255,255,255,0.88)',
-            border: `1px solid ${dark ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.72)'}`,
+            backgroundColor: c.surface.card,
+            border: `1px solid ${c.surfaceBorder.panel}`,
             borderRadius: uiTokens.card.borderRadius,
-            boxShadow: dark
-              ? '0 8px 24px rgba(0,0,0,0.18)'
-              : '0 8px 24px rgba(15,23,42,0.08)',
+            boxShadow: c.shadow.surface,
           },
         },
       },
@@ -81,23 +79,17 @@ export function createDashboardTheme(mode: PaletteMode, language: Language = 'vi
           root: {
             minHeight: uiTokens.control.height,
             borderRadius: uiTokens.control.borderRadius,
-            backgroundColor: dark
-              ? 'rgba(255,255,255,0.045)'
-              : 'rgba(255,255,255,0.72)',
+            backgroundColor: c.control.inputBg,
 
             // Không blur ở control nhỏ: nằm trên panel gần đặc nên không thấy khác,
             // nhưng mỗi ô blur là một lớp GPU phải vẽ lại khi trang hiện ra
 
             '& fieldset': {
-              borderColor: dark
-                ? 'rgba(255,255,255,0.10)'
-                : 'rgba(15,23,42,0.10)',
+              borderColor: c.control.inputBorder,
             },
 
             '&:hover fieldset': {
-              borderColor: dark
-                ? 'rgba(255,255,255,0.18)'
-                : 'rgba(15,23,42,0.18)',
+              borderColor: c.control.inputBorderHover,
             },
 
             '&.Mui-focused fieldset': {
@@ -149,15 +141,11 @@ export function createDashboardTheme(mode: PaletteMode, language: Language = 'vi
         styleOverrides: {
           root: {
             borderRadius: uiTokens.control.borderRadius,
-            backgroundColor: dark
-              ? 'rgba(255,255,255,0.045)'
-              : 'rgba(255,255,255,0.58)',
-            border: `1px solid ${dark ? 'rgba(255,255,255,0.09)' : 'rgba(71,85,105,0.12)'}`,
+            backgroundColor: c.control.iconButtonBg,
+            border: `1px solid ${c.control.border}`,
             transition: 'transform 120ms ease, background-color 160ms ease, color 160ms ease, border-color 160ms ease',
             '&:hover': {
-              backgroundColor: dark
-                ? 'rgba(255,255,255,0.08)'
-                : 'rgba(255,255,255,0.82)',
+              backgroundColor: c.control.iconButtonBgHover,
             },
             '&:active': { transform: 'scale(0.96)' },
           },
@@ -174,10 +162,8 @@ export function createDashboardTheme(mode: PaletteMode, language: Language = 'vi
             borderRadius: uiTokens.control.borderRadius,
             fontSize: uiTokens.typography.chip,
             fontWeight: 600,
-            backgroundColor: dark
-              ? 'rgba(255,255,255,0.05)'
-              : 'rgba(255,255,255,0.60)',
-            border: `1px solid ${dark ? 'rgba(255,255,255,0.09)' : 'rgba(71,85,105,0.12)'}`,
+            backgroundColor: c.control.chipBg,
+            border: `1px solid ${c.control.border}`,
             transition: 'transform 120ms ease, background-color 160ms ease, border-color 160ms ease',
             '&:active': { transform: 'scale(0.98)' },
           },
@@ -210,33 +196,27 @@ export function createDashboardTheme(mode: PaletteMode, language: Language = 'vi
         styleOverrides: {
           paper: {
             borderRadius: uiTokens.dialog.borderRadius,
-            border: `1px solid ${dark ? 'rgba(255,255,255,0.11)' : 'rgba(255,255,255,0.78)'}`,
-            backgroundColor: dark
-              ? 'rgba(17,27,45,0.88)'
-              : 'rgba(255,255,255,0.88)',
+            border: `1px solid ${c.surfaceBorder.dialog}`,
+            backgroundColor: c.surface.dialog,
             backgroundImage: 'none',
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',
-            boxShadow: dark
-              ? '0 20px 50px rgba(0,0,0,0.30)'
-              : '0 20px 50px rgba(15,23,42,0.14)',
+            boxShadow: c.shadow.dialog,
           },
         },
       },
       MuiDataGrid: {
         styleOverrides: {
           root: {
-            color: dark ? '#dbe7f8' : '#243047',
-            backgroundColor: dark ? '#101a2b' : '#ffffff',
+            color: c.gridBase.text,
+            backgroundColor: c.gridBase.bg,
             border: 0,
             borderRadius: 5,
             fontSize: uiTokens.table.cellFontSize,
-            '--DataGrid-rowBorderColor': dark
-              ? 'rgba(148,163,184,0.14)'
-              : 'rgba(71,85,105,0.14)',
+            '--DataGrid-rowBorderColor': c.gridBase.rowBorder,
             '& .MuiDataGrid-columnHeaders': {
-              backgroundColor: dark ? '#17243a' : '#eef3f8',
-              borderBottom: `1px solid ${dark ? 'rgba(148,163,184,0.18)' : 'rgba(71,85,105,0.16)'}`,
+              backgroundColor: c.gridBase.headerBg,
+              borderBottom: `1px solid ${c.gridBase.headerBorder}`,
             },
             '& .MuiDataGrid-columnHeaderTitle': {
               fontSize: uiTokens.table.headerFontSize,
@@ -244,25 +224,23 @@ export function createDashboardTheme(mode: PaletteMode, language: Language = 'vi
             },
             '& .MuiDataGrid-cell': {
               fontSize: uiTokens.table.cellFontSize,
-              borderColor: dark
-                ? 'rgba(148,163,184,0.14)'
-                : 'rgba(71,85,105,0.14)',
+              borderColor: c.gridBase.rowBorder,
             },
             '& .MuiDataGrid-row:nth-of-type(even)': {
-              backgroundColor: dark ? '#121e31' : '#f8fafc',
+              backgroundColor: c.gridBase.rowAlt,
             },
             '& .MuiDataGrid-row:hover': {
-              backgroundColor: dark ? '#1b3150' : '#eef5ff',
+              backgroundColor: c.gridBase.rowHover,
             },
             '& .MuiDataGrid-row.Mui-selected': {
-              backgroundColor: dark ? '#1c3b61' : '#dbeafe',
+              backgroundColor: c.gridBase.rowSelected,
             },
             '& .MuiDataGrid-footerContainer, & .MuiDataGrid-toolbarContainer': {
-              backgroundColor: dark ? '#131f33' : '#f6f8fb',
+              backgroundColor: c.gridBase.footerBg,
             },
             '& .MuiDataGrid-footerContainer': {
               minHeight: 46,
-              borderTop: `1px solid ${dark ? 'rgba(148,163,184,0.18)' : 'rgba(71,85,105,0.16)'}`,
+              borderTop: `1px solid ${c.gridBase.footerBorder}`,
             },
             '& .MuiDataGrid-toolbarContainer, & .MuiTablePagination-root': {
               fontSize: uiTokens.table.auxiliaryFontSize,
@@ -275,15 +253,15 @@ export function createDashboardTheme(mode: PaletteMode, language: Language = 'vi
               height: 10,
             },
             '& .MuiDataGrid-virtualScroller::-webkit-scrollbar-track': {
-              backgroundColor: dark ? '#0d1625' : '#e5eaf0',
+              backgroundColor: c.gridBase.scrollTrack,
             },
             '& .MuiDataGrid-virtualScroller::-webkit-scrollbar-thumb': {
-              backgroundColor: dark ? '#33445e' : '#aab5c4',
-              border: `2px solid ${dark ? '#0d1625' : '#e5eaf0'}`,
+              backgroundColor: c.gridBase.scrollThumb,
+              border: `2px solid ${c.gridBase.scrollTrack}`,
               borderRadius: 4,
             },
             '& .MuiDataGrid-virtualScroller::-webkit-scrollbar-thumb:hover': {
-              backgroundColor: dark ? '#49617f' : '#8392a7',
+              backgroundColor: c.gridBase.scrollThumbHover,
             },
           },
         },

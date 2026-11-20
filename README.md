@@ -529,7 +529,7 @@ src/
   types/            Kiểu dữ liệu theo tính năng
   utils/            Hàm thuần: map API, lọc, hình học & fit khung máy (chạy trong Web Worker),
                     download.ts (tải file kèm tiến trình), uiPreferences.ts (lưu cài đặt trên máy)
-  theme/            Theme MUI sáng/tối, token UI, statusTones.ts (màu theo hạn dùng chung)
+  theme/            Theme MUI sáng/tối, colorTokens.ts (token màu), uiTokens.ts (cỡ chữ / khoảng cách), statusTones.ts (màu theo hạn dùng chung)
   data/             Dữ liệu tĩnh: nội dung đào tạo, dữ liệu gốc Machine Locator (dùng cho script)
 public/assets/machine-locator/   Ảnh layout nhà máy
 scripts/machine-locator/         Script Python/Node xử lý bản vẽ layout
@@ -561,6 +561,14 @@ Quy ước:
   - Bảng muốn có mục *Ghim cột* phải dùng `ExcelColumnMenu`, vì mục này đọc `GridPinContext`.
   - Ghim cột tự làm bằng `position: sticky`, vì bản Community không có. Khi có cột ghim, bảng đặt `columnBufferPx` lớn để cột ghim luôn được vẽ.
   - Tô màu hạn: `deadlineCellClass(date, done)` / `deadlineTone(...)` trong [theme/statusTones.ts](src/theme/statusTones.ts). Không tự chọn màu đỏ / cam riêng.
+- **Design token** – không ghi mã màu, cỡ chữ, bo góc rải rác trong component:
+  - Màu: [theme/colorTokens.ts](src/theme/colorTokens.ts), mỗi chế độ sáng / tối một bộ, cùng cấu trúc.
+    - `base`: palette gốc. `surface` / `surfaceBorder` / `shadow`: lớp kính panel < card = dialog < toast. `control`: ô nhập, nút icon, chip. `statusText`: chữ trạng thái. `gridBase`: DataGrid mặc định của theme. `grid`: bảng kính dùng chung (`dataGridHeaderSx`).
+    - Trong `sx` dùng `theme.app.*`, ví dụ `sx={(theme) => ({ bgcolor: theme.app.surface.panel })}`. Ngoài `sx` dùng `appTokens(mode)`.
+  - Cỡ chữ, khoảng cách, bo góc, chiều cao control / dòng bảng: [theme/uiTokens.ts](src/theme/uiTokens.ts). Lớp kính dùng chung: `glassPanelSx(theme)`.
+  - Thứ tự ưu tiên: palette MUI (`text.secondary`, `divider`, `primary.main`…) → `theme.app.*` → thêm token mới. Đừng thêm mã màu mới vào component.
+  - Không token hoá màu minh hoạ (mascot, màn đăng nhập / chấm công, kho 3D, bảng LED, bản vẽ Machine Locator / Monitor, màu nhóm menu ở `sidebarConfig`, màu trạng thái Backlog): chúng cố định theo nội dung.
+  - `index.css` giữ bản sao nền / chữ của chế độ sáng (CSS không đọc được token TS). Đổi token `base` thì sửa cả ở đó.
 - **Chữ màu trạng thái** (đỏ / cam / xanh lá / xanh dương) dùng `statusTextColor(theme, 'error' | 'warning' | 'success' | 'info')` trong [theme/statusTones.ts](src/theme/statusTones.ts), không dùng thẳng `palette.*.main` cho chữ:
   - `warning.main` chỉ ~2.8:1 trên nền sáng, `error.main` chỉ ~4.1:1 trên nền tối. Hàm này trả màu đạt ≥ 4.5:1.
   - Nền tô nhạt, viền, sọc màu, icon thì vẫn dùng `palette.*.main` (chỉ cần 3:1).
@@ -626,9 +634,25 @@ npm run build      # kết quả ở dist/
 | 5 | `758b7f6` | 6 | Dark mode / độ tương phản: control gốc của trình duyệt theo chế độ tối, chữ màu trạng thái đạt ≥ 4.5:1, chip Status của Backlog có bản màu cho chế độ tối. |
 | 6 | `e5fd311` | 9 | Đo hiệu năng: Core Web Vitals (LCP, INP, CLS, FCP, TTFB) và thời gian "trang sẵn sàng" của 5 trang chính, ghi ra console khi bật (dev hoặc `?vitals=1`). |
 | 7 | `f27802c` | 7 | Phím tắt: `?` bảng phím tắt, `/` vào ô tìm, `R` làm mới (chặn khi còn thay đổi chưa lưu). Thêm mục *Phím tắt* trong menu cài đặt. |
-| — | — | 8 | Chưa làm: design token. |
+| 8 | *(xem git log)* | 8 | Design token màu (`colorTokens.ts`, `theme.app`): theme MUI, kính panel, toast, bảng DataGrid đọc màu từ một chỗ. Giao diện giữ nguyên, đã so sánh theme sinh ra trước / sau: giống hệt. |
 
 Nguyên tắc chung của mọi đợt: **mặc định giao diện như cũ**, phần mới chỉ thêm vào hoặc để người dùng tự bật.
+
+### 2026-11-20 — Design token
+
+Đợt 8 (đề xuất 8). **Không đổi giao diện**: chỉ chuyển mã màu về một chỗ, giá trị giữ nguyên.
+
+| Phần | Trước | Sau |
+| --- | --- | --- |
+| Theme MUI (`dashboardTheme.ts`) | ~70 mã màu ghi thẳng, nhiều giá trị lặp (nền trang ghi 3 lần, viền nút icon và chip trùng nhau…) | Đọc từ `colorTokens.ts`. Theme có thêm `theme.app` = token của chế độ hiện tại |
+| Kính panel / header (`glassPanelSx`) | Ghi riêng, trùng giá trị với Card | `surface.panel`, `surfaceBorder.panel`, `shadow.surface` |
+| Toast (`NotifyHost.tsx`) | Ghi riêng | `theme.app.surface.toast`, `theme.app.shadow.toast` |
+| Bảng kính (`dataGridHeaderStyles.ts`) | 14 cặp màu sáng / tối khai báo đầu hàm | `grid.*` |
+| Chữ cam trạng thái (`statusTones.ts`) | Hằng số riêng | `statusText.warning` |
+| Lớp phủ khi đổi sáng / tối (`ThemeToggleButton.tsx`) | Ghi lại mã nền trang | `appTokens(mode).base.pageBg` |
+
+- Kiểm chứng: script dựng theme (cả 2 chế độ) cùng `dataGridHeaderSx`, `glassPanelSx`, `statusTextColor` qua Vite SSR, ghi ra JSON trước và sau khi sửa. So sánh 2 file: **giống hệt**.
+- Chưa chuyển (làm dần khi sửa tới): style riêng của sidebar (`sidebarStyles.ts`, gradient riêng), Shipment heatmap, Backlog Summary, các trang Cost / EVN / AI Logs. Màu minh hoạ thì giữ nguyên (xem quy ước).
 
 ### 2026-11-20 — Phím tắt
 

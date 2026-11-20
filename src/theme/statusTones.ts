@@ -1,6 +1,8 @@
 import dayjs from 'dayjs'
 import type { Theme } from '@mui/material/styles'
 
+import { appTokens } from './colorTokens'
+
 /**
  * Tô màu theo hạn – MỘT quy tắc cho mọi màn hình (bảng Backlog, Summary,
  * Shipment detail…):
@@ -57,9 +59,9 @@ export function deadlineCellClass(date: unknown, done: boolean): string {
 
 export type StatusTone = 'error' | 'warning' | 'success' | 'info'
 
-// Cam đậm cho chữ trên nền sáng: warning.main (#ed6c02) chỉ đạt ~2.8:1 trên nền
-// trắng, cam này đạt ~4.6:1 (WCAG AA). Viền / sọc / icon vẫn dùng warning.main.
-const WARNING_TEXT_LIGHT = '#c2410c'
+// Cam cho chữ: colorTokens statusText.warning. Sáng: cam đậm #c2410c (~4.6:1;
+// warning.main #ed6c02 chỉ ~2.8:1 trên nền trắng). Tối: bằng warning.main.
+// Viền / sọc / icon vẫn dùng warning.main.
 
 /**
  * Màu CHỮ cho tông trạng thái, đủ tương phản (≥ 4.5:1) trên nền của app.
@@ -73,7 +75,7 @@ export function statusTextColor(theme: Theme, tone: StatusTone): string {
 
   switch (tone) {
     case 'error': return dark ? theme.palette.error.light : theme.palette.error.main
-    case 'warning': return dark ? theme.palette.warning.main : WARNING_TEXT_LIGHT
+    case 'warning': return appTokens(theme.palette.mode).statusText.warning
     case 'success': return theme.palette.success.main
     default: return theme.palette.primary.main
   }
