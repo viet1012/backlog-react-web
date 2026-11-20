@@ -53,6 +53,42 @@ export interface CachedQueryResult<T> {
 // ---------------------------------------------------------
 const inFlight = new Map<string, Promise<unknown>>()
 
+// Tải trước vào cache (vd rê chuột lên khung sắp mở): đã có cache còn mới / đang tải → bỏ qua.
+// Dùng chung inFlight nên lúc mở thật useCachedQuery sẽ chờ đúng request này, không gọi lần 2.
+// Trả về promise của request mới (undefined = bỏ qua vì đã có cache / đang tải).
+export function prefetchQuery<T>(
+  key: string,
+  load: (signal: AbortSignal) => Promise<T>,
+  freshMs = QUERY_FRESH_MS,
+): Promise<unknown> | undefined {
+  if (inFlight.has(key) || isQueryFresh(readQueryCache(key), freshMs)) {
+    return undefined
+  }
+
+  const request = load(new AbortController().signal)
+    .then((data) => {
+      writeQueryCache(key, data)
+      return data
+    })
+    .finally(() => {
+      inFlight.delete(key)
+    })
+
+  // lỗi prefetch bỏ qua – lúc mở thật sẽ tải lại và báo lỗi
+  const settled = request.catch(() => {})
+  inFlight.set(key, request)
+
+  return settled
+}
+
+/** Có request nào đang chạy với key bắt đầu bằng prefix không (vd đang tải detail) */
+export function isQueryInFlight(prefix: string): boolean {
+  for (const key of inFlight.keys()) {
+    if (key.startsWith(prefix)) return true
+  }
+  return false
+}
+
 function fromCache<T>(key: string | null): Settled<T> {
   const hit = key === null ? undefined : readQueryCache<T>(key)
 

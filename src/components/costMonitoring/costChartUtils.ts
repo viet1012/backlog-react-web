@@ -104,12 +104,30 @@ export function buildYAxis(rows: CostChartRow[], chart: CostChart) {
     ...rows.flatMap((r) => [r.fcTgt, r.plTgt, r.fluctTgt, r.actMtd, r.estMtd]),
   ].filter((v): v is number => v != null && Number.isFinite(v))
 
-  const target = Math.max(0, ...values) * 1.1
+  const target = Math.max(0, ...values) * 1.05
 
   if (target <= 0) return { max: 1, ticks: [0, 0.25, 0.5, 0.75, 1] }
 
-  const step = niceStep(target / 4)
-  const count = Math.ceil(target / step)
+  // Chọn bước "đẹp" (1 / 2 / 2.5 / 4 / 5 × 10ⁿ) cho đỉnh trục sát dữ liệu nhất, 3–6 khoảng.
+  // Trước đây cố định 4 khoảng → bước nhảy 50 → 100, vd dữ liệu 195 bị đẩy trục lên 300.
+  const base = 10 ** Math.floor(Math.log10(target / 4))
+  let step = niceStep(target / 4)
+  let top = Math.ceil(target / step) * step
+
+  for (const mag of [base / 10, base, base * 10]) {
+    for (const s of [1, 2, 2.5, 4, 5]) {
+      const candidate = s * mag
+      const intervals = Math.ceil(target / candidate)
+      const candidateTop = intervals * candidate
+
+      if (intervals >= 3 && intervals <= 6 && candidateTop < top - 1e-9) {
+        step = candidate
+        top = candidateTop
+      }
+    }
+  }
+
+  const count = Math.round(top / step)
   const ticks = Array.from({ length: count + 1 }, (_, i) => Number((i * step).toFixed(6)))
 
   return { max: ticks[ticks.length - 1], ticks }

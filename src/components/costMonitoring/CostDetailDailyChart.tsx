@@ -26,6 +26,12 @@ interface CostDetailDailyChartProps {
   abnormalDays: Set<string>
   selectedDate: string | null
   onSelectDate: (date: string | null) => void
+  // chiều cao vùng vẽ (px)
+  height?: number
+  // gợi ý nhỏ bên phải legend (vd "Bấm cột để lọc giao dịch")
+  hint?: string
+  // tiêu đề nằm cùng dòng legend (tiết kiệm chiều cao)
+  title?: string
 }
 
 const ABNORMAL_COLOR = '#F59E0B'
@@ -38,6 +44,9 @@ export function CostDetailDailyChart({
   abnormalDays,
   selectedDate,
   onSelectDate,
+  height = 190,
+  hint,
+  title,
 }: CostDetailDailyChartProps) {
   const { t } = useI18n()
   const theme = useTheme()
@@ -112,7 +121,10 @@ export function CostDetailDailyChart({
 
   return (
     <Box>
-      <Stack direction="row" sx={{ flexWrap: 'wrap', columnGap: 1.5, rowGap: 0.25, mb: 0.5 }}>
+      <Stack direction="row" sx={{ flexWrap: 'wrap', alignItems: 'center', columnGap: 1.25, rowGap: 0.25, mb: 0.25 }}>
+        {title && (
+          <Typography sx={{ fontSize: 12.5, fontWeight: 800, mr: 0.5, whiteSpace: 'nowrap' }}>{title}</Typography>
+        )}
         {legend.map((item) => (
           <Stack key={item.label} direction="row" sx={{ alignItems: 'center', gap: 0.5 }}>
             {item.kind === 'bar' ? (
@@ -130,12 +142,17 @@ export function CostDetailDailyChart({
                 />
               </Box>
             )}
-            <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>{item.label}</Typography>
+            <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>{item.label}</Typography>
           </Stack>
         ))}
+        {hint && (
+          <Typography sx={{ ml: 'auto', fontSize: 11, color: 'text.disabled', fontStyle: 'italic' }}>
+            {hint}
+          </Typography>
+        )}
       </Stack>
 
-      <Box sx={{ height: 260 }}>
+      <Box sx={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 8, right: 0, bottom: 0, left: 0 }}>
             <CartesianGrid vertical={false} stroke={dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'} />

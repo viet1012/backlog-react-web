@@ -1,6 +1,7 @@
 import { Box, Typography } from '@mui/material'
 import type { Theme } from '@mui/material/styles'
 import type { CostDetailTarget, CostMonitoringChartResponse } from '../../types/costMonitoring'
+import { useHoverIntent } from '../../hooks/useHoverIntent'
 import { CostChartCard } from './CostChartCard'
 import { COST_COLUMNS, COST_ROWS } from './costChartConfig'
 
@@ -12,6 +13,8 @@ interface CostMonitoringGridProps {
   // legend tắt Estimate (MTD) → ẩn đường trên cả 9 chart
   estVisible?: boolean
   onOpenDetail?: (target: CostDetailTarget) => void
+  // rê chuột lên khung → tải trước detail
+  onPrefetchDetail?: (target: CostDetailTarget) => void
 }
 
 const headerSx = {
@@ -54,7 +57,9 @@ const cellSx = (rowIndex: number, column: number) => (theme: Theme) => ({
 
 // Bảng 3 hàng (PRESS / MOLD / GUIDE) × 3 cột (OT / T&SL / RM) như Excel.
 // Màn nhỏ xếp 1 cột, nhãn hàng/cột ẩn và tiêu đề nằm trong từng ô.
-export function CostMonitoringGrid({ month, data, loading, estVisible = true, onOpenDetail }: CostMonitoringGridProps) {
+export function CostMonitoringGrid({ month, data, loading, estVisible = true, onOpenDetail, onPrefetchDetail }: CostMonitoringGridProps) {
+  const hover = useHoverIntent(onPrefetchDetail)
+
   return (
     <Box
       sx={{
@@ -129,7 +134,12 @@ export function CostMonitoringGrid({ month, data, loading, estVisible = true, on
           </Box>,
 
           ...COST_COLUMNS.map((column, colIndex) => (
-            <Box key={`${row.div}-${column}`} sx={cellSx(rowIndex, colIndex + 1)}>
+            <Box
+              key={`${row.div}-${column}`}
+              sx={cellSx(rowIndex, colIndex + 1)}
+              onPointerEnter={() => hover.start({ div: row.div, chart: column })}
+              onPointerLeave={hover.cancel}
+            >
               <CostChartCard
                 month={month}
                 chart={data?.charts.find((c) => c.div === row.div && c.chart === column)}

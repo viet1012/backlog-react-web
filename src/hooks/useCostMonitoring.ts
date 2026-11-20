@@ -2,29 +2,31 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react'
 import type {
   CostDetailResponse,
   CostDetailTarget,
   CostDetailTransactionPage,
-  CostDetailTxQuery,
   CostPlWeeksResponse,
   CostSimuWeek,
 } from '../types/costMonitoring'
 import {
   getCostMonitoringChart,
   getCostMonitoringDetail,
-  getCostMonitoringDetailTransactions,
+  getCostTransactionFacets,
+  getCostTransactionsPage,
   getCostMonitoringMonths,
   getCostMonitoringPlWeeks,
   toApiMonth,
+  type CostTxFacetColumn,
+  type CostTxFacets,
+  type CostTxServerQuery,
 } from '../services/costMonitoringService'
 import dayjs from 'dayjs'
 import { getMessages } from '../i18n/i18nContext'
-import { clearQueryCache } from '../utils/queryCache'
-import { useCachedQuery } from './useCachedQuery'
+import { clearQueryCache, readQueryCache } from '../utils/queryCache'
+import { isQueryInFlight, prefetchQuery, useCachedQuery } from './useCachedQuery'
 
 const EMPTY_MONTHS: string[] = []
 
@@ -34,181 +36,206 @@ function toErrorMessage(err: unknown, fallback: string) {
 }
 
 
-// ---------- detail 1 khung (drawer) – target null hoặc open = false → không gọi API ----------
+// ---------- detail 1 khung – cache theo phiên (useCachedQuery) ----------
+// Quay lại khung vừa xem → hiện ngay; còn mới (< 2 phút) thì không gọi lại API.
+const DETAIL_CACHE_PREFIX = 'costDetail|'
+const DETAIL_FRESH_MS = 2 * 60_000
+
+function detailKey(month: string, target: CostDetailTarget, simuWeek: CostSimuWeek, dataVersion: number) {
+  return `${DETAIL_CACHE_PREFIX}${month}|${target.div}|${target.chart}|${simuWeek}|v${dataVersion}`
+}
+
+function loadDetail(
+  month: string,
+  target: CostDetailTarget,
+  simuWeek: CostSimuWeek,
+  signal: AbortSignal,
+  force: boolean,
+) {
+  // trang giao dịch đầu (cả kỳ) đi kèm luôn → không gọi API lần 2 khi vừa mở
+  return getCostMonitoringDetail(
+    toApiMonth(month),
+    target,
+    simuWeek,
+    { date: null, page: 0, size: COST_TX_DEFAULT_PAGE_SIZE },
+    signal,
+    force,
+  )
+}
+
+/** Tải trước detail 1 khung vào cache (rê chuột lên chart / ô chọn khung) */
+export function prefetchCostDetail(
+  month: string | null,
+  target: CostDetailTarget,
+  simuWeek: CostSimuWeek,
+  dataVersion = 0,
+) {
+  if (!month) return
+
+  // Đang có request detail chạy (khung đang mở hoặc prefetch trước) → không bắn thêm.
+  // Trước đây lướt chuột qua 9 chart bắn ~9 request cùng lúc → request của khung
+  // thật sự mở phải xếp hàng sau (trình duyệt ~6 kết nối / server, BE xử lý nặng).
+  if (isQueryInFlight(DETAIL_CACHE_PREFIX)) return
+
+  prefetchQuery(
+    detailKey(month, target, simuWeek, dataVersion),
+    (signal) => loadDetail(month, target, simuWeek, signal, false),
+    DETAIL_FRESH_MS,
+  )
+}
+
+// Đổi khung liên tục (phím mũi tên) → chỉ gọi API cho khung dừng lại ≥ delay ms.
+// Khung đã có cache thì đổi ngay. (useCachedQuery không hủy request nên phải chặn từ đầu.)
+function useSettledKey(key: string | null, delay = 250) {
+  const [settled, setSettled] = useState(key)
+  const immediate = key === null || readQueryCache(key) !== undefined
+
+  useEffect(() => {
+    if (immediate || key === settled) return
+    const timer = window.setTimeout(() => setSettled(key), delay)
+    return () => window.clearTimeout(timer)
+  }, [key, settled, immediate, delay])
+
+  return immediate ? key : settled
+}
+
 export function useCostMonitoringDetail(
   // dạng "2026.10"
   month: string | null,
   target: CostDetailTarget | null,
   simuWeek: CostSimuWeek,
   refreshKey = 0,
-  // drawer đang mở; đóng thì giữ data (nội dung không mất lúc trượt ra) nhưng không tải lại
+  // đang xem chi tiết; đóng thì không tải
   open = true,
-  // tăng khi dữ liệu nguồn đổi (nạp OT) → lần mở sau tải lại, không gửi refresh=true
+  // tăng khi dữ liệu nguồn đổi (nạp OT) → key mới, tải lại (không gửi refresh=true)
   dataVersion = 0,
 ) {
-  const [data, setData] =
-    useState<CostDetailResponse | null>(null)
-
-  const [loading, setLoading] =
-    useState(false)
-
-  const [error, setError] =
-    useState<string | null>(null)
-
-  const div = target?.div
-  const chart = target?.chart
-
-  // đổi khung / tháng → bỏ số của khung cũ ngay (không hiện nhầm trong lúc tải)
-  const requestKey = month && div && chart ? `${month}|${div}|${chart}|${simuWeek}` : null
-  const [loadedKey, setLoadedKey] =
-    useState(requestKey)
-  if (loadedKey !== requestKey) {
-    setLoadedKey(requestKey)
-    setData(null)
-    setError(null)
+  // Chỉ nút ↻ bấm lúc đang xem chi tiết mới gửi refresh=true cho detail.
+  // Bấm ↻ lúc đóng: chart đã refresh → bỏ cache detail, lần mở sau tải thường.
+  const [seenRefresh, setSeenRefresh] = useState(refreshKey)
+  const [detailRefresh, setDetailRefresh] = useState(0)
+  if (seenRefresh !== refreshKey) {
+    setSeenRefresh(refreshKey)
+    if (open) setDetailRefresh((n) => n + 1)
+    else clearQueryCache(DETAIL_CACHE_PREFIX)
   }
 
-  // refreshKey đã xử lý (tải xong với refresh=true, hoặc bấm ↻ lúc drawer đóng → bỏ qua)
-  const refreshedKey =
-    useRef(refreshKey)
+  const wantedKey = open && month && target ? detailKey(month, target, simuWeek, dataVersion) : null
+  const key = useSettledKey(wantedKey)
 
-  // "requestKey|refreshKey" của lần tải thành công gần nhất → mở lại drawer không gọi API thừa
-  const loadedFor =
-    useRef<string | null>(null)
+  const query = useCachedQuery<CostDetailResponse>(
+    key,
+    (signal, force) => loadDetail(month!, target!, simuWeek, signal, force),
+    {
+      refreshKey: detailRefresh,
+      freshMs: DETAIL_FRESH_MS,
+      fallbackError: () => getMessages().costDetail.loadFailed,
+    },
+  )
 
-  useEffect(() => {
-    // bấm ↻ khi drawer đóng: không gửi refresh ở lần mở sau (chart đã refresh rồi)
-    if (!open) {
-      refreshedKey.current = refreshKey
-      return
-    }
-
-    if (!month || !div || !chart) {
-      return
-    }
-
-    const loadKey = `${month}|${div}|${chart}|${simuWeek}|${refreshKey}|${dataVersion}`
-    if (loadedFor.current === loadKey) {
-      return
-    }
-
-    // chỉ lượt do nút ↻ (khi drawer đang mở) mới gửi refresh=true
-    const forceRefresh =
-      refreshKey !== refreshedKey.current
-
-    const controller =
-      new AbortController()
-
-    setLoading(true)
-    setError(null)
-
-    // trang giao dịch đầu (cả kỳ) đi kèm luôn → không gọi API lần 2 khi vừa mở
-    getCostMonitoringDetail(
-      toApiMonth(month),
-      { div, chart },
-      simuWeek,
-      { date: null, page: 0, size: COST_TX_DEFAULT_PAGE_SIZE },
-      controller.signal,
-      forceRefresh,
-    )
-      .then((response) => {
-        refreshedKey.current = refreshKey
-        loadedFor.current = loadKey
-        setData(response)
-      })
-      .catch((err: unknown) => {
-        if (!controller.signal.aborted) {
-          setData(null)
-          setError(toErrorMessage(err, getMessages().costDetail.loadFailed))
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setLoading(false)
-        }
-      })
-
-    return () => {
-      controller.abort()
-    }
-  }, [month, div, chart, simuWeek, refreshKey, open, dataVersion])
-
-  return { data, loading, error }
+  // dữ liệu của khung khác (đang tải / đang chờ khung mới) → không hiện để tránh nhầm số
+  const waiting = key !== wantedKey
+  return {
+    data: query.stale || waiting ? null : query.data,
+    loading: query.loading || waiting,
+    error: waiting ? null : query.error,
+  }
 }
 
 
 // số dòng / trang mặc định = mặc định của BE
 export const COST_TX_DEFAULT_PAGE_SIZE = 50
 
-// ---------- trang giao dịch (server-side: lọc ngày + phân trang) ----------
-// query trùng trang đầu mặc định → dùng luôn initial (đã có trong response detail), không gọi API
-export function useCostDetailTransactions(
-  // dạng "2026.10"
-  month: string | null,
-  target: CostDetailTarget | null,
-  simuWeek: CostSimuWeek,
-  query: CostDetailTxQuery,
-  initial: CostDetailTransactionPage | null,
+// ---------- trang giao dịch (BE: tìm / lọc / sắp xếp / phân trang – /detail/transactions) ----------
+// query null = mặc định (không tìm / lọc / sắp xếp, trang đầu, số dòng mặc định) → dùng luôn initial
+// (trang đầu đi kèm /detail), không gọi API.
+// Đổi query: giữ trang đang hiện (FE làm mờ) trong lúc tải; request cũ bị hủy.
+interface FetchState<T> {
+  data: T | null
+  loading: boolean
+  error: string | null
+}
+
+export function useCostTransactionsPage(
+  target: CostDetailTarget,
+  query: CostTxServerQuery | null,
+  page: number,
+  size: number,
+  initial: CostDetailTransactionPage,
 ) {
-  const [fetched, setFetched] =
-    useState<CostDetailTransactionPage | null>(null)
+  const [state, setState] = useState<FetchState<CostDetailTransactionPage>>({ data: null, loading: false, error: null })
 
-  const [loading, setLoading] =
-    useState(false)
-
-  const [error, setError] =
-    useState<string | null>(null)
-
-  const useInitial =
-    query.date === null && query.page === 0 && query.size === COST_TX_DEFAULT_PAGE_SIZE
-
-  const div = target?.div
-  const chart = target?.chart
-  const { date, page, size } = query
+  // query là object mới mỗi render → so theo nội dung
+  const key = query ? JSON.stringify([target.div, target.chart, query, page, size]) : null
 
   useEffect(() => {
-    if (useInitial || !month || !div || !chart || !initial) {
-      return
-    }
+    if (key === null || query === null) return
 
-    const controller =
-      new AbortController()
+    const controller = new AbortController()
 
-    setLoading(true)
-    setError(null)
+    // oxlint-disable-next-line react/set-state-in-effect
+    setState((prev) => ({ ...prev, loading: true, error: null }))
 
-    getCostMonitoringDetailTransactions(
-      toApiMonth(month),
-      { div, chart },
-      simuWeek,
-      { date, page, size },
-      controller.signal,
-    )
-      .then((response) => {
-        setFetched(response)
+    getCostTransactionsPage(target, query, page, size, controller.signal)
+      .then((data) => {
+        if (!controller.signal.aborted) setState({ data, loading: false, error: null })
       })
       .catch((err: unknown) => {
         if (!controller.signal.aborted) {
-          setError(toErrorMessage(err, getMessages().costDetail.loadFailed))
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setLoading(false)
+          setState((prev) => ({ ...prev, loading: false, error: toErrorMessage(err, getMessages().costDetail.loadFailed) }))
         }
       })
 
-    return () => {
-      controller.abort()
-    }
-    // initial đổi (refresh / đổi khung) → tải lại trang đang xem
-  }, [useInitial, month, div, chart, simuWeek, date, page, size, initial])
+    return () => controller.abort()
+    // key gói đủ target / query / page / size; initial đổi (refresh) → tải lại trang đang xem
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, initial])
 
-  return {
-    data: useInitial ? initial : fetched,
-    loading: useInitial ? false : loading,
-    error: useInitial ? null : error,
+  if (query === null) {
+    return { data: initial, loading: false, error: null }
   }
+
+  return { data: state.data ?? initial, loading: state.loading, error: state.error }
+}
+
+
+// ---------- giá trị dropdown lọc 1 cột (BE: /detail/transactions/facets) ----------
+// column null = dropdown đang đóng → không gọi API
+export function useCostTransactionFacets(
+  target: CostDetailTarget,
+  query: CostTxServerQuery,
+  column: CostTxFacetColumn | null,
+) {
+  const [state, setState] = useState<FetchState<CostTxFacets> & { key: string | null }>(
+    { key: null, data: null, loading: false, error: null },
+  )
+
+  const key = column ? JSON.stringify([target.div, target.chart, column, { ...query, sort: null }]) : null
+
+  useEffect(() => {
+    if (key === null || column === null) return
+
+    const controller = new AbortController()
+
+    // oxlint-disable-next-line react/set-state-in-effect
+    setState({ key, data: null, loading: true, error: null })
+
+    getCostTransactionFacets(target, query, column, controller.signal)
+      .then((data) => {
+        if (!controller.signal.aborted) setState({ key, data, loading: false, error: null })
+      })
+      .catch((err: unknown) => {
+        if (!controller.signal.aborted) {
+          setState({ key, data: null, loading: false, error: toErrorMessage(err, getMessages().costDetail.loadFailed) })
+        }
+      })
+
+    return () => controller.abort()
+    // key gói đủ target / query / column
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
+
+  return state.key === key ? state : { key, data: null, loading: key !== null, error: null }
 }
 
 

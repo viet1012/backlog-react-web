@@ -17,7 +17,7 @@ import {
 import type { PaletteMode } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import dayjs from 'dayjs'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { CostOtImportDialog } from '../components/costMonitoring/CostOtImportDialog'
 import { hasAnyRole } from '../services/authService'
 import { FactoryNoRowsOverlay } from '../components/common/FactoryNoRowsOverlay'
@@ -29,11 +29,11 @@ import { UpdatedStatus } from '../components/common/UpdatedStatus'
 import { CostChartLegend } from '../components/costMonitoring/CostChartLegend'
 import { CostMonitoringGrid } from '../components/costMonitoring/CostMonitoringGrid'
 import { CostMonitoringGuideDrawer } from '../components/costMonitoring/CostMonitoringGuideDrawer'
-import { CostDetailDrawer } from '../components/costMonitoring/CostDetailDrawer'
+import { CostDetailFocusView } from '../components/costMonitoring/CostDetailFocusView'
 import { COST_ROWS, SIMU_WEEK_OPTIONS } from '../components/costMonitoring/costChartConfig'
 import type { GuideTabId } from '../components/costMonitoring/costMonitoringGuide'
-import { useMascotMonthControl, useMascotOpenChat, useMascotParams } from '../components/mascot'
-import { useCostMonitoring, useCostMonitoringDetail } from '../hooks/useCostMonitoring'
+import { useMascotMonthControl, useMascotParams } from '../components/mascot'
+import { prefetchCostDetail, useCostMonitoring, useCostMonitoringDetail } from '../hooks/useCostMonitoring'
 import { toApiMonth } from '../services/costMonitoringService'
 import type { CostDetailTarget, CostSimuWeek } from '../types/costMonitoring'
 import { uiTokens } from '../theme/uiTokens'
@@ -118,7 +118,14 @@ export function CostMonitoringPage({
     ? `${COST_ROWS.find((r) => r.div === detailTarget.div)?.label ?? detailTarget.div} · ${detailTarget.chart}`
     : ''
 
-  const openMascotChat = useMascotOpenChat()
+  // ưu tiên tháng của data đang hiển thị để trục X khớp số liệu khi đang tải tháng mới
+  const chartMonth = data ? toApiMonth(data.month) : month && toApiMonth(month)
+
+  const closeDetail = useCallback(() => setDetailOpen(false), [])
+
+  // rê chuột lên khung → tải sẵn detail; bấm vào thì thường đã có trong cache
+  const prefetchDetail = (target: CostDetailTarget) =>
+    prefetchCostDetail(month, target, simuWeek, dataVersion)
 
   // context cho chat của mascot: tháng + tuần PL TGT đang chọn
   // + khung đang mở drawer (factory = xưởng, category = hạng mục) để hỏi đúng khung
@@ -390,10 +397,30 @@ export function CostMonitoringPage({
           >
             <FactoryNoRowsOverlay title={t.cost.noData} />
           </Box>
+        ) : detailOpen && detailTarget ? (
+          // Chế độ focus: thay lưới 9 chart bằng khung cha (trái) + chi tiết con (phải)
+          <CostDetailFocusView
+            frameLabel={detailLabel}
+            month={month}
+            chartMonth={chartMonth}
+            target={detailTarget}
+            charts={data?.charts ?? []}
+            chartsLoading={loading}
+            estVisible={estVisible}
+            data={detail.data}
+            // dự báo chính / trạng thái lấy từ /chart (detail không có)
+            forecast={
+              data?.charts.find((c) => c.div === detailTarget.div && c.chart === detailTarget.chart)?.forecast ?? null
+            }
+            loading={detail.loading}
+            error={detail.error}
+            onSelectTarget={setDetailTarget}
+            onPrefetchTarget={prefetchDetail}
+            onClose={closeDetail}
+          />
         ) : (
           <CostMonitoringGrid
-            // ưu tiên tháng của data đang hiển thị để trục X khớp số liệu khi đang tải tháng mới
-            month={data ? toApiMonth(data.month) : month && toApiMonth(month)}
+            month={chartMonth}
             data={data}
             loading={loading}
             estVisible={estVisible}
@@ -401,28 +428,10 @@ export function CostMonitoringPage({
               setDetailTarget(target)
               setDetailOpen(true)
             }}
+            onPrefetchDetail={prefetchDetail}
           />
         )}
       </Box>
-
-      <CostDetailDrawer
-        open={detailOpen}
-        frameLabel={detailLabel}
-        month={month}
-        target={detailTarget}
-        simuWeek={simuWeek}
-        data={detail.data}
-        // dự báo chính / trạng thái lấy từ /chart (detail không có)
-        forecast={
-          detailTarget
-            ? data?.charts.find((c) => c.div === detailTarget.div && c.chart === detailTarget.chart)?.forecast ?? null
-            : null
-        }
-        loading={detail.loading}
-        error={detail.error}
-        onClose={() => setDetailOpen(false)}
-        onAskMascot={openMascotChat}
-      />
 
       <CostMonitoringGuideDrawer
         open={guideOpen}
