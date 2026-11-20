@@ -164,6 +164,9 @@ export function useCostTransactionsPage(
   initial: CostDetailTransactionPage,
 ) {
   const [state, setState] = useState<FetchState<CostDetailTransactionPage>>({ data: null, loading: false, error: null })
+  // nút "Thử lại" khi lỗi: tăng để chạy lại request
+  const [attempt, setAttempt] = useState(0)
+  const retry = useCallback(() => setAttempt((n) => n + 1), [])
 
   // query là object mới mỗi render → so theo nội dung
   const key = query ? JSON.stringify([target.div, target.chart, query, page, size]) : null
@@ -189,13 +192,13 @@ export function useCostTransactionsPage(
     return () => controller.abort()
     // key gói đủ target / query / page / size; initial đổi (refresh) → tải lại trang đang xem
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [key, initial])
+  }, [key, initial, attempt])
 
   if (query === null) {
-    return { data: initial, loading: false, error: null }
+    return { data: initial, loading: false, error: null, retry }
   }
 
-  return { data: state.data ?? initial, loading: state.loading, error: state.error }
+  return { data: state.data ?? initial, loading: state.loading, error: state.error, retry }
 }
 
 

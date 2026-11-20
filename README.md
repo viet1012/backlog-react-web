@@ -392,14 +392,20 @@ Tài liệu **đào tạo nhập môn cho nhân viên PC**. Trang đang ẩn kh�
 Theo dõi chi phí theo khung (xưởng × hạng mục OT / T&SL / RM) trong tháng: thực tế so với mục tiêu, kèm dự báo cuối tháng. Mục này chỉ ghi phần liên quan tới các đợt cải thiện UI; chi tiết chức năng xem hướng dẫn trong trang (nút `?`).
 
 - **Nạp Actual OT** (ADMIN): nạp xong hiện toast *"Đã nạp N dòng OT"*, thay cho Snackbar riêng trước đây.
-- **Xuất CSV giao dịch** trong drawer chi tiết khung: toast tiến trình theo số trang đã tải, xong / lỗi đều báo bằng toast.
+- **Xem chi tiết 1 khung** (bấm vào chart): chế độ focus thay cho lưới 9 chart, không còn drawer.
+  - Bên trái là khung cha: bộ chọn 3×3, khối "Đã chi", chart tổng. Bên phải là chart theo ngày và bảng giao dịch.
+  - Tìm, lọc cột kiểu Excel, sắp xếp, phân trang và xuất `.xlsx` đều do backend xử lý (`/detail/transactions`, `/facets`, `/export`), mỗi thao tác 1 request.
+  - Phím: `←` `→` `↑` `↓` đổi khung, `Esc` về lưới 9 chart. `/` vào ô tìm giao dịch, `R` làm mới.
+  - Mũi tên không đổi khung khi đang mở dropdown lọc / menu hoặc khi con trỏ đang ở trong bảng giao dịch.
+  - Lỗi tải chi tiết hoặc tải trang giao dịch: thanh lỗi có nút *Thử lại*.
+  - Xuất file: toast tiến trình, xong / lỗi đều báo bằng toast.
 - Trang chủ có thẻ **"Khung Cost đang vượt"** đếm số khung `OVER` của tháng này. Bấm thẻ mở trang này.
 - **Mở trang nhanh hơn**: lần đầu vào trang, chart của tháng hiện tại được tải song song với danh sách tháng, thay vì chờ danh sách tháng xong mới tải chart.
   - Tháng hiển thị vẫn là tháng mới nhất trong danh sách, như trước.
   - Nếu tháng mới nhất khác tháng hiện tại thì chart được tải sau như cũ, chỉ tốn thêm 1 request.
 - Chưa có bộ lọc trên URL.
 
-API: `GET /api/cost-monitoring/months`, `/chart`, `/pl-weeks`, `/detail`, `/ot/…`
+API: `GET /api/cost-monitoring/months`, `/chart`, `/pl-weeks`, `/detail`, `/detail/transactions` (+ `/facets`, `/export`), `/ot/…`
 
 ### 12. AI Logs
 
@@ -637,6 +643,18 @@ npm run build      # kết quả ở dist/
 | 8 | `9e7f466` | 8 | Design token màu (`colorTokens.ts`, `theme.app`): theme MUI, kính panel, toast, bảng DataGrid đọc màu từ một chỗ. Giao diện giữ nguyên, đã so sánh theme sinh ra trước / sau: giống hệt. |
 
 Nguyên tắc chung của mọi đợt: **mặc định giao diện như cũ**, phần mới chỉ thêm vào hoặc để người dùng tự bật.
+
+### 2026-11-20 — Rà lại chế độ focus của Cost Monitoring
+
+Rà nhánh `feat/cost-monitoring-focus-view` (đã merge trước đợt 5) theo các quy ước của đợt 1–8.
+
+| Vấn đề | Sửa | File |
+| --- | --- | --- |
+| Bấm mũi tên trong dropdown lọc cột / menu số dòng thì khung phía sau bị đổi, dropdown đóng mất | Mũi tên / Esc bỏ qua khi đang gõ, đang mở popup / hộp thoại. Mũi tên bỏ qua khi con trỏ trong bảng giao dịch (Esc vẫn thoát) | `CostDetailFocusView.tsx`, `CostDetailTransactionTable.tsx` (`data-cost-tx-table`) |
+| Lỗi tải chi tiết / trang giao dịch chỉ có thanh đỏ, không thử lại được | Nút *Thử lại* (chi tiết: như nút ↻; trang giao dịch: gọi lại đúng trang đó) | `CostDetailFocusView.tsx`, `CostMonitoringPage.tsx`, `useCostMonitoring.ts` (`retry`) |
+| Chữ đỏ / cam / xanh (`% Fluct`, vượt / dưới dự báo, số tiền âm) dùng thẳng `palette.*.main` | `statusTextColor` (đỏ ở chế độ tối và cam ở chế độ sáng giờ đủ tương phản) | `CostDetailFocusView.tsx`, `CostDetailTransactionTable.tsx` |
+| Phím `/` không vào được ô tìm giao dịch | Ô tìm có `data-shortcut="search"` và gợi ý khi rê chuột | `CostDetailTransactionTable.tsx` |
+| README còn mô tả drawer và xuất CSV | Cập nhật mục Cost Monitoring | `README.md` |
 
 ### 2026-11-20 — Design token
 

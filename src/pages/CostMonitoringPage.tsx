@@ -420,6 +420,8 @@ export function CostMonitoringPage({
             error={detail.error}
             onSelectTarget={setDetailTarget}
             onPrefetchTarget={prefetchDetail}
+            // lỗi tải chi tiết: "Thử lại" = nút ↻ (tải lại chart + chi tiết khung đang xem)
+            onRetry={refresh}
             onClose={closeDetail}
           />
         ) : (
