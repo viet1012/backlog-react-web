@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
+import dayjs from 'dayjs'
 
 import { Box, ButtonBase, Typography } from '@mui/material'
 import { keyframes } from '@mui/material/styles'
@@ -89,7 +90,12 @@ function Tile<T>({ icon, label, task, value, sub, link, fallbackLink, dense = fa
         <Typography noWrap sx={{ fontFamily: HOME_FONT, fontSize: 12, fontWeight: 700, color: AMBER, opacity: 0.9 }}>
           {label}
         </Typography>
-        <Typography noWrap sx={{ mt: 0.25, fontFamily: HOME_FONT, fontSize: 11, color: 'rgba(226, 232, 240, 0.72)' }}>
+        {/* Cột hẹp hay cắt dòng phụ (vd danh sách công đoạn): rê chuột xem đủ */}
+        <Typography
+          noWrap
+          title={task.data ? subText : undefined}
+          sx={{ mt: 0.25, fontFamily: HOME_FONT, fontSize: 11, color: 'rgba(226, 232, 240, 0.85)' }}
+        >
           {subText}
         </Typography>
       </Box>
@@ -126,6 +132,12 @@ export function UserHomeTodayTasks({ layout = 'strip' }: UserHomeTodayTasksProps
   const labels = t.userHome.today
   const tasks = useTodayTasks()
   const column = layout === 'column'
+
+  // Số liệu cũ nhất đang hiện: cho biết bảng mới đến đâu (chỉ tải lại khi quay lại trang)
+  const times = [tasks.facConfirm, tasks.cost, tasks.machine]
+    .map((task) => task?.updatedAt)
+    .filter((at): at is number => at != null)
+  const updatedText = times.length > 0 ? dayjs(Math.min(...times)).format('HH:mm') : null
 
   return (
     <Box
@@ -178,21 +190,32 @@ export function UserHomeTodayTasks({ layout = 'strip' }: UserHomeTodayTasksProps
         '& > *': { position: 'relative' },
       }}
     >
-      <Typography
-        component="h2"
-        sx={{
-          mb: 0.75,
-          fontFamily: HOME_FONT,
-          fontSize: 11,
-          fontWeight: 800,
-          letterSpacing: '0.14em',
-          textTransform: 'uppercase',
-          color: AMBER,
-          textShadow: `0 0 10px ${AMBER}55`,
-        }}
-      >
-        {labels.title}
-      </Typography>
+      <Box sx={{ mb: 0.75, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 1 }}>
+        <Typography
+          component="h2"
+          noWrap
+          sx={{
+            minWidth: 0,
+            fontFamily: HOME_FONT,
+            fontSize: 11,
+            fontWeight: 800,
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            color: AMBER,
+            textShadow: `0 0 10px ${AMBER}55`,
+          }}
+        >
+          {labels.title}
+        </Typography>
+        {updatedText && (
+          <Typography
+            component="span"
+            sx={{ flexShrink: 0, fontFamily: HOME_FONT, fontSize: 10, color: 'rgba(226, 232, 240, 0.6)', fontVariantNumeric: 'tabular-nums' }}
+          >
+            {labels.updatedAt(updatedText)}
+          </Typography>
+        )}
+      </Box>
 
       <Box
         sx={{

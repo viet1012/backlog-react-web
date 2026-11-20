@@ -687,6 +687,7 @@ export const vi: Messages = {
         subtitle: 'Production Control',
         today: {
             title: 'Việc của tôi hôm nay',
+            updatedAt: (time) => `Cập nhật ${time}`,
             open: (page) => `Mở ${page}`,
             loadFailed: 'Không tải được',
             facConfirm: 'Fac Confirm chưa xác nhận',
@@ -803,6 +804,7 @@ export const vi: Messages = {
             over: (pct) => `Đã vượt Fluct (Actual ${pct}% Fluct)`,
         },
         monthsLoadFailed: 'Không tải được danh sách tháng Cost Monitoring',
+        linkMonthMissing: (requested: string, shown: string) => `Tháng ${requested} trong link không có dữ liệu, đang xem tháng ${shown}.`,
         chartLoadFailed: 'Không tải được biểu đồ Cost Monitoring',
         openDetail: 'Bấm để xem chi tiết',
     },
@@ -1695,8 +1697,6 @@ export const vi: Messages = {
         facConfirmLoadFailed: 'Không tải được dữ liệu Fac Confirm',
         authFailed: (status) => `Đăng nhập thất bại (${status}).`,
         authInvalidResponse: 'Phản hồi đăng nhập không hợp lệ.',
-        factorySceneAria: (title) => `Cảnh nhà máy động: ${title}`,
-        showScene: (title) => `Hiện ${title}`,
     },
 
     aiLogs: {

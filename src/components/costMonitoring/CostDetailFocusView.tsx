@@ -42,6 +42,8 @@ import {
 import { buildRows, getCostStatus } from './costChartUtils'
 import { findAbnormalDays, formatNum, formatPct, formatSignedPct } from './costDetailUtils'
 import { useI18n } from '../../i18n/useI18n'
+import { isTypingTarget } from '../common/shortcuts'
+import { statusTextColor } from '../../theme/statusTones'
 
 interface CostDetailFocusViewProps {
   // "PRESS · T&SL"
@@ -63,6 +65,8 @@ interface CostDetailFocusViewProps {
   onSelectTarget: (target: CostDetailTarget) => void
   // rê chuột lên ô chọn khung → tải trước detail khung đó
   onPrefetchTarget?: (target: CostDetailTarget) => void
+  // lỗi tải chi tiết → nút "Thử lại"
+  onRetry?: () => void
   onClose: () => void
 }
 
@@ -339,9 +343,10 @@ function SpendSummary({ kpi, forecast, monthClosed }: {
   const fLabels = t.costDetail.forecast
 
   const pct = kpi.pctOfFluct
-  const barColor = pct == null
-    ? theme.palette.text.disabled
-    : pct > 100 ? theme.palette.error.main : pct > 90 ? theme.palette.warning.main : theme.palette.success.main
+  const tone = pct == null ? null : pct > 100 ? 'error' : pct > 90 ? 'warning' : 'success'
+  // thanh: màu palette; chữ %: statusTextColor (đủ tương phản cả sáng / tối)
+  const barColor = tone ? theme.palette[tone].main : theme.palette.text.disabled
+  const pctColor = tone ? statusTextColor(theme, tone) : theme.palette.text.secondary
 
   const mainLabel = forecast?.estimateBase === 'Fluct'
     ? focus.forecastFluct
@@ -370,7 +375,7 @@ function SpendSummary({ kpi, forecast, monthClosed }: {
       {/* Đã chi / Fluct + % */}
       <Stack direction="row" sx={{ alignItems: 'baseline', gap: 0.75 }}>
         <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>{focus.spent}</Typography>
-        <Typography sx={{ ...TABULAR_NUMS, ml: 'auto', fontSize: 12, fontWeight: 800, color: barColor }}>
+        <Typography sx={{ ...TABULAR_NUMS, ml: 'auto', fontSize: 12, fontWeight: 800, color: pctColor }}>
           {formatPct(pct, 1)}
           <Box component="span" sx={{ fontWeight: 500, color: 'text.secondary' }}>{` ${focus.ofFluct}`}</Box>
         </Typography>
@@ -434,7 +439,7 @@ function SpendSummary({ kpi, forecast, monthClosed }: {
                 </Typography>
                 {f.over != null && (
                   <Typography
-                    sx={{ ...TABULAR_NUMS, fontSize: 11.5, fontWeight: 700, color: f.over > 0 ? 'error.main' : 'success.main' }}
+                    sx={{ ...TABULAR_NUMS, fontSize: 11.5, fontWeight: 700, color: statusTextColor(theme, f.over > 0 ? 'error' : 'success') }}
                   >
                     {f.over > 0 ? fLabels.overBy(formatNum(f.over)) : fLabels.underBy(formatNum(-f.over))}
                   </Typography>
@@ -483,10 +488,18 @@ const paneSx = {
   bgcolor: 'background.paper',
 } as const
 
-// đang gõ trong ô nhập (chat mascot, select…) → không bắt phím tắt
-function isTyping(target: EventTarget | null) {
-  const el = target as HTMLElement | null
-  return Boolean(el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)))
+// Không bắt phím (mũi tên / Esc) khi:
+//  - đang gõ trong ô nhập (chat mascot, ô tìm…)
+//  - đang mở popup (dropdown lọc cột, menu số dòng, hộp thoại): mũi tên thuộc về popup,
+//    trước đây bấm mũi tên trong dropdown lọc là đổi khung phía sau và dropdown bị đóng
+//  - mũi tên khi con trỏ đang ở trong bảng giao dịch: để cuộn bảng (Esc vẫn thoát)
+function ignoreKey(target: EventTarget | null, key: string) {
+  if (isTypingTarget(target)) return true
+  if (document.querySelector('.MuiModal-root:not(.MuiModal-hidden)')) return true
+  if (!(target instanceof Element)) return false
+  if (target.closest('[role="dialog"], [role="menu"], [role="listbox"]')) return true
+
+  return key !== 'Escape' && target.closest('[data-cost-tx-table]') !== null
 }
 
 // Chế độ Focus thay cho lưới 9 chart: trái = khung "cha" (chọn khung + đã chi + chart tổng),
@@ -505,6 +518,7 @@ export function CostDetailFocusView({
   error,
   onSelectTarget,
   onPrefetchTarget,
+  onRetry,
   onClose,
 }: CostDetailFocusViewProps) {
   const { t } = useI18n()
@@ -524,7 +538,7 @@ export function CostDetailFocusView({
   // Esc → về lưới 9 chart; mũi tên → đổi khung (bỏ qua khi đang gõ)
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || isTyping(event.target)) return
+      if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || ignoreKey(event.target, event.key)) return
 
       if (event.key === 'Escape') {
         onClose()
@@ -556,6 +570,10 @@ export function CostDetailFocusView({
   const parentChart = charts.find((c) => c.div === target.div && c.chart === target.chart)
   const isOt = target.chart === 'OT'
 
+  const retryAction = onRetry
+    ? <Button color="inherit" size="small" onClick={onRetry}>{t.common.retry}</Button>
+    : undefined
+
   // ===== Bên phải: chi tiết (con) – chart cố định, bảng giao dịch giãn hết phần còn lại =====
   let childBody: ReactNode
   if (!data && loading) {
@@ -566,13 +584,13 @@ export function CostDetailFocusView({
       </Stack>
     )
   } else if (!data) {
-    childBody = error ? <Alert severity="error">{error}</Alert> : null
+    childBody = error ? <Alert severity="error" action={retryAction}>{error}</Alert> : null
   } else if (!hasActual(data.kpi)) {
     childBody = <EmptyBox text={t.costDetail.noActual} minHeight={160} />
   } else {
     childBody = (
       <Stack sx={{ gap: 1, flex: 1, minHeight: 0, opacity: loading ? 0.6 : 1, transition: 'opacity 120ms' }}>
-        {error && <Alert severity="error" sx={{ py: 0, flexShrink: 0 }}>{error}</Alert>}
+        {error && <Alert severity="error" action={retryAction} sx={{ py: 0, flexShrink: 0 }}>{error}</Alert>}
 
         <Box sx={{ flexShrink: 0 }}>
           <CostDetailDailyChart

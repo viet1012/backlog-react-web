@@ -71,7 +71,7 @@ Frontend thuần (SPA). Dữ liệu và đăng nhập đi qua backend `backlog-b
     - Đang lọc thì chỉ hiện 1 nút icon nhỏ có kèm số bộ lọc. Rê chuột vào hiện *"Xóa bộ lọc (N)"*.
   - "Đang lọc" chỉ đếm bộ lọc thu hẹp dữ liệu (ô tìm, loại hàng, trạng thái, lọc cột…). Phạm vi xem như Division, ngày xuất, công đoạn không tính và được giữ nguyên khi xóa.
   - Ô tìm chỉ lọc sau khi ngừng gõ 300–400 ms. Ô tìm tự co lại khi thanh chật.
-- **Bộ lọc nằm trên URL** (Backlog, Fac Confirm, Shipment, AI Logs, EVN), ví dụ `/fac-confirm?div=PR&expD=2026-11-19&procGrp=Rough&heat=DC53`:
+- **Bộ lọc nằm trên URL** (Backlog, Fac Confirm, Shipment, AI Logs, EVN, Cost Monitoring), ví dụ `/fac-confirm?div=PR&expD=2026-11-19&procGrp=Rough&heat=DC53`:
   - Copy link gửi đồng nghiệp là mở đúng màn hình đang xem. Bấm F5 không mất bộ lọc.
   - Giá trị mặc định không ghi lên link cho gọn (vd Heat Type = All). Riêng Division / ngày / công đoạn (Fac Confirm) và tháng / phạm vi (EVN) luôn có trên link.
   - Lọc theo cột kiểu Excel và ô Summary của Backlog chưa đưa lên URL.
@@ -357,18 +357,21 @@ Trang chủ, là trang mặc định của **mọi tài khoản** sau khi đăng
 | Thẻ | Số liệu | Mở |
 | --- | --- | --- |
 | Fac Confirm chưa xác nhận (chỉ PC / PRO / ADMIN) | PO cần xác nhận hôm nay chưa xác nhận, theo Division đang dùng ở Fac Confirm, chia theo công đoạn | `/fac-confirm?div=…&expD=hôm nay&procGrp=<công đoạn còn nhiều nhất>` |
-| Khung Cost đang vượt | Số khung tháng này có `forecast.status = OVER`, kèm số khung dự báo vượt. Tháng này chưa có số thì lấy tháng mới nhất | `/cost-monitoring` |
+| Khung Cost đang vượt | Số khung tháng này có `forecast.status = OVER`, kèm số khung dự báo vượt. Tháng này chưa có số thì lấy tháng mới nhất | `/cost-monitoring?month=…` (chỉ 1 khung vượt: thêm `&frame=…`) |
 | Máy đang cảnh báo an toàn | Máy / nhóm lỗi HSE chưa đóng trên mọi tầng, kèm số quá hạn | `/monitoring/machine?tab=hse&layout=<tầng nhiều nhất>` |
 
 - Số > 0 sáng đỏ, = 0 sáng xanh. Lỗi tải thì hiện `--`, bấm vẫn mở trang.
-- Số liệu được cache theo phiên và tải lại ngầm sau 2 phút.
+- Dòng phụ bị cắt (cột hẹp) thì rê chuột vào thẻ để xem đủ.
+- Góc bảng có **"Cập nhật hh:mm"**: giờ lấy số liệu cũ nhất đang hiện.
+- Số liệu được cache theo phiên. Quay lại Trang chủ sau hơn 2 phút thì tải lại ngầm.
 
 **Phần còn lại**
 
-- Lời chào kèm 4 thẻ thông tin: Employee ID, Department, Section, Role.
-- **Hoạt cảnh nhà máy** gồm 4 cảnh: Production Line, Dev Team, Inspection, Packing.
-  - Cảnh tự đổi sau mỗi 15 giây. Rê chuột vào để dừng; bấm các chấm để chọn cảnh.
-  - Màu đổi theo chế độ sáng/tối. Hoạt cảnh đứng yên nếu máy bật chế độ giảm chuyển động.
+- **Bảng LED** treo trên xích: lời chào theo buổi, biển tên nhà máy, đồng hồ và ngày dạng LED 7 đoạn, dòng chữ chạy.
+- **Thẻ nhân viên** đeo dây: avatar (cùng avatar ở sidebar), mã nhân viên, role, Nhà máy / Phòng / Bộ phận / Line / Nhóm (chỉ hiện trường có dữ liệu; màn thấp thì ẩn phần này).
+- **Kệ hàng 3 tầng**: mỗi thùng hàng là 1 trang, bấm để mở. Nút **Tìm trang** trên header mở hộp tìm trang (Ctrl+K).
+- **Đồ hoạ** (nút trên header, mặc định *Tự động*): kệ vẽ bằng WebGL (3D) hoặc CSS (2D) tuỳ máy. Máy chạy chưa mượt thì Tự động hạ 1 bậc (có Hoàn tác); chọn tay thì chỉ gợi ý. Máy không chạy được WebGL thì tự dùng bản 2D.
+- Cảnh thả hàng lên kệ chỉ chạy ở lần đầu vào trang trong phiên. Các chuyển động (thẻ đung đưa, chữ chạy) đứng yên nếu máy bật chế độ giảm chuyển động.
 
 ### 10. PC Training
 
@@ -392,14 +395,26 @@ Tài liệu **đào tạo nhập môn cho nhân viên PC**. Trang đang ẩn kh�
 Theo dõi chi phí theo khung (xưởng × hạng mục OT / T&SL / RM) trong tháng: thực tế so với mục tiêu, kèm dự báo cuối tháng. Mục này chỉ ghi phần liên quan tới các đợt cải thiện UI; chi tiết chức năng xem hướng dẫn trong trang (nút `?`).
 
 - **Nạp Actual OT** (ADMIN): nạp xong hiện toast *"Đã nạp N dòng OT"*, thay cho Snackbar riêng trước đây.
-- **Xuất CSV giao dịch** trong drawer chi tiết khung: toast tiến trình theo số trang đã tải, xong / lỗi đều báo bằng toast.
-- Trang chủ có thẻ **"Khung Cost đang vượt"** đếm số khung `OVER` của tháng này. Bấm thẻ mở trang này.
+- **Xem chi tiết 1 khung** (bấm vào chart): chế độ focus thay cho lưới 9 chart, không còn drawer.
+  - Bên trái là khung cha: bộ chọn 3×3, khối "Đã chi", chart tổng. Bên phải là chart theo ngày và bảng giao dịch.
+  - Tìm, lọc cột kiểu Excel, sắp xếp, phân trang và xuất `.xlsx` đều do backend xử lý (`/detail/transactions`, `/facets`, `/export`), mỗi thao tác 1 request.
+  - Phím: `←` `→` `↑` `↓` đổi khung, `Esc` về lưới 9 chart. `/` vào ô tìm giao dịch, `R` làm mới.
+  - Mũi tên không đổi khung khi đang mở dropdown lọc / menu hoặc khi con trỏ đang ở trong bảng giao dịch.
+  - Lỗi tải chi tiết hoặc tải trang giao dịch: thanh lỗi có nút *Thử lại*.
+  - Xuất file: toast tiến trình, xong / lỗi đều báo bằng toast.
+- Trang chủ có thẻ **"Khung Cost đang vượt"** đếm số khung `OVER` của tháng này. Bấm thẻ mở trang này đúng tháng đó (xem *Trạng thái trên URL*).
 - **Mở trang nhanh hơn**: lần đầu vào trang, chart của tháng hiện tại được tải song song với danh sách tháng, thay vì chờ danh sách tháng xong mới tải chart.
   - Tháng hiển thị vẫn là tháng mới nhất trong danh sách, như trước.
   - Nếu tháng mới nhất khác tháng hiện tại thì chart được tải sau như cũ, chỉ tốn thêm 1 request.
-- Chưa có bộ lọc trên URL.
+- **Trạng thái trên URL**, ví dụ `/cost-monitoring?month=2026-10&week=2&frame=press-tsl`:
+  - `month`: tháng đang xem. Luôn ghi lên link, nên link gửi đi vẫn mở đúng tháng đó kể cả khi đã có tháng mới hơn.
+  - `week`: tuần PL simulation 1–5. Không có = *Mới nhất (tự động)*.
+  - `frame`: khung đang xem chi tiết (`press-ot`, `mold-tsl`, `guide-rm`…). Không có = lưới 9 chart.
+  - F5 khi đang xem chi tiết vẫn ở lại khung đó. Mở link có `month` thì chart của tháng đó được tải song song với danh sách tháng.
+  - Tháng trong link không còn dữ liệu: hiện toast *"Tháng … trong link không có dữ liệu, đang xem tháng …"* rồi về tháng mới nhất. Tham số sai (vd `?frame=abc`) thì bỏ qua và báo như các trang khác.
+  - Thẻ *"Khung Cost đang vượt"* ở Trang chủ mở đúng tháng đang đếm. Chỉ 1 khung vượt thì mở thẳng chi tiết khung đó.
 
-API: `GET /api/cost-monitoring/months`, `/chart`, `/pl-weeks`, `/detail`, `/ot/…`
+API: `GET /api/cost-monitoring/months`, `/chart`, `/pl-weeks`, `/detail`, `/detail/transactions` (+ `/facets`, `/export`), `/ot/…`
 
 ### 12. AI Logs
 
@@ -456,6 +471,36 @@ npm run dev                              # http://localhost:5173
 | `npm run build` | Type-check (`tsc -b`) rồi build ra `dist/` |
 | `npm run preview` | Chạy thử bản build |
 | `npm run lint` | oxlint |
+| `npm test` | Chạy toàn bộ test (Vitest) 1 lần |
+| `npm run test:watch` | Chạy test và tự chạy lại mỗi khi sửa code |
+| `npx vitest run src/theme/statusTones.test.ts` | Chỉ chạy 1 file test |
+| `npx vitest run -t "deadlineTone"` | Chỉ chạy test có tên chứa chữ này |
+
+**Trước khi commit / push**, chạy đủ 3 lệnh, cả 3 phải qua:
+
+```bash
+npm run lint
+npm test
+npm run build      # gồm cả type-check
+```
+
+**Đo hiệu năng trên bản build** (số đo thật, nhanh hơn bản dev):
+
+```bash
+npm run build
+npm run preview    # mở http://localhost:4173/?vitals=1 rồi xem console
+```
+
+### Test
+
+- Vitest chạy trên Node ([vitest.config.ts](vitest.config.ts)), file `src/**/*.test.ts` đặt cạnh code được test. Chỉ test logic thuần, không render giao diện.
+- Đang có:
+  - `hooks/useUrlFilters.test.ts`: đọc / ghi bộ lọc trên URL.
+  - `costMonitoring/costUrlParams.test.ts`: tham số URL của Cost.
+  - `theme/statusTones.test.ts`: quy tắc tô màu theo hạn, và **độ tương phản ≥ 4.5:1** của chữ trạng thái / chữ chính trên nền app cho cả 2 chế độ. Đổi token màu mà làm chữ khó đọc thì test báo đỏ.
+  - `shortcuts/shortcutTips.test.ts`: quy tắc hiện mẹo phím tắt.
+- Test có dùng `window` / `localStorage` thì giả lập bằng `vi.stubGlobal` (xem 2 file test cuối), không cần cài jsdom.
+- Cài lại `vitest` bằng npm 10.9 bị lỗi `Cannot read properties of null (reading 'edgesOut')` (lỗi của npm khi xử lý peer dependency). Cách đã dùng: `npm install -D vitest@<bản> --save-exact --legacy-peer-deps`. `npm ci` / `npm install` thường vẫn chạy bình thường.
 
 ### Đo hiệu năng (web-vitals)
 
@@ -637,6 +682,52 @@ npm run build      # kết quả ở dist/
 | 8 | `9e7f466` | 8 | Design token màu (`colorTokens.ts`, `theme.app`): theme MUI, kính panel, toast, bảng DataGrid đọc màu từ một chỗ. Giao diện giữ nguyên, đã so sánh theme sinh ra trước / sau: giống hệt. |
 
 Nguyên tắc chung của mọi đợt: **mặc định giao diện như cũ**, phần mới chỉ thêm vào hoặc để người dùng tự bật.
+
+### 2026-11-20 — Test tự động (Vitest)
+
+- Thêm `vitest` 5.1.0 (devDependency), script `npm test` / `npm run test:watch`, `vitest.config.ts`. Chi tiết xem mục [Test](#test).
+- 4 file test, 40 test, chạy khoảng 1 giây.
+- **Test tìm ra 1 lỗi tương phản:** chữ đỏ (`error.main` #d32f2f) trên nền trang #eef3f8 chỉ đạt 4.46:1, dưới chuẩn 4.5:1.
+  - Sửa: thêm token `statusText.error`. Chế độ sáng dùng #c62828 (= `error.dark`), chế độ tối dùng #e57373 (= `error.light`, như trước).
+  - Thay đổi nhìn thấy được: chữ đỏ trạng thái ở chế độ sáng đậm hơn một chút. Áp dụng cho ô trễ hạn, Backlog Summary, nút trên toast lỗi, số âm và mức vượt ở Cost. Nền, viền, icon vẫn là `error.main`.
+
+### 2026-11-20 — Vá lỗ hổng thư viện (npm audit)
+
+`npm audit` báo 5 lỗ hổng (2 cao, 3 trung bình), đều ở **công cụ dev / build**, không nằm trong bundle chạy ở trình duyệt người dùng. Đã sửa bằng `npm audit fix`, không dùng `--force`, `package.json` không đổi, chỉ đổi `package-lock.json`. Sau khi sửa: 0 lỗ hổng.
+
+| Gói | Trước → Sau | Lỗ hổng |
+| --- | --- | --- |
+| `vite` | 8.2.1 → 8.3.8 | Cao: dev server (`launch-editor` trên Windows, script chéo origin qua middleware, đọc file ngoài `server.fs.allow`) |
+| `source-map-js` | 1.2.1 → 1.2.4 | Cao: treo event loop khi đọc source map độc |
+| `minimatch` (qua `eslint` 10.14 → 10.15) | 10.2.6 → 11.0.9 | Trung bình: treo khi xử lý pattern |
+
+- `vite` mới kéo theo `rolldown` 1.2.4 → 1.2.19. Bản này gộp các chunk dùng chung vào chunk khởi động, nên `index-*.js` lớn hơn: 509 kB → 705 kB.
+  - Đã đo lại tổng JS tải lúc mở app (entry + modulepreload): khoảng 977 kB trong 21 file. Tắt tính năng gộp thì khoảng 993 kB trong 77 file.
+  - Nghĩa là số byte tải lúc mở app gần như không đổi, nhưng số request giảm nhiều. Giữ mặc định.
+- Đã kiểm tra: `tsc`, `oxlint`, `npm run build` đều qua. Chưa chạy thử `npm run dev` sau khi nâng.
+
+### 2026-11-20 — Cost Monitoring: trạng thái trên URL
+
+Trước đây F5 khi đang xem chi tiết 1 khung là về lưới 9 chart, và không gửi được link tới một khung / tháng.
+
+| Phần | Nội dung | File |
+| --- | --- | --- |
+| Tham số URL | `month` (YYYY-MM, luôn ghi khi đã biết tháng), `week` (1–5), `frame` (`press-tsl`…). Dùng `useUrlFilters` như các trang khác | `costMonitoring/costUrlParams.ts` (mới), `CostMonitoringPage.tsx` |
+| Khởi tạo từ link | `useCostMonitoring({ month, simuWeek })`. Có `month` trên link thì tải trước chart tháng đó song song với `/months` (trước đây chỉ tải trước tháng hiện tại) | `hooks/useCostMonitoring.ts` |
+| Link cũ | Tháng không còn trong danh sách: toast báo và về tháng mới nhất (`requestedMonth` từ hook) | `CostMonitoringPage.tsx`, i18n `cost.linkMonthMissing` |
+| Trang chủ | Thẻ Cost mở `?month=` của tháng đang đếm, thêm `&frame=` khi chỉ có 1 khung vượt | `userHome/todayTasks/useTodayTasks.ts` |
+
+### 2026-11-20 — Rà lại chế độ focus của Cost Monitoring
+
+Rà nhánh `feat/cost-monitoring-focus-view` (đã merge trước đợt 5) theo các quy ước của đợt 1–8.
+
+| Vấn đề | Sửa | File |
+| --- | --- | --- |
+| Bấm mũi tên trong dropdown lọc cột / menu số dòng thì khung phía sau bị đổi, dropdown đóng mất | Mũi tên / Esc bỏ qua khi đang gõ, đang mở popup / hộp thoại. Mũi tên bỏ qua khi con trỏ trong bảng giao dịch (Esc vẫn thoát) | `CostDetailFocusView.tsx`, `CostDetailTransactionTable.tsx` (`data-cost-tx-table`) |
+| Lỗi tải chi tiết / trang giao dịch chỉ có thanh đỏ, không thử lại được | Nút *Thử lại* (chi tiết: như nút ↻; trang giao dịch: gọi lại đúng trang đó) | `CostDetailFocusView.tsx`, `CostMonitoringPage.tsx`, `useCostMonitoring.ts` (`retry`) |
+| Chữ đỏ / cam / xanh (`% Fluct`, vượt / dưới dự báo, số tiền âm) dùng thẳng `palette.*.main` | `statusTextColor` (đỏ ở chế độ tối và cam ở chế độ sáng giờ đủ tương phản) | `CostDetailFocusView.tsx`, `CostDetailTransactionTable.tsx` |
+| Phím `/` không vào được ô tìm giao dịch | Ô tìm có `data-shortcut="search"` và gợi ý khi rê chuột | `CostDetailTransactionTable.tsx` |
+| README còn mô tả drawer và xuất CSV | Cập nhật mục Cost Monitoring | `README.md` |
 
 ### 2026-11-20 — Design token
 

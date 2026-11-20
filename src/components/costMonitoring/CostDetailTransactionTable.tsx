@@ -12,6 +12,7 @@ import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import {
   Alert,
   Box,
+  Button,
   Chip,
   CircularProgress,
   IconButton,
@@ -53,6 +54,7 @@ import { CostTxColumnFilter, type FilterOption } from './CostTxColumnFilter'
 import { formatNum } from './costDetailUtils'
 import { useI18n } from '../../i18n/useI18n'
 import { notifyExport } from '../common/notify'
+import { statusTextColor } from '../../theme/statusTones'
 
 interface CostDetailTransactionTableProps {
   target: CostDetailTarget
@@ -226,7 +228,7 @@ export function CostDetailTransactionTable({
   const isDefault = !hasConditions && sort === null && filterDate === null
     && page === 0 && rowsPerPage === COST_TX_DEFAULT_PAGE_SIZE
 
-  const { data, loading, error } = useCostTransactionsPage(target, isDefault ? null : query, page, rowsPerPage, initial)
+  const { data, loading, error, retry } = useCostTransactionsPage(target, isDefault ? null : query, page, rowsPerPage, initial)
 
   const facets = useCostTransactionFacets(
     target,
@@ -365,7 +367,8 @@ export function CostDetailTransactionTable({
               }
             }}
             placeholder={labels.searchPlaceholder}
-            inputProps={{ 'aria-label': labels.searchPlaceholder, maxLength: 200 }}
+            // data-shortcut: phím "/" nhảy vào ô này khi đang xem chi tiết
+            inputProps={{ 'aria-label': labels.searchPlaceholder, maxLength: 200, 'data-shortcut': 'search', title: t.shortcuts.searchTitle }}
             sx={{ flex: 1, fontSize: 12.5 }}
           />
           {search && (
@@ -430,10 +433,18 @@ export function CostDetailTransactionTable({
 
       {/* lỗi xuất file đã báo qua toast (notifyExport) */}
       {error && (
-        <Alert severity="error" sx={{ py: 0, flexShrink: 0 }}>{error}</Alert>
+        <Alert
+          severity="error"
+          sx={{ py: 0, flexShrink: 0 }}
+          action={<Button color="inherit" size="small" onClick={retry}>{t.common.retry}</Button>}
+        >
+          {error}
+        </Alert>
       )}
 
       <TableContainer
+        // CostDetailFocusView: mũi tên trong bảng để cuộn, không đổi khung
+        data-cost-tx-table=""
         sx={{
           position: 'relative',
           border: 1,
@@ -517,12 +528,12 @@ export function CostDetailTransactionTable({
                 </TableCell>
                 <TableCell
                   align="right"
-                  sx={{
+                  sx={(theme) => ({
                     ...cellSx,
                     whiteSpace: 'nowrap',
                     fontWeight: 600,
-                    color: tx.amountK != null && tx.amountK < 0 ? 'error.main' : 'text.primary',
-                  }}
+                    color: tx.amountK != null && tx.amountK < 0 ? statusTextColor(theme, 'error') : 'text.primary',
+                  })}
                 >
                   {formatNum(tx.amountK, 3)}
                 </TableCell>
