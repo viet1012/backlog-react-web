@@ -9,6 +9,7 @@ import type {
 
 import {
   DEADLINE_CELL_CLASS,
+  deadlineTextColor,
 } from './statusTones'
 
 // =====================================================
@@ -466,11 +467,12 @@ export const dataGridHeaderSx =
       // =====================================================
       // TÔ MÀU HẠN (dùng chung mọi bảng – theme/statusTones.ts)
       // Trễ hạn: đỏ · Sắp tới hạn: cam
+      // Chữ dùng deadlineTextColor (đủ tương phản cả sáng lẫn tối)
       // =====================================================
 
       [`& .${DEADLINE_CELL_CLASS.overdue}`]: {
         color:
-          `${theme.palette.error.main} !important`,
+          `${deadlineTextColor(theme, 'overdue')} !important`,
 
         fontWeight: 700,
 
@@ -480,7 +482,7 @@ export const dataGridHeaderSx =
 
       [`& .${DEADLINE_CELL_CLASS.dueSoon}`]: {
         color:
-          `${theme.palette.warning.main} !important`,
+          `${deadlineTextColor(theme, 'dueSoon')} !important`,
 
         fontWeight: 700,
 

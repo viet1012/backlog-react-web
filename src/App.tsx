@@ -138,7 +138,10 @@ function App() {
         adapterLocale={language}
       >
 
-        <CssBaseline />
+        {/* color-scheme theo theme: ở chế độ tối, control gốc của trình duyệt
+            (lịch của input date, thanh cuộn, dropdown, ô autofill) cũng tối.
+            Chế độ sáng = mặc định của trình duyệt, không đổi gì. */}
+        <CssBaseline enableColorScheme />
 
         <ClockInOverlay />
 

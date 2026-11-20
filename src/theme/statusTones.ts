@@ -1,4 +1,5 @@
 import dayjs from 'dayjs'
+import type { Theme } from '@mui/material/styles'
 
 /**
  * Tô màu theo hạn – MỘT quy tắc cho mọi màn hình (bảng Backlog, Summary,
@@ -48,4 +49,37 @@ export function deadlineTone(
 export function deadlineCellClass(date: unknown, done: boolean): string {
   const tone = deadlineTone(date, done)
   return tone ? DEADLINE_CELL_CLASS[tone] : ''
+}
+
+// =====================================================
+// MÀU CHỮ ĐỌC ĐƯỢC CHO TÔNG TRẠNG THÁI
+// =====================================================
+
+export type StatusTone = 'error' | 'warning' | 'success' | 'info'
+
+// Cam đậm cho chữ trên nền sáng: warning.main (#ed6c02) chỉ đạt ~2.8:1 trên nền
+// trắng, cam này đạt ~4.6:1 (WCAG AA). Viền / sọc / icon vẫn dùng warning.main.
+const WARNING_TEXT_LIGHT = '#c2410c'
+
+/**
+ * Màu CHỮ cho tông trạng thái, đủ tương phản (≥ 4.5:1) trên nền của app.
+ * Chỉ dùng cho chữ; nền tô nhạt, viền, icon, sọc màu vẫn dùng palette[tone].main.
+ *
+ *   sáng: error.main · cam đậm · success.main · primary.main   (giữ như cũ trừ cam)
+ *   tối:  error.light (đỏ main chỉ ~4.1:1 trên nền tối) · warning/success/primary .main
+ */
+export function statusTextColor(theme: Theme, tone: StatusTone): string {
+  const dark = theme.palette.mode === 'dark'
+
+  switch (tone) {
+    case 'error': return dark ? theme.palette.error.light : theme.palette.error.main
+    case 'warning': return dark ? theme.palette.warning.main : WARNING_TEXT_LIGHT
+    case 'success': return theme.palette.success.main
+    default: return theme.palette.primary.main
+  }
+}
+
+/** Màu chữ của ô tô theo hạn */
+export function deadlineTextColor(theme: Theme, tone: DeadlineTone): string {
+  return statusTextColor(theme, tone === 'overdue' ? 'error' : 'warning')
 }

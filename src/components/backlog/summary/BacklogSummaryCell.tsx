@@ -3,7 +3,7 @@ import { alpha } from '@mui/material/styles'
 
 import type { BacklogStatusSummaryRow } from '../../../services/reportService'
 import { formatNumber, getCell } from './backlogSummaryUtils'
-import { deadlineTone } from '../../../theme/statusTones'
+import { deadlineTone, statusTextColor } from '../../../theme/statusTones'
 
 interface BacklogSummaryCellProps {
   row: BacklogStatusSummaryRow
@@ -132,7 +132,7 @@ export function BacklogSummaryCell({
           color: isFinished || isZero
             ? theme.palette.text.disabled
             : isOverdue
-              ? theme.palette.error.main
+              ? statusTextColor(theme, 'error')
               : theme.palette.text.primary,
           fontVariantNumeric: 'tabular-nums',
           whiteSpace: 'nowrap',
@@ -150,10 +150,10 @@ export function BacklogSummaryCell({
           color: isFinished || isZero
             ? theme.palette.text.disabled
             : isOverdue
-              ? alpha(
-                theme.palette.error.main,
-                theme.palette.mode === 'dark' ? 0.76 : 0.72,
-              )
+              // tối: đỏ nhạt đặc (đỏ main mờ 76% chỉ ~2.8:1 trên nền tối)
+              ? theme.palette.mode === 'dark'
+                ? statusTextColor(theme, 'error')
+                : alpha(theme.palette.error.main, 0.72)
               : alpha(
                 theme.palette.text.primary,
                 theme.palette.mode === 'dark' ? 0.62 : 0.58,

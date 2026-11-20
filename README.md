@@ -43,7 +43,9 @@ Frontend thuần (SPA). Dữ liệu và đăng nhập đi qua backend `backlog-b
   - Mục đang phát triển gắn nhãn *Developing*, mục chưa làm gắn nhãn *Chưa làm*; cả hai không bấm được.
   - Biểu tượng cạnh từng mục cho biết màn hình chỉ để xem (*View*) hay có nhập liệu (*Input*).
   - Sidebar thu gọn được thành dạng chỉ còn icon.
-- **Chế độ sáng / tối** đổi bằng nút ở đầu mỗi trang và được ghi nhớ.
+- **Chế độ sáng / tối** đổi trong menu cài đặt ở chân sidebar và được ghi nhớ.
+  - Chế độ tối: control gốc của trình duyệt (lịch của ô ngày, thanh cuộn, dropdown) cũng chuyển tối.
+  - Chữ màu trạng thái (trễ hạn, sắp tới hạn, chip Status của Backlog, nút trên toast) đủ tương phản ≥ 4.5:1 ở cả hai chế độ.
 - **Đăng xuất** ở chân sidebar, có hộp thoại xác nhận.
 - **Trạng thái tải / trống / lỗi** giống nhau ở mọi trang:
   - Tải dưới 300 ms thì không hiện gì.
@@ -521,6 +523,11 @@ Quy ước:
   - Bảng muốn có mục *Ghim cột* phải dùng `ExcelColumnMenu`, vì mục này đọc `GridPinContext`.
   - Ghim cột tự làm bằng `position: sticky`, vì bản Community không có. Khi có cột ghim, bảng đặt `columnBufferPx` lớn để cột ghim luôn được vẽ.
   - Tô màu hạn: `deadlineCellClass(date, done)` / `deadlineTone(...)` trong [theme/statusTones.ts](src/theme/statusTones.ts). Không tự chọn màu đỏ / cam riêng.
+- **Chữ màu trạng thái** (đỏ / cam / xanh lá / xanh dương) dùng `statusTextColor(theme, 'error' | 'warning' | 'success' | 'info')` trong [theme/statusTones.ts](src/theme/statusTones.ts), không dùng thẳng `palette.*.main` cho chữ:
+  - `warning.main` chỉ ~2.8:1 trên nền sáng, `error.main` chỉ ~4.1:1 trên nền tối. Hàm này trả màu đạt ≥ 4.5:1.
+  - Nền tô nhạt, viền, sọc màu, icon thì vẫn dùng `palette.*.main` (chỉ cần 3:1).
+  - Màu tự chọn cho chữ (vd chip Status) phải có bản cho chế độ tối, xem `BACKLOG_STATUS_COLORS_DARK` trong `backlogStatus.tsx`.
+- **Chế độ tối** dựa vào `color-scheme` (`<CssBaseline enableColorScheme />`): không dùng `filter: invert()` cho icon lịch của input date, trình duyệt tự vẽ icon sáng.
 - **Bộ lọc ⇄ URL** dùng [useUrlFilters](src/hooks/useUrlFilters.ts):
   - Khai báo tham số bằng `urlParam.text | oneOf | date | month | list | positiveNumber`. Có `empty` thì bằng giá trị đó sẽ không ghi lên URL; không có `empty` thì luôn ghi.
   - Khởi tạo state bằng `readUrlParams(path, params)`, rồi gọi `useUrlFilters({ path, params, values, onUrlChange })`.
@@ -571,9 +578,29 @@ npm run build      # kết quả ở dist/
 | 2 | `72f167f` | 2 | Thanh bộ lọc dùng chung ("Đang lọc: N", Xóa bộ lọc). Bộ lọc trên URL ở 5 trang. Đăng nhập xong quay lại đúng link. Xử lý link cũ / link sai. |
 | 3 | `f15b72c` | 4 + 5 | Mật độ dòng nhớ theo người dùng, ghim cột (tự bật), tô màu hạn thống nhất, chữ số đều. Trang chủ "Việc của tôi hôm nay". Sửa thanh lọc Fac Confirm về bố cục cũ. |
 | 4 | `b9bba9b` | 10 | Việc tồn: Cost tải chart song song với danh sách tháng; Machine Monitor không tải lại sơ đồ / danh sách tầng mỗi lần mở trang. |
-| — | — | 6 – 9 | Chưa làm: dark mode / độ tương phản, phím tắt, design token, đo hiệu năng (web-vitals). |
+| 5 | _(xem git log)_ | 6 | Dark mode / độ tương phản: control gốc của trình duyệt theo chế độ tối, chữ màu trạng thái đạt ≥ 4.5:1, chip Status của Backlog có bản màu cho chế độ tối. |
+| — | — | 7 – 9 | Chưa làm: phím tắt, design token, đo hiệu năng (web-vitals). |
 
-Nguyên tắc chung của cả 3 đợt: **mặc định giao diện như cũ**, phần mới chỉ thêm vào hoặc để người dùng tự bật.
+Nguyên tắc chung của mọi đợt: **mặc định giao diện như cũ**, phần mới chỉ thêm vào hoặc để người dùng tự bật.
+
+### 2026-11-20 — Dark mode và độ tương phản
+
+Đợt 5 (đề xuất 6). Chế độ sáng (mặc định) gần như giữ nguyên, chỉ đổi màu cam của chữ (xem bảng). Phần lớn thay đổi chỉ có tác dụng ở chế độ tối.
+
+Đo bằng tỉ lệ tương phản WCAG; chữ thường cần ≥ 4.5:1.
+
+| Chỗ | Trước | Sau | File |
+| --- | --- | --- | --- |
+| Control gốc của trình duyệt ở chế độ tối (popup lịch của ô ngày, thanh cuộn, dropdown, ô autofill) | Vẫn sáng trên nền tối | Tối theo theme (`color-scheme: dark`). Chế độ sáng không đổi | `App.tsx` (`CssBaseline enableColorScheme`) |
+| Icon lịch của ô ngày ở chế độ tối | Đảo màu bằng `filter: invert()` | Trình duyệt tự vẽ icon sáng, bỏ invert (để invert sẽ thành icon tối) | `theme/dashboardTheme.ts`, `filterBar/FilterControls.tsx` |
+| Ô "sắp tới hạn" (cam) trong bảng, **chế độ sáng** | `warning.main` #ed6c02 ≈ 2.8:1 | Cam đậm #c2410c ≈ 4.6:1 (nền tô nhạt giữ nguyên) | `theme/statusTones.ts` (`statusTextColor`), `theme/dataGridHeaderStyles.ts` |
+| Ô "trễ hạn" (đỏ) trong bảng và Backlog Summary, chế độ tối | `error.main` ≈ 4.1:1; dòng phụ của Summary (đỏ mờ 76%) ≈ 2.8:1 | `error.light` ≈ 5:1 | `dataGridHeaderStyles.ts`, `BacklogSummaryCell.tsx` |
+| Nút trên toast (vd *Thử lại*), **chế độ sáng**, toast cảnh báo | Cam #ed6c02 ≈ 3.1:1 | Cam đậm #c2410c. Sọc màu và icon giữ nguyên | `notify/NotifyHost.tsx` |
+| Chip Status của Backlog, chế độ tối | WIP #2563eb ≈ 3.1:1, NYI #64748b ≈ 3.3:1 | Bản sáng hơn cùng sắc (#60a5fa, #94a3b8, #fbbf24, #2dd4bf), ≥ 5.9:1 | `backlog/backlogStatus.tsx` (`BACKLOG_STATUS_COLORS_DARK`), `backlogColumns.tsx` |
+| Export List, Sales Status, các trang "sắp ra mắt" | Gọi `useColorScheme()` để truyền nút sáng/tối vào header, nhưng header đã bỏ nút này (đã chuyển sang sidebar) | Bỏ code thừa, giao diện không đổi | `PlaceholderPage.tsx`, `ExportListPage.tsx`, `SalesStatusPage.tsx` |
+
+- Chưa đổi (để giữ giao diện sáng như cũ): `text.secondary` #64748b trên nền trang #eef3f8 ≈ 4.3:1; chip Status *NY PROCESS* (cam #d97706 ≈ 2.9:1) và *Finished* ở chế độ sáng.
+- Các phần vốn đã tối cố định (bảng LED, "Việc của tôi hôm nay", màn đăng nhập, mascot, kho 3D) và bản vẽ nền trắng (Machine Locator / Monitor) giữ nguyên ở cả hai chế độ.
 
 ### 2026-11-19 — Việc tồn: tải nhanh hơn ở Cost Monitoring và Machine Monitor
 

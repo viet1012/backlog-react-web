@@ -9,6 +9,7 @@ import InfoRoundedIcon from '@mui/icons-material/InfoRounded'
 import WarningRoundedIcon from '@mui/icons-material/WarningRounded'
 
 import { useI18n } from '../../../i18n/useI18n'
+import { statusTextColor } from '../../../theme/statusTones'
 import { glassPanelSx, uiTokens } from '../../../theme/uiTokens'
 import { getToasts, notify, subscribeToasts, type Toast, type ToastTone } from './notifyStore'
 
@@ -32,6 +33,11 @@ function toneColor(theme: Theme, tone: ToastTone): string {
     case 'warning': return theme.palette.warning.main
     default: return theme.palette.primary.main
   }
+}
+
+// Button text needs 4.5:1; the stripe / icon only need 3:1 and keep toneColor
+function toneTextColor(theme: Theme, tone: ToastTone): string {
+  return statusTextColor(theme, tone === 'progress' ? 'info' : tone)
 }
 
 /** Renders the toasts from `notify`. Mount once, inside ThemeProvider. */
@@ -195,7 +201,7 @@ function ToastItem({ toast }: { toast: Toast }) {
             fontSize: 12.5,
             fontWeight: 800,
             textTransform: 'none',
-            color: toneColor(theme, toast.tone),
+            color: toneTextColor(theme, toast.tone),
             '&:hover': { bgcolor: alpha(toneColor(theme, toast.tone), 0.1) },
           })}
         >

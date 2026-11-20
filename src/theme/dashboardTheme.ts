@@ -106,16 +106,15 @@ export function createDashboardTheme(mode: PaletteMode, language: Language = 'vi
 
             /* =========================
                DATE ICON DARK / LIGHT
+               Chế độ tối: html có color-scheme: dark (CssBaseline
+               enableColorScheme) nên trình duyệt tự vẽ icon lịch màu sáng;
+               không invert nữa (invert sẽ làm icon tối lại).
             ========================= */
 
             '& input[type="date"]::-webkit-calendar-picker-indicator': {
               cursor: 'pointer',
 
               opacity: dark ? 0.9 : 0.75,
-
-              filter: dark
-                ? 'invert(1) brightness(1.8)'
-                : 'none',
             },
 
             '& input[type="date"]::-webkit-calendar-picker-indicator:hover': {
