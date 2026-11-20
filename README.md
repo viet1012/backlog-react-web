@@ -606,7 +606,7 @@ npm run build      # kết quả ở dist/
 | 3 | `f15b72c` | 4 + 5 | Mật độ dòng nhớ theo người dùng, ghim cột (tự bật), tô màu hạn thống nhất, chữ số đều. Trang chủ "Việc của tôi hôm nay". Sửa thanh lọc Fac Confirm về bố cục cũ. |
 | 4 | `b9bba9b` | 10 | Việc tồn: Cost tải chart song song với danh sách tháng; Machine Monitor không tải lại sơ đồ / danh sách tầng mỗi lần mở trang. |
 | 5 | `758b7f6` | 6 | Dark mode / độ tương phản: control gốc của trình duyệt theo chế độ tối, chữ màu trạng thái đạt ≥ 4.5:1, chip Status của Backlog có bản màu cho chế độ tối. |
-| 6 | *(xem git log)* | 9 | Đo hiệu năng: Core Web Vitals (LCP, INP, CLS, FCP, TTFB) và thời gian "trang sẵn sàng" của 5 trang chính, ghi ra console khi bật (dev hoặc `?vitals=1`). |
+| 6 | `e5fd311` | 9 | Đo hiệu năng: Core Web Vitals (LCP, INP, CLS, FCP, TTFB) và thời gian "trang sẵn sàng" của 5 trang chính, ghi ra console khi bật (dev hoặc `?vitals=1`). |
 | — | — | 7 – 8 | Chưa làm: phím tắt, design token. |
 
 Nguyên tắc chung của mọi đợt: **mặc định giao diện như cũ**, phần mới chỉ thêm vào hoặc để người dùng tự bật.
