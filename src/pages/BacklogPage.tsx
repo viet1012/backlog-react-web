@@ -31,6 +31,7 @@ import { useBacklogData } from '../hooks/useBacklogData'
 import { useBacklogSummary } from '../hooks/useBacklogSummary'
 import { useCachedQuery } from '../hooks/useCachedQuery'
 import { useGridPreferences } from '../hooks/useGridPreferences'
+import { usePageReadyMetric } from '../hooks/usePageReadyMetric'
 import { readUrlParams, urlParam, useUrlFilters, type UrlParams } from '../hooks/useUrlFilters'
 
 import {
@@ -390,6 +391,9 @@ export function BacklogPage({
   if (!listLoadedOnce && (data.length > 0 || (!loading && lastUpdated != null))) {
     setListLoadedOnce(true)
   }
+
+  // đo hiệu năng (chỉ khi bật): mở trang → bảng chi tiết hiện ra
+  usePageReadyMetric('backlog', listLoadedOnce)
 
   const selectOptionsQuery =
     useCachedQuery<BacklogSelectOptions>(

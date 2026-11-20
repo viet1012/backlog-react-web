@@ -426,6 +426,7 @@ So sánh số GM (đồng hồ tổng EVN) với số đồng hồ thực tế t
 | MUI Material / X Data Grid / X Date Pickers | 9 |
 | React Router | 7 |
 | dayjs | 1.11 |
+| web-vitals (đo hiệu năng, chỉ tải khi bật) | 6.2 |
 | Lint | oxlint |
 
 Yêu cầu: Node.js 22+ (đang dùng 22.20), npm 10+.
@@ -444,6 +445,32 @@ npm run dev                              # http://localhost:5173
 | `npm run build` | Type-check (`tsc -b`) rồi build ra `dist/` |
 | `npm run preview` | Chạy thử bản build |
 | `npm run lint` | oxlint |
+
+### Đo hiệu năng (web-vitals)
+
+Chỉ ghi ra **console** của trình duyệt, không gửi đi đâu. Code ở [src/utils/webVitals.ts](src/utils/webVitals.ts).
+
+- **Bật**:
+  - `npm run dev`: luôn bật.
+  - Bản build: mở link bất kỳ có `?vitals=1` một lần, ví dụ `/backlog?vitals=1`. Máy đó nhớ trong `localStorage` (key `debug:vitals`). Mở `?vitals=0` để tắt.
+  - Không bật thì không tải thư viện và không gắn listener nào, nên người dùng bình thường không tốn gì.
+- **Chỉ số đo**:
+
+  | Chỉ số | Ý nghĩa | Tốt / Cần cải thiện / Kém |
+  | --- | --- | --- |
+  | `TTFB`, `FCP`, `LCP` | Lần tải trang đầu (mở link / F5): server trả byte đầu, vẽ chữ đầu tiên, vẽ khối lớn nhất | LCP ≤ 2.5 s / ≤ 4 s / > 4 s |
+  | `INP` | Độ trễ phản hồi thao tác (bấm, gõ) lâu nhất trong phiên | ≤ 200 ms / ≤ 500 ms / > 500 ms |
+  | `CLS` | Tổng mức nhảy bố cục | ≤ 0.1 / ≤ 0.25 / > 0.25 |
+  | `READY:<trang>` | Từ lúc mở trang tới lúc dữ liệu chính hiện ra (quy ước nội bộ) | ≤ 1 s / ≤ 2.5 s / > 2.5 s |
+
+  - `READY` có ở `backlog`, `fac-confirm`, `shipment`, `cost`, `machine-monitor`.
+  - Nhãn `cold` = mở link / F5, tính từ lúc trình duyệt bắt đầu tải, gồm cả tải JS. Nhãn `nav` = chuyển trang trong app, tính từ lúc bấm.
+  - Quay lại trang đã mở (trang được giữ sống) cũng ghi `READY`, thường chỉ vài chục ms.
+  - `LCP` / `INP` / `CLS` kèm phần tử gây ra (selector), để biết cần sửa chỗ nào.
+  - `INP` / `CLS` là giá trị xấu nhất **từ lúc mở app** (không reset khi chuyển trang). Chỉ in khi giá trị tăng, trang ghi kèm là trang lúc giá trị tăng.
+  - Số đo ở `npm run dev` chậm hơn thực tế (chưa gộp file, React bản dev, StrictMode chạy effect 2 lần). Muốn số thật thì đo bản build: `npm run build`, `npm run preview`, mở với `?vitals=1`.
+- **Xem lại**: gõ `__vitals.table()` trong console để in bảng giá trị mới nhất theo chỉ số × trang. `__vitals.entries` chứa toàn bộ (tối đa 300 dòng). `READY` cũng hiện trong tab **Performance** của DevTools (mục Timings).
+- **Thêm trang**: gọi `usePageReadyMetric('<tên>', <điều kiện dữ liệu đã hiện>)` trong trang. Điều kiện chỉ bật khi tải thành công, lỗi thì không ghi.
 
 ## Cấu hình môi trường
 
@@ -579,9 +606,30 @@ npm run build      # kết quả ở dist/
 | 3 | `f15b72c` | 4 + 5 | Mật độ dòng nhớ theo người dùng, ghim cột (tự bật), tô màu hạn thống nhất, chữ số đều. Trang chủ "Việc của tôi hôm nay". Sửa thanh lọc Fac Confirm về bố cục cũ. |
 | 4 | `b9bba9b` | 10 | Việc tồn: Cost tải chart song song với danh sách tháng; Machine Monitor không tải lại sơ đồ / danh sách tầng mỗi lần mở trang. |
 | 5 | `758b7f6` | 6 | Dark mode / độ tương phản: control gốc của trình duyệt theo chế độ tối, chữ màu trạng thái đạt ≥ 4.5:1, chip Status của Backlog có bản màu cho chế độ tối. |
-| — | — | 7 – 9 | Chưa làm: phím tắt, design token, đo hiệu năng (web-vitals). |
+| 6 | *(xem git log)* | 9 | Đo hiệu năng: Core Web Vitals (LCP, INP, CLS, FCP, TTFB) và thời gian "trang sẵn sàng" của 5 trang chính, ghi ra console khi bật (dev hoặc `?vitals=1`). |
+| — | — | 7 – 8 | Chưa làm: phím tắt, design token. |
 
 Nguyên tắc chung của mọi đợt: **mặc định giao diện như cũ**, phần mới chỉ thêm vào hoặc để người dùng tự bật.
+
+### 2026-11-20 — Đo hiệu năng (web-vitals)
+
+Đợt 6 (đề xuất 9). Không đổi giao diện. Chỉ chạy khi bật, cách dùng xem mục [Đo hiệu năng](#đo-hiệu-năng-web-vitals).
+
+| Phần | Nội dung | File |
+| --- | --- | --- |
+| Core Web Vitals | Thư viện `web-vitals` 6.2.3 (bản attribution). Tải lúc trình duyệt rảnh, thành chunk riêng ~5 kB gzip, chỉ khi bật. Đăng ký muộn vẫn đo đúng từ đầu vì thư viện dùng buffered PerformanceObserver | `utils/webVitals.ts`, `main.tsx` (`startWebVitals`) |
+| "Trang sẵn sàng" | `usePageReadyMetric(name, ready)` ghi thời gian từ lúc mở trang tới lần vẽ đầu tiên có dữ liệu, mỗi lần mở trang ghi 1 lần. Đã gắn ở Backlog, Fac Confirm, Shipment, Cost Monitoring, Machine Monitor | `hooks/usePageReadyMetric.ts` và 5 trang |
+| Lúc bắt đầu chuyển trang | Lấy từ Navigation API (Chrome / Edge), ngay lúc URL đổi, trước khi chunk của trang lazy tải xong. Dự phòng: lúc bấm sidebar (`setNavPending`) và lúc router đổi đường dẫn (`MainLayout`). Đổi query (bộ lọc trên URL) không tính là chuyển trang | `utils/webVitals.ts`, `layout/navPending.ts`, `layout/MainLayout.tsx` |
+| Chi tiết INP | Kèm phần tử vừa bấm (ghi lại lúc bấm, nên vẫn biết kể cả khi phần tử đã bị gỡ khỏi DOM, vd menu đã đóng), thời gian 3 pha *chờ · xử lý · vẽ* và script chạy lâu nhất | `utils/webVitals.ts` |
+| Bớt log lặp | `reportAllChanges` báo cả thay đổi rất nhỏ (CLS 0.0001 mỗi lần thanh tiến trình chạy). Cùng giá trị sau khi làm tròn thì không in lại | `utils/webVitals.ts` |
+
+**Sửa từ số đo đầu tiên: nhảy bố cục ở bảng dữ liệu.** Fac Confirm đo được CLS 0.206 (cần cải thiện), Backlog 0.066. Phần tử nhảy là `MuiDataGrid-filler`.
+
+- Nguyên nhân: style bảng tô nền màu header cho mọi `.MuiDataGrid-filler`. Ngoài phần đệm trong header, quy tắc này còn tô cả khoảng trống dưới các dòng (`flex: 1 0 auto`). Khối nền lớn này bị các dòng đẩy xuống mỗi lần dữ liệu về.
+- Sửa: chỉ tô phần đệm trong header (`.MuiDataGrid-columnHeaders .MuiDataGrid-filler`), giống mặc định của MUI. File: `theme/dataGridHeaderStyles.ts`.
+- Thay đổi nhìn thấy được: khi bảng ít dòng, khoảng trống phía dưới mang màu nền bảng thay vì màu header. Áp dụng cho bảng ở Backlog, Fac Confirm, Shipment.
+
+- Chưa có nơi thu thập tập trung (backend chưa có API nhận số liệu), nên mỗi người đo trên máy mình qua console.
 
 ### 2026-11-20 — Dark mode và độ tương phản
 

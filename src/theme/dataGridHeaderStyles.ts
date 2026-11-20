@@ -286,9 +286,13 @@ export const dataGridHeaderSx =
 
       // =====================================================
       // FILLER
+      // Chỉ phần đệm TRONG HEADER (bên phải cột cuối, chỗ thanh cuộn dọc).
+      // Không tô `.MuiDataGrid-filler` ở thân bảng: đó là khoảng trống dưới các
+      // dòng (flex: 1 0 auto). Tô nền nó thành một khối lớn bị dòng đẩy xuống
+      // mỗi lần dữ liệu về => trình duyệt tính là nhảy bố cục (CLS 0.2 ở Fac Confirm).
       // =====================================================
 
-      '& .MuiDataGrid-filler, & .MuiDataGrid-scrollbarFiller, & .MuiDataGrid-scrollbarFiller--header':
+      '& .MuiDataGrid-columnHeaders .MuiDataGrid-filler, & .MuiDataGrid-scrollbarFiller, & .MuiDataGrid-scrollbarFiller--header':
       {
         background:
           `${headerGlass} !important`,

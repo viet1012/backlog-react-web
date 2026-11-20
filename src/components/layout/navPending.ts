@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from 'react'
 
+import { markNavigation } from '../../utils/webVitals'
+
 /*
  * Đường dẫn vừa bấm nhưng router chưa đổi xong (React Router v7 chạy điều hướng trong
  * startTransition: trang cũ đứng yên tới khi trang mới tải + render xong).
@@ -13,6 +15,9 @@ function emit() {
 }
 
 export function setNavPending(path: string | null) {
+  // đo "trang sẵn sàng" tính từ lúc bấm (trình duyệt không có Navigation API)
+  if (path) markNavigation(path.split(/[?#]/)[0])
+
   if (pendingPath === path) return
   pendingPath = path
   emit()

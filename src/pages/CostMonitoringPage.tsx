@@ -34,6 +34,7 @@ import { COST_ROWS, SIMU_WEEK_OPTIONS } from '../components/costMonitoring/costC
 import type { GuideTabId } from '../components/costMonitoring/costMonitoringGuide'
 import { useMascotMonthControl, useMascotParams } from '../components/mascot'
 import { prefetchCostDetail, useCostMonitoring, useCostMonitoringDetail } from '../hooks/useCostMonitoring'
+import { usePageReadyMetric } from '../hooks/usePageReadyMetric'
 import { toApiMonth } from '../services/costMonitoringService'
 import type { CostDetailTarget, CostSimuWeek } from '../types/costMonitoring'
 import { uiTokens } from '../theme/uiTokens'
@@ -103,6 +104,9 @@ export function CostMonitoringPage({
     reloadData,
     dataVersion,
   } = useCostMonitoring()
+
+  // đo hiệu năng (chỉ khi bật): mở trang → chart tháng đang chọn hiện ra
+  usePageReadyMetric('cost', !loading && data != null)
 
   // Drawer chi tiết 1 khung; giữ target khi đóng để nội dung không mất trong lúc trượt ra
   const [detailOpen, setDetailOpen] = useState(false)

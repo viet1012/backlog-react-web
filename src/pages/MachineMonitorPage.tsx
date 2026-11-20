@@ -59,6 +59,7 @@ import type {
   MonitorTone,
 } from '../components/machineMonitor/monitorTypes'
 import { prefetchMonitor, useMonitorData } from '../hooks/useMonitorData'
+import { usePageReadyMetric } from '../hooks/usePageReadyMetric'
 import { useStableCallback } from '../hooks/useStableCallback'
 import { listFloors, onMachineStoreWrite } from '../services/machineLocatorService'
 import { appScrollbarSx } from '../theme/scrollbarStyle'
@@ -373,6 +374,9 @@ function MonitorView({ layout, tab, header }: MonitorViewProps) {
   }, [prefHistory, history])
 
   const { floor, data, error, loading, loadedAt, refresh } = useMonitorData(layout, tab, history)
+
+  // đo hiệu năng (chỉ khi bật): mở trang → sơ đồ + dữ liệu hiện ra (1 lần mỗi lần mở trang)
+  usePageReadyMetric('machine-monitor', floor != null && data != null)
 
   const [query, setQuery] = useState('')
   const [onlyActive, setOnlyActive] = useState(() => loadPreference(PREF_ONLY_ACTIVE) === true)

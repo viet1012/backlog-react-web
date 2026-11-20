@@ -86,6 +86,7 @@ import {
 import {
   useFacConfirmData,
 } from '../hooks/useFacConfirmData'
+import { usePageReadyMetric } from '../hooks/usePageReadyMetric'
 
 import {
   useGridPreferences,
@@ -340,6 +341,9 @@ export function FacConfirmPage({
 
     search,
   })
+
+  // đo hiệu năng (chỉ khi bật): mở trang → bảng hiện ra
+  usePageReadyMetric('fac-confirm', !loading && lastUpdated != null)
 
 
   // Làm mới / lưu xong => panel thống kê theo ngày cũng tải lại (nếu đang mở)
