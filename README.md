@@ -650,6 +650,21 @@ npm run build      # kết quả ở dist/
 
 Nguyên tắc chung của mọi đợt: **mặc định giao diện như cũ**, phần mới chỉ thêm vào hoặc để người dùng tự bật.
 
+### 2026-11-20 — Vá lỗ hổng thư viện (npm audit)
+
+`npm audit` báo 5 lỗ hổng (2 cao, 3 trung bình), đều ở **công cụ dev / build**, không nằm trong bundle chạy ở trình duyệt người dùng. Đã sửa bằng `npm audit fix`, không dùng `--force`, `package.json` không đổi, chỉ đổi `package-lock.json`. Sau khi sửa: 0 lỗ hổng.
+
+| Gói | Trước → Sau | Lỗ hổng |
+| --- | --- | --- |
+| `vite` | 8.2.1 → 8.3.8 | Cao: dev server (`launch-editor` trên Windows, script chéo origin qua middleware, đọc file ngoài `server.fs.allow`) |
+| `source-map-js` | 1.2.1 → 1.2.4 | Cao: treo event loop khi đọc source map độc |
+| `minimatch` (qua `eslint` 10.14 → 10.15) | 10.2.6 → 11.0.9 | Trung bình: treo khi xử lý pattern |
+
+- `vite` mới kéo theo `rolldown` 1.2.4 → 1.2.19. Bản này gộp các chunk dùng chung vào chunk khởi động, nên `index-*.js` lớn hơn: 509 kB → 705 kB.
+  - Đã đo lại tổng JS tải lúc mở app (entry + modulepreload): khoảng 977 kB trong 21 file. Tắt tính năng gộp thì khoảng 993 kB trong 77 file.
+  - Nghĩa là số byte tải lúc mở app gần như không đổi, nhưng số request giảm nhiều. Giữ mặc định.
+- Đã kiểm tra: `tsc`, `oxlint`, `npm run build` đều qua. Chưa chạy thử `npm run dev` sau khi nâng.
+
 ### 2026-11-20 — Cost Monitoring: trạng thái trên URL
 
 Trước đây F5 khi đang xem chi tiết 1 khung là về lưới 9 chart, và không gửi được link tới một khung / tháng.
