@@ -244,13 +244,16 @@ export function useCostTransactionFacets(
 
 // Cache theo phiên (useCachedQuery): quay lại trang / tháng / tuần vừa xem => hiện ngay,
 // tải lại ngầm nếu đã cũ. Nút ↻ (refreshKey) bỏ qua cache và gửi refresh=true cho chart.
-export function useCostMonitoring() {
+export function useCostMonitoring(
+  // giá trị ban đầu (vd đọc từ link ?month=&week=)
+  initial: { month?: string | null, simuWeek?: CostSimuWeek } = {},
+) {
   // tháng người dùng chọn (dạng "2026.10" như API /months trả về); null = mới nhất
   const [selectedMonth, setMonth] =
-    useState<string | null>(null)
+    useState<string | null>(initial.month ?? null)
 
   const [simuWeek, setSimuWeek] =
-    useState<CostSimuWeek>('')
+    useState<CostSimuWeek>(initial.simuWeek ?? '')
 
   const [refreshKey, setRefreshKey] =
     useState(0)
@@ -327,12 +330,14 @@ export function useCostMonitoring() {
   // /months, cùng key cache với chartQuery. /months về mà đúng tháng này thì chartQuery dùng
   // lại request đang chạy / kết quả đã có. Khác tháng thì chỉ tốn 1 request, giao diện
   // không đổi (tháng hiển thị vẫn do /months quyết định như cũ).
+  // Mở từ link có ?month= thì tải trước đúng tháng đó.
   const [guessMonth] = useState(() => dayjs().format('YYYY.MM'))
   const monthsKnown = monthsQuery.data !== null || monthsQuery.error !== null
+  const prefetchMonth = selectedMonth ?? guessMonth
 
   useCachedQuery(
-    !monthsKnown && selectedMonth === null ? chartKey(guessMonth) : null,
-    (signal) => getCostMonitoringChart(toApiMonth(guessMonth), simuWeek, signal),
+    !monthsKnown ? chartKey(prefetchMonth) : null,
+    (signal) => getCostMonitoringChart(toApiMonth(prefetchMonth), simuWeek, signal),
   )
 
   const lastUpdated = useMemo(
@@ -343,6 +348,8 @@ export function useCostMonitoring() {
   return {
     months,
     month,
+    // tháng đã yêu cầu (chọn / link); có thể không còn trong danh sách tháng
+    requestedMonth: selectedMonth,
     setMonth,
     simuWeek,
     setSimuWeek,

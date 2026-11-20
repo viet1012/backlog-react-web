@@ -71,7 +71,7 @@ Frontend thuần (SPA). Dữ liệu và đăng nhập đi qua backend `backlog-b
     - Đang lọc thì chỉ hiện 1 nút icon nhỏ có kèm số bộ lọc. Rê chuột vào hiện *"Xóa bộ lọc (N)"*.
   - "Đang lọc" chỉ đếm bộ lọc thu hẹp dữ liệu (ô tìm, loại hàng, trạng thái, lọc cột…). Phạm vi xem như Division, ngày xuất, công đoạn không tính và được giữ nguyên khi xóa.
   - Ô tìm chỉ lọc sau khi ngừng gõ 300–400 ms. Ô tìm tự co lại khi thanh chật.
-- **Bộ lọc nằm trên URL** (Backlog, Fac Confirm, Shipment, AI Logs, EVN), ví dụ `/fac-confirm?div=PR&expD=2026-11-19&procGrp=Rough&heat=DC53`:
+- **Bộ lọc nằm trên URL** (Backlog, Fac Confirm, Shipment, AI Logs, EVN, Cost Monitoring), ví dụ `/fac-confirm?div=PR&expD=2026-11-19&procGrp=Rough&heat=DC53`:
   - Copy link gửi đồng nghiệp là mở đúng màn hình đang xem. Bấm F5 không mất bộ lọc.
   - Giá trị mặc định không ghi lên link cho gọn (vd Heat Type = All). Riêng Division / ngày / công đoạn (Fac Confirm) và tháng / phạm vi (EVN) luôn có trên link.
   - Lọc theo cột kiểu Excel và ô Summary của Backlog chưa đưa lên URL.
@@ -357,7 +357,7 @@ Trang chủ, là trang mặc định của **mọi tài khoản** sau khi đăng
 | Thẻ | Số liệu | Mở |
 | --- | --- | --- |
 | Fac Confirm chưa xác nhận (chỉ PC / PRO / ADMIN) | PO cần xác nhận hôm nay chưa xác nhận, theo Division đang dùng ở Fac Confirm, chia theo công đoạn | `/fac-confirm?div=…&expD=hôm nay&procGrp=<công đoạn còn nhiều nhất>` |
-| Khung Cost đang vượt | Số khung tháng này có `forecast.status = OVER`, kèm số khung dự báo vượt. Tháng này chưa có số thì lấy tháng mới nhất | `/cost-monitoring` |
+| Khung Cost đang vượt | Số khung tháng này có `forecast.status = OVER`, kèm số khung dự báo vượt. Tháng này chưa có số thì lấy tháng mới nhất | `/cost-monitoring?month=…` (chỉ 1 khung vượt: thêm `&frame=…`) |
 | Máy đang cảnh báo an toàn | Máy / nhóm lỗi HSE chưa đóng trên mọi tầng, kèm số quá hạn | `/monitoring/machine?tab=hse&layout=<tầng nhiều nhất>` |
 
 - Số > 0 sáng đỏ, = 0 sáng xanh. Lỗi tải thì hiện `--`, bấm vẫn mở trang.
@@ -399,11 +399,17 @@ Theo dõi chi phí theo khung (xưởng × hạng mục OT / T&SL / RM) trong th
   - Mũi tên không đổi khung khi đang mở dropdown lọc / menu hoặc khi con trỏ đang ở trong bảng giao dịch.
   - Lỗi tải chi tiết hoặc tải trang giao dịch: thanh lỗi có nút *Thử lại*.
   - Xuất file: toast tiến trình, xong / lỗi đều báo bằng toast.
-- Trang chủ có thẻ **"Khung Cost đang vượt"** đếm số khung `OVER` của tháng này. Bấm thẻ mở trang này.
+- Trang chủ có thẻ **"Khung Cost đang vượt"** đếm số khung `OVER` của tháng này. Bấm thẻ mở trang này đúng tháng đó (xem *Trạng thái trên URL*).
 - **Mở trang nhanh hơn**: lần đầu vào trang, chart của tháng hiện tại được tải song song với danh sách tháng, thay vì chờ danh sách tháng xong mới tải chart.
   - Tháng hiển thị vẫn là tháng mới nhất trong danh sách, như trước.
   - Nếu tháng mới nhất khác tháng hiện tại thì chart được tải sau như cũ, chỉ tốn thêm 1 request.
-- Chưa có bộ lọc trên URL.
+- **Trạng thái trên URL**, ví dụ `/cost-monitoring?month=2026-10&week=2&frame=press-tsl`:
+  - `month`: tháng đang xem. Luôn ghi lên link, nên link gửi đi vẫn mở đúng tháng đó kể cả khi đã có tháng mới hơn.
+  - `week`: tuần PL simulation 1–5. Không có = *Mới nhất (tự động)*.
+  - `frame`: khung đang xem chi tiết (`press-ot`, `mold-tsl`, `guide-rm`…). Không có = lưới 9 chart.
+  - F5 khi đang xem chi tiết vẫn ở lại khung đó. Mở link có `month` thì chart của tháng đó được tải song song với danh sách tháng.
+  - Tháng trong link không còn dữ liệu: hiện toast *"Tháng … trong link không có dữ liệu, đang xem tháng …"* rồi về tháng mới nhất. Tham số sai (vd `?frame=abc`) thì bỏ qua và báo như các trang khác.
+  - Thẻ *"Khung Cost đang vượt"* ở Trang chủ mở đúng tháng đang đếm. Chỉ 1 khung vượt thì mở thẳng chi tiết khung đó.
 
 API: `GET /api/cost-monitoring/months`, `/chart`, `/pl-weeks`, `/detail`, `/detail/transactions` (+ `/facets`, `/export`), `/ot/…`
 
@@ -643,6 +649,17 @@ npm run build      # kết quả ở dist/
 | 8 | `9e7f466` | 8 | Design token màu (`colorTokens.ts`, `theme.app`): theme MUI, kính panel, toast, bảng DataGrid đọc màu từ một chỗ. Giao diện giữ nguyên, đã so sánh theme sinh ra trước / sau: giống hệt. |
 
 Nguyên tắc chung của mọi đợt: **mặc định giao diện như cũ**, phần mới chỉ thêm vào hoặc để người dùng tự bật.
+
+### 2026-11-20 — Cost Monitoring: trạng thái trên URL
+
+Trước đây F5 khi đang xem chi tiết 1 khung là về lưới 9 chart, và không gửi được link tới một khung / tháng.
+
+| Phần | Nội dung | File |
+| --- | --- | --- |
+| Tham số URL | `month` (YYYY-MM, luôn ghi khi đã biết tháng), `week` (1–5), `frame` (`press-tsl`…). Dùng `useUrlFilters` như các trang khác | `costMonitoring/costUrlParams.ts` (mới), `CostMonitoringPage.tsx` |
+| Khởi tạo từ link | `useCostMonitoring({ month, simuWeek })`. Có `month` trên link thì tải trước chart tháng đó song song với `/months` (trước đây chỉ tải trước tháng hiện tại) | `hooks/useCostMonitoring.ts` |
+| Link cũ | Tháng không còn trong danh sách: toast báo và về tháng mới nhất (`requestedMonth` từ hook) | `CostMonitoringPage.tsx`, i18n `cost.linkMonthMissing` |
+| Trang chủ | Thẻ Cost mở `?month=` của tháng đang đếm, thêm `&frame=` khi chỉ có 1 khung vượt | `userHome/todayTasks/useTodayTasks.ts` |
 
 ### 2026-11-20 — Rà lại chế độ focus của Cost Monitoring
 

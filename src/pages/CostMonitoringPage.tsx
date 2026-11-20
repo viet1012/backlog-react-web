@@ -17,7 +17,7 @@ import {
 import type { PaletteMode } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import dayjs from 'dayjs'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { CostOtImportDialog } from '../components/costMonitoring/CostOtImportDialog'
 import { hasAnyRole } from '../services/authService'
 import { FactoryNoRowsOverlay } from '../components/common/FactoryNoRowsOverlay'
@@ -35,6 +35,14 @@ import type { GuideTabId } from '../components/costMonitoring/costMonitoringGuid
 import { useMascotMonthControl, useMascotParams } from '../components/mascot'
 import { prefetchCostDetail, useCostMonitoring, useCostMonitoringDetail } from '../hooks/useCostMonitoring'
 import { usePageReadyMetric } from '../hooks/usePageReadyMetric'
+import { readUrlParams, useUrlFilters } from '../hooks/useUrlFilters'
+import {
+  COST_PATH,
+  COST_URL_PARAMS,
+  frameFromSlug,
+  frameSlug,
+  type CostUrlState,
+} from '../components/costMonitoring/costUrlParams'
 import { toApiMonth } from '../services/costMonitoringService'
 import type { CostDetailTarget, CostSimuWeek } from '../types/costMonitoring'
 import { uiTokens } from '../theme/uiTokens'
@@ -88,9 +96,13 @@ export function CostMonitoringPage({
 }: CostMonitoringPageProps) {
   const { t } = useI18n()
 
+  // Link / F5: ?month=&week=&frame= (costUrlParams.ts)
+  const [fromUrl] = useState(() => readUrlParams(COST_PATH, COST_URL_PARAMS))
+
   const {
     months,
     month,
+    requestedMonth,
     setMonth,
     simuWeek,
     setSimuWeek,
@@ -103,14 +115,43 @@ export function CostMonitoringPage({
     refreshKey,
     reloadData,
     dataVersion,
-  } = useCostMonitoring()
+  } = useCostMonitoring({ month: fromUrl.month || null, simuWeek: fromUrl.week })
 
   // đo hiệu năng (chỉ khi bật): mở trang → chart tháng đang chọn hiện ra
   usePageReadyMetric('cost', !loading && data != null)
 
-  // Drawer chi tiết 1 khung; giữ target khi đóng để nội dung không mất trong lúc trượt ra
-  const [detailOpen, setDetailOpen] = useState(false)
-  const [detailTarget, setDetailTarget] = useState<CostDetailTarget | null>(null)
+  // Chế độ focus (chi tiết 1 khung); giữ target khi đóng để mở lại nhanh
+  const [detailOpen, setDetailOpen] = useState(() => frameFromSlug(fromUrl.frame) !== null)
+  const [detailTarget, setDetailTarget] = useState<CostDetailTarget | null>(() => frameFromSlug(fromUrl.frame))
+
+  // Trạng thái trang ⇄ URL: gửi link là mở đúng tháng / tuần / khung đang xem, F5 không mất
+  useUrlFilters<CostUrlState>({
+    path: COST_PATH,
+    params: COST_URL_PARAMS,
+    values: {
+      // tháng thật sự đang hiện; lúc danh sách tháng chưa về thì giữ tháng của link
+      month: month ?? requestedMonth ?? '',
+      week: simuWeek,
+      frame: detailOpen && detailTarget ? frameSlug(detailTarget) : '',
+    },
+    onUrlChange: (next) => {
+      setMonth(next.month || null)
+      setSimuWeek(next.week)
+
+      const target = frameFromSlug(next.frame)
+      if (target) setDetailTarget(target)
+      setDetailOpen(target !== null)
+    },
+  })
+
+  // Link cũ: tháng trong link không còn dữ liệu → báo 1 lần, xem tháng mới nhất
+  useEffect(() => {
+    if (!requestedMonth || months.length === 0 || months.includes(requestedMonth)) return
+
+    notify.warning(t.cost.linkMonthMissing(requestedMonth, months[0]), { key: 'cost-link-month' })
+    // oxlint-disable-next-line react/set-state-in-effect
+    setMonth(null)
+  }, [requestedMonth, months, setMonth, t])
 
   const detail = useCostMonitoringDetail(month, detailTarget, simuWeek, refreshKey, detailOpen, dataVersion)
 

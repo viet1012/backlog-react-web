@@ -803,6 +803,7 @@ export const vi: Messages = {
             over: (pct) => `Đã vượt Fluct (Actual ${pct}% Fluct)`,
         },
         monthsLoadFailed: 'Không tải được danh sách tháng Cost Monitoring',
+        linkMonthMissing: (requested: string, shown: string) => `Tháng ${requested} trong link không có dữ liệu, đang xem tháng ${shown}.`,
         chartLoadFailed: 'Không tải được biểu đồ Cost Monitoring',
         openDetail: 'Bấm để xem chi tiết',
     },

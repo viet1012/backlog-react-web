@@ -9,6 +9,7 @@ import { hasAnyRole } from '../../../services/authService'
 import type { FacConfirmProcessGroup } from '../../../types/facConfirm'
 import { loadFacConfirmPreferences } from '../../../utils/uiPreferences'
 import { FAC_CONFIRM_DIVS } from '../../facConfirm/facConfirmFilters'
+import { COST_PATH, frameSlug } from '../../costMonitoring/costUrlParams'
 
 /**
  * Số liệu "Việc của tôi hôm nay" ở Trang chủ. Mỗi thẻ có `link` mở thẳng trang
@@ -106,11 +107,17 @@ async function loadCost(signal: AbortSignal): Promise<CostTask> {
     result = await getCostMonitoringChart(month, '', signal)
   }
 
+  const overCharts = result.charts.filter((chart) => chart.forecast?.status === 'OVER')
+
+  // Mở đúng tháng đang đếm; chỉ 1 khung vượt thì mở thẳng chi tiết khung đó
+  const params = new URLSearchParams({ month })
+  if (overCharts.length === 1) params.set('frame', frameSlug(overCharts[0]))
+
   return {
     month: dayjs(`${month}-01`).format('MM/YYYY'),
-    over: result.charts.filter((chart) => chart.forecast?.status === 'OVER').length,
+    over: overCharts.length,
     willExceed: result.charts.filter((chart) => chart.forecast?.status === 'WILL_EXCEED').length,
-    link: '/cost-monitoring',
+    link: `${COST_PATH}?${params}`,
   }
 }
 

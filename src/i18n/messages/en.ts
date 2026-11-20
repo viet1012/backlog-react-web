@@ -901,6 +901,7 @@ export const en = {
             over: (pct: string) => `Already over Fluct (Actual ${pct}% of Fluct)`,
         },
         monthsLoadFailed: 'Unable to load Cost Monitoring months',
+        linkMonthMissing: (requested: string, shown: string) => `Month ${requested} in the link has no data. Showing ${shown}.`,
         chartLoadFailed: 'Unable to load Cost Monitoring chart',
         openDetail: 'Click to view details',
     },
