@@ -4,6 +4,7 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  ReferenceLine,
   Tooltip,
   XAxis,
   YAxis,
@@ -29,6 +30,10 @@ interface CostChartCardProps {
   estVisible?: boolean
   // có → bấm ô mở drawer chi tiết
   onOpenDetail?: () => void
+  // "YYYY-MM-DD" – vạch dọc đánh dấu ngày đang chọn bên chi tiết (chế độ focus)
+  highlightDate?: string | null
+  // true → ẩn dải chip FC / PL / Act… (nơi dùng đã có KPI riêng)
+  hideStats?: boolean
 }
 
 // Bản compact (chỉ bảng LED) vì 9 ô chart có thể cùng trống
@@ -40,7 +45,7 @@ function EmptyState({ text }: { text: string }) {
   )
 }
 
-export function CostChartCard({ month, chart, title, loading, estVisible = true, onOpenDetail }: CostChartCardProps) {
+export function CostChartCard({ month, chart, title, loading, estVisible = true, onOpenDetail, highlightDate = null, hideStats = false }: CostChartCardProps) {
   const { t } = useI18n()
 
   const theme = useTheme()
@@ -49,6 +54,7 @@ export function CostChartCard({ month, chart, title, loading, estVisible = true,
   const rows = chart ? buildRows(month, chart) : []
   const dataSeries = COST_SERIES.filter((s) => rows.some((r) => r[s.key] != null))
   const visibleSeries = estVisible ? dataSeries : dataSeries.filter((s) => s.key !== 'estMtd')
+  const highlightLabel = highlightDate ? rows.find((r) => r.date === highlightDate)?.label ?? null : null
 
   const renderTooltip = ({ active, label }: TooltipContentProps) => {
     const row = active ? rows.find((r) => r.label === label) : undefined
@@ -96,7 +102,7 @@ export function CostChartCard({ month, chart, title, loading, estVisible = true,
 
     body = (
       <>
-        <CostChartStats rows={rows} chart={chart} />
+        {!hideStats && <CostChartStats rows={rows} chart={chart} />}
 
         <Box sx={{ flex: 1, minHeight: 0 }}>
           <ResponsiveContainer width="100%" height="100%">
@@ -152,6 +158,22 @@ export function CostChartCard({ month, chart, title, loading, estVisible = true,
                   isAnimationActive={false}
                 />
               ))}
+
+              {highlightLabel && (
+                <ReferenceLine
+                  x={highlightLabel}
+                  stroke={theme.palette.primary.main}
+                  strokeWidth={1.5}
+                  strokeDasharray="4 3"
+                  label={{
+                    value: highlightLabel,
+                    position: 'insideTop',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    fill: theme.palette.primary.main,
+                  }}
+                />
+              )}
 
               <CostChartOverlay rows={rows} chart={chart} />
             </LineChart>

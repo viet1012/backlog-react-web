@@ -4,7 +4,7 @@ import {
 
 import { getMessages } from '../i18n/i18nContext'
 import { getCurrentEmployeeId } from './authService'
-import { saveBlob } from '../utils/download'
+import { fileNameFromDisposition, readBlobWithProgress, saveBlob, type DownloadProgress } from '../utils/download'
 
 import {
     OT_SUB_DIVS,
@@ -363,8 +363,17 @@ async function fetchDetail(
     if (query.date) params.set('date', query.date)
     if (refresh) params.set('refresh', 'true')
 
+    const startedAt = performance.now()
     const result =
         await getJson(`${API_URL}/detail?${params}`, signal)
+
+    // dev: ghi thời gian để biết chậm ở BE hay do xếp hàng phía trình duyệt (xem thêm tab Network)
+    if (import.meta.env.DEV) {
+        console.info(
+            `[cost] /detail ${target.div}·${target.chart} p${query.page}${query.date ? ` ${query.date}` : ''}`
+            + ` – ${Math.round(performance.now() - startedAt)} ms`,
+        )
+    }
 
     if (!isRecord(result)) {
         throw new Error(
@@ -402,98 +411,143 @@ export async function getCostMonitoringDetail(
     }
 }
 
-// Chỉ lấy trang giao dịch (đổi trang / lọc ngày) – BE trả kèm KPI nhưng FE bỏ qua
-export async function getCostMonitoringDetailTransactions(
-    month: string,
+// =========================================================
+// GIAO DỊCH 1 KHUNG – /detail/transactions (+ /facets, /export)
+// Tìm / lọc / sắp xếp / phân trang đều ở BE (không chạy snapshot / SP như /detail).
+// Tham số nhiều giá trị: lặp lại tên (category=A&category=B), "" = ô trống.
+// =========================================================
+
+export type CostTxFacetColumn = 'date' | 'category' | 'costCenter' | 'machine'
+export type CostTxSortField = 'date' | 'qty' | 'unitPrice' | 'amountK'
+
+export interface CostTxServerQuery {
+    // yyyy-MM-dd (cùng 1 tháng); thường lấy từ transactions.from / to của /detail
+    from: string
+    to: string
+    q: string
+    sort: { field: CostTxSortField; dir: 'asc' | 'desc' } | null
+    filters: Partial<Record<CostTxFacetColumn, string[]>>
+}
+
+export interface CostTxFacetValue {
+    value: string
+    label: string
+    count: number
+}
+
+export interface CostTxFacets {
+    total: number
+    truncated: boolean
+    values: CostTxFacetValue[]
+}
+
+function txParams(target: CostDetailTarget, query: CostTxServerQuery) {
+    const params = new URLSearchParams({
+        div: target.div,
+        chart: target.chart,
+        from: query.from,
+        to: query.to,
+    })
+
+    if (query.q.trim()) params.set('q', query.q.trim())
+    if (query.sort) params.set('sort', `${query.sort.field},${query.sort.dir}`)
+
+    for (const [column, values] of Object.entries(query.filters)) {
+        for (const value of values ?? []) params.append(column, value)
+    }
+
+    return params
+}
+
+// Lỗi BE dạng { status, message } → dùng message
+async function errorOf(response: Response, fallback: string) {
+    try {
+        const body: unknown = await response.json()
+        if (isRecord(body) && typeof body.message === 'string' && body.message) return new Error(body.message)
+    } catch {
+        // không phải JSON
+    }
+    return new Error(`${fallback}: ${response.status}`)
+}
+
+export async function getCostTransactionsPage(
     target: CostDetailTarget,
-    simuWeek: CostSimuWeek,
-    query: CostDetailTxQuery,
+    query: CostTxServerQuery,
+    page: number,
+    size: number,
     signal?: AbortSignal,
 ): Promise<CostDetailTransactionPage> {
 
-    const result = await fetchDetail(month, target, simuWeek, query, signal)
+    const params = txParams(target, query)
+    params.set('page', String(page))
+    params.set('size', String(size))
 
-    return mapTransactionPage(result.transactions)
+    const startedAt = performance.now()
+    const response = await fetch(`${API_URL}/detail/transactions?${params}`, {
+        headers: { Accept: 'application/json' },
+        signal,
+    })
+
+    if (!response.ok) throw await errorOf(response, 'Cost Monitoring transactions failed')
+
+    const result: unknown = await response.json()
+
+    if (import.meta.env.DEV) {
+        console.info(`[cost] /detail/transactions ${target.div}·${target.chart} p${page} – ${Math.round(performance.now() - startedAt)} ms`)
+    }
+
+    return mapTransactionPage(result)
 }
 
-
-// =========================================================
-// EXPORT giao dịch – lấy đủ mọi trang (size tối đa BE = 200) rồi xuất CSV UTF-8 (BOM),
-// Excel mở thẳng, không cần thư viện
-// =========================================================
-
-const EXPORT_PAGE_SIZE = 200
-// chặn vòng lặp vô hạn nếu BE trả totalPages sai
-const EXPORT_MAX_PAGES = 100
-
-function csvCell(value: string | number | null): string {
-    if (value == null) return ''
-    const cell = String(value)
-    return /[",\r\n;]/.test(cell) ? `"${cell.replace(/"/g, '""')}"` : cell
-}
-
-export interface CostTxExportHeaders {
-    date: string
-    code: string
-    name: string
-    category: string
-    qty: string
-    qtyUnit: string
-    unitPrice: string
-    amount: string
-    amountK: string
-    costCenter: string
-    machine: string
-}
-
-export async function exportCostTransactionsExcel(
-    month: string,
+// Giá trị dropdown của 1 cột (BE bỏ bộ lọc của chính cột này, áp dụng q + cột khác)
+export async function getCostTransactionFacets(
     target: CostDetailTarget,
-    simuWeek: CostSimuWeek,
-    filterDate: string | null,
-    headers: CostTxExportHeaders,
-    fileName: string,
-    // trang đã tải / tổng số trang (BE trả totalPages ở trang đầu)
-    onProgress?: (fraction: number | null) => void,
-): Promise<string> {
+    query: CostTxServerQuery,
+    column: CostTxFacetColumn,
+    signal?: AbortSignal,
+): Promise<CostTxFacets> {
 
-    const rows: CostDetailTransaction[] = []
+    const params = txParams(target, { ...query, sort: null })
+    params.set('column', column)
+
+    const response = await fetch(`${API_URL}/detail/transactions/facets?${params}`, {
+        headers: { Accept: 'application/json' },
+        signal,
+    })
+
+    if (!response.ok) throw await errorOf(response, 'Cost Monitoring facets failed')
+
+    const result: unknown = await response.json()
+    const raw = isRecord(result) ? result : {}
+    const values = Array.isArray(raw.values) ? raw.values.filter(isRecord) : []
+
+    return {
+        total: num(raw.total) ?? values.length,
+        truncated: raw.truncated === true,
+        values: values.map((v) => ({
+            value: text(v.value) ?? '',
+            label: text(v.label) ?? text(v.value) ?? '',
+            count: num(v.count) ?? 0,
+        })),
+    }
+}
+
+// .xlsx do BE tạo theo đúng bộ lọc / thứ tự đang xem (1 request, stream) → trả tên file
+export async function exportCostTransactionsXlsx(
+    target: CostDetailTarget,
+    query: CostTxServerQuery,
+    fallbackName: string,
+    onProgress?: DownloadProgress,
+): Promise<string> {
 
     onProgress?.(null)
 
-    for (let page = 0; page < EXPORT_MAX_PAGES; page++) {
-        const result = await getCostMonitoringDetailTransactions(
-            month,
-            target,
-            simuWeek,
-            { date: filterDate, page, size: EXPORT_PAGE_SIZE },
-        )
+    const response = await fetch(`${API_URL}/detail/transactions/export?${txParams(target, query)}`)
 
-        rows.push(...result.items)
+    if (!response.ok) throw await errorOf(response, 'Cost Monitoring export failed')
 
-        const pages = Math.min(result.totalPages, EXPORT_MAX_PAGES)
-        if (pages > 0) onProgress?.((page + 1) / pages)
-
-        if (page + 1 >= result.totalPages || result.items.length === 0) break
-    }
-
-    const lines = [
-        [
-            headers.date, headers.code, headers.name, headers.category, headers.qty, headers.qtyUnit,
-            headers.unitPrice, headers.amount, headers.amountK, headers.costCenter, headers.machine,
-        ],
-        ...rows.map((r) => [
-            r.date, r.code, r.name, r.category, r.qty, r.qtyUnit,
-            r.unitPrice, r.amount, r.amountK,
-            [r.costCenter, r.costCenterName].filter(Boolean).join(' - ') || null,
-            r.machine,
-        ]),
-    ].map((cells) => cells.map(csvCell).join(','))
-
-    const blob = new Blob(
-        ['﻿' + lines.join('\r\n')],
-        { type: 'text/csv;charset=utf-8' },
-    )
+    const fileName = fileNameFromDisposition(response.headers.get('Content-Disposition'), fallbackName)
+    const blob = await readBlobWithProgress(response, onProgress)
 
     saveBlob(blob, fileName)
 
