@@ -521,6 +521,58 @@
   max-height: min(85vh, calc(100vh - 32px));
 }
 
+/* Khung chat thu nhỏ: ẩn nhưng vẫn mount (giữ câu đang gõ, vị trí cuộn) – MascotChatResume thay thế */
+.panelHidden {
+  display: none;
+}
+
+/* Bong bóng "đang trò chuyện" (kế thừa vị trí / đuôi của .speech) */
+.resume {
+  width: 240px;
+  max-width: 240px;
+}
+
+/* Có trả lời mới: viền sáng nhấp nháy nhẹ */
+.resumeNew {
+  animation: bubbleIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), resumeGlow 1.6s ease-in-out 0.3s 3;
+}
+
+@keyframes resumeGlow {
+  0%,
+  100% {
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14), 0 0 0 0 var(--resume-glow);
+  }
+  50% {
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14), 0 0 0 6px var(--resume-glow);
+  }
+}
+
+.resumeDot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #1976d2;
+  animation: resumeDotPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes resumeDotPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .resumeNew,
+  .resumeDot {
+    animation: none;
+  }
+}
+
 /* Đuôi bong bóng chỉ về đầu mascot (bên phải panel).
    Ô vuông xoay 45°: viền trên + phải tạo thành mũi nhọn hướng sang phải. */
 .tail {
@@ -539,6 +591,13 @@
 /* Thanh gợi ý cuộn ngang phía trên ô nhập – ẩn scrollbar */
 .suggestionStrip {
   scrollbar-width: none;
+  user-select: none;
+  overscroll-behavior-x: contain;
+}
+
+.suggestionStrip.dragging,
+.suggestionStrip.dragging * {
+  cursor: grabbing !important;
 }
 
 .suggestionStrip::-webkit-scrollbar {
