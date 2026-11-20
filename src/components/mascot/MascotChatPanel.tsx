@@ -4,6 +4,7 @@ import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineR
 import CloseFullscreenRoundedIcon from '@mui/icons-material/CloseFullscreenRounded'
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined'
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded'
+import RemoveRoundedIcon from '@mui/icons-material/RemoveRounded'
 import OpenInFullRoundedIcon from '@mui/icons-material/OpenInFullRounded'
 import ReplayRoundedIcon from '@mui/icons-material/ReplayRounded'
 import SendRoundedIcon from '@mui/icons-material/SendRounded'
@@ -38,11 +39,15 @@ import { getSupportedScreens, MASCOT_TEXTS } from './mascotConfig'
 import { loadPreference, savePreference } from '../../utils/uiPreferences'
 import { ASSISTANT_TIMEOUT_MS } from '../../services/assistantService'
 import type {
+  AssistantCard,
+  AssistantChart,
   AssistantErrorCode,
   AssistantErrorDetail,
   AssistantSource,
   AssistantSuggestion,
 } from '../../services/assistantService'
+import { MascotCard } from './MascotCard'
+import { MascotChart } from './MascotChart'
 import { MascotMarkdown } from './MascotMarkdown'
 import { MascotSvg } from './MascotSvg'
 import type { MascotMood } from './MascotSvg'
@@ -54,6 +59,81 @@ import styles from './Mascot.module.css'
 
 const MAX_QUESTION_LENGTH = 2000
 const WIDE_KEY = 'mascot:chatWide'
+
+/** Ngưỡng (px) kéo chuột trước khi coi là kéo-cuộn thay vì click */
+const DRAG_THRESHOLD = 5
+
+/**
+ * Cho thanh cuộn ngang (đã ẩn scrollbar) cuộn được bằng chuột trên desktop:
+ * lăn chuột dọc → cuộn ngang; nhấn giữ + kéo → cuộn (không kích hoạt click chip).
+ * Cảm ứng / touchpad giữ hành vi cuộn gốc của trình duyệt.
+ */
+function useHorizontalDragScroll<T extends HTMLElement>(enabled: boolean) {
+  const ref = useRef<T>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!enabled || !el) return
+
+    const onWheel = (e: WheelEvent) => {
+      if (el.scrollWidth <= el.clientWidth) return
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return
+      e.preventDefault()
+      el.scrollLeft += e.deltaY
+    }
+
+    let pointerId: number | null = null
+    let startX = 0
+    let startLeft = 0
+    let dragged = false
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType !== 'mouse' || e.button !== 0) return
+      pointerId = e.pointerId
+      startX = e.clientX
+      startLeft = el.scrollLeft
+      dragged = false
+    }
+    const onMove = (e: PointerEvent) => {
+      if (pointerId !== e.pointerId) return
+      const dx = e.clientX - startX
+      if (!dragged) {
+        if (Math.abs(dx) < DRAG_THRESHOLD) return
+        dragged = true
+        el.setPointerCapture(e.pointerId)
+        el.classList.add(styles.dragging)
+      }
+      el.scrollLeft = startLeft - dx
+    }
+    const onUp = (e: PointerEvent) => {
+      if (pointerId !== e.pointerId) return
+      pointerId = null
+      el.classList.remove(styles.dragging)
+    }
+    // vừa kéo xong → chặn click để không gửi câu gợi ý ngoài ý muốn
+    const onClick = (e: MouseEvent) => {
+      if (!dragged) return
+      dragged = false
+      e.preventDefault()
+      e.stopPropagation()
+    }
+
+    el.addEventListener('wheel', onWheel, { passive: false })
+    el.addEventListener('pointerdown', onDown)
+    el.addEventListener('pointermove', onMove)
+    el.addEventListener('pointerup', onUp)
+    el.addEventListener('pointercancel', onUp)
+    el.addEventListener('click', onClick, true)
+    return () => {
+      el.removeEventListener('wheel', onWheel)
+      el.removeEventListener('pointerdown', onDown)
+      el.removeEventListener('pointermove', onMove)
+      el.removeEventListener('pointerup', onUp)
+      el.removeEventListener('pointercancel', onUp)
+      el.removeEventListener('click', onClick, true)
+      el.classList.remove(styles.dragging)
+    }
+  }, [enabled])
+  return ref
+}
 
 /** Dòng phân cách cột của bảng GFM: "| --- | :---: |" hoặc "---|---" (không khớp "---" của hr) */
 const TABLE_DELIMITER = /^\s*\|?\s*:?-{3,}:?\s*\|/m
@@ -75,6 +155,10 @@ export type ChatItem =
     text: string
     sources: AssistantSource[]
     answeredMonth?: string
+    /** biểu đồ kèm câu trả lời (backend tính); không có → không vẽ */
+    charts?: AssistantChart[]
+    /** thẻ tóm tắt đầu câu trả lời; có → phần chữ gập lại */
+    card?: AssistantCard
     /** trả lời tại chỗ (màn chưa hỗ trợ, không gọi API) */
     local?: boolean
   }
@@ -115,6 +199,9 @@ interface MascotChatPanelProps {
   onRetry: (errorId: number) => void
   onNewConversation: () => void
   onClose: () => void
+  /** đang thu nhỏ: panel ẩn (vẫn mount), Mascot hiện bong bóng "đang trò chuyện" */
+  collapsed: boolean
+  onCollapse: () => void
 }
 
 const preWrap = { whiteSpace: 'pre-wrap', wordBreak: 'break-word' } as const
@@ -139,6 +226,8 @@ export function MascotChatPanel({
   onRetry,
   onNewConversation,
   onClose,
+  collapsed,
+  onCollapse,
 }: MascotChatPanelProps) {
   const { t } = useI18n()
   const name = useMascotName()
@@ -169,6 +258,7 @@ export function MascotChatPanel({
   const welcome = chatEnabled && items.length === 0
   // đã hỏi → gợi ý nằm ở thanh cuộn ngang ngay trên ô nhập
   const showStrip = !welcome && (showSuggestions || showSkeletons)
+  const stripRef = useHorizontalDragScroll<HTMLDivElement>(showStrip)
 
   const [slow, setSlow] = useState(false)
 
@@ -184,7 +274,7 @@ export function MascotChatPanel({
   useEffect(() => {
     const list = listRef.current
     if (list) list.scrollTop = list.scrollHeight
-  }, [items, pending, slow])
+  }, [items, pending, slow, collapsed])
 
   useEffect(() => {
     const input = inputRef.current
@@ -192,7 +282,7 @@ export function MascotChatPanel({
     input.focus()
     // câu điền sẵn → con trỏ ở cuối để sửa / gửi luôn
     input.setSelectionRange(input.value.length, input.value.length)
-  }, [canSend])
+  }, [canSend, collapsed])
 
   function submit(text: string) {
     const question = text.trim()
@@ -212,14 +302,17 @@ export function MascotChatPanel({
   return (
     <Paper
       id={id}
-      className={`${styles.panel} ${wide ? styles.panelWide : ''}`}
+      // thu nhỏ: ẩn (vẫn mount để giữ câu đang gõ / vị trí cuộn); Mascot hiện bong bóng "đang trò chuyện" trên đầu
+      className={`${styles.panel} ${wide ? styles.panelWide : ''} ${collapsed ? styles.panelHidden : ''}`}
+      aria-hidden={collapsed || undefined}
       elevation={8}
       role="dialog"
       aria-label={name}
       // không overflow:hidden để đuôi bong bóng lòi ra ngoài; header tự bo góc trên
       sx={(theme) => ({
         borderRadius: 3,
-        display: 'flex',
+        // ẩn khi thu nhỏ phải đặt ở đây: sx (emotion) đè class CSS module .panelHidden
+        display: collapsed ? 'none' : 'flex',
         flexDirection: 'column',
         border: `1px solid ${theme.palette.divider}`,
         '--tail-border': theme.palette.divider,
@@ -314,7 +407,20 @@ export function MascotChatPanel({
             ? <CloseFullscreenRoundedIcon fontSize="small" />
             : <OpenInFullRoundedIcon fontSize="small" />}
         </IconButton>
-        <IconButton size="small" aria-label={t.mascot.chat.close} onClick={onClose}>
+        <IconButton
+          size="small"
+          aria-label={t.mascot.chat.minimize}
+          title={t.mascot.chat.minimize}
+          onClick={onCollapse}
+        >
+          <RemoveRoundedIcon fontSize="small" />
+        </IconButton>
+        <IconButton
+          size="small"
+          aria-label={t.mascot.chat.close}
+          title={t.mascot.chat.close}
+          onClick={onClose}
+        >
           <CloseRoundedIcon fontSize="small" />
         </IconButton>
       </Stack>
@@ -456,8 +562,25 @@ export function MascotChatPanel({
             const canShowMonth = otherMonth !== undefined && monthControl?.months.includes(otherMonth) === true
             return (
               // có bảng → dùng hết bề ngang panel (bảng tự cuộn ngang bên trong)
-              <AssistantRow key={item.id} full={hasMarkdownTable(item.text)}>
-                <Bubble from="assistant" nested markdown>{item.text}</Bubble>
+              <AssistantRow
+                key={item.id}
+                full={hasMarkdownTable(item.text)}
+                stretch={(item.charts?.length ?? 0) > 0 || item.card !== undefined}
+              >
+                {item.card
+                  // có thẻ tóm tắt: thẻ ở đầu, phần chữ + chart gập lại sau nút "Xem giải thích"
+                  ? (
+                    <CardAnswer card={item.card}>
+                      <Bubble from="assistant" nested markdown>{item.text}</Bubble>
+                      {item.charts?.map((chart, index) => <MascotChart key={index} chart={chart} />)}
+                    </CardAnswer>
+                  )
+                  : (
+                    <>
+                      <Bubble from="assistant" nested markdown>{item.text}</Bubble>
+                      {item.charts?.map((chart, index) => <MascotChart key={index} chart={chart} />)}
+                    </>
+                  )}
                 {canShowMonth && (
                   <Button
                     size="small"
@@ -494,6 +617,7 @@ export function MascotChatPanel({
       {/* Gợi ý (sau khi đã hỏi): thanh cuộn ngang ngay trên ô nhập, luôn nhìn thấy */}
       {showStrip && (
         <Stack
+          ref={stripRef}
           direction="row"
           className={`${styles.suggestionStrip} ${showSuggestions ? styles.fadeIn : ''}`}
           aria-hidden={showSkeletons ? true : undefined}
@@ -1210,17 +1334,25 @@ interface AssistantRowProps {
   pulse?: boolean
   /** dùng hết bề ngang (câu trả lời có bảng) */
   full?: boolean
+  /** chiếm đủ bề ngang panel (câu trả lời có biểu đồ – chart cần bề rộng cố định để đo) */
+  stretch?: boolean
   className?: string
   children: ReactNode
 }
 
 /** Dòng tin của trợ lý: avatar nhỏ bên trái + nội dung */
-function AssistantRow({ mood = 'idle', pulse = false, full = false, className, children }: AssistantRowProps) {
+function AssistantRow({ mood = 'idle', pulse = false, full = false, stretch = false, className, children }: AssistantRowProps) {
   return (
     <Stack
       direction="row"
       className={className}
-      sx={{ alignSelf: 'flex-start', alignItems: 'flex-start', gap: 0.75, maxWidth: full ? '100%' : '90%', minWidth: 0 }}
+      sx={{
+        alignSelf: stretch ? 'stretch' : 'flex-start',
+        alignItems: 'flex-start',
+        gap: 0.75,
+        maxWidth: full || stretch ? '100%' : '90%',
+        minWidth: 0,
+      }}
     >
       <Box sx={{ pt: '2px' }}>
         <Box className={pulse ? styles.avatarPulse : undefined} sx={{ borderRadius: '50%' }}>
@@ -1229,6 +1361,40 @@ function AssistantRow({ mood = 'idle', pulse = false, full = false, className, c
       </Box>
       <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
     </Stack>
+  )
+}
+
+/** Câu trả lời có thẻ tóm tắt: thẻ luôn hiện, phần giải thích (chữ + chart) gập / mở */
+function CardAnswer({ card, children }: { card: AssistantCard; children: ReactNode }) {
+  const { language } = useI18n()
+  const [open, setOpen] = useState(false)
+  const label = open
+    ? (language === 'en' ? 'Hide details' : 'Thu gọn')
+    : (language === 'en' ? 'Show explanation' : 'Xem giải thích chi tiết')
+  return (
+    <Box sx={{ minWidth: 0 }}>
+      <MascotCard card={card} />
+      <Button
+        size="small"
+        variant="text"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        endIcon={(
+          <Box
+            component="span"
+            sx={{ display: 'inline-block', transition: 'transform 160ms', transform: open ? 'rotate(180deg)' : 'none', fontSize: 11 }}
+          >
+            ▾
+          </Box>
+        )}
+        sx={{ mt: 0.5, px: 0.75, py: 0.25, minWidth: 0, fontSize: 12, textTransform: 'none' }}
+      >
+        {label}
+      </Button>
+      <Collapse in={open} timeout={180} unmountOnExit>
+        <Box sx={{ pt: 0.25 }}>{children}</Box>
+      </Collapse>
+    </Box>
   )
 }
 

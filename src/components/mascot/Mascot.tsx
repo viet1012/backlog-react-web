@@ -29,6 +29,7 @@ import type { MascotLine, MascotState } from './mascotConfig'
 import { useMascotContext, useMascotName } from './mascotContext'
 import { getMascotScreen } from './mascotMessages'
 import { MascotSpeechBubble } from './MascotSpeechBubble'
+import { MascotChatResume } from './MascotChatResume'
 import { MASCOT_VIEWBOX, MascotSvg } from './MascotSvg'
 import {
   prefersReducedMotion,
@@ -145,6 +146,11 @@ export function Mascot() {
     }
   }
 
+  // Thu nhỏ khung chat: panel ẩn (vẫn mount, giữ câu đang gõ), bong bóng "đang trò chuyện" trên đầu mascot.
+  // Đóng panel -> lần mở sau luôn mở đầy đủ.
+  const [chatCollapsed, setChatCollapsed] = useState(false)
+  const [seenCount, setSeenCount] = useState(0)
+
   // Trang yêu cầu mở chat (vd nút "Hỏi … về khung này") → bỏ thu nhỏ + mở panel
   const [prevOpenChatSeq, setPrevOpenChatSeq] = useState(openChatSeq)
   if (openChatSeq !== prevOpenChatSeq) {
@@ -153,8 +159,24 @@ export function Mascot() {
       setMinimized(false)
       savePreference(MINIMIZED_KEY, false)
     }
+    setChatCollapsed(false)
     setOpen(true)
   }
+
+  if (!open && chatCollapsed) setChatCollapsed(false)
+
+  function collapseChat() {
+    setSeenCount(items.length)
+    setChatCollapsed(true)
+  }
+
+  // Câu trả lời về trong lúc thu nhỏ -> bong bóng báo "có trả lời mới" + mascot vẫy tay
+  const lastItem = items[items.length - 1]
+  const hasNewReply = chatCollapsed && items.length > seenCount && lastItem?.kind === 'assistant'
+  useEffect(() => {
+    if (hasNewReply) startWave(CLICK_WAVES)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasNewReply])
 
   useEffect(() => () => {
     window.cancelAnimationFrame(restartFrame.current ?? 0)
@@ -204,6 +226,11 @@ export function Mascot() {
   function handleClick() {
     // vừa kéo thả xong → không tính là click mở chat
     if (dragApi.consumeClick()) return
+    // đang thu nhỏ → bấm mascot là mở lại khung chat (không đóng)
+    if (open && chatCollapsed) {
+      setChatCollapsed(false)
+      return
+    }
     if (!open) {
       startWave(CLICK_WAVES)
       // mở panel lúc đang offline → kiểm tra lại kết nối ngay
@@ -274,13 +301,13 @@ export function Mascot() {
     abortRef.current[screenKey] = controller
 
     try {
-      const { answer, sources, answeredMonth } = await postAssistantChat(
+      const { answer, sources, answeredMonth, charts, card } = await postAssistantChat(
         { screenKey, params, question, history, lang: language },
         controller.signal,
       )
       // service đã ném LLM_EMPTY khi answer rỗng; chặn thêm ở đây để không bao giờ có bubble trống
       if (!answer.trim()) throw new AssistantApiError('LLM_EMPTY', { kind: 'http' })
-      const answerId = appendItem(screenKey, { kind: 'assistant', text: answer, sources, answeredMonth })
+      const answerId = appendItem(screenKey, { kind: 'assistant', text: answer, sources, answeredMonth, charts, card })
       suggestions.requestFollowUp(answerId, screenKey)
       reportStatus('online')
     } catch (error) {
@@ -485,6 +512,7 @@ export function Mascot() {
     speech.accept()
     if (question) setPrefill(question)
     if (offline) retry()
+    setChatCollapsed(false)
     setOpen(true)
   }
 
@@ -613,8 +641,25 @@ export function Mascot() {
           onRetry={retryError}
           onNewConversation={startNewConversation}
           onClose={() => setOpen(false)}
+          collapsed={chatCollapsed}
+          onCollapse={collapseChat}
         />
         </Suspense>
+      )}
+
+      {/* Khung chat đang thu nhỏ: bong bóng nhỏ trên đầu mascot – trạng thái + xem trước tin cuối, bấm để mở lại */}
+      {open && chatCollapsed && (
+        <MascotChatResume
+          name={name}
+          pending={pending}
+          offline={offlineUi}
+          hasNewReply={hasNewReply}
+          count={items.filter((item) => item.kind === 'user').length}
+          preview={lastItem && (lastItem.kind === 'user' || lastItem.kind === 'assistant') ? lastItem.text : undefined}
+          previewFromUser={lastItem?.kind === 'user'}
+          onRestore={() => setChatCollapsed(false)}
+          onClose={() => setOpen(false)}
+        />
       )}
 
       <button

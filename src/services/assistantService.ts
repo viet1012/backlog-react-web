@@ -54,6 +54,170 @@ export interface AssistantChatResponse {
   sources: AssistantSource[]
   /** tháng câu trả lời nói tới, dạng "YYYY.MM"; undefined khi backend không trả */
   answeredMonth?: string
+  /** biểu đồ kèm câu trả lời (số do backend tính từ dữ liệu màn hình); rỗng → không vẽ */
+  charts: AssistantChart[]
+  /** thẻ tóm tắt đầu câu trả lời (backend tính); có → FE gập phần chữ chi tiết */
+  card?: AssistantCard
+}
+
+export type AssistantCardTone = 'over' | 'watch' | 'ok'
+
+export interface AssistantCard {
+  tone: AssistantCardTone
+  title: string
+  /** 1 câu kết luận, có thể có **in đậm** */
+  headline: string
+  chips: { label: string; value: string; tone: 'over' | 'ok' | 'neutral' }[]
+  /** thanh ngân sách tháng: Actual + phần dự báo còn lại, mốc Fluct / FC */
+  budget?: {
+    actual: number
+    forecast?: number
+    fluct?: number
+    fc?: number
+    actualLabel: string
+    restLabel: string
+    forecastLabel: string
+  }
+  /** cầu nối Fluct → (± target) → FC → (± so với FC) → Dự báo */
+  bridge: { label: string; value: number; kind: 'base' | 'delta' | 'total' }[]
+  unit: string
+}
+
+const CARD_TONES: readonly AssistantCardTone[] = ['over', 'watch', 'ok']
+
+function num(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined
+}
+
+/** card: sai cấu trúc → undefined (không vẽ thẻ, câu trả lời hiện như cũ) */
+function readCard(value: unknown): AssistantCard | undefined {
+  const record = asRecord(value)
+  if (!record) return undefined
+  const headline = readString(record, 'headline')
+  if (!headline) return undefined
+
+  const chips: AssistantCard['chips'] = []
+  for (const raw of Array.isArray(record.chips) ? record.chips : []) {
+    const c = asRecord(raw)
+    const label = c && readString(c, 'label')
+    const chipValue = c && readString(c, 'value')
+    if (!c || !label || !chipValue) continue
+    chips.push({ label, value: chipValue, tone: c.tone === 'over' || c.tone === 'ok' ? c.tone : 'neutral' })
+  }
+
+  const b = asRecord(record.budget)
+  const actual = b ? num(b.actual) : undefined
+  const budget = b && actual !== undefined
+    ? {
+      actual,
+      forecast: num(b.forecast),
+      fluct: num(b.fluct),
+      fc: num(b.fc),
+      actualLabel: readString(b, 'actualLabel') ?? 'Actual',
+      restLabel: readString(b, 'restLabel') ?? '',
+      forecastLabel: readString(b, 'forecastLabel') ?? '',
+    }
+    : undefined
+
+  const bridge: AssistantCard['bridge'] = []
+  for (const raw of Array.isArray(record.bridge) ? record.bridge : []) {
+    const s = asRecord(raw)
+    const stepValue = s ? num(s.value) : undefined
+    if (!s || stepValue === undefined) continue
+    const kind = s.kind === 'base' || s.kind === 'delta' || s.kind === 'total' ? s.kind : 'total'
+    bridge.push({ label: readString(s, 'label') ?? '', value: stepValue, kind })
+  }
+
+  return {
+    tone: CARD_TONES.includes(record.tone as AssistantCardTone) ? (record.tone as AssistantCardTone) : 'ok',
+    title: readString(record, 'title') ?? '',
+    headline,
+    chips,
+    budget,
+    bridge,
+    unit: readString(record, 'unit') ?? '',
+  }
+}
+
+export type AssistantChartType = 'line' | 'bar' | 'hbar'
+/** vai trò chuỗi số → màu / nét: actual, estimate (dự báo), target (Fluct), fc, limit (mức tối đa), neutral */
+export type AssistantSeriesKind = 'actual' | 'estimate' | 'target' | 'fc' | 'limit' | 'neutral'
+
+export type AssistantPointStatus = 'over' | 'ok' | 'stale' | null
+
+export interface AssistantChartSeries {
+  name: string
+  kind: AssistantSeriesKind
+  data: (number | null)[]
+  /** trạng thái từng điểm (bar / hbar): over → đỏ, ok → xanh, stale (dữ liệu cũ) → xám; không có → tô theo kind */
+  status?: AssistantPointStatus[]
+}
+
+export interface AssistantChart {
+  type: AssistantChartType
+  title: string
+  unit: string
+  categories: string[]
+  series: AssistantChartSeries[]
+  /** đường mốc (vd 100% = Fluct) */
+  refValue?: number
+  refLabel?: string
+  note?: string
+}
+
+const CHART_TYPES: readonly AssistantChartType[] = ['line', 'bar', 'hbar']
+const SERIES_KINDS: readonly AssistantSeriesKind[] = ['actual', 'estimate', 'target', 'fc', 'limit', 'neutral']
+const MAX_CHARTS = 3
+const MAX_POINTS = 62
+
+/** charts: bỏ phần tử sai cấu trúc; data khác độ dài categories → cắt / bù null */
+function readCharts(value: unknown): AssistantChart[] {
+  if (!Array.isArray(value)) return []
+  const charts: AssistantChart[] = []
+
+  for (const raw of value) {
+    const record = asRecord(raw)
+    if (!record) continue
+    const type = record.type as AssistantChartType
+    if (!CHART_TYPES.includes(type)) continue
+    const categories = Array.isArray(record.categories)
+      ? record.categories.slice(0, MAX_POINTS).map((c) => String(c))
+      : []
+    if (categories.length === 0) continue
+
+    const series: AssistantChartSeries[] = []
+    for (const rawSeries of Array.isArray(record.series) ? record.series : []) {
+      const s = asRecord(rawSeries)
+      if (!s || !Array.isArray(s.data)) continue
+      const kind = SERIES_KINDS.includes(s.kind as AssistantSeriesKind) ? (s.kind as AssistantSeriesKind) : 'neutral'
+      const data = categories.map((_, i) => {
+        const v = (s.data as unknown[])[i]
+        return typeof v === 'number' && Number.isFinite(v) ? v : null
+      })
+      const status = Array.isArray(s.status)
+        ? categories.map((_, i) => {
+          const v = (s.status as unknown[])[i]
+          return v === 'over' || v === 'ok' || v === 'stale' ? v : null
+        })
+        : undefined
+      series.push({ name: typeof s.name === 'string' ? s.name : '', kind, data, status })
+    }
+    if (series.length === 0) continue
+
+    charts.push({
+      type,
+      title: readString(record, 'title') ?? '',
+      unit: readString(record, 'unit') ?? '',
+      categories,
+      series,
+      refValue: typeof record.refValue === 'number' ? record.refValue : undefined,
+      refLabel: readString(record, 'refLabel'),
+      note: readString(record, 'note'),
+    })
+    if (charts.length >= MAX_CHARTS) break
+  }
+
+  return charts
 }
 
 /** "2026-10" / "2026.10" / "202610" / "2026-10-01" → "2026.10"; không nhận ra → undefined */
@@ -429,6 +593,8 @@ export async function postAssistantChat(
       answer,
       sources: readSources(body?.sources),
       answeredMonth: normalizeMonth(body?.answeredMonth ?? body?.answered_month),
+      charts: readCharts(body?.charts),
+      card: readCard(body?.card),
     }
   } finally {
     window.clearTimeout(timer)
