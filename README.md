@@ -361,14 +361,17 @@ Trang chủ, là trang mặc định của **mọi tài khoản** sau khi đăng
 | Máy đang cảnh báo an toàn | Máy / nhóm lỗi HSE chưa đóng trên mọi tầng, kèm số quá hạn | `/monitoring/machine?tab=hse&layout=<tầng nhiều nhất>` |
 
 - Số > 0 sáng đỏ, = 0 sáng xanh. Lỗi tải thì hiện `--`, bấm vẫn mở trang.
-- Số liệu được cache theo phiên và tải lại ngầm sau 2 phút.
+- Dòng phụ bị cắt (cột hẹp) thì rê chuột vào thẻ để xem đủ.
+- Góc bảng có **"Cập nhật hh:mm"**: giờ lấy số liệu cũ nhất đang hiện.
+- Số liệu được cache theo phiên. Quay lại Trang chủ sau hơn 2 phút thì tải lại ngầm.
 
 **Phần còn lại**
 
-- Lời chào kèm 4 thẻ thông tin: Employee ID, Department, Section, Role.
-- **Hoạt cảnh nhà máy** gồm 4 cảnh: Production Line, Dev Team, Inspection, Packing.
-  - Cảnh tự đổi sau mỗi 15 giây. Rê chuột vào để dừng; bấm các chấm để chọn cảnh.
-  - Màu đổi theo chế độ sáng/tối. Hoạt cảnh đứng yên nếu máy bật chế độ giảm chuyển động.
+- **Bảng LED** treo trên xích: lời chào theo buổi, biển tên nhà máy, đồng hồ và ngày dạng LED 7 đoạn, dòng chữ chạy.
+- **Thẻ nhân viên** đeo dây: avatar (cùng avatar ở sidebar), mã nhân viên, role, Nhà máy / Phòng / Bộ phận / Line / Nhóm (chỉ hiện trường có dữ liệu; màn thấp thì ẩn phần này).
+- **Kệ hàng 3 tầng**: mỗi thùng hàng là 1 trang, bấm để mở. Nút **Tìm trang** trên header mở hộp tìm trang (Ctrl+K).
+- **Đồ hoạ** (nút trên header, mặc định *Tự động*): kệ vẽ bằng WebGL (3D) hoặc CSS (2D) tuỳ máy. Máy chạy chưa mượt thì Tự động hạ 1 bậc (có Hoàn tác); chọn tay thì chỉ gợi ý. Máy không chạy được WebGL thì tự dùng bản 2D.
+- Cảnh thả hàng lên kệ chỉ chạy ở lần đầu vào trang trong phiên. Các chuyển động (thẻ đung đưa, chữ chạy) đứng yên nếu máy bật chế độ giảm chuyển động.
 
 ### 10. PC Training
 

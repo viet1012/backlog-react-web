@@ -687,6 +687,7 @@ export const vi: Messages = {
         subtitle: 'Production Control',
         today: {
             title: 'Việc của tôi hôm nay',
+            updatedAt: (time) => `Cập nhật ${time}`,
             open: (page) => `Mở ${page}`,
             loadFailed: 'Không tải được',
             facConfirm: 'Fac Confirm chưa xác nhận',
@@ -1693,8 +1694,6 @@ export const vi: Messages = {
         facConfirmLoadFailed: 'Không tải được dữ liệu Fac Confirm',
         authFailed: (status) => `Đăng nhập thất bại (${status}).`,
         authInvalidResponse: 'Phản hồi đăng nhập không hợp lệ.',
-        factorySceneAria: (title) => `Cảnh nhà máy động: ${title}`,
-        showScene: (title) => `Hiện ${title}`,
     },
 
     aiLogs: {

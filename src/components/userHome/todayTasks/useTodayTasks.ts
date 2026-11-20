@@ -31,6 +31,8 @@ export interface TodayTask<T> {
   data: T | null
   loading: boolean
   error: string | null
+  /** Lúc lấy số liệu đang hiện (ms), null = chưa có */
+  updatedAt: number | null
 }
 
 export interface FacConfirmTask {
@@ -163,8 +165,13 @@ async function loadMachine(signal: AbortSignal): Promise<MachineTask> {
   }
 }
 
-function toTask<T>(query: { data: T | null, loading: boolean, error: string | null }): TodayTask<T> {
-  return { data: query.data, loading: query.loading && !query.data, error: query.data ? null : query.error }
+function toTask<T>(query: { data: T | null, loading: boolean, error: string | null, updatedAt: number | null }): TodayTask<T> {
+  return {
+    data: query.data,
+    loading: query.loading && !query.data,
+    error: query.data ? null : query.error,
+    updatedAt: query.data ? query.updatedAt : null,
+  }
 }
 
 export function useTodayTasks() {

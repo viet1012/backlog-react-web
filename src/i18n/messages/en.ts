@@ -781,6 +781,7 @@ export const en = {
         // "My work today" board: each card opens the page already filtered
         today: {
             title: 'My work today',
+            updatedAt: (time: string) => `Updated ${time}`,
             open: (page: string) => `Open ${page}`,
             loadFailed: 'Could not load',
             facConfirm: 'Fac Confirm to do',
@@ -1796,8 +1797,6 @@ export const en = {
         facConfirmLoadFailed: 'Failed to load Fac Confirm',
         authFailed: (status: number) => `Authentication failed (${status}).`,
         authInvalidResponse: 'Invalid authentication response.',
-        factorySceneAria: (title: string) => `Animated factory scene: ${title}`,
-        showScene: (title: string) => `Show ${title}`,
     },
 
     aiLogs: {
