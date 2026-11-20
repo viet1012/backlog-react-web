@@ -59,22 +59,19 @@ export function deadlineCellClass(date: unknown, done: boolean): string {
 
 export type StatusTone = 'error' | 'warning' | 'success' | 'info'
 
-// Cam cho chữ: colorTokens statusText.warning. Sáng: cam đậm #c2410c (~4.6:1;
-// warning.main #ed6c02 chỉ ~2.8:1 trên nền trắng). Tối: bằng warning.main.
-// Viền / sọc / icon vẫn dùng warning.main.
-
 /**
- * Màu CHỮ cho tông trạng thái, đủ tương phản (≥ 4.5:1) trên nền của app.
- * Chỉ dùng cho chữ; nền tô nhạt, viền, icon, sọc màu vẫn dùng palette[tone].main.
+ * Màu CHỮ cho tông trạng thái, đủ tương phản (≥ 4.5:1) trên paper và nền trang
+ * (có test: statusTones.test.ts). Chỉ dùng cho chữ; nền tô nhạt, viền, icon,
+ * sọc màu vẫn dùng palette[tone].main (chỉ cần 3:1).
  *
- *   sáng: error.main · cam đậm · success.main · primary.main   (giữ như cũ trừ cam)
- *   tối:  error.light (đỏ main chỉ ~4.1:1 trên nền tối) · warning/success/primary .main
+ *   đỏ / cam: colorTokens statusText
+ *     sáng: #c62828 (error.main chỉ ~4.46:1 trên nền trang) · #c2410c (warning.main ~2.8:1)
+ *     tối:  error.light (error.main ~4.1:1 trên nền tối) · warning.main
+ *   xanh lá / xanh dương: success.main · primary.main
  */
 export function statusTextColor(theme: Theme, tone: StatusTone): string {
-  const dark = theme.palette.mode === 'dark'
-
   switch (tone) {
-    case 'error': return dark ? theme.palette.error.light : theme.palette.error.main
+    case 'error': return appTokens(theme.palette.mode).statusText.error
     case 'warning': return appTokens(theme.palette.mode).statusText.warning
     case 'success': return theme.palette.success.main
     default: return theme.palette.primary.main

@@ -66,6 +66,8 @@ const light = {
 
   /** Màu chữ trạng thái khi palette không đủ tương phản (statusTones.ts) */
   statusText: {
+    // error.dark: error.main #d32f2f chỉ ~4.46:1 trên nền trang #eef3f8
+    error: '#c62828',
     warning: '#c2410c',
   },
 
@@ -146,7 +148,8 @@ const dark: AppTokens = {
   },
 
   statusText: {
-    // tối: dùng warning.main của palette (đủ tương phản) – xem statusTones.ts
+    // tối: error.light / warning.main của palette (error.main chỉ ~4.1:1 trên nền tối)
+    error: '#e57373',
     warning: '#ffa726',
   },
 

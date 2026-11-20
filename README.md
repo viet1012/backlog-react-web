@@ -468,6 +468,36 @@ npm run dev                              # http://localhost:5173
 | `npm run build` | Type-check (`tsc -b`) rồi build ra `dist/` |
 | `npm run preview` | Chạy thử bản build |
 | `npm run lint` | oxlint |
+| `npm test` | Chạy toàn bộ test (Vitest) 1 lần |
+| `npm run test:watch` | Chạy test và tự chạy lại mỗi khi sửa code |
+| `npx vitest run src/theme/statusTones.test.ts` | Chỉ chạy 1 file test |
+| `npx vitest run -t "deadlineTone"` | Chỉ chạy test có tên chứa chữ này |
+
+**Trước khi commit / push**, chạy đủ 3 lệnh, cả 3 phải qua:
+
+```bash
+npm run lint
+npm test
+npm run build      # gồm cả type-check
+```
+
+**Đo hiệu năng trên bản build** (số đo thật, nhanh hơn bản dev):
+
+```bash
+npm run build
+npm run preview    # mở http://localhost:4173/?vitals=1 rồi xem console
+```
+
+### Test
+
+- Vitest chạy trên Node ([vitest.config.ts](vitest.config.ts)), file `src/**/*.test.ts` đặt cạnh code được test. Chỉ test logic thuần, không render giao diện.
+- Đang có:
+  - `hooks/useUrlFilters.test.ts`: đọc / ghi bộ lọc trên URL.
+  - `costMonitoring/costUrlParams.test.ts`: tham số URL của Cost.
+  - `theme/statusTones.test.ts`: quy tắc tô màu theo hạn, và **độ tương phản ≥ 4.5:1** của chữ trạng thái / chữ chính trên nền app cho cả 2 chế độ. Đổi token màu mà làm chữ khó đọc thì test báo đỏ.
+  - `shortcuts/shortcutTips.test.ts`: quy tắc hiện mẹo phím tắt.
+- Test có dùng `window` / `localStorage` thì giả lập bằng `vi.stubGlobal` (xem 2 file test cuối), không cần cài jsdom.
+- Cài lại `vitest` bằng npm 10.9 bị lỗi `Cannot read properties of null (reading 'edgesOut')` (lỗi của npm khi xử lý peer dependency). Cách đã dùng: `npm install -D vitest@<bản> --save-exact --legacy-peer-deps`. `npm ci` / `npm install` thường vẫn chạy bình thường.
 
 ### Đo hiệu năng (web-vitals)
 
@@ -649,6 +679,14 @@ npm run build      # kết quả ở dist/
 | 8 | `9e7f466` | 8 | Design token màu (`colorTokens.ts`, `theme.app`): theme MUI, kính panel, toast, bảng DataGrid đọc màu từ một chỗ. Giao diện giữ nguyên, đã so sánh theme sinh ra trước / sau: giống hệt. |
 
 Nguyên tắc chung của mọi đợt: **mặc định giao diện như cũ**, phần mới chỉ thêm vào hoặc để người dùng tự bật.
+
+### 2026-11-20 — Test tự động (Vitest)
+
+- Thêm `vitest` 5.1.0 (devDependency), script `npm test` / `npm run test:watch`, `vitest.config.ts`. Chi tiết xem mục [Test](#test).
+- 4 file test, 40 test, chạy khoảng 1 giây.
+- **Test tìm ra 1 lỗi tương phản:** chữ đỏ (`error.main` #d32f2f) trên nền trang #eef3f8 chỉ đạt 4.46:1, dưới chuẩn 4.5:1.
+  - Sửa: thêm token `statusText.error`. Chế độ sáng dùng #c62828 (= `error.dark`), chế độ tối dùng #e57373 (= `error.light`, như trước).
+  - Thay đổi nhìn thấy được: chữ đỏ trạng thái ở chế độ sáng đậm hơn một chút. Áp dụng cho ô trễ hạn, Backlog Summary, nút trên toast lỗi, số âm và mức vượt ở Cost. Nền, viền, icon vẫn là `error.main`.
 
 ### 2026-11-20 — Vá lỗ hổng thư viện (npm audit)
 
