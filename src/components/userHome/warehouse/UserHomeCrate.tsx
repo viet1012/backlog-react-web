@@ -256,14 +256,21 @@ export function UserHomeCrate({ entry, kind, size, delayMs, dark }: UserHomeCrat
         onClick={handlePick}
         aria-label={[label, hint, entry.frequent ? t.userHome.frequent : ''].filter(Boolean).join(' — ')}
         data-picked={picked || undefined}
+        // Link đứng yên làm vùng bắt chuột; chỉ lớp .crate-lift bên trong di chuyển.
+        // (Trước đây cả link nhô lên -> ở mép thùng chuột rơi ra ngoài, hover bật/tắt liên tục)
         sx={{
           position: 'relative',
           display: 'block',
           transformStyle: 'preserve-3d',
-          transform: 'translate3d(0, 0, 0)',
-          transition: `transform ${PICK_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
           cursor: 'pointer',
           outline: 'none',
+
+          '& .crate-lift': {
+            position: 'relative',
+            transformStyle: 'preserve-3d',
+            transform: 'translate3d(0, 0, 0)',
+            transition: `transform ${PICK_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
+          },
 
           // Đèn rọi xuống thùng khi rê chuột
           '& .crate-spot': {
@@ -282,22 +289,24 @@ export function UserHomeCrate({ entry, kind, size, delayMs, dark }: UserHomeCrat
           '& .crate-front': { transition: 'filter 220ms ease' },
 
           '&:hover, &:focus-visible': {
-            transform: 'translate3d(0, -5px, 38px)',
+            '& .crate-lift': { transform: 'translate3d(0, -5px, 38px)' },
             '& .crate-spot': { opacity: 1 },
             '& .crate-front': { filter: 'brightness(1.12)' },
           },
           '&:focus-visible .crate-front': { outline: `3px solid ${C.yellow}`, outlineOffset: 3 },
 
           // Lấy hàng: thùng trượt mạnh ra phía người xem
-          '&[data-picked]': {
+          '&[data-picked] .crate-lift': {
             transform: 'translate3d(0, -12%, 200px) rotateX(-6deg)',
           },
 
-          '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
+          '@media (prefers-reduced-motion: reduce)': { '& .crate-lift': { transition: 'none' } },
         }}
       >
-        <Box className="crate-spot" />
-        {body}
+        <Box className="crate-lift">
+          <Box className="crate-spot" />
+          {body}
+        </Box>
       </Box>
     )
   } else {
