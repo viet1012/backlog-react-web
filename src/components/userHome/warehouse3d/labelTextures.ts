@@ -183,6 +183,30 @@ export function tierPlateTexture() {
 let cartonCache: Texture | null = null
 let deckCache: Texture | null = null
 let uprightCache: Texture | null = null
+let hazardCache: Texture | null = null
+
+// Sọc chéo vàng - đen (ốp bảo vệ chân trụ kệ), lặp theo 2 chiều
+export function hazardTexture() {
+  if (hazardCache) return hazardCache
+  const size = 64
+  const { canvas, ctx } = createCanvas(size, size)
+  ctx.fillStyle = C.yellow
+  ctx.fillRect(0, 0, size, size)
+  ctx.fillStyle = INK
+  // Dải đen chéo 45°, rộng nửa ô: lệch đúng 1 ô sau 1 chiều cao ô nên lặp 2 chiều đều liền
+  for (const offset of [-size, 0]) {
+    ctx.beginPath()
+    ctx.moveTo(offset, size)
+    ctx.lineTo(offset + size, 0)
+    ctx.lineTo(offset + size * 1.5, 0)
+    ctx.lineTo(offset + size / 2, size)
+    ctx.closePath()
+    ctx.fill()
+  }
+  hazardCache = toTexture(canvas)
+  hazardCache.wrapS = hazardCache.wrapT = RepeatWrapping
+  return hazardCache
+}
 
 // Vân giấy carton (nhân với màu vật liệu)
 export function cartonTexture() {

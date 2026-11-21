@@ -240,9 +240,31 @@ function Panel({ children }: { children: ReactNode }) {
   )
 }
 
+// Thanh treo bảng LED từ trần xuống (bảng là 1 phần của xưởng, cùng hàng với băng rôn hai bên)
+const hangerRod = {
+  content: '""',
+  position: 'absolute',
+  bottom: '100%',
+  width: 4,
+  height: 60,
+  borderRadius: '2px 2px 0 0',
+  background: 'linear-gradient(90deg, #5d6670 0%, #c4cbd2 45%, #6b747e 100%)',
+  boxShadow: '2px 0 3px rgba(0, 0, 0, 0.2)',
+} as const
+
 export function UserHomeTopBar() {
   return (
-    <Box sx={{ width: 'min(1220px, 100%)', mx: 'auto', flexShrink: 0, containerType: 'inline-size' }}>
+    <Box
+      sx={{
+        position: 'relative',
+        width: 'min(1220px, 100%)',
+        mx: 'auto',
+        flexShrink: 0,
+        containerType: 'inline-size',
+        '&::before': { ...hangerRod, left: '12%' },
+        '&::after': { ...hangerRod, right: '12%' },
+      }}
+    >
       <GlobalStyles styles={homeFontFaces} />
       <Panel>
         <Identity />

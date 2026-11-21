@@ -3,9 +3,9 @@ import { useEffect, useId, useState, type ReactNode } from 'react'
 import { Box } from '@mui/material'
 
 import { useI18n } from '../../../i18n/useI18n'
-import { INK } from '../factoryScene/primitives'
 import { HOME_FONT } from '../homeFonts'
-import { hazardStripes } from '../userHomeStyles'
+import { HOME_CONTENT_WIDTH, hazardStripes } from '../userHomeStyles'
+import { LogoBlocks, MISUMI_TEXT } from './MisumiLogo'
 
 /*
  * Băng rôn hai bên kệ hàng (nằm trong nền, không nhận chuột), treo trước cột thép:
@@ -15,8 +15,8 @@ import { hazardStripes } from '../userHomeStyles'
  * Bề rộng co theo khoảng trống bên cạnh khối nội dung; hẹp quá thì ẩn hẳn (container query).
  */
 
-// Bề rộng khối nội dung trang chủ (thanh trên / kệ hàng): min(1220px, 100%)
-const CONTENT_WIDTH = 1220
+const CONTENT_WIDTH = HOME_CONTENT_WIDTH
+const BANNER_TOP = 20
 const MIN_BANNER = 132
 const MAX_BANNER = 300
 // Lề mỗi bên băng rôn trong khoảng trống
@@ -30,7 +30,6 @@ const BAND_Y = 209
 const TITLE = { x: 100, y: 117, width: 229, size: 34, stretch: 2.2 }
 const NAVY = '#241f63'
 const BAND_NAVY = '#211b5c'
-const LOGO = { blue: '#2563c4', yellow: '#f5d21f', white: '#ffffff' }
 const JP_FONT = '"Yu Gothic UI", "Yu Gothic", Meiryo, "Noto Sans JP", sans-serif'
 const FIVE_S_KANJI = ['整理', '整頓', '清掃', '清潔', '躾']
 
@@ -95,25 +94,6 @@ function FitText({ text, x, y, maxWidth, size, stretch = 1, anchor = 'start', fi
   )
 }
 
-// Logo 2 khối (nóc xanh, mặt trắng, hông vàng), khung 76 x 74
-function LogoBlocks({ outline = true, mono }: { outline?: boolean; mono?: string }) {
-  const stroke = outline ? { stroke: INK, strokeWidth: 3.4, strokeLinejoin: 'round' as const } : {}
-  const fill = (color: string) => mono ?? color
-
-  return (
-    <g {...stroke}>
-      {/* Khối cao phía sau */}
-      <polygon points="46,10 58,3 74,12 62,19" fill={fill(LOGO.blue)} />
-      <polygon points="46,10 62,19 62,62 46,53" fill={fill(LOGO.white)} />
-      <polygon points="62,19 74,12 74,55 62,62" fill={fill(LOGO.yellow)} />
-      {/* Khối thấp phía trước */}
-      <polygon points="2,24 16,16 46,32 32,40" fill={fill(LOGO.blue)} />
-      <polygon points="2,24 32,40 32,72 2,56" fill={fill(LOGO.white)} />
-      <polygon points="32,40 46,32 46,64 32,72" fill={fill(LOGO.yellow)} />
-    </g>
-  )
-}
-
 interface SignBannerProps {
   dark: boolean
   title: string
@@ -132,7 +112,7 @@ function SignBanner({ dark, title, label, children }: SignBannerProps) {
         position: 'relative',
         width: '100%',
         filter: dark
-          ? 'brightness(0.76) saturate(0.92) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45))'
+          ? 'brightness(0.9) sepia(0.14) drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45))'
           : 'drop-shadow(0 5px 8px rgba(30, 45, 65, 0.22))',
       }}
     >
@@ -146,7 +126,7 @@ function SignBanner({ dark, title, label, children }: SignBannerProps) {
             left: `${(x / W) * 100}%`,
             width: '1px',
             height: 600,
-            bgcolor: dark ? 'rgba(160, 185, 210, 0.4)' : 'rgba(60, 80, 100, 0.5)',
+            bgcolor: dark ? 'rgba(205, 180, 145, 0.45)' : 'rgba(60, 80, 100, 0.5)',
           }}
         />
       ))}
@@ -176,7 +156,7 @@ function SignBanner({ dark, title, label, children }: SignBannerProps) {
         <g transform="translate(36 17) scale(0.6)">
           <LogoBlocks />
         </g>
-        <FitText text="MiSUMi" x={24} y={93} maxWidth={64} size={24} fill="#111" />
+        <FitText text={MISUMI_TEXT} x={24} y={93} maxWidth={64} size={24} fill="#111" />
 
         {/* Khẩu hiệu 1 dòng, chữ đứng */}
         <FitText text={title} x={TITLE.x} y={TITLE.y} maxWidth={TITLE.width} size={TITLE.size} stretch={TITLE.stretch} />
@@ -238,7 +218,7 @@ function FiveSBanner({ dark }: { dark: boolean }) {
   )
 }
 
-// Cột thép đứng từ trần xuống sàn, chân cột quấn sọc cảnh báo
+// Cột bê tông vuông sơn trắng (như xưởng thật): 2 mặt sáng / khuất, chân cột quấn sọc vàng đen ~1/3 chiều cao
 function Pillar({ dark }: { dark: boolean }) {
   return (
     <Box
@@ -247,21 +227,24 @@ function Pillar({ dark }: { dark: boolean }) {
         top: 0,
         bottom: 0,
         left: '50%',
-        width: 22,
+        width: 30,
         transform: 'translateX(-50%)',
         background: dark
-          ? 'linear-gradient(90deg, #0d1828 0%, #1c2d44 45%, #13223a 100%)'
-          : 'linear-gradient(90deg, #8496aa 0%, #b3c1cf 45%, #95a6b8 100%)',
-        boxShadow: dark ? 'inset 0 0 0 1px rgba(140, 190, 230, 0.08)' : 'inset 0 0 0 1px rgba(40, 60, 85, 0.12)',
+          ? 'linear-gradient(90deg, #8a8172 0%, #a39885 58%, #6a6255 58%, #5b5449 100%)'
+          : 'linear-gradient(90deg, #f4f4f2 0%, #ffffff 58%, #d6d6d2 58%, #c8c8c4 100%)',
+        boxShadow: '4px 0 10px rgba(0, 0, 0, 0.18)',
         '&::after': {
           content: '""',
           position: 'absolute',
-          left: -3,
-          right: -3,
+          left: 0,
+          right: 0,
           bottom: 0,
-          height: 40,
-          background: hazardStripes(5),
-          opacity: dark ? 0.6 : 0.8,
+          height: '30%',
+          background: [
+            'linear-gradient(90deg, transparent 58%, rgba(0, 0, 0, 0.22) 58%)',
+            hazardStripes(7),
+          ].join(', '),
+          opacity: dark ? 0.85 : 0.95,
         },
       }}
     />
@@ -285,7 +268,8 @@ function Column({ side, horizon, dark, children }: { side: 'left' | 'right'; hor
       }}
     >
       <Pillar dark={dark} />
-      <Box sx={{ position: 'absolute', top: '24%', left: 0, right: 0 }}>
+      {/* Cùng hàng với bảng LED (mép trên = padding trên của khung nội dung trang chủ) */}
+      <Box sx={{ position: 'absolute', top: BANNER_TOP, left: 0, right: 0 }}>
         {children}
       </Box>
     </Box>

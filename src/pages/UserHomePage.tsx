@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { Alert, Box, Button, Snackbar, useMediaQuery } from '@mui/material'
 import type { PaletteMode, Theme } from '@mui/material/styles'
@@ -34,6 +34,11 @@ const UserHomeWarehouse3D = lazy(loadWarehouse3D)
 // Dưới ngưỡng này (FPS trung vị lúc thả hàng) thì coi là chưa mượt
 const SLOW_FPS = 30
 const TOAST_MS = 12000
+// Chân tường nền xưởng khi chưa có kệ 3D báo tầm mắt (kệ 2D / đang tải), và giới hạn khi kệ 3D báo
+const DEFAULT_HORIZON = 62
+const HORIZON_RANGE: [number, number] = [40, 70]
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
 // Cảnh thả hàng chỉ chạy ở lần đầu vào trang trong phiên. Trang chủ được giữ lại
 // (KeepAliveOutlet) nhưng vẫn có thể bị bỏ khi mở quá nhiều trang; lúc dựng lại thì
@@ -73,6 +78,15 @@ export function UserHomePage({ mode, onToggleMode }: UserHomePageProps) {
     introPlayed = true
   }, [])
   const [renderSize, setRenderSize] = useState<RenderSize | null>(null)
+  // Chân tường của nền xưởng (% chiều cao khung) = tầm mắt camera kệ 3D, để kệ và xưởng cùng phối cảnh
+  const frameRef = useRef<HTMLDivElement>(null)
+  const [horizon, setHorizon] = useState(DEFAULT_HORIZON)
+  const handleHorizon = useCallback((clientY: number) => {
+    const rect = frameRef.current?.getBoundingClientRect()
+    if (!rect || rect.height === 0) return
+    const percent = ((clientY - rect.top) / rect.height) * 100
+    setHorizon(Math.round(clamp(percent, HORIZON_RANGE[0], HORIZON_RANGE[1]) * 2) / 2)
+  }, [])
   const [toast, setToast] = useState<QualityToast | null>(null)
   const slowHandled = useRef(false)
 
@@ -111,6 +125,7 @@ export function UserHomePage({ mode, onToggleMode }: UserHomePageProps) {
             intro={firstVisit && !qualityChanged}
             onMeasured={handleMeasured}
             onRenderSize={setRenderSize}
+            onHorizon={handleHorizon}
           />
         </Suspense>
       </WebGLBoundary>
@@ -140,6 +155,7 @@ export function UserHomePage({ mode, onToggleMode }: UserHomePageProps) {
       />
 
       <Box
+        ref={frameRef}
         sx={{
           position: 'relative',
           flex: 1,
@@ -151,7 +167,7 @@ export function UserHomePage({ mode, onToggleMode }: UserHomePageProps) {
           border: `1px solid ${dark ? 'rgba(140, 190, 230, 0.2)' : 'rgba(60, 95, 130, 0.18)'}`,
         }}
       >
-        <UserHomeBackdrop dark={dark} calm={level === 'flat' || level === 'low'} />
+        <UserHomeBackdrop dark={dark} horizon={level === 'flat' ? DEFAULT_HORIZON : horizon} />
 
         <Box
           sx={{

@@ -14,6 +14,7 @@ import type { RenderSize } from '../graphics/GraphicsQualityButton'
 import { graphicsDpr, type GraphicsProfile } from '../graphics/graphicsQuality'
 import type { HomeMenu } from '../userHomeMenu'
 import { Crate3D, type CrateQuality, type CrateTexts } from './Crate3D'
+import { FloorZone } from './FloorZone'
 import { Rack3D } from './Rack3D'
 import { buildRackLayout, RACK, type CratePlacement, type RackLayout } from './rackModel'
 import { useIconImages } from './useIconImages'
@@ -37,6 +38,8 @@ const PICK_MS = 450
 // Nhấn rồi nhả lệch tối đa ngần này px (CSS) vẫn tính là bấm
 const CLICK_SLOP = 8
 const PARALLAX = { x: 0.45, y: 0.22 }
+// Mắt người đứng xem kệ (m)
+const EYE_HEIGHT = 1.65
 // Đo FPS khi đã có đủ ngần này giây vẽ liên tục (lúc thả hàng / rê chuột)
 const PROBE_SECONDS = 1.2
 // Bỏ qua khoảng nghỉ giữa các lần vẽ ở chế độ demand
@@ -66,11 +69,12 @@ function SceneLights({ dark, profile }: { dark: boolean; profile: GraphicsProfil
 
   return (
     <>
-      <hemisphereLight args={[dark ? '#5d7bb0' : '#eef4ff', dark ? '#1b140d' : '#8b8173', (dark ? 0.6 : 1.15) + ambientBoost]} />
+      {/* Ca đêm: dàn đèn tuýp trắng ấm (không ánh trời xanh lạnh), đủ sáng để kệ không âm u */}
+      <hemisphereLight args={[dark ? '#d9b98f' : '#eef4ff', dark ? '#2e2216' : '#8b8173', (dark ? 0.85 : 1.15) + ambientBoost]} />
       <directionalLight
         castShadow={shadows}
         position={[-3.5, 6.5, 5]}
-        intensity={dark ? 1.6 : 2.3}
+        intensity={dark ? 2.05 : 2.3}
         color={dark ? '#ffd9a8' : '#ffffff'}
         shadow-mapSize={[profile.shadowMapSize || 512, profile.shadowMapSize || 512]}
         shadow-bias={-0.0004}
@@ -83,10 +87,10 @@ function SceneLights({ dark, profile }: { dark: boolean; profile: GraphicsProfil
         shadow-camera-near={1}
         shadow-camera-far={16}
       />
-      <directionalLight position={[4, 3, 4]} intensity={dark ? 0.35 : 0.6} />
+      <directionalLight position={[4, 3, 4]} intensity={dark ? 0.5 : 0.6} color={dark ? '#ffe2b8' : '#ffffff'} />
       {/* Môi trường phản chiếu dựng tại chỗ (không tải HDR từ mạng), vẽ 1 lần */}
       {profile.envResolution > 0 && (
-        <Environment resolution={profile.envResolution} frames={1} environmentIntensity={dark ? 0.35 : 0.8}>
+        <Environment resolution={profile.envResolution} frames={1} environmentIntensity={dark ? 0.5 : 0.8}>
           <Lightformer form="rect" intensity={3} position={[0, 5, 0]} rotation-x={Math.PI / 2} scale={[10, 2, 1]} />
           <Lightformer form="rect" intensity={1.5} position={[-6, 2, 3]} rotation-y={Math.PI / 2} scale={[6, 2, 1]} />
           <Lightformer form="rect" intensity={1.5} position={[6, 2, 3]} rotation-y={-Math.PI / 2} scale={[6, 2, 1]} />
@@ -171,8 +175,12 @@ function IntroTimer({ seconds, onDone }: { seconds: number; onDone: (done: boole
   return null
 }
 
-// Đặt camera vừa khít kệ theo tỉ lệ khung; lệch nhẹ theo chuột (parallax)
-function CameraRig({ rackHeight }: { rackHeight: number }) {
+/*
+ * Đặt camera vừa khít kệ theo tỉ lệ khung, mắt ở tầm người đứng (EYE_HEIGHT); lệch nhẹ theo chuột (parallax).
+ * Báo vị trí đường chân trời (tầm mắt) trên canvas để nền xưởng CSS đặt chân tường đúng chỗ đó:
+ * kệ 3D và sàn / tường CSS cùng 1 điểm tụ thì kệ mới "đứng" trong xưởng.
+ */
+function CameraRig({ rackHeight, onHorizon }: { rackHeight: number; onHorizon: (fraction: number) => void }) {
   const { size, gl, invalidate, get } = useThree()
   const pointer = useRef({ x: 0, y: 0 })
   const placed = useRef(false)
@@ -184,8 +192,14 @@ function CameraRig({ rackHeight }: { rackHeight: number }) {
     const viewH = rackHeight + 0.6
     const distance = Math.max(viewH / 2 / tanHalf, viewW / 2 / (tanHalf * aspect))
     const target = new Vector3(0, rackHeight * 0.47, -RACK.depth / 2)
-    return { target, base: new Vector3(0, target.y + distance * 0.13, distance) }
+    const base = new Vector3(0, Math.max(EYE_HEIGHT, target.y + 0.15), distance)
+    // Tầm mắt nằm trên tâm khung một đoạn tan(góc cúi) / tan(nửa FOV) (tính theo nửa chiều cao)
+    const tanPitch = (base.y - target.y) / (base.z - target.z)
+    const horizon = 0.5 - 0.5 * (tanPitch / tanHalf)
+    return { target, base, horizon }
   }, [size.width, size.height, rackHeight])
+
+  useEffect(() => onHorizon(fit.horizon), [fit, onHorizon])
 
   useEffect(() => {
     const onMove = (event: PointerEvent) => {
@@ -307,9 +321,11 @@ interface UserHomeWarehouse3DProps {
   intro: boolean
   onMeasured: (fps: number) => void
   onRenderSize: (size: RenderSize) => void
+  // Toạ độ Y (px, theo viewport) của tầm mắt camera, để nền xưởng đặt chân tường khớp
+  onHorizon?: (clientY: number) => void
 }
 
-export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeasured, onRenderSize }: UserHomeWarehouse3DProps) {
+export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeasured, onRenderSize, onHorizon }: UserHomeWarehouse3DProps) {
   const { t } = useI18n()
   const navigate = useNavigate()
   const layout = useMemo(() => buildRackLayout(menu), [menu])
@@ -327,6 +343,15 @@ export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeas
   const [sceneReady, setSceneReady] = useState(false)
   const [loaderGone, setLoaderGone] = useState(false)
   const markReady = useCallback(() => setSceneReady(true), [])
+
+  // Canvas phủ kín khung bọc: đổi tỉ lệ trên canvas -> toạ độ viewport
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const reportHorizon = useCallback((fraction: number) => {
+    const rect = wrapperRef.current?.getBoundingClientRect()
+    // Trang đang ẩn (KeepAlive) thì khung có kích thước 0: bỏ qua
+    if (!rect || rect.height === 0 || !onHorizon) return
+    onHorizon(rect.top + fraction * rect.height)
+  }, [onHorizon])
 
   const quality: CrateQuality = {
     smoothness: profile.roundedSmoothness,
@@ -405,6 +430,7 @@ export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeas
 
   return (
     <Box
+      ref={wrapperRef}
       onPointerLeave={() => setHovered(null)}
       // R3F (gắn trên Canvas, sâu hơn) xử lý trước: lần nhấn này không trúng thùng thì bỏ lần nhấn cũ
       onPointerDown={(event) => {
@@ -466,12 +492,13 @@ export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeas
         <FpsProbe onMeasured={onMeasured} />
         <RenderSizeReporter onChange={onRenderSize} />
         <SceneLights dark={dark} profile={profile} />
-        <CameraRig rackHeight={layout.height} />
+        <CameraRig rackHeight={layout.height} onHorizon={reportHorizon} />
         {/* Chờ font chữ SDF tải xong (vài trăm ms) rồi mới dựng kệ + thùng, tránh chữ hiện chậm hơn hàng */}
         <Suspense fallback={null}>
           <ShadowControl />
           <SceneReady onReady={markReady} />
           {!introDone && <IntroTimer seconds={introSeconds} onDone={setIntroDone} />}
+          <FloorZone />
           <Rack3D layout={layout} outlines={profile.outlines} />
 
           {layout.crates.map((placement, index) => (
