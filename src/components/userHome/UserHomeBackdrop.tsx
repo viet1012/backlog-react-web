@@ -5,6 +5,8 @@ import { keyframes } from '@mui/material/styles'
 
 import { C, INK } from './factoryScene/primitives'
 import { getHomePalette, hazardStripes } from './userHomeStyles'
+import { UserHomeForklift } from './wall/UserHomeForklift'
+import { UserHomeWallSigns } from './wall/UserHomeWallSigns'
 
 /*
  * Nền xưởng vẽ bằng CSS + SVG (thay ảnh nền cũ).
@@ -183,6 +185,8 @@ export const UserHomeBackdrop = memo(function UserHomeBackdrop({ dark, calm = fa
         zIndex: 0,
         overflow: 'hidden',
         pointerEvents: 'none',
+        // Băng rôn hai bên chỉ hiện khi khung đủ rộng (container query theo khung này)
+        containerType: 'inline-size',
         background: `linear-gradient(180deg, ${palette.ceiling} 0%, ${palette.wall} ${HORIZON - 2}%, ${palette.floor} ${HORIZON}%, ${palette.floor} 100%)`,
 
         '@media (prefers-reduced-motion: reduce)': {
@@ -272,6 +276,9 @@ export const UserHomeBackdrop = memo(function UserHomeBackdrop({ dark, calm = fa
           window={dark ? 'rgba(120, 210, 255, 0.28)' : 'rgba(255, 255, 255, 0.45)'}
         />
       </Box>
+
+      {/* Cột thép + băng rôn An toàn / 5S ở hai bên kệ */}
+      <UserHomeWallSigns dark={dark} horizon={HORIZON} />
 
       {/* Cầu trục sát trần (phía dưới là bảng LED + kệ): ray + xe con + móc treo thùng hàng */}
       <Box
@@ -369,6 +376,9 @@ export const UserHomeBackdrop = memo(function UserHomeBackdrop({ dark, calm = fa
         {/* Sương mờ ở chân tường để sàn hoà vào tường */}
         <Box sx={{ position: 'absolute', inset: 0, background: `linear-gradient(180deg, ${palette.fog} 0%, transparent 35%)` }} />
       </Box>
+
+      {/* Xe nâng chạy dọc chân tường (chuyển động lớn: chỉ từ mức đồ hoạ Vừa) */}
+      {!calm && <UserHomeForklift horizon={HORIZON} dark={dark} />}
 
       {/* Bụi lơ lửng trong ánh đèn */}
       {DUST.map(({ x, delay, dur }) => (

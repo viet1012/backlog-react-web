@@ -41,6 +41,14 @@ export function getHomePalette(dark: boolean): HomePalette {
     }
 }
 
+// Màu đèn LED trên các bảng điện tử (thanh trên trang chủ, số LED 7 đoạn)
+export const LED = {
+  amber: '#ffbe5c',
+  green: '#52f59a',
+  cyan: '#6fd8ff',
+  red: '#ff6b6b',
+}
+
 // Sọc cảnh báo vàng-đen kiểu vạch an toàn trong xưởng
 export function hazardStripes(size = 10) {
   return `repeating-linear-gradient(-45deg, ${C.yellow} 0 ${size}px, ${INK} ${size}px ${size * 2}px)`
