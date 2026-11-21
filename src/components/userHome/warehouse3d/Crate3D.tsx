@@ -15,7 +15,7 @@ import {
   UPCOMING_LAYOUT,
   upcomingFaceTexture,
 } from './labelTextures'
-import type { CratePlacement } from './rackModel'
+import { RACK, type CratePlacement } from './rackModel'
 
 /*
  * Một thùng hàng 3D. Group ngoài giữ vị trí + hoạt ảnh (thả rơi, kéo ra khi chọn),
@@ -56,7 +56,8 @@ interface Crate3DProps {
   // false: hiện ngay tại chỗ (vd. vừa đổi chất lượng), không thả rơi lại
   intro: boolean
   onHover: (index: number | null) => void
-  onPick: (index: number) => void
+  // Nhấn chuột lên thùng dùng ngay; chọn thật sự khi nhả (xem UserHomeWarehouse3D)
+  onPress: (index: number, event: PointerEvent) => void
 }
 
 type CrateTextures =
@@ -126,7 +127,7 @@ function DecalPlane({ map, width, height, position, rotation = 0, roughness = 0.
   )
 }
 
-export function Crate3D({ placement, index, texts, color, icon, highlighted, picked, dark, quality, intro, onHover, onPick }: Crate3DProps) {
+export function Crate3D({ placement, index, texts, color, icon, highlighted, picked, dark, quality, intro, onHover, onPress }: Crate3DProps) {
   const { kind, w, h, d } = placement
   const group = useRef<Group>(null)
   const led = useRef<MeshStandardMaterial>(null)
@@ -197,9 +198,9 @@ export function Crate3D({ placement, index, texts, color, icon, highlighted, pic
     onHover(index)
   }
 
-  function handleClick(event: ThreeEvent<MouseEvent>) {
+  function handleDown(event: ThreeEvent<PointerEvent>) {
     event.stopPropagation()
-    if (kind === 'ready') onPick(index)
+    if (kind === 'ready') onPress(index, event.nativeEvent)
   }
 
   const frontZ = d / 2 + 0.002
@@ -234,14 +235,15 @@ export function Crate3D({ placement, index, texts, color, icon, highlighted, pic
 
   return (
     <>
-      {/* Khối bắt chuột vô hình, đứng yên, phủ cả vị trí nghỉ lẫn vị trí nhô ra */}
+      {/* Khối bắt chuột vô hình, đứng yên, phủ cả vị trí nghỉ lẫn vị trí nhô ra;
+          rộng tới gần giữa khe với thùng bên cạnh để không có vùng chết giữa 2 thùng */}
       <mesh
         position={[placement.x, placement.y + HOVER_LIFT / 2, placement.z + HOVER_PULL / 2]}
         onPointerOver={handleOver}
         onPointerOut={() => onHover(null)}
-        onClick={handleClick}
+        onPointerDown={handleDown}
       >
-        <boxGeometry args={[w + 0.02, h + 0.02 + HOVER_LIFT, d + HOVER_PULL]} />
+        <boxGeometry args={[w + RACK.gap * 0.9, h + 0.02 + HOVER_LIFT, d + HOVER_PULL]} />
         <meshBasicMaterial visible={false} />
       </mesh>
 

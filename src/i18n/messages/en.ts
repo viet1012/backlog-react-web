@@ -796,9 +796,13 @@ export const en = {
                 overdue > 0 ? `${overdue} overdue` : 'none overdue',
                 floor ? `most at ${floor}` : null,
             ].filter(Boolean).join(' · '),
+            // Short titles for the compact tiles on the top bar (full title stays in aria / tooltip)
+            short: {
+                facConfirm: 'Fac Confirm',
+                cost: 'Cost over',
+                machine: 'Machine alerts',
+            },
         },
-        brand: 'PRODUCTION CONTROL',
-        workspace: 'Your Production Control workspace',
         employeeId: 'Employee ID',
         factory: 'Factory',
         department: 'Department',
@@ -815,6 +819,28 @@ export const en = {
         upcomingNone: 'Nothing scheduled right now.',
         // Sticker on the pages this user opens most
         frequent: 'Frequent',
+        // Banners on the steel columns beside the rack
+        wall: {
+            safety: 'SAFETY FIRST',
+            fiveSTitle: 'PRACTICE 5S',
+            fiveS: ['Sort', 'Set in order', 'Shine', 'Standardize', 'Sustain'],
+        },
+        // Decorative signs on the warehouse wall behind the rack
+        // Current shift on the home top bar
+        shift: {
+            states: {
+                work: 'Working',
+                break: 'Break',
+                lunch: 'Lunch break',
+                before: 'Not started',
+                after: 'Day is over',
+                dayOff: 'Day off',
+            },
+            startsAt: (time: string) => `starts at ${time}`,
+            backAt: (time: string) => `back at ${time}`,
+            next: (day: string, time: string) => `next: ${day} ${time}`,
+            tomorrow: 'tomorrow',
+        },
         findPage: 'Find page',
         // Short description per menu labelKey; missing keys show no description
         pageHints: {

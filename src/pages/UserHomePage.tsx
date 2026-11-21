@@ -20,10 +20,8 @@ import {
 } from '../components/userHome/graphics/graphicsQuality'
 import { UserHomeBackdrop } from '../components/userHome/UserHomeBackdrop'
 import { buildHomeMenu } from '../components/userHome/userHomeMenu'
-import { UserHomeIdBadge } from '../components/userHome/warehouse/UserHomeIdBadge'
-import { UserHomeLedBoard } from '../components/userHome/warehouse/UserHomeLedBoard'
+import { UserHomeTopBar } from '../components/userHome/UserHomeTopBar'
 import { UserHomeRack } from '../components/userHome/warehouse/UserHomeRack'
-import { UserHomeTodayTasks } from '../components/userHome/todayTasks/UserHomeTodayTasks'
 import { loadWarehouse3D } from '../components/userHome/warehouse3d/loadWarehouse3D'
 import { Warehouse3DLoading } from '../components/userHome/warehouse3d/Warehouse3DLoading'
 import { WebGLBoundary } from '../components/userHome/warehouse3d/WebGLBoundary'
@@ -52,7 +50,8 @@ type QualityToast =
   | { kind: 'lowered'; target: GraphicsLevel; previous: GraphicsSetting }
 
 /*
- * Trang chủ kiểu kho hàng: bảng LED + thẻ nhân viên treo phía trên, kệ hàng 3 tầng đứng trên sàn xưởng.
+ * Trang chủ kiểu kho hàng: thanh điều khiển LED phía trên (người dùng, giờ + ca, việc hôm nay),
+ * kệ hàng đứng trên sàn xưởng, băng rôn An toàn / 5S hai bên khi đủ rộng.
  * Từ md trở lên mọi thứ nằm gọn trong 1 khung; màn hình nhỏ thì cho cuộn.
  * Kệ: 2D (CSS) hoặc WebGL theo mức đồ hoạ người dùng chọn (nút "Đồ hoạ" trên header, mặc định Tự động).
  */
@@ -64,8 +63,6 @@ export function UserHomePage({ mode, onToggleMode }: UserHomePageProps) {
   const menu = useMemo(() => buildHomeMenu(), [])
   const [gpu] = useState(detectGpu)
   const wide = useMediaQuery((theme: Theme) => theme.breakpoints.up('md'))
-  // Đủ chỗ (kể cả sidebar) để treo "Việc của tôi hôm nay" giữa bảng LED và thẻ nhân viên
-  const roomy = useMediaQuery((theme: Theme) => theme.breakpoints.up('lg'))
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
 
   const [setting, setSetting] = useState<GraphicsSetting>(loadGraphicsSetting)
@@ -174,37 +171,12 @@ export function UserHomePage({ mode, onToggleMode }: UserHomePageProps) {
               flexDirection: 'column',
               gap: { xs: 2, md: 2.5 },
               px: { xs: 1.5, sm: 2.5, md: 3.5 },
-              pt: { xs: 4, md: 3.5 },
+              pt: { xs: 2, md: 2.5 },
               pb: { xs: 2, md: 3 },
             }}
           >
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                justifyContent: 'space-between',
-                flexWrap: { xs: 'wrap', sm: 'nowrap' },
-                gap: { xs: 4, sm: 3 },
-                flexShrink: 0,
-                width: 'min(1220px, 100%)',
-                mx: 'auto',
-              }}
-            >
-              <UserHomeLedBoard />
-
-              {/* Việc của tôi hôm nay (màn rộng): treo vào khoảng trống giữa bảng LED và
-                  thẻ nhân viên => không lấy chiều cao, kệ hàng giữ nguyên kích thước */}
-              {roomy && (
-                <Box sx={{ flex: '1 1 260px', maxWidth: 330, minWidth: 0 }}>
-                  <UserHomeTodayTasks layout="column" />
-                </Box>
-              )}
-
-              <UserHomeIdBadge />
-            </Box>
-
-            {/* Màn hẹp hơn: dải ngang bên dưới hàng đầu */}
-            {!roomy && <UserHomeTodayTasks layout="strip" />}
+            {/* Người dùng + giờ / ca + việc hôm nay gộp trong 1 thanh; phần còn lại cho kệ hàng */}
+            <UserHomeTopBar />
 
             {rack}
           </Box>

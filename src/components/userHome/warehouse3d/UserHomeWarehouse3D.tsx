@@ -34,6 +34,8 @@ const FADE_MS = 320
  */
 const FOV = 32
 const PICK_MS = 450
+// Nhấn rồi nhả lệch tối đa ngần này px (CSS) vẫn tính là bấm
+const CLICK_SLOP = 8
 const PARALLAX = { x: 0.45, y: 0.22 }
 // Đo FPS khi đã có đủ ngần này giây vẽ liên tục (lúc thả hàng / rê chuột)
 const PROBE_SECONDS = 1.2
@@ -263,9 +265,16 @@ const tooltipStyle: CSSProperties = {
   pointerEvents: 'none',
 }
 
+/*
+ * Khung bọc của <Html> (drei) mặc định vẫn nhận chuột, và hộp của nó nằm lệch khỏi tooltip
+ * (tooltip dịch bằng transform) => phủ lên góc trên thùng đang rê. Chuột vào đó: R3F tính toạ độ
+ * theo offsetX của khung này -> trúng thùng khác / trượt -> tooltip nhảy, bấm không ăn.
+ */
+const passThrough: CSSProperties = { pointerEvents: 'none' }
+
 function CrateTooltip({ placement, title, lines }: { placement: CratePlacement; title: string; lines: string[] }) {
   return (
-    <Html position={[placement.x, placement.y + placement.h / 2 + 0.08, placement.z + placement.d / 2]} zIndexRange={[40, 30]}>
+    <Html position={[placement.x, placement.y + placement.h / 2 + 0.08, placement.z + placement.d / 2]} zIndexRange={[40, 30]} style={passThrough}>
       <div style={tooltipStyle}>
         <div style={{ fontWeight: 800, fontSize: 13 }}>{title}</div>
         {lines.map((line) => (
@@ -280,7 +289,7 @@ function EmptyTierNotes({ layout, notes }: { layout: RackLayout; notes: Record<s
   return (
     <>
       {layout.tiers.filter((tier) => tier.count === 0).map((tier) => (
-        <Html key={tier.spec.code} center position={[0, tier.deckY + tier.spec.clear * 0.4, -RACK.depth / 2]} zIndexRange={[20, 10]}>
+        <Html key={tier.spec.code} center position={[0, tier.deckY + tier.spec.clear * 0.4, -RACK.depth / 2]} zIndexRange={[20, 10]} style={passThrough}>
           <div style={{ ...tooltipStyle, transform: 'none', background: 'rgba(17, 24, 34, 0.78)', border: '1px dashed rgba(160, 190, 220, 0.5)' }}>
             {notes[tier.spec.kind]}
           </div>
@@ -373,6 +382,16 @@ export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeas
     timerRef.current = window.setTimeout(() => navigate(crate.entry.item.path), PICK_MS)
   }
 
+  /*
+   * Bấm chọn theo thùng nằm dưới chuột lúc NHẤN (không đòi lúc nhả phải trúng lại đúng thùng):
+   * camera còn trôi theo chuột (parallax) + tay hơi rung làm lúc nhả hay rơi vào khe / thùng bên
+   * cạnh => onClick của R3F không chạy. Nhả trong CLICK_SLOP px là tính là bấm.
+   */
+  const pressRef = useRef<{ index: number; event: PointerEvent } | null>(null)
+  function press(index: number, event: PointerEvent) {
+    pressRef.current = event.button === 0 ? { index, event } : null
+  }
+
   function tooltipLines(index: number, crate: CratePlacement) {
     if (crate.kind === 'upcoming') return [texts[index].status]
     const { hint, badge } = texts[index]
@@ -387,6 +406,17 @@ export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeas
   return (
     <Box
       onPointerLeave={() => setHovered(null)}
+      // R3F (gắn trên Canvas, sâu hơn) xử lý trước: lần nhấn này không trúng thùng thì bỏ lần nhấn cũ
+      onPointerDown={(event) => {
+        if (pressRef.current?.event !== event.nativeEvent) pressRef.current = null
+      }}
+      onClick={(event) => {
+        const pressed = pressRef.current
+        pressRef.current = null
+        if (!pressed) return
+        const moved = Math.hypot(event.clientX - pressed.event.clientX, event.clientY - pressed.event.clientY)
+        if (moved <= CLICK_SLOP) pick(pressed.index)
+      }}
       sx={{
         position: 'relative',
         flex: 1,
@@ -459,7 +489,7 @@ export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeas
               quality={quality}
               intro={intro}
               onHover={setHovered}
-              onPick={pick}
+              onPress={press}
             />
           ))}
         </Suspense>
