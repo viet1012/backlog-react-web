@@ -1,8 +1,31 @@
 import { alpha, type Theme } from '@mui/material/styles'
-import type { UtilityScopeCode } from '../../types/utilityEvn'
+import type { UtilityMeterIssue, UtilityScopeCode } from '../../types/utilityEvn'
 import type { EvnPctTone } from '../../utils/utilityEvnCompare'
 
 export const TABULAR_NUMS = { fontVariantNumeric: 'tabular-nums' } as const
+
+// Số liệu của biểu đồ cảnh báo đồng hồ: hours = số giờ thiếu;
+// mwh / kusd = ước tính mất (chỉ meter mức Nặng có số)
+export type EvnMeterChartMetric = 'hours' | 'mwh' | 'kusd'
+
+export function evnMeterMetricValue(issue: UtilityMeterIssue, metric: EvnMeterChartMetric): number | null {
+  if (metric === 'mwh') return issue.estimatedMissingMwh
+  if (metric === 'kusd') return issue.estimatedMissingKusd
+  return issue.missingHours
+}
+
+// MWh / K$ ước tính: 3 chữ số thập phân
+export function formatEvnMeterEstimate(value: number): string {
+  return value.toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 })
+}
+
+export function formatEvnMeterMetric(
+  value: number,
+  metric: EvnMeterChartMetric,
+  hoursLabel: (hours: number) => string,
+): string {
+  return metric === 'hours' ? hoursLabel(Math.round(value * 10) / 10) : formatEvnMeterEstimate(value)
+}
 
 // Ngày partial (đồng hồ mất dữ liệu)
 export const EVN_PARTIAL_COLOR = '#f97316'
