@@ -3,15 +3,15 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 
-import dayBackground from '../assets/login-scene-day.webp'
+import dayBackground from '../../assets/login-scene-day.webp'
 // Same night photo as the logout gate scene (one download for both)
-import factoryBackground from '../assets/logout-scene-night.webp'
-import { AuthCardHeader } from '../components/auth/AuthCardHeader'
-import { LoginBrand } from '../components/auth/LoginBrand'
-import { LoginForm } from '../components/auth/LoginForm'
-import { LoginHeroText } from '../components/auth/LoginHeroText'
-import { LoginTraffic } from '../components/auth/LoginTraffic'
-import { RegisterForm } from '../components/auth/RegisterForm'
+import factoryBackground from '../../assets/logout-scene-night.webp'
+import { AuthCardHeader } from '../../components/auth/AuthCardHeader'
+import { LoginBrand } from '../../components/auth/LoginBrand'
+import { LoginForm } from '../../components/auth/LoginForm'
+import { LoginHeroText } from '../../components/auth/LoginHeroText'
+import { LoginTraffic } from '../../components/auth/LoginTraffic'
+import { RegisterForm } from '../../components/auth/RegisterForm'
 import {
   authModeActionSx,
   BACKGROUND_FADE_MS,
@@ -21,7 +21,7 @@ import {
   createDayBackgroundLayerSx,
   createPageBackgroundSx,
   loginCardSx,
-} from '../components/auth/loginStyles'
+} from '../../components/auth/loginStyles'
 import {
   AuthApiError,
   getAuthenticatedUsername,
@@ -29,13 +29,13 @@ import {
   isAuthenticated,
   login,
   register,
-} from '../services/authService'
-import { useIsDaytime } from '../hooks/useIsDaytime'
-import { useI18n } from '../i18n/useI18n'
-import { LanguageToggleButton } from '../components/common/LanguageToggleButton'
-import { CLOCK_IN_COVER_MS, startClockIn } from '../components/shift/clockInStore'
-import { randomAvatarSeed, writeAvatarSeed } from '../components/shift/workerCharacter'
-import { preloadRoute } from './lazyPages'
+} from '../../services/authService'
+import { useIsDaytime } from '../../hooks/useIsDaytime'
+import { useI18n } from '../../i18n/useI18n'
+import { LanguageToggleButton } from '../../components/common/LanguageToggleButton'
+import { CLOCK_IN_COVER_MS, startClockIn } from '../../components/shift/clockInStore'
+import { randomAvatarSeed, writeAvatarSeed } from '../../components/shift/workerCharacter'
+import { preloadRoute } from '../lazyPages'
 
 type AuthMode = 'login' | 'register'
 

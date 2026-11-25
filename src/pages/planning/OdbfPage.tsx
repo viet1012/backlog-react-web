@@ -1,14 +1,14 @@
 import { Alert, Box, Stack } from '@mui/material'
 import type { PaletteMode } from '@mui/material'
-import { FactoryNoRowsOverlay } from '../components/common/FactoryNoRowsOverlay'
-import { EmptyStateAction } from '../components/common/loadState'
-import { PageHeader } from '../components/common/PageHeader'
-import { PageShell } from '../components/common/PageShell'
-import { RefreshButton } from '../components/common/RefreshButton'
-import { UpdatedStatus } from '../components/common/UpdatedStatus'
-import { OdbfSummaryTable } from '../components/odbf/OdbfSummaryTable'
-import { useOdbfSummary } from '../hooks/useOdbfSummary'
-import { useI18n } from '../i18n/useI18n'
+import { FactoryNoRowsOverlay } from '../../components/common/FactoryNoRowsOverlay'
+import { EmptyStateAction } from '../../components/common/loadState'
+import { PageHeader } from '../../components/common/PageHeader'
+import { PageShell } from '../../components/common/PageShell'
+import { RefreshButton } from '../../components/common/RefreshButton'
+import { UpdatedStatus } from '../../components/common/UpdatedStatus'
+import { OdbfSummaryTable } from '../../components/odbf/OdbfSummaryTable'
+import { useOdbfSummary } from '../../hooks/useOdbfSummary'
+import { useI18n } from '../../i18n/useI18n'
 
 interface OdbfPageProps {
   mode: PaletteMode

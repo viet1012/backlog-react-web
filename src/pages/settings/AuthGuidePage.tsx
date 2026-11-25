@@ -16,12 +16,12 @@ import {
   DocText,
   FlowDiagram,
   type FlowStep,
-} from '../components/authGuide/AuthGuideParts'
-import { GlassPanel } from '../components/common/GlassPanel'
-import { PageHeader } from '../components/common/PageHeader'
-import { PageShell } from '../components/common/PageShell'
-import { useI18n } from '../i18n/useI18n'
-import { getAuthSession, type AuthSession } from '../services/authService'
+} from '../../components/authGuide/AuthGuideParts'
+import { GlassPanel } from '../../components/common/GlassPanel'
+import { PageHeader } from '../../components/common/PageHeader'
+import { PageShell } from '../../components/common/PageShell'
+import { useI18n } from '../../i18n/useI18n'
+import { getAuthSession, type AuthSession } from '../../services/authService'
 
 // Tài liệu tĩnh (chỉ tiếng Việt), không gọi API. Chỉ ADMIN thấy (route + sidebar).
 

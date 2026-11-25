@@ -9,17 +9,17 @@ import {
 import type { PaletteMode } from '@mui/material'
 import { alpha } from '@mui/material/styles'
 import { Suspense, lazy, startTransition, useState } from 'react'
-import { HeaderAction, HeaderActionBar, HeaderActionDivider } from '../components/common/headerActions'
-import { PageSkeleton } from '../components/common/loadState'
-import { notifyExport } from '../components/common/notify'
-import { PageHeader } from '../components/common/PageHeader'
-import { PageShell } from '../components/common/PageShell'
-import { UpdatedStatus } from '../components/common/UpdatedStatus'
-import { AiLogDetailDrawer } from '../components/aiLogs/AiLogDetailDrawer'
-import { AiLogsDailyChart } from '../components/aiLogs/AiLogsDailyChart'
-import { AiLogsFilterBar } from '../components/aiLogs/AiLogsFilterBar'
-import { AiLogsKpi } from '../components/aiLogs/AiLogsKpi'
-import { AiLogsTable } from '../components/aiLogs/AiLogsTable'
+import { HeaderAction, HeaderActionBar, HeaderActionDivider } from '../../components/common/headerActions'
+import { PageSkeleton } from '../../components/common/loadState'
+import { notifyExport } from '../../components/common/notify'
+import { PageHeader } from '../../components/common/PageHeader'
+import { PageShell } from '../../components/common/PageShell'
+import { UpdatedStatus } from '../../components/common/UpdatedStatus'
+import { AiLogDetailDrawer } from '../../components/aiLogs/AiLogDetailDrawer'
+import { AiLogsDailyChart } from '../../components/aiLogs/AiLogsDailyChart'
+import { AiLogsFilterBar } from '../../components/aiLogs/AiLogsFilterBar'
+import { AiLogsKpi } from '../../components/aiLogs/AiLogsKpi'
+import { AiLogsTable } from '../../components/aiLogs/AiLogsTable'
 import {
   AI_LOGS_PAGE_SIZES,
   AI_LOGS_PATH,
@@ -29,21 +29,21 @@ import {
   defaultFilters,
   isValidAiLogRange,
   isValidScreenKey,
-} from '../components/aiLogs/aiLogsUtils'
-import { readUrlParams, useUrlFilters } from '../hooks/useUrlFilters'
-import { ASSISTANT_SCREENS, getScreenNameByKey } from '../components/mascot/mascotMessages'
-import { useAiLogDetail, useAiLogList, useAiLogStats } from '../hooks/useAssistantLogs'
-import { exportAiLogsExcel } from '../services/assistantLogService'
-import type { AiLogDetail, AiLogFilters, AiLogListQuery, AiLogScreenStat } from '../types/assistantLogs'
-import { uiTokens } from '../theme/uiTokens'
-import { useI18n } from '../i18n/useI18n'
-import { loadPreference, savePreference } from '../utils/uiPreferences'
+} from '../../components/aiLogs/aiLogsUtils'
+import { readUrlParams, useUrlFilters } from '../../hooks/useUrlFilters'
+import { ASSISTANT_SCREENS, getScreenNameByKey } from '../../components/mascot/mascotMessages'
+import { useAiLogDetail, useAiLogList, useAiLogStats } from '../../hooks/useAssistantLogs'
+import { exportAiLogsExcel } from '../../services/assistantLogService'
+import type { AiLogDetail, AiLogFilters, AiLogListQuery, AiLogScreenStat } from '../../types/assistantLogs'
+import { uiTokens } from '../../theme/uiTokens'
+import { useI18n } from '../../i18n/useI18n'
+import { loadPreference, savePreference } from '../../utils/uiPreferences'
 
 // Tab Bộ test (kèm các file JSON bộ test) và Phòng thay đồ tách chunk riêng:
 // vào trang AI Logs chỉ tải tab Logs, bấm tab nào mới tải tab đó
-const AiTestSuitePanel = lazy(() => import('../components/aiLogs/AiTestSuitePanel').then((m) => ({ default: m.AiTestSuitePanel })))
-const AiWardrobePanel = lazy(() => import('../components/aiLogs/AiWardrobePanel').then((m) => ({ default: m.AiWardrobePanel })))
-const AiFlowPanel = lazy(() => import('../components/aiLogs/AiFlowPanel').then((m) => ({ default: m.AiFlowPanel })))
+const AiTestSuitePanel = lazy(() => import('../../components/aiLogs/AiTestSuitePanel').then((m) => ({ default: m.AiTestSuitePanel })))
+const AiWardrobePanel = lazy(() => import('../../components/aiLogs/AiWardrobePanel').then((m) => ({ default: m.AiWardrobePanel })))
+const AiFlowPanel = lazy(() => import('../../components/aiLogs/AiFlowPanel').then((m) => ({ default: m.AiFlowPanel })))
 
 function TabLoading() {
   return <PageSkeleton variant="block" minHeight={240} />

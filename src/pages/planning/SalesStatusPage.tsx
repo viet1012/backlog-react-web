@@ -1,8 +1,8 @@
 import { Card, Typography } from '@mui/material'
 
-import { PageHeader } from '../components/common/PageHeader'
-import { PageShell } from '../components/common/PageShell'
-import { useI18n } from '../i18n/useI18n'
+import { PageHeader } from '../../components/common/PageHeader'
+import { PageShell } from '../../components/common/PageShell'
+import { useI18n } from '../../i18n/useI18n'
 
 export function SalesStatusPage() {
   const { t } = useI18n()

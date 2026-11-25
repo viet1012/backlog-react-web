@@ -21,94 +21,94 @@ import type {
 import {
   FacConfirmDataTable,
   type FacConfirmDataTableHandle,
-} from '../components/facConfirm/FacConfirmDataTable'
+} from '../../components/facConfirm/FacConfirmDataTable'
 
 import {
   FacConfirmUnsavedChangesDialog,
-} from '../components/facConfirm/FacConfirmUnsavedChangesDialog'
+} from '../../components/facConfirm/FacConfirmUnsavedChangesDialog'
 
 import {
   getFacConfirmColumns,
-} from '../components/facConfirm/facConfirmColumns'
+} from '../../components/facConfirm/facConfirmColumns'
 
 import {
   FacConfirmFilterBar,
-} from '../components/facConfirm/FacConfirmFilterBar'
+} from '../../components/facConfirm/FacConfirmFilterBar'
 
 import {
   ALL_CLASSIFY,
   FAC_CONFIRM_PATH,
   FAC_CONFIRM_URL_PARAMS,
   normalizeHeatType,
-} from '../components/facConfirm/facConfirmFilters'
+} from '../../components/facConfirm/facConfirmFilters'
 
 import {
   readUrlParams,
   useUrlFilters,
-} from '../hooks/useUrlFilters'
+} from '../../hooks/useUrlFilters'
 
 import {
   FacConfirmDailyStats,
-} from '../components/facConfirm/FacConfirmDailyStats'
+} from '../../components/facConfirm/FacConfirmDailyStats'
 
 import {
   useGuideTour,
-} from '../components/facConfirm/guide/useGuideTour'
+} from '../../components/facConfirm/guide/useGuideTour'
 
 import {
   FAC_CONFIRM_GUIDE_KEY,
-} from '../components/facConfirm/guide/facConfirmGuideKey'
+} from '../../components/facConfirm/guide/facConfirmGuideKey'
 
 // Tour (engine + steps + demos ~1.1k lines) loads on first open only
 const FacConfirmGuideTour = lazy(
-  () => import('../components/facConfirm/guide/FacConfirmGuideTour'),
+  () => import('../../components/facConfirm/guide/FacConfirmGuideTour'),
 )
 
 import {
   HeaderAction,
   HeaderActionBar,
   HeaderActionDivider,
-} from '../components/common/headerActions'
-import { notifyExport } from '../components/common/notify'
+} from '../../components/common/headerActions'
+import { notifyExport } from '../../components/common/notify'
 
 import {
   PageHeader,
-} from '../components/common/PageHeader'
+} from '../../components/common/PageHeader'
 
 import {
   PageShell,
-} from '../components/common/PageShell'
+} from '../../components/common/PageShell'
 
 import {
   UpdatedStatus,
-} from '../components/common/UpdatedStatus'
+} from '../../components/common/UpdatedStatus'
 
 import {
   useFacConfirmData,
-} from '../hooks/useFacConfirmData'
-import { usePageReadyMetric } from '../hooks/usePageReadyMetric'
-import { useUnsavedChangesGuard } from '../components/common/shortcuts'
+} from '../../hooks/useFacConfirmData'
+import { usePageReadyMetric } from '../../hooks/usePageReadyMetric'
+import { useUnsavedChangesGuard } from '../../components/common/shortcuts'
 
 import {
   useGridPreferences,
-} from '../hooks/useGridPreferences'
+} from '../../hooks/useGridPreferences'
 
 import {
   exportFacConfirmExcel,
-} from '../services/facConfirmService'
+} from '../../services/facConfirmService'
 
 import type {
   FacConfirmClassify,
   FacConfirmFilterItem,
   FacConfirmHeatType,
   FacConfirmProcessGroup,
-} from '../types/facConfirm'
+} from '../../types/facConfirm'
 
 import {
   loadFacConfirmPreferences,
   saveFacConfirmPreferences,
-} from '../utils/uiPreferences'
-import { useI18n } from '../i18n/useI18n'
+} from '../../utils/uiPreferences'
+import { useI18n } from '../../i18n/useI18n'
 
 
 interface FacConfirmPageProps {

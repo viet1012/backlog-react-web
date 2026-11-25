@@ -1,26 +1,26 @@
-// src/pages/SaleFollowPage.tsx
+// src/pages/planning/RemainPoControlPage.tsx
 
 import { useMemo } from 'react'
 
 import { Box } from '@mui/material'
 
-import type { ThemeMode } from '../utils/uiPreferences'
-import { useI18n } from '../i18n/useI18n'
+import type { ThemeMode } from '../../utils/uiPreferences'
+import { useI18n } from '../../i18n/useI18n'
 
-const SALE_FOLLOW_URL = 'http://192.168.122.15:5007/'
+const REMAIN_PO_CONTROL_URL = 'http://192.168.122.16:5004/'
 
-interface SaleFollowPageProps {
+interface RemainPoControlPageProps {
     mode: ThemeMode
 }
 
-export function SaleFollowPage({
+export function RemainPoControlPage({
     mode,
-}: SaleFollowPageProps) {
+}: RemainPoControlPageProps) {
     const { t } = useI18n()
 
     // Truyền theme hiện tại của app vào iframe: ?theme=light | dark
     const src = useMemo(() => {
-        const url = new URL(SALE_FOLLOW_URL)
+        const url = new URL(REMAIN_PO_CONTROL_URL)
 
         url.searchParams.set('theme', mode)
 
@@ -41,7 +41,7 @@ export function SaleFollowPage({
             <Box
                 component="iframe"
                 src={src}
-                title={t.nav.saleFollow}
+                title={t.nav.remainPoControl}
                 sx={{
                     width: '100%',
                     height: '100%',

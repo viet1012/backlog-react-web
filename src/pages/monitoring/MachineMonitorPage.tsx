@@ -32,23 +32,23 @@ import {
   useSearchParams,
 } from 'react-router-dom'
 
-import { AppButton } from '../components/common/AppButton'
-import { GlassPanel } from '../components/common/GlassPanel'
-import { AsyncContent } from '../components/common/loadState'
-import { PageHeader } from '../components/common/PageHeader'
-import { PageShell } from '../components/common/PageShell'
-import { RefreshButton } from '../components/common/RefreshButton'
-import { UpdatedStatus } from '../components/common/UpdatedStatus'
-import { codeFontFamily } from '../components/machineLocator/machineLocatorColors'
-import { MonitorMap } from '../components/machineMonitor/MonitorMap'
-import { toneColor } from '../components/machineMonitor/monitorColors'
-import { HistoryRangeButton } from '../components/machineMonitor/HistoryRangeButton'
+import { AppButton } from '../../components/common/AppButton'
+import { GlassPanel } from '../../components/common/GlassPanel'
+import { AsyncContent } from '../../components/common/loadState'
+import { PageHeader } from '../../components/common/PageHeader'
+import { PageShell } from '../../components/common/PageShell'
+import { RefreshButton } from '../../components/common/RefreshButton'
+import { UpdatedStatus } from '../../components/common/UpdatedStatus'
+import { codeFontFamily } from '../../components/machineLocator/machineLocatorColors'
+import { MonitorMap } from '../../components/machineMonitor/MonitorMap'
+import { toneColor } from '../../components/machineMonitor/monitorColors'
+import { HistoryRangeButton } from '../../components/machineMonitor/HistoryRangeButton'
 import {
   parseRange,
   rangeLabel,
   type MonitorRange,
-} from '../components/machineMonitor/monitorRange'
-import { MONITOR_TABS } from '../components/machineMonitor/monitorTabs'
+} from '../../components/machineMonitor/monitorRange'
+import { MONITOR_TABS } from '../../components/machineMonitor/monitorTabs'
 import type {
   MachineMark,
   MonitorChip,
@@ -57,23 +57,23 @@ import type {
   MonitorTabDef,
   MonitorTarget,
   MonitorTone,
-} from '../components/machineMonitor/monitorTypes'
-import { prefetchMonitor, useMonitorData } from '../hooks/useMonitorData'
-import { usePageReadyMetric } from '../hooks/usePageReadyMetric'
-import { useStableCallback } from '../hooks/useStableCallback'
-import { listFloors, onMachineStoreWrite } from '../services/machineLocatorService'
-import { appScrollbarSx } from '../theme/scrollbarStyle'
-import { uiTokens } from '../theme/uiTokens'
-import type { MachineLayoutConfig } from '../types/machineLocator'
+} from '../../components/machineMonitor/monitorTypes'
+import { prefetchMonitor, useMonitorData } from '../../hooks/useMonitorData'
+import { usePageReadyMetric } from '../../hooks/usePageReadyMetric'
+import { useStableCallback } from '../../hooks/useStableCallback'
+import { listFloors, onMachineStoreWrite } from '../../services/machineLocatorService'
+import { appScrollbarSx } from '../../theme/scrollbarStyle'
+import { uiTokens } from '../../theme/uiTokens'
+import type { MachineLayoutConfig } from '../../types/machineLocator'
 import {
   compareCodes,
   matchesQuery,
-} from '../utils/machineLocatorGeometry'
+} from '../../utils/machineLocatorGeometry'
 import {
   loadPreference,
   savePreference,
-} from '../utils/uiPreferences'
-import { useI18n } from '../i18n/useI18n'
+} from '../../utils/uiPreferences'
+import { useI18n } from '../../i18n/useI18n'
 
 interface MachineMonitorPageProps {
   mode: PaletteMode

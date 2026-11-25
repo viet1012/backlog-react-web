@@ -541,7 +541,7 @@ Biến được đọc tại [src/config/api.ts](src/config/api.ts) và khai bá
 - `.env.*.local` không commit, dùng để ghi đè trên máy cá nhân.
 - Biến `VITE_*` được nhúng vào bundle phía trình duyệt, **không đặt secret vào đây**.
 
-URL của Remain PO Control đang hard-code trong [src/pages/RemainPoControlPage.tsx](src/pages/RemainPoControlPage.tsx).
+URL của Remain PO Control đang hard-code trong [src/pages/planning/RemainPoControlPage.tsx](src/pages/planning/RemainPoControlPage.tsx).
 
 ## Đăng nhập & phân quyền
 
@@ -557,7 +557,15 @@ URL của Remain PO Control đang hard-code trong [src/pages/RemainPoControlPage
 
 ```
 src/
-  pages/            Mỗi route một file *Page.tsx
+  pages/            Mỗi route một file *Page.tsx, chia theo nhóm menu sidebar
+    lazyPages.ts    Khai báo lazy-load, preload, keep-alive cho mọi trang
+    auth/           LoginPage
+    production/     PcTraining, Sph, Asakai, CostMonitoring
+    planning/       UserHome, Backlog, RemainPoControl, SaleFollow, FacConfirm, Odbf,
+                    ExportList, PackingList, Shipment, SalesStatus
+    management/     Bosb, Deadstock, Pl, Kpi, Ot
+    monitoring/     MachineMonitor
+    settings/       MachineLocator, AiLogs, UtilityEvnCompare
   components/       UI theo tính năng (backlog, facConfirm, machineLocator, machineMonitor, shipment, odbf, training, userHome...)
     common/         Thành phần dùng chung: PageShell, PageHeader,
                     dataGrid/ (Data Grid có lọc kiểu Excel, ghim cột: gridPinContext),
@@ -810,7 +818,7 @@ Rà nhánh `feat/cost-monitoring-focus-view` (đã merge trước đợt 5) theo
 | Trang | Trước | Sau | File |
 | --- | --- | --- | --- |
 | Cost Monitoring | Chờ `/months` xong mới gọi `/chart` (2 lượt nối tiếp) | Gọi `/chart` tháng hiện tại song song với `/months`, cùng key cache. Đúng tháng mới nhất thì dùng lại luôn; khác tháng thì tải như cũ | `hooks/useCostMonitoring.ts` |
-| Machine Monitor | Mỗi lần tải dữ liệu (mở lại trang sau 1 phút, tự làm mới 5 phút) đều tải lại sơ đồ tầng; mỗi lần quay lại trang đều gọi `/floors` | Sơ đồ tầng và danh sách tầng giữ 10 phút. Nút *Làm mới* vẫn tải lại sơ đồ. Có ghi ở Machine Locator thì tự hết hạn | `hooks/useMonitorData.ts`, `pages/MachineMonitorPage.tsx`, `services/machineLocatorService.ts` (`onMachineStoreWrite`) |
+| Machine Monitor | Mỗi lần tải dữ liệu (mở lại trang sau 1 phút, tự làm mới 5 phút) đều tải lại sơ đồ tầng; mỗi lần quay lại trang đều gọi `/floors` | Sơ đồ tầng và danh sách tầng giữ 10 phút. Nút *Làm mới* vẫn tải lại sơ đồ. Có ghi ở Machine Locator thì tự hết hạn | `hooks/useMonitorData.ts`, `pages/monitoring/MachineMonitorPage.tsx`, `services/machineLocatorService.ts` (`onMachineStoreWrite`) |
 
 - Không cần backend thêm API "tháng mới nhất". Backend `/chart` không truyền `month` sẽ trả tháng hiện tại, chứ không phải tháng mới nhất trong `/months`, nên frontend tự tải trước như trên.
 

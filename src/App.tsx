@@ -22,7 +22,7 @@ import { RoleRoute } from './components/auth/RoleRoute'
 import { ClockInOverlay } from './components/shift/ClockInOverlay'
 import { NotifyHost } from './components/common/notify'
 
-import { LoginPage } from './pages/LoginPage'
+import { LoginPage } from './pages/auth/LoginPage'
 import {
   AiLogsPage,
   AsakaiPage,

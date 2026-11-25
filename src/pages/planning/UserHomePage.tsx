@@ -4,10 +4,10 @@ import { Alert, Box, Button, Snackbar, useMediaQuery } from '@mui/material'
 import type { PaletteMode, Theme } from '@mui/material/styles'
 import { SpeedRounded } from '@mui/icons-material'
 
-import { PageHeader } from '../components/common/PageHeader'
-import { PageShell } from '../components/common/PageShell'
-import { FindPageButton } from '../components/userHome/FindPageButton'
-import { GraphicsQualityButton, type RenderSize } from '../components/userHome/graphics/GraphicsQualityButton'
+import { PageHeader } from '../../components/common/PageHeader'
+import { PageShell } from '../../components/common/PageShell'
+import { FindPageButton } from '../../components/userHome/FindPageButton'
+import { GraphicsQualityButton, type RenderSize } from '../../components/userHome/graphics/GraphicsQualityButton'
 import {
   detectGpu,
   GRAPHICS_PROFILES,
@@ -17,16 +17,16 @@ import {
   saveGraphicsSetting,
   type GraphicsLevel,
   type GraphicsSetting,
-} from '../components/userHome/graphics/graphicsQuality'
-import { UserHomeBackdrop } from '../components/userHome/UserHomeBackdrop'
-import { buildHomeMenu } from '../components/userHome/userHomeMenu'
-import { UserHomeTopBar } from '../components/userHome/UserHomeTopBar'
-import { UserHomeRack } from '../components/userHome/warehouse/UserHomeRack'
-import { loadWarehouse3D } from '../components/userHome/warehouse3d/loadWarehouse3D'
-import { Warehouse3DLoading } from '../components/userHome/warehouse3d/Warehouse3DLoading'
-import { WebGLBoundary } from '../components/userHome/warehouse3d/WebGLBoundary'
-import { useI18n } from '../i18n/useI18n'
-import { appScrollbarSx } from '../theme/scrollbarStyle'
+} from '../../components/userHome/graphics/graphicsQuality'
+import { UserHomeBackdrop } from '../../components/userHome/UserHomeBackdrop'
+import { buildHomeMenu } from '../../components/userHome/userHomeMenu'
+import { UserHomeTopBar } from '../../components/userHome/UserHomeTopBar'
+import { UserHomeRack } from '../../components/userHome/warehouse/UserHomeRack'
+import { loadWarehouse3D } from '../../components/userHome/warehouse3d/loadWarehouse3D'
+import { Warehouse3DLoading } from '../../components/userHome/warehouse3d/Warehouse3DLoading'
+import { WebGLBoundary } from '../../components/userHome/warehouse3d/WebGLBoundary'
+import { useI18n } from '../../i18n/useI18n'
+import { appScrollbarSx } from '../../theme/scrollbarStyle'
 
 // Chunk riêng: three.js chỉ tải khi thật sự dùng bản 3D (thường đã được tải trước lúc rê chuột vào menu)
 const UserHomeWarehouse3D = lazy(loadWarehouse3D)

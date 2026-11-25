@@ -20,27 +20,27 @@ import CompareArrowsOutlinedIcon from '@mui/icons-material/CompareArrowsOutlined
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined'
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { readUrlParams, urlParam, useUrlFilters, type UrlParams } from '../hooks/useUrlFilters'
-import { FactoryNoRowsOverlay } from '../components/common/FactoryNoRowsOverlay'
-import { HeaderAction, HeaderActionBar, HeaderActionDivider } from '../components/common/headerActions'
-import { PageHeader } from '../components/common/PageHeader'
-import { PageShell } from '../components/common/PageShell'
-import { UpdatedStatus } from '../components/common/UpdatedStatus'
-import { EvnChartBoard } from '../components/utilityEvn/EvnChartBoard'
-import { EvnCompareChart } from '../components/utilityEvn/EvnCompareChart'
-import { EvnCompareKpi } from '../components/utilityEvn/EvnCompareKpi'
-import { EvnCompareNotes } from '../components/utilityEvn/EvnCompareNotes'
-import { EvnCompareTable } from '../components/utilityEvn/EvnCompareTable'
-import { EvnImportPanel } from '../components/utilityEvn/EvnImportPanel'
-import { EvnMeterIssues } from '../components/utilityEvn/EvnMeterIssues'
-import { EvnOverviewBoard } from '../components/utilityEvn/EvnOverviewBoard'
-import { useUtilityEvnCompare } from '../hooks/useUtilityEvnCompare'
-import { useI18n } from '../i18n/useI18n'
-import { uiTokens } from '../theme/uiTokens'
-import { UTILITY_SCOPE_CODES, type UtilityScopeCode } from '../types/utilityEvn'
-import { loadPreference, savePreference } from '../utils/uiPreferences'
-import { buildEvnCompareWorkbook } from '../utils/utilityEvnExcel'
-import { downloadBlob } from '../utils/xlsxWriter'
+import { readUrlParams, urlParam, useUrlFilters, type UrlParams } from '../../hooks/useUrlFilters'
+import { FactoryNoRowsOverlay } from '../../components/common/FactoryNoRowsOverlay'
+import { HeaderAction, HeaderActionBar, HeaderActionDivider } from '../../components/common/headerActions'
+import { PageHeader } from '../../components/common/PageHeader'
+import { PageShell } from '../../components/common/PageShell'
+import { UpdatedStatus } from '../../components/common/UpdatedStatus'
+import { EvnChartBoard } from '../../components/utilityEvn/EvnChartBoard'
+import { EvnCompareChart } from '../../components/utilityEvn/EvnCompareChart'
+import { EvnCompareKpi } from '../../components/utilityEvn/EvnCompareKpi'
+import { EvnCompareNotes } from '../../components/utilityEvn/EvnCompareNotes'
+import { EvnCompareTable } from '../../components/utilityEvn/EvnCompareTable'
+import { EvnImportPanel } from '../../components/utilityEvn/EvnImportPanel'
+import { EvnMeterIssues } from '../../components/utilityEvn/EvnMeterIssues'
+import { EvnOverviewBoard } from '../../components/utilityEvn/EvnOverviewBoard'
+import { useUtilityEvnCompare } from '../../hooks/useUtilityEvnCompare'
+import { useI18n } from '../../i18n/useI18n'
+import { uiTokens } from '../../theme/uiTokens'
+import { UTILITY_SCOPE_CODES, type UtilityScopeCode } from '../../types/utilityEvn'
+import { loadPreference, savePreference } from '../../utils/uiPreferences'
+import { buildEvnCompareWorkbook } from '../../utils/utilityEvnExcel'
+import { downloadBlob } from '../../utils/xlsxWriter'
 import {
   EVN_SCOPE_LABEL,
   EVN_UNITS,
@@ -60,7 +60,7 @@ import {
   buildEvnOverviewCsv,
   buildEvnOverviewRows,
   type EvnUnit,
-} from '../utils/utilityEvnCompare'
+} from '../../utils/utilityEvnCompare'
 
 interface UtilityEvnComparePageProps {
   mode: PaletteMode

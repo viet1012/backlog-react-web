@@ -24,46 +24,46 @@ import {
   useSearchParams,
 } from 'react-router-dom'
 
-import { AppButton } from '../components/common/AppButton'
-import { GlassPanel } from '../components/common/GlassPanel'
-import { PageHeader } from '../components/common/PageHeader'
-import { PageShell } from '../components/common/PageShell'
-import { EditToolbar } from '../components/machineLocator/EditToolbar'
-import { FitToastBar } from '../components/machineLocator/FitToastBar'
-import { MachineDataFooter } from '../components/machineLocator/MachineDataFooter'
+import { AppButton } from '../../components/common/AppButton'
+import { GlassPanel } from '../../components/common/GlassPanel'
+import { PageHeader } from '../../components/common/PageHeader'
+import { PageShell } from '../../components/common/PageShell'
+import { EditToolbar } from '../../components/machineLocator/EditToolbar'
+import { FitToastBar } from '../../components/machineLocator/FitToastBar'
+import { MachineDataFooter } from '../../components/machineLocator/MachineDataFooter'
 import {
   MachineInfo,
   PanelButton,
-} from '../components/machineLocator/MachineInfo'
-import { MachineLocatorHelp } from '../components/machineLocator/MachineLocatorHelp'
+} from '../../components/machineLocator/MachineInfo'
+import { MachineLocatorHelp } from '../../components/machineLocator/MachineLocatorHelp'
 import {
   MachineList,
   type ElsewhereMatch,
-} from '../components/machineLocator/MachineList'
-import { MapCanvas } from '../components/machineLocator/MapCanvas'
+} from '../../components/machineLocator/MachineList'
+import { MapCanvas } from '../../components/machineLocator/MapCanvas'
 import {
   codeFontFamily,
   mapColors,
-} from '../components/machineLocator/machineLocatorColors'
-import { useMachineLocator } from '../hooks/useMachineLocator'
-import { useStableCallback } from '../hooks/useStableCallback'
-import { hasAnyRole } from '../services/authService'
+} from '../../components/machineLocator/machineLocatorColors'
+import { useMachineLocator } from '../../hooks/useMachineLocator'
+import { useStableCallback } from '../../hooks/useStableCallback'
+import { hasAnyRole } from '../../services/authService'
 import {
   listFloors,
   loadMachineStore,
-} from '../services/machineLocatorService'
-import { uiTokens } from '../theme/uiTokens'
-import type { MachineLayoutConfig } from '../types/machineLocator'
+} from '../../services/machineLocatorService'
+import { uiTokens } from '../../theme/uiTokens'
+import type { MachineLayoutConfig } from '../../types/machineLocator'
 import {
   compareCodes,
   matchesMachineFilter,
   matchesQuery,
-} from '../utils/machineLocatorGeometry'
+} from '../../utils/machineLocatorGeometry'
 import {
   loadPreference,
   savePreference,
-} from '../utils/uiPreferences'
-import { useI18n } from '../i18n/useI18n'
+} from '../../utils/uiPreferences'
+import { useI18n } from '../../i18n/useI18n'
 
 interface MachineLocatorPageProps {
   mode: PaletteMode
