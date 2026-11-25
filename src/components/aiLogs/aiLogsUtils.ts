@@ -89,7 +89,8 @@ export function isValidAiLogRange(from: string, to: string): boolean {
   return from <= to && days <= MAX_RANGE_DAYS
 }
 
-export const AI_LOGS_PATH = '/settings/ai-logs'
+// Trang "Admin" (Trợ lý AI + Phân quyền). Đường dẫn cũ /settings/ai-logs tự chuyển sang đây (App.tsx)
+export const AI_LOGS_PATH = '/settings/admin'
 
 // "Tất cả" nguồn = '' nhưng mặc định là chat → trên URL ghi "all" để không lẫn với mặc định
 const sourceParam: UrlParam<AiLogFilters['source']> = {

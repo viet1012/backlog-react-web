@@ -12,7 +12,6 @@ function lazyPage<P>(load: () => Promise<ComponentType<P>>) {
 }
 
 export const AiLogsPage = lazyPage(() => import('./settings/AiLogsPage').then((m) => m.AiLogsPage))
-export const AuthGuidePage = lazyPage(() => import('./settings/AuthGuidePage').then((m) => m.AuthGuidePage))
 export const AsakaiPage = lazyPage(() => import('./production/AsakaiPage').then((m) => m.AsakaiPage))
 export const BacklogPage = lazyPage(() => import('./planning/BacklogPage').then((m) => m.BacklogPage))
 export const BosbPage = lazyPage(() => import('./management/BosbPage').then((m) => m.BosbPage))
@@ -61,9 +60,8 @@ const pagesByRoute: Record<string, { preload: () => Promise<unknown> }> = {
   '/ot': OtPage,
   '/monitoring/machine': MachineMonitorPage,
   '/settings/machine-locator': MachineLocatorPage,
-  '/settings/ai-logs': AiLogsPage,
+  '/settings/admin': AiLogsPage,
   '/utility-evn-compare': UtilityEvnComparePage,
-  '/settings/auth-guide': AuthGuidePage,
 }
 
 export function preloadRoute(path: string) {

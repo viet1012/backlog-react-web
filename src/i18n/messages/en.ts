@@ -123,9 +123,8 @@ export const en = {
         ot: 'OT',
         machine: 'Machine',
         machineLocator: 'Machine Locator',
-        aiLogs: 'AI Logs',
+        aiLogs: 'Admin',
         utilityEvnCompare: 'Utility · EVN Compare',
-        authGuide: 'Permission Guide',
     },
 
     sidebar: {
@@ -866,9 +865,8 @@ export const en = {
             deliveryConfirm: 'Confirm production processes',
             odbfSimulation: 'PO progress and quantity by day',
             machineLocator: 'Place machines on the floor map',
-            aiLogs: 'AI assistant questions, errors and response times',
+            aiLogs: 'AI assistant logs and the permission guide',
             utilityEvnCompare: 'EVN GM vs. measured electricity by day, import EVN Excel',
-            authGuide: 'How login, roles and permissions work',
             pcTraining: 'Production Control training material',
         } as Record<string, string | undefined>,
         graphics: {
@@ -1941,6 +1939,12 @@ export const en = {
             tests: 'Test suite',
             wardrobe: 'Dressing room',
             flow: 'AI flow',
+            auth: 'Permissions',
+        },
+        authSubtitle: 'Login, roles and permissions',
+        groups: {
+            aria: 'Choose section',
+            ai: 'AI assistant',
         },
         screenTabs: {
             ariaLabel: 'Choose screen',

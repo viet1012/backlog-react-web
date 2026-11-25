@@ -26,7 +26,6 @@ import {
     SmartToyOutlined,
     TrackChangesOutlined,
     ElectricBoltOutlined,
-    AdminPanelSettingsOutlined,
 } from '@mui/icons-material'
 import type { UserRole } from '../../services/authService'
 import type { Messages } from '../../i18n/messages/en'
@@ -339,7 +338,7 @@ export const menuGroups:
 
                 {
                     labelKey: 'aiLogs',
-                    path: '/settings/ai-logs',
+                    path: '/settings/admin',
                     status: 'ready',
                     action: 'view',
                     roles: ['ADMIN'],
@@ -356,18 +355,6 @@ export const menuGroups:
                     roles: ['ADMIN'],
                     icon: (
                         <ElectricBoltOutlined />
-                    ),
-                },
-
-                {
-                    // perm ['AUTH_GUIDE', 'V'] khi chuyển sang appPages: chỉ ADMIN ('*')
-                    labelKey: 'authGuide',
-                    path: '/settings/auth-guide',
-                    status: 'ready',
-                    action: 'view',
-                    roles: ['ADMIN'],
-                    icon: (
-                        <AdminPanelSettingsOutlined />
                     ),
                 },
             ],

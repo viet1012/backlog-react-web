@@ -26,7 +26,6 @@ import { LoginPage } from './pages/auth/LoginPage'
 import {
   AiLogsPage,
   AsakaiPage,
-  AuthGuidePage,
   BacklogPage,
   BosbPage,
   CostMonitoringPage,
@@ -80,6 +79,18 @@ function MachineLocatorRedirect() {
   return (
     <Navigate
       to={{ pathname: '/settings/machine-locator', hash }}
+      replace
+    />
+  )
+}
+
+
+function AdminRedirect() {
+  const { search, hash } = useLocation()
+
+  return (
+    <Navigate
+      to={{ pathname: '/settings/admin', search, hash }}
       replace
     />
   )
@@ -313,7 +324,7 @@ function App() {
 
                 <Route element={<RoleRoute roles={['ADMIN']} />}>
                   <Route
-                    path="settings/ai-logs"
+                    path="settings/admin"
                     element={
                       <AiLogsPage
                         mode={mode}
@@ -331,12 +342,13 @@ function App() {
                       />
                     }
                   />
-
-                  <Route
-                    path="settings/auth-guide"
-                    element={<AuthGuidePage />}
-                  />
                 </Route>
+
+                {/* route cũ của trang Admin, giữ để link đã chia sẻ (kèm bộ lọc ?from=&to=…) vẫn mở được */}
+                <Route
+                  path="settings/ai-logs"
+                  element={<AdminRedirect />}
+                />
 
                 {/* route cũ, giữ để link đã chia sẻ (kèm #mã máy) vẫn mở được */}
                 <Route

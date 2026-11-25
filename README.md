@@ -30,7 +30,7 @@ Frontend thuần (SPA). Dữ liệu và đăng nhập đi qua backend `backlog-b
 | `/user-home` | [User Home](#9-user-home) | Mọi user (trang mặc định sau đăng nhập) | Hoạt động |
 | `/pc-training` | [PC Training](#10-pc-training) | Mọi user | Chạy được, ẩn khỏi menu |
 | `/cost-monitoring` | [Cost Monitoring](#11-cost-monitoring) | Mọi user | Hoạt động |
-| `/settings/ai-logs` | [AI Logs](#12-ai-logs) | ADMIN | Hoạt động |
+| `/settings/admin` (cũ: `/settings/ai-logs`, tự chuyển) | [Admin](#12-ai-logs) (Trợ lý AI + Phân quyền) | ADMIN | Hoạt động |
 | `/utility-evn-compare` | [Utility · EVN Compare](#13-utility--evn-compare) | ADMIN | Hoạt động |
 | `/sph`, `/asakai`, `/bosb`, `/deadstock`, `/pl`, `/kpi`, `/ot`, `/packing-list`, `/export-list`, `/sales-status` | Trang giữ chỗ | — | Chưa làm |
 
@@ -423,7 +423,7 @@ Nhật ký các câu hỏi gửi trợ lý AI (chỉ ADMIN): thống kê, bảng
 - **Thanh lọc** (thanh lọc dùng chung, nằm trong header): Từ ngày → Đến ngày (tối đa 92 ngày), User, Tìm kiếm, Trạng thái, Nguồn, Chậm hơn (giây).
   - Ô ngày đã đổi từ DatePicker sang ô ngày chung như các trang khác.
   - *Xóa bộ lọc* thay cho *Đặt lại* và vẫn giữ tab màn hình đang chọn.
-- **Link chia sẻ**: `/settings/ai-logs?from=…&to=…[&user=…][&q=…][&ok=true|false][&source=all|eval][&slower=N][&screen=…]`.
+- **Link chia sẻ**: `/settings/admin?from=…&to=…[&user=…][&q=…][&ok=true|false][&source=all|eval][&slower=N][&screen=…]`.
   - Nguồn mặc định là `chat` nên không ghi lên link. "Tất cả nguồn" ghi là `source=all`.
   - Khoảng ngày sai trên link thì về 7 ngày gần nhất.
 - **Export Excel**: toast tiến trình / xong / lỗi (thay cho Snackbar lỗi riêng).

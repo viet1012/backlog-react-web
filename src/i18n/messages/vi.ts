@@ -93,10 +93,7 @@ export const vi: Messages = {
     },
 
     // Menu sidebar giữ tên tiếng Anh ở cả 2 ngôn ngữ
-    nav: {
-        ...en.nav,
-        authGuide: 'Hướng dẫn phân quyền',
-    },
+    nav: en.nav,
 
     sidebar: {
         appName: 'Production Control',
@@ -767,9 +764,8 @@ export const vi: Messages = {
             deliveryConfirm: 'Xác nhận công đoạn sản xuất',
             odbfSimulation: 'Tiến độ PO và số lượng theo ngày',
             machineLocator: 'Bố trí máy trên bản đồ xưởng',
-            aiLogs: 'Câu hỏi, lỗi và thời gian phản hồi của trợ lý AI',
+            aiLogs: 'Log trợ lý AI và hướng dẫn phân quyền',
             utilityEvnCompare: 'So sánh số GM EVN với số đồng hồ theo ngày, import Excel EVN',
-            authGuide: 'Cách đăng nhập, vai trò và quyền hoạt động',
             pcTraining: 'Tài liệu đào tạo Production Control',
         },
         graphics: {
@@ -1836,6 +1832,12 @@ export const vi: Messages = {
             tests: 'Bộ test',
             wardrobe: 'Phòng thay đồ',
             flow: 'Luồng AI',
+            auth: 'Phân quyền',
+        },
+        authSubtitle: 'Đăng nhập, vai trò và quyền',
+        groups: {
+            aria: 'Chọn nhóm',
+            ai: 'Trợ lý AI',
         },
         screenTabs: {
             ariaLabel: 'Chọn màn hình',
