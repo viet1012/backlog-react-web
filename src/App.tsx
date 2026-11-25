@@ -26,6 +26,7 @@ import { LoginPage } from './pages/LoginPage'
 import {
   AiLogsPage,
   AsakaiPage,
+  AuthGuidePage,
   BacklogPage,
   BosbPage,
   CostMonitoringPage,
@@ -329,6 +330,11 @@ function App() {
                         onToggleMode={toggleThemeMode}
                       />
                     }
+                  />
+
+                  <Route
+                    path="settings/auth-guide"
+                    element={<AuthGuidePage />}
                   />
                 </Route>
 

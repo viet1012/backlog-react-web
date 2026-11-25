@@ -125,6 +125,7 @@ export const en = {
         machineLocator: 'Machine Locator',
         aiLogs: 'AI Logs',
         utilityEvnCompare: 'Utility · EVN Compare',
+        authGuide: 'Permission Guide',
     },
 
     sidebar: {
@@ -854,6 +855,7 @@ export const en = {
             machineLocator: 'Place machines on the floor map',
             aiLogs: 'AI assistant questions, errors and response times',
             utilityEvnCompare: 'EVN GM vs. measured electricity by day, import EVN Excel',
+            authGuide: 'How login, roles and permissions work',
             pcTraining: 'Production Control training material',
         } as Record<string, string | undefined>,
         graphics: {

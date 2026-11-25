@@ -93,7 +93,10 @@ export const vi: Messages = {
     },
 
     // Menu sidebar giữ tên tiếng Anh ở cả 2 ngôn ngữ
-    nav: en.nav,
+    nav: {
+        ...en.nav,
+        authGuide: 'Hướng dẫn phân quyền',
+    },
 
     sidebar: {
         appName: 'Production Control',
@@ -753,6 +756,7 @@ export const vi: Messages = {
             machineLocator: 'Bố trí máy trên bản đồ xưởng',
             aiLogs: 'Câu hỏi, lỗi và thời gian phản hồi của trợ lý AI',
             utilityEvnCompare: 'So sánh số GM EVN với số đồng hồ theo ngày, import Excel EVN',
+            authGuide: 'Cách đăng nhập, vai trò và quyền hoạt động',
             pcTraining: 'Tài liệu đào tạo Production Control',
         },
         graphics: {
