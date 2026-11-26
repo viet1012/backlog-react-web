@@ -1,7 +1,7 @@
 import { PDF2CAD_API_BASE_URL } from '../config/api'
 import type { Pdf2cadJob, Pdf2cadOptions } from '../types/pdf2cad'
 import { downloadBlob } from '../utils/xlsxWriter'
-import { getAuthToken, getCurrentEmployeeId } from './authService'
+import { getCurrentEmployeeId, getToken } from './authService'
 import { Pdf2cadError, type Pdf2cadApi } from './pdf2cadApi'
 import { pdf2cadMockApi } from './pdf2cadMock'
 
@@ -32,7 +32,7 @@ function url(path: string) {
 // chỉ để BE ghi nhật ký + biết job của ai (không phải bằng chứng danh tính).
 function authHeaders(): Record<string, string> {
   const headers: Record<string, string> = {}
-  const token = getAuthToken()
+  const token = getToken()
   const employeeId = getCurrentEmployeeId()
   if (token) headers.Authorization = `Bearer ${token}`
   if (employeeId) headers['X-Employee-Id'] = employeeId

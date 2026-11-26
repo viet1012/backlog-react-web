@@ -70,6 +70,8 @@ import {
   HeaderActionDivider,
 } from '../../components/common/headerActions'
 import { notifyExport } from '../../components/common/notify'
+import { usePerm } from '../../components/auth/useAuth'
+import { ACTION, PERM } from '../../routes/appPages'
 
 import {
   PageHeader,
@@ -134,6 +136,9 @@ export function FacConfirmPage({
 }: FacConfirmPageProps) {
 
   const { t } = useI18n()
+
+  // Xuất Excel cần FAC_CONFIRM X
+  const canExport = usePerm(PERM.FAC_CONFIRM, ACTION.EXPORT)
 
   const [pagePreferences] =
     useState(loadFacConfirmPreferences)
@@ -964,15 +969,19 @@ export function FacConfirmPage({
 
         actions={
           <HeaderActionBar>
-            <HeaderAction
-              kind="exportExcel"
-              tour="fac-export"
-              loading={exporting}
-              disabled={exportColumns.length === 0}
-              onClick={handleExportExcel}
-            />
+            {canExport && (
+              <>
+                <HeaderAction
+                  kind="exportExcel"
+                  tour="fac-export"
+                  loading={exporting}
+                  disabled={exportColumns.length === 0}
+                  onClick={handleExportExcel}
+                />
 
-            <HeaderActionDivider />
+                <HeaderActionDivider />
+              </>
+            )}
 
             <HeaderAction
               kind="refresh"

@@ -19,7 +19,8 @@ import { alpha } from '@mui/material/styles'
 import dayjs from 'dayjs'
 import { useCallback, useEffect, useState } from 'react'
 import { CostOtImportDialog } from '../../components/costMonitoring/CostOtImportDialog'
-import { hasAnyRole } from '../../services/authService'
+import { usePerm } from '../../components/auth/useAuth'
+import { ACTION, PERM } from '../../routes/appPages'
 import { FactoryNoRowsOverlay } from '../../components/common/FactoryNoRowsOverlay'
 import { HeaderAction, HeaderActionBar, HeaderActionDivider } from '../../components/common/headerActions'
 import { notify } from '../../components/common/notify'
@@ -155,8 +156,8 @@ export function CostMonitoringPage({
 
   const detail = useCostMonitoringDetail(month, detailTarget, simuWeek, refreshKey, detailOpen, dataVersion)
 
-  // Nạp Actual OT – nút chỉ hiện với ADMIN (BE vẫn kiểm quyền, 403 hiện trong dialog)
-  const canImportOt = hasAnyRole(['ADMIN'])
+  // Nạp Actual OT – nút chỉ hiện khi có COST_MONITORING X (BE vẫn kiểm quyền, 403 hiện trong dialog)
+  const canImportOt = usePerm(PERM.COST_MONITORING, ACTION.EXPORT)
   const [otImportOpen, setOtImportOpen] = useState(false)
 
   const detailLabel = detailTarget

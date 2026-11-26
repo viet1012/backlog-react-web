@@ -2,34 +2,8 @@ import type {
     ReactNode,
 } from 'react'
 
-import {
-    AssessmentOutlined,
-    PrecisionManufacturingOutlined,
-    SettingsSuggestOutlined,
-    FactCheckOutlined,
-    InventoryOutlined,
-    EventNoteOutlined,
-    AccountBalanceOutlined,
-    DeleteSweepOutlined,
-    TrendingUpOutlined,
-    SpeedOutlined,
-    AccessTimeOutlined,
-    Inventory2Outlined,
-    ReceiptLongOutlined,
-    SchoolOutlined,
-    FormatListBulletedRounded,
-    SummarizeOutlined,
-    PendingActionsOutlined,
-    HomeOutlined,
-    MapOutlined,
-    MonitorHeartOutlined,
-    SmartToyOutlined,
-    TrackChangesOutlined,
-    ElectricBoltOutlined,
-    ArchitectureOutlined,
-} from '@mui/icons-material'
-import type { UserRole } from '../../services/authService'
 import type { Messages } from '../../i18n/messages/en'
+import { appPages, type PagePerm } from '../../routes/appPages'
 
 
 // =========================================================
@@ -67,311 +41,38 @@ export interface MenuItemConfig {
     status?: MenuItemStatus
     disabled?: boolean
 
-    roles?: UserRole[]
+    /** Quyền xem (từ /me), cùng giá trị với route guard */
+    perm?: PagePerm
     action?: MenuItemAction
 }
+
 // =========================================================
-// MENU
+// MENU (sinh từ routes/appPages.tsx – không sửa tay ở đây)
 // =========================================================
+
+const GROUP_ORDER: MenuGroupId[] = [
+    'production',
+    'planning',
+    'management',
+    'monitoring',
+    'setting',
+]
 
 export const menuGroups:
-    MenuGroupConfig[] = [
-
-        // =====================================================
-        // PRODUCTION
-        // =====================================================
-
-        {
-            id: 'production',
-
-            items: [
-                {
-                    labelKey: 'pcTraining',
-                    path: '/pc-training',
-                    status: 'ready',
-                    disabled: true,
-                    icon: (
-                        <SchoolOutlined />
-                    ),
-                },
-
-                {
-                    labelKey: 'sph',
-                    path: '/sph',
-                    status: 'todo',
-                    icon: (
-                        <PrecisionManufacturingOutlined />
-                    ),
-                },
-
-                {
-                    labelKey: 'asakai',
-                    path: '/asakai',
-                    status: 'todo',
-                    icon: (
-                        <SettingsSuggestOutlined />
-                    ),
-                },
-
-                {
-                    labelKey: 'costMonitoring',
-                    path: '/cost-monitoring',
-                    status: 'ready',
-                    action: 'view',
-                    icon: (
-                        <TrendingUpOutlined />
-                    ),
-                },
-            ],
-        },
-
-
-        // =====================================================
-        // PLANNING
-        // =====================================================
-        {
-            id: 'planning',
-
-            items: [
-                {
-                    labelKey: 'userHome',
-                    path: '/user-home',
-                    status: 'ready',
-                    icon: (
-                        <HomeOutlined />
-                    ),
-                },
-
-                {
-                    labelKey: 'backlogDetails',
-                    path: '/backlog',
-                    status: 'ready',
-                    roles: ['PC'],
-                    action: 'view',
-                    icon: (
-                        <FormatListBulletedRounded />
-                    ),
-                },
-
-                {
-                    labelKey: 'backlogSummary',
-                    path: '/backlog-summary',
-                    status: 'todo',
-                    roles: ['PC'],
-                    action: 'view',
-                    icon: (
-                        <SummarizeOutlined />
-                    ),
-                },
-
-                {
-                    labelKey: 'remainPoControl',
-                    path: '/remain-po-control',
-                    status: 'ready',
-                    roles: ['PC'],
-                    action: 'view',
-                    icon: (
-                        <PendingActionsOutlined />
-                    ),
-                },
-
-                {
-                    labelKey: 'saleFollow',
-                    path: '/sale-follow',
-                    status: 'ready',
-                    roles: ['PC'],
-                    action: 'view',
-                    icon: (
-                        <TrackChangesOutlined />
-                    ),
-                },
-
-                {
-                    labelKey: 'deliveryConfirm',
-                    path: '/fac-confirm',
-                    status: 'ready',
-                    roles: ['PC', 'PRO'],
-                    action: 'input',
-                    icon: (
-                        <FactCheckOutlined />
-                    ),
-                },
-
-                {
-                    labelKey: 'odbfSimulation',
-                    path: '/odbf',
-                    status: 'ready',
-                    roles: ['PC', 'PRO'],
-                    action: 'view',
-                    icon: (
-                        <Inventory2Outlined />
-                    ),
-                },
-
-                {
-                    labelKey: 'exportList',
-                    path: '/export-list',
-                    status: 'todo',
-                    roles: ['PC'],
-                    action: 'view',
-                    icon: (
-                        <ReceiptLongOutlined />
-                    ),
-                },
-
-                {
-                    labelKey: 'packingList',
-                    path: '/packing-list',
-                    status: 'todo',
-                    roles: ['PRO'],
-                    action: 'input',
-                    icon: (
-                        <InventoryOutlined />
-                    ),
-                },
-
-                {
-                    labelKey: 'shippingSchedule',
-                    path: '/shipping-schedule',
-                    status: 'todo',
-                    roles: ['PC', 'PRO'],
-                    action: 'view',
-                    icon: (
-                        <EventNoteOutlined />
-                    ),
-                },
-            ],
-        },
-
-        // =====================================================
-        // MANAGEMENT
-        // =====================================================
-
-        {
-            id: 'management',
-
-            items: [
-                {
-                    labelKey: 'bosb',
-                    path: '/bosb',
-                    status: 'todo',
-                    icon: (
-                        <AccountBalanceOutlined />
-                    ),
-                },
-
-                {
-                    labelKey: 'deadstock',
-                    path: '/deadstock',
-                    status: 'todo',
-                    icon: (
-                        <DeleteSweepOutlined />
-                    ),
-                },
-
-                {
-                    labelKey: 'pl',
-                    path: '/pl',
-                    status: 'todo',
-                    icon: (
-                        <AssessmentOutlined />
-                    ),
-                },
-
-                {
-                    labelKey: 'kpi',
-                    path: '/kpi',
-                    status: 'todo',
-                    icon: (
-                        <SpeedOutlined />
-                    ),
-                },
-
-                {
-                    labelKey: 'ot',
-                    path: '/ot',
-                    status: 'todo',
-                    icon: (
-                        <AccessTimeOutlined />
-                    ),
-                },
-            ],
-        },
-
-        // =====================================================
-        // MONITORING
-        // =====================================================
-
-        {
-            id: 'monitoring',
-
-            items: [
-                {
-                    labelKey: 'machine',
-                    path: '/monitoring/machine',
-                    status: 'ready',
-                    action: 'view',
-                    icon: (
-                        <MonitorHeartOutlined />
-                    ),
-                },
-            ],
-        },
-
-        // =====================================================
-        // SETTING
-        // =====================================================
-
-        {
-            id: 'setting',
-
-            items: [
-                {
-                    labelKey: 'machineLocator',
-                    path: '/settings/machine-locator',
-                    status: 'ready',
-                    action: 'view',
-                    roles: ['ADMIN'],
-                    icon: (
-                        <MapOutlined />
-                    ),
-                },
-
-                {
-                    labelKey: 'aiLogs',
-                    path: '/settings/admin',
-                    status: 'ready',
-                    action: 'view',
-                    roles: ['ADMIN'],
-                    icon: (
-                        <SmartToyOutlined />
-                    ),
-                },
-
-                {
-                    labelKey: 'utilityEvnCompare',
-                    path: '/utility-evn-compare',
-                    status: 'ready',
-                    action: 'view',
-                    roles: ['ADMIN'],
-                    icon: (
-                        <ElectricBoltOutlined />
-                    ),
-                },
-
-                {
-                    labelKey: 'pdf2cad',
-                    path: '/settings/pdf2cad',
-                    status: 'ready',
-                    action: 'input',
-                    roles: ['ADMIN'],
-                    icon: (
-                        <ArchitectureOutlined />
-                    ),
-                },
-            ],
-        },
-    ]
+    MenuGroupConfig[] = GROUP_ORDER.map((id) => ({
+        id,
+        items: appPages
+            .filter((page) => page.group === id && page.label)
+            .map((page) => ({
+                labelKey: page.label!,
+                path: page.path,
+                icon: page.icon,
+                status: page.status,
+                disabled: page.disabled,
+                perm: page.perm,
+                action: page.action,
+            })),
+    }))
 
 
 // =========================================================

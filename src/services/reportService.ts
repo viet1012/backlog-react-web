@@ -1,3 +1,4 @@
+import { apiFetch } from './apiClient'
 import { API_BASE_URL } from '../config/api'
 
 import type { ProductionOrder } from '../types/report'
@@ -328,7 +329,7 @@ async function fetchJson<T>(
 ): Promise<T> {
 
   const response =
-    await fetch(
+    await apiFetch(
       url,
       options,
     )
@@ -1261,7 +1262,7 @@ export async function exportBacklogExcel(
 ): Promise<string> {
 
   const response =
-    await fetch(
+    await apiFetch(
       `${API_BASE_URL}/api/backlogs/export/excel`,
       {
         method: 'POST',

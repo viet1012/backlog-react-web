@@ -84,10 +84,6 @@ import {
 } from '../../services/facConfirmService'
 
 import {
-  getCurrentEmployeeId,
-} from '../../services/authService'
-
-import {
   preventColumnHeaderSort,
 } from '../../theme/dataGridHeaderStyles'
 
@@ -747,17 +743,7 @@ function FacConfirmDataTableInner({
           return false
         }
 
-        // MSNV lấy từ tài khoản đang đăng nhập
-        const employeeId =
-          getCurrentEmployeeId()
-
-        if (!employeeId) {
-          showEditError(
-            getMessages().facConfirm.accountUnknown,
-          )
-
-          return false
-        }
+        // Người sửa: BE lấy từ token, không gửi employeeId trong body
 
         // Thay đổi chưa lưu không bị xóa khi đổi công đoạn
         // => chỉ lưu khi mọi thay đổi được sửa ở công đoạn đang chọn.
@@ -779,8 +765,6 @@ function FacConfirmDataTableInner({
           setSaving(true)
 
           await saveFacConfirmProcessTimes({
-            employeeId,
-
             procGrp:
               highlightProcGrp,
 

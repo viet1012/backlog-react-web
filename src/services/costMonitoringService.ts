@@ -1,9 +1,10 @@
+import { apiFetch } from './apiClient'
 import {
     API_BASE_URL,
 } from '../config/api'
 
 import { getMessages } from '../i18n/i18nContext'
-import { getCurrentEmployeeId } from './authService'
+import { getToken } from './authStore'
 import { fileNameFromDisposition, readBlobWithProgress, saveBlob, type DownloadProgress } from '../utils/download'
 
 import {
@@ -44,7 +45,7 @@ async function getJson(
     signal?: AbortSignal,
 ): Promise<unknown> {
 
-    const response = await fetch(
+    const response = await apiFetch(
         url,
         {
             method: 'GET',
@@ -483,7 +484,7 @@ export async function getCostTransactionsPage(
     params.set('size', String(size))
 
     const startedAt = performance.now()
-    const response = await fetch(`${API_URL}/detail/transactions?${params}`, {
+    const response = await apiFetch(`${API_URL}/detail/transactions?${params}`, {
         headers: { Accept: 'application/json' },
         signal,
     })
@@ -510,7 +511,7 @@ export async function getCostTransactionFacets(
     const params = txParams(target, { ...query, sort: null })
     params.set('column', column)
 
-    const response = await fetch(`${API_URL}/detail/transactions/facets?${params}`, {
+    const response = await apiFetch(`${API_URL}/detail/transactions/facets?${params}`, {
         headers: { Accept: 'application/json' },
         signal,
     })
@@ -542,7 +543,7 @@ export async function exportCostTransactionsXlsx(
 
     onProgress?.(null)
 
-    const response = await fetch(`${API_URL}/detail/transactions/export?${txParams(target, query)}`)
+    const response = await apiFetch(`${API_URL}/detail/transactions/export?${txParams(target, query)}`)
 
     if (!response.ok) throw await errorOf(response, 'Cost Monitoring export failed')
 
@@ -557,7 +558,7 @@ export async function exportCostTransactionsXlsx(
 
 // =========================================================
 // NẠP ACTUAL OT – /ot/import (multipart), /ot/import-from-share, /ot/status
-// Ghi cần header X-Employee-Id (BE kiểm quyền ADMIN).
+// Ghi cần token có quyền COST_MONITORING X (BE kiểm).
 // Lỗi BE luôn dạng { status, message } → dùng message; thiếu thì thông báo theo status.
 // =========================================================
 
@@ -589,21 +590,16 @@ async function otRequest(
 ): Promise<unknown> {
     const headers: Record<string, string> = { Accept: 'application/json' }
 
-    if (write) {
-        const employeeId = getCurrentEmployeeId()
-
-        if (!employeeId) {
-            throw new CostApiError(getMessages().costOt.errors.notSignedIn, 401)
-        }
-
-        headers['X-Employee-Id'] = employeeId
+    // Người ghi: BE lấy từ token (apiFetch gắn Authorization). Không có token thì báo ngay.
+    if (write && !getToken()) {
+        throw new CostApiError(getMessages().costOt.errors.notSignedIn, 401)
     }
 
     let response: Response
 
     try {
         // body FormData: KHÔNG set Content-Type – browser tự thêm boundary
-        response = await fetch(url, { cache: 'no-store', ...init, headers })
+        response = await apiFetch(url, { cache: 'no-store', ...init, headers })
     } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') throw err
         throw new CostApiError(getMessages().costOt.errors.network)

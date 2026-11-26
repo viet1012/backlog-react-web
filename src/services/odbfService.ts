@@ -1,3 +1,4 @@
+import { apiFetch } from './apiClient'
 import {
     API_BASE_URL,
 } from '../config/api'
@@ -43,7 +44,7 @@ export async function getOdbfSummary(
     signal?: AbortSignal,
 ): Promise<OdbfSummaryItem[]> {
 
-    const response = await fetch(
+    const response = await apiFetch(
         `${API_BASE_URL}/api/odbf/summary`,
         {
             method: 'GET',

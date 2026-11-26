@@ -5,7 +5,8 @@ import { getCostMonitoringChart, getCostMonitoringMonths, toApiMonth } from '../
 import { getFacConfirmProcessGroups } from '../../../services/facConfirmService'
 import { listFloors } from '../../../services/machineLocatorService'
 import { fetchHseMonitor } from '../../../services/machineMonitorService'
-import { hasAnyRole } from '../../../services/authService'
+import { usePerm } from '../../auth/useAuth'
+import { ACTION, PERM } from '../../../routes/appPages'
 import type { FacConfirmProcessGroup } from '../../../types/facConfirm'
 import { loadFacConfirmPreferences } from '../../../utils/uiPreferences'
 import { FAC_CONFIRM_DIVS } from '../../facConfirm/facConfirmFilters'
@@ -176,7 +177,11 @@ function toTask<T>(query: { data: T | null, loading: boolean, error: string | nu
 
 export function useTodayTasks() {
   const today = todayKey()
-  const canFacConfirm = hasAnyRole(['PC', 'PRO'])
+  // Thẻ chỉ tải khi có quyền xem trang tương ứng (tránh toast 403 ở trang chủ)
+  const canFacConfirm = usePerm(PERM.FAC_CONFIRM, ACTION.VIEW)
+  const canCost = usePerm(PERM.COST_MONITORING, ACTION.VIEW)
+  // Thẻ máy gọi /api/machine-locator/floors: tạm gắn MACHINE_LOCATOR V (chưa chắc BE map vậy)
+  const canMachine = usePerm(PERM.MACHINE_LOCATOR, ACTION.VIEW)
   const div = loadFacConfirmPreferences().div
 
   const facConfirm = useCachedQuery<FacConfirmTask>(
@@ -186,20 +191,20 @@ export function useTodayTasks() {
   )
 
   const cost = useCachedQuery<CostTask>(
-    `home:today:cost:${today}`,
+    canCost ? `home:today:cost:${today}` : null,
     loadCost,
     { freshMs: FRESH_MS },
   )
 
   const machine = useCachedQuery<MachineTask>(
-    `home:today:hse:${today}`,
+    canMachine ? `home:today:hse:${today}` : null,
     loadMachine,
     { freshMs: FRESH_MS },
   )
 
   return {
     facConfirm: canFacConfirm ? toTask(facConfirm) : null,
-    cost: toTask(cost),
-    machine: toTask(machine),
+    cost: canCost ? toTask(cost) : null,
+    machine: canMachine ? toTask(machine) : null,
   }
 }

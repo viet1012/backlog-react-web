@@ -38,6 +38,8 @@ import {
   useCostTransactionFacets,
   useCostTransactionsPage,
 } from '../../hooks/useCostMonitoring'
+import { usePerm } from '../auth/useAuth'
+import { ACTION, PERM } from '../../routes/appPages'
 import {
   exportCostTransactionsXlsx,
   type CostTxFacetColumn,
@@ -182,6 +184,7 @@ export function CostDetailTransactionTable({
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(COST_TX_DEFAULT_PAGE_SIZE)
   const [exporting, setExporting] = useState(false)
+  const canExport = usePerm(PERM.COST_MONITORING, ACTION.EXPORT)
 
   const [search, setSearch] = useState('')
   const [q, setQ] = useState('')
@@ -416,19 +419,22 @@ export function CostDetailTransactionTable({
           </IconButton>
         </Stack>
 
-        <Tooltip title={labels.exportExcel} arrow>
-          <span>
-            <IconButton
-              size="small"
-              aria-label={labels.exportExcel}
-              disabled={total === 0 || exporting || !query}
-              onClick={() => void handleExport()}
-              sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 0.5 }}
-            >
-              {exporting ? <CircularProgress size={16} /> : <FileDownloadOutlinedIcon sx={{ fontSize: 18 }} />}
-            </IconButton>
-          </span>
-        </Tooltip>
+        {/* Xuất Excel giao dịch cần COST_MONITORING X */}
+        {canExport && (
+          <Tooltip title={labels.exportExcel} arrow>
+            <span>
+              <IconButton
+                size="small"
+                aria-label={labels.exportExcel}
+                disabled={total === 0 || exporting || !query}
+                onClick={() => void handleExport()}
+                sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 0.5 }}
+              >
+                {exporting ? <CircularProgress size={16} /> : <FileDownloadOutlinedIcon sx={{ fontSize: 18 }} />}
+              </IconButton>
+            </span>
+          </Tooltip>
+        )}
       </Stack>
 
       {/* lỗi xuất file đã báo qua toast (notifyExport) */}

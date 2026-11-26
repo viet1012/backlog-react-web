@@ -1,4 +1,4 @@
-import { hasAnyRole } from '../../services/authService'
+import { canOpenPage } from '../../routes/appPages'
 import { getPageUsage } from '../layout/pageUsage'
 import { menuGroups, type MenuGroupId, type MenuItemConfig } from '../layout/sidebarConfig'
 
@@ -6,7 +6,7 @@ import { menuGroups, type MenuGroupId, type MenuItemConfig } from '../layout/sid
  * Chia menu sidebar thành nhóm cho trang chủ, cùng quy tắc với LeftSidebar:
  * - ready: mở được ngay (đủ quyền, đã xong) -> lối tắt
  * - upcoming: đủ quyền nhưng chưa xong / đang tắt -> sắp ra mắt
- * Trang không có quyền (vd. trang ADMIN với tài khoản thường) không hiện.
+ * Trang không có quyền (perm từ /me) không hiện.
  *
  * Trang hay dùng (pageUsage) được đánh dấu `frequent` và xếp lên đầu tầng "Dùng ngay".
  * Giữa các trang hay dùng vẫn theo thứ tự sidebar để vị trí thùng ít xáo trộn.
@@ -27,7 +27,9 @@ const MAX_FREQUENT = 3
 // Khoảng 2 lần mở gần đây trở lên mới tính là hay dùng
 const MIN_FREQUENT_SCORE = 1.5
 
-export function buildHomeMenu(): HomeMenu {
+export function buildHomeMenu(
+  can: (feature: string, action: string) => boolean,
+): HomeMenu {
   const menu: HomeMenu = { ready: [], upcoming: [] }
 
   for (const group of menuGroups) {
@@ -35,7 +37,7 @@ export function buildHomeMenu(): HomeMenu {
       if (item.path === HOME_PATH) continue
 
       // Không có quyền: không hiện
-      if (item.roles && !hasAnyRole(item.roles)) continue
+      if (!canOpenPage(item, can)) continue
 
       const entry = { item, groupId: group.id }
       const ready = (item.status ?? 'ready') === 'ready' && !item.disabled

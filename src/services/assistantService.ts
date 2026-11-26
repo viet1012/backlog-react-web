@@ -1,16 +1,14 @@
+import { apiFetch } from './apiClient'
 import { API_BASE_URL } from '../config/api'
-import { getCurrentEmployeeId } from './authService'
 import { normalizeSkin } from '../components/mascot/mascotSkin'
 import type { MascotSkin } from '../components/mascot/mascotSkin'
 
 /**
- * Header chung cho mọi request /api/assistant/*: kèm X-Employee-Id (MSNV user đang đăng nhập,
- * cùng nguồn session với LogoutConfirmDialog). Chưa đăng nhập / không có MSNV → không gửi header.
- * Đọc lúc gửi (không cache) để đúng user sau khi đăng nhập lại.
+ * Header chung cho mọi request /api/assistant/*. Danh tính người hỏi: BE lấy từ token
+ * (apiFetch gắn Authorization), không còn gửi X-Employee-Id.
  */
 function assistantHeaders(headers: Record<string, string>): Record<string, string> {
-  const employeeId = getCurrentEmployeeId()
-  return employeeId ? { ...headers, 'X-Employee-Id': employeeId } : headers
+  return headers
 }
 
 // =========================================================
@@ -441,7 +439,7 @@ export async function getAssistantSuggestions(
   if (signal?.aborted) controller.abort()
 
   try {
-    const response = await fetch(`${SUGGESTIONS_URL}?${query}`, {
+    const response = await apiFetch(`${SUGGESTIONS_URL}?${query}`, {
       headers: assistantHeaders({ Accept: 'application/json' }),
       signal: controller.signal,
     })
@@ -478,7 +476,7 @@ export async function getAssistantInfo(signal?: AbortSignal): Promise<AssistantI
   if (signal?.aborted) controller.abort()
 
   try {
-    const response = await fetch(INFO_URL, {
+    const response = await apiFetch(INFO_URL, {
       headers: assistantHeaders({ Accept: 'application/json' }),
       signal: controller.signal,
     })
@@ -517,7 +515,7 @@ export class AssistantSkinError extends Error {
 export async function saveAssistantSkin(skin: MascotSkin): Promise<MascotSkin> {
   let response: Response
   try {
-    response = await fetch(SKIN_URL, {
+    response = await apiFetch(SKIN_URL, {
       method: 'PUT',
       headers: assistantHeaders({ Accept: 'application/json', 'Content-Type': 'application/json' }),
       body: JSON.stringify(skin),
@@ -559,7 +557,7 @@ export async function postAssistantChat(
   try {
     let response: Response
     try {
-      response = await fetch(CHAT_URL, {
+      response = await apiFetch(CHAT_URL, {
         method: 'POST',
         headers: assistantHeaders({
           'Content-Type': 'application/json',

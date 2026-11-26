@@ -1,5 +1,5 @@
+import { apiFetch } from './apiClient'
 import { API_BASE_URL } from '../config/api'
-import { getCurrentEmployeeId } from './authService'
 import { fileNameFromDisposition, readBlobWithProgress, saveBlob, type DownloadProgress } from '../utils/download'
 import type {
   AiLogDetail,
@@ -12,18 +12,15 @@ import type {
 } from '../types/assistantLogs'
 
 // =========================================================
-// AI LOGS – API backlog-be (/api/admin/assistant-logs), chỉ ADMIN
-// BE kiểm quyền theo header X-Employee-Id (AssistantLogAdminController)
+// AI LOGS – API backlog-be (/api/admin/assistant-logs)
+// BE kiểm quyền ASSISTANT_LOG theo token (apiFetch gắn Authorization)
 // =========================================================
 
 const API_URL =
   `${API_BASE_URL.replace(/\/$/, '')}/api/admin/assistant-logs`
 
 function adminHeaders(accept: string): Record<string, string> {
-  const employeeId = getCurrentEmployeeId()
-  return employeeId
-    ? { Accept: accept, 'X-Employee-Id': employeeId }
-    : { Accept: accept }
+  return { Accept: accept }
 }
 
 // Lỗi BE (AssistantLogAdminExceptionHandler): { status, message }
@@ -51,7 +48,7 @@ async function throwApiError(response: Response): Promise<never> {
 }
 
 async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(url, {
+  const response = await apiFetch(url, {
     headers: adminHeaders('application/json'),
     signal,
   })
@@ -148,7 +145,7 @@ export async function exportAiLogsExcel(
   params.set('sort', query.sort)
   params.set('order', query.order)
 
-  const response = await fetch(`${API_URL}/export?${params}`, {
+  const response = await apiFetch(`${API_URL}/export?${params}`, {
     headers: adminHeaders('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/json'),
   })
 

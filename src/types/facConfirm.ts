@@ -248,7 +248,7 @@ export interface FacConfirmProcessTimeChange {
 // =========================================================
 
 export interface FacConfirmProcessTimeRequest {
-    employeeId: string
+    // Người sửa: BE lấy từ token (Authorization), không gửi employeeId trong body
 
     // Công đoạn đang chọn khi sửa.
     // Backend kiểm tra quyền sửa field theo công đoạn này.

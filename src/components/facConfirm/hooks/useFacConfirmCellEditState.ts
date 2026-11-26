@@ -9,6 +9,9 @@ import type {
   GridCellParams,
 } from '@mui/x-data-grid'
 
+import { usePerm } from '../../auth/useAuth'
+import { ACTION, PERM } from '../../../routes/appPages'
+
 import {
   FAC_CONFIRM_PROCESS_CONFIG,
   getFacConfirmProcessIdentityByBackendName,
@@ -166,6 +169,9 @@ export function useFacConfirmCellEditState({
   activeProcess,
   confirmedProcesses,
 }: Props) {
+  // Sửa process-times cần FAC_CONFIRM E
+  const hasEditPerm = usePerm(PERM.FAC_CONFIRM, ACTION.EDIT)
+
   const baselineValuesRef = useRef(
     new Map<string, CellBaseline>(),
   )
@@ -205,6 +211,11 @@ export function useFacConfirmCellEditState({
       row: FacConfirmRow,
       field: string,
     ): boolean => {
+      // Không có quyền FAC_CONFIRM E: chỉ xem (BE vẫn kiểm khi PATCH process-times)
+      if (!hasEditPerm) {
+        return false
+      }
+
       if (!isFieldEditableForRow(row, activeProcess, field)) {
         return false
       }
@@ -268,6 +279,7 @@ export function useFacConfirmCellEditState({
       return false
     },
     [
+      hasEditPerm,
       activeProcess,
       confirmedCells,
       pendingMap,

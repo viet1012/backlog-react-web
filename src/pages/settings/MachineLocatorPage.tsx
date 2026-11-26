@@ -47,7 +47,8 @@ import {
 } from '../../components/machineLocator/machineLocatorColors'
 import { useMachineLocator } from '../../hooks/useMachineLocator'
 import { useStableCallback } from '../../hooks/useStableCallback'
-import { hasAnyRole } from '../../services/authService'
+import { useAuth } from '../../components/auth/useAuth'
+import { ACTION, PERM } from '../../routes/appPages'
 import {
   listFloors,
   loadMachineStore,
@@ -332,7 +333,10 @@ function MachineLocatorView({
 }: MachineLocatorViewProps) {
   const { t } = useI18n()
 
-  const ml = useMachineLocator(layout, hasAnyRole(['ADMIN']))
+  const { can } = useAuth()
+  const ml = useMachineLocator(layout, can(PERM.MACHINE_LOCATOR, ACTION.EDIT), {
+    canDelete: can(PERM.MACHINE_LOCATOR, ACTION.DELETE),
+  })
 
   const codes = Object.keys(ml.machines).sort(compareCodes)
   const nLoc = codes.reduce((a, c) => a + ml.machines[c].boxes.length, 0)

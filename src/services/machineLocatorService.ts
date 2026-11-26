@@ -1,3 +1,4 @@
+import { apiFetch } from './apiClient'
 import { API_BASE_URL } from '../config/api'
 import type {
   FloorDto,
@@ -6,7 +7,7 @@ import type {
   MachineEdit,
   MachineLayoutConfig,
 } from '../types/machineLocator'
-import { getCurrentEmployeeId } from './authService'
+import { getToken } from './authStore'
 import { getMessages } from '../i18n/i18nContext'
 
 // =========================================================
@@ -61,18 +62,15 @@ async function request<T>(
 
   if (init.body) headers['Content-Type'] = 'application/json'
 
-  if (write) {
-    const employeeId = getCurrentEmployeeId()
-
-    if (!employeeId) throw new MachineStoreError('auth', getMessages().locator.errors.notSignedIn)
-
-    headers['X-Employee-Id'] = employeeId
+  // Người ghi: BE lấy từ token (apiFetch gắn Authorization). Không có token thì báo ngay.
+  if (write && !getToken()) {
+    throw new MachineStoreError('auth', getMessages().locator.errors.notSignedIn)
   }
 
   let res: Response
 
   try {
-    res = await fetch(url, { cache: 'no-store', ...init, headers })
+    res = await apiFetch(url, { cache: 'no-store', ...init, headers })
   } catch (e) {
     throw new MachineStoreError('api_fail', e instanceof Error ? e.message : getMessages().locator.errors.connectionLost)
   }

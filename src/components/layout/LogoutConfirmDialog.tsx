@@ -38,6 +38,7 @@ import {
 } from '../shift/shiftParts'
 import { buildWorkerCharacter, readAvatarSeed, type WorkerCharacter } from '../shift/workerCharacter'
 
+import type { UserBadge } from '../auth/userBadge'
 import { FactoryAvatar } from './FactoryAvatar'
 import { FactoryVehicle, vehicleSize, type VehicleKind } from './FactoryVehicle'
 
@@ -46,7 +47,8 @@ interface LogoutConfirmDialogProps {
     username: string
     /** MSNV, shown on the badge under the name */
     employeeId?: string
-    role?: string
+    /** Badge bộ phận (section/dept) + tooltip; null thì ẩn */
+    badge?: UserBadge | null
     /** Seed of the user's character; defaults to the stored one. */
     avatarSeed?: string
     onCancel: () => void
@@ -1036,7 +1038,7 @@ export function LogoutConfirmDialog({
     open,
     username,
     employeeId,
-    role,
+    badge,
     avatarSeed,
     onCancel,
     onConfirm,
@@ -1300,9 +1302,10 @@ export function LogoutConfirmDialog({
                                             </Box>
                                         </Box>
                                     )}
-                                    {role && (
+                                    {badge && (
                                         <Typography
                                             noWrap
+                                            title={badge.tooltip || undefined}
                                             sx={{
                                                 minWidth: 0,
                                                 fontSize: 10.5,
@@ -1311,7 +1314,7 @@ export function LogoutConfirmDialog({
                                                 color: 'primary.main',
                                             }}
                                         >
-                                            {role}
+                                            {badge.label}
                                         </Typography>
                                     )}
                                 </Box>

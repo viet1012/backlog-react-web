@@ -26,6 +26,8 @@ import { PageHeader } from '../../components/common/PageHeader'
 import { PageShell } from '../../components/common/PageShell'
 import { HeaderAction, HeaderActionBar, HeaderActionDivider } from '../../components/common/headerActions'
 import { notifyExport } from '../../components/common/notify'
+import { usePerm } from '../../components/auth/useAuth'
+import { ACTION, PERM } from '../../routes/appPages'
 import { UpdatedStatus } from '../../components/common/UpdatedStatus'
 import { useBacklogData } from '../../hooks/useBacklogData'
 import { useBacklogSummary } from '../../hooks/useBacklogSummary'
@@ -197,6 +199,9 @@ export function BacklogPage({
   mode,
   onToggleMode,
 }: BacklogPageProps) {
+
+  // Xuất Excel cần BACKLOG X
+  const canExport = usePerm(PERM.BACKLOG, ACTION.EXPORT)
 
   const { t } =
     useI18n()
@@ -891,14 +896,18 @@ export function BacklogPage({
 
         actions={
           <HeaderActionBar>
-            <HeaderAction
-              kind="exportExcel"
-              loading={exporting}
-              disabled={exportColumns.length === 0}
-              onClick={handleExportExcel}
-            />
+            {canExport && (
+              <>
+                <HeaderAction
+                  kind="exportExcel"
+                  loading={exporting}
+                  disabled={exportColumns.length === 0}
+                  onClick={handleExportExcel}
+                />
 
-            <HeaderActionDivider />
+                <HeaderActionDivider />
+              </>
+            )}
 
             <HeaderAction
               kind="refresh"

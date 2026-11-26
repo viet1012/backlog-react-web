@@ -17,38 +17,14 @@ import {
 } from 'react-router-dom'
 
 import { MainLayout } from './components/layout/MainLayout'
+import { AuthProvider } from './components/auth/AuthProvider'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
-import { RoleRoute } from './components/auth/RoleRoute'
+import { PermRoute } from './components/auth/PermRoute'
 import { ClockInOverlay } from './components/shift/ClockInOverlay'
 import { NotifyHost } from './components/common/notify'
 
 import { LoginPage } from './pages/auth/LoginPage'
-import {
-  AiLogsPage,
-  AsakaiPage,
-  BacklogPage,
-  BosbPage,
-  CostMonitoringPage,
-  DeadstockPage,
-  ExportListPage,
-  FacConfirmPage,
-  KpiPage,
-  MachineLocatorPage,
-  MachineMonitorPage,
-  OdbfPage,
-  OtPage,
-  PackingListPage,
-  PcTrainingPage,
-  Pdf2cadPage,
-  PlPage,
-  RemainPoControlPage,
-  SaleFollowPage,
-  SalesStatusPage,
-  ShipmentPage,
-  SphPage,
-  UserHomePage,
-  UtilityEvnComparePage,
-} from './pages/lazyPages'
+import { appPages } from './routes/appPages'
 
 import {
   createDashboardTheme,
@@ -142,6 +118,8 @@ function App() {
     setMode(nextMode)
   }
 
+  const pageContext = { mode, onToggleMode: toggleThemeMode }
+
 
   return (
     <ThemeProvider theme={theme}>
@@ -161,233 +139,90 @@ function App() {
         {/* Toasts from notify.* (save / import / export feedback on every page) */}
         <NotifyHost />
 
-        <BrowserRouter>
+        {/* Có token: gọi /me lấy quyền, trong lúc chờ chưa render route */}
+        <AuthProvider>
 
-          <Routes>
+          <BrowserRouter>
 
-            <Route
-              path="login"
-              element={<LoginPage />}
-            />
-
-            <Route element={<ProtectedRoute />}>
+            <Routes>
 
               <Route
-                element={<MainLayout onToggleMode={toggleThemeMode} />}
-              >
+                path="login"
+                element={<LoginPage />}
+              />
 
-                {/* =========================
-                DEFAULT
-            ========================= */}
-
-                <Route
-                  index
-                  element={
-                    <Navigate
-                      to={getDefaultAuthRoute()}
-                      replace
-                    />
-                  }
-                />
-
-                {/* =========================
-                PRODUCTION
-            ========================= */}
+              <Route element={<ProtectedRoute />}>
 
                 <Route
-                  path="sph"
-                  element={<SphPage />}
-                />
+                  element={<MainLayout onToggleMode={toggleThemeMode} />}
+                >
 
-                <Route
-                  path="asakai"
-                  element={<AsakaiPage />}
-                />
-
-                <Route
-                  path="cost-monitoring"
-                  element={
-                    <CostMonitoringPage
-                      mode={mode}
-                      onToggleMode={toggleThemeMode}
-                    />
-                  }
-                />
-
-                <Route
-                  path="pc-training"
-                  element={
-                    <PcTrainingPage
-                      mode={mode}
-                      onToggleMode={toggleThemeMode}
-                    />
-                  }
-                />
-
-                {/* =========================
-                PLANNING
-            ========================= */}
-
-                <Route element={<RoleRoute roles={['PC']} />}>
-                  <Route path="backlog" element={<BacklogPage mode={mode} onToggleMode={toggleThemeMode} />} />
-                  <Route path="remain-po-control" element={<RemainPoControlPage mode={mode} />} />
-                  <Route path="sale-follow" element={<SaleFollowPage mode={mode} />} />
-                  <Route path="export-list" element={<ExportListPage />} />
-                </Route>
-
-                <Route element={<RoleRoute roles={['PC', 'PRO']} />}>
-                  <Route path="fac-confirm" element={<FacConfirmPage mode={mode} onToggleMode={toggleThemeMode} />} />
-                  <Route path="packing-list" element={<PackingListPage />} />
-                </Route>
-
-                <Route element={<RoleRoute roles={['PC', 'PRO']} />}>
-                  <Route path="odbf" element={<OdbfPage mode={mode} onToggleMode={toggleThemeMode} />} />
-                  <Route path="shipping-schedule" element={<ShipmentPage mode={mode} onToggleMode={toggleThemeMode} />} />
-                </Route>
-
-                {/* Trang mặc định của mọi tài khoản (getDefaultAuthRoute): không giới hạn role */}
-                <Route
-                  path="user-home"
-                  element={<UserHomePage mode={mode} onToggleMode={toggleThemeMode} />}
-                />
-
-                <Route
-                  path="sales-status"
-                  element={<SalesStatusPage />}
-                />
-
-                {/* =========================
-                SHIPPING SCHEDULE
-            ========================= */}
-
-                {/* =========================
-                MANAGEMENT
-            ========================= */}
-
-                <Route
-                  path="bosb"
-                  element={<BosbPage />}
-                />
-
-                <Route
-                  path="deadstock"
-                  element={<DeadstockPage />}
-                />
-
-                <Route
-                  path="pl"
-                  element={<PlPage />}
-                />
-
-                <Route
-                  path="kpi"
-                  element={<KpiPage />}
-                />
-
-                <Route
-                  path="ot"
-                  element={<OtPage />}
-                />
-
-                {/* =========================
-                MONITORING
-            ========================= */}
-
-                <Route
-                  path="monitoring/machine"
-                  element={
-                    <MachineMonitorPage
-                      mode={mode}
-                      onToggleMode={toggleThemeMode}
-                    />
-                  }
-                />
-
-                {/* route cũ, giữ để link đã chia sẻ (kèm ?tab=&layout=) vẫn mở được */}
-                <Route
-                  path="machine-monitor"
-                  element={<MachineMonitorRedirect />}
-                />
-
-                {/* =========================
-                SETTING
-            ========================= */}
-
-                <Route
-                  path="settings/machine-locator"
-                  element={
-                    <MachineLocatorPage
-                      mode={mode}
-                      onToggleMode={toggleThemeMode}
-                    />
-                  }
-                />
-
-                <Route element={<RoleRoute roles={['ADMIN']} />}>
                   <Route
-                    path="settings/admin"
+                    index
                     element={
-                      <AiLogsPage
-                        mode={mode}
-                        onToggleMode={toggleThemeMode}
+                      <Navigate
+                        to={getDefaultAuthRoute()}
+                        replace
                       />
                     }
                   />
 
+                  {/* Route + quyền xem sinh từ routes/appPages.tsx (cùng nguồn với sidebar) */}
+                  {appPages
+                    .filter((page) => page.element)
+                    .map((page) => (
+                      <Route
+                        key={page.path}
+                        element={<PermRoute perm={page.perm} />}
+                      >
+                        <Route
+                          path={page.path.replace(/^\//, '')}
+                          element={page.element!(pageContext)}
+                        />
+                      </Route>
+                    ))}
+
+                  {/* route cũ, giữ để link đã chia sẻ (kèm ?tab=&layout=) vẫn mở được */}
                   <Route
-                    path="utility-evn-compare"
+                    path="machine-monitor"
+                    element={<MachineMonitorRedirect />}
+                  />
+
+                  {/* route cũ của trang Admin, giữ để link đã chia sẻ (kèm bộ lọc ?from=&to=…) vẫn mở được */}
+                  <Route
+                    path="settings/ai-logs"
+                    element={<AdminRedirect />}
+                  />
+
+                  {/* route cũ, giữ để link đã chia sẻ (kèm #mã máy) vẫn mở được */}
+                  <Route
+                    path="machine-locator"
+                    element={<MachineLocatorRedirect />}
+                  />
+
+                  {/* =========================
+                  FALLBACK
+              ========================= */}
+
+                  <Route
+                    path="*"
                     element={
-                      <UtilityEvnComparePage
-                        mode={mode}
-                        onToggleMode={toggleThemeMode}
+                      <Navigate
+                        to={getDefaultAuthRoute()}
+                        replace
                       />
                     }
                   />
 
-                  <Route
-                    path="settings/pdf2cad"
-                    element={
-                      <Pdf2cadPage
-                        mode={mode}
-                        onToggleMode={toggleThemeMode}
-                      />
-                    }
-                  />
                 </Route>
-
-                {/* route cũ của trang Admin, giữ để link đã chia sẻ (kèm bộ lọc ?from=&to=…) vẫn mở được */}
-                <Route
-                  path="settings/ai-logs"
-                  element={<AdminRedirect />}
-                />
-
-                {/* route cũ, giữ để link đã chia sẻ (kèm #mã máy) vẫn mở được */}
-                <Route
-                  path="machine-locator"
-                  element={<MachineLocatorRedirect />}
-                />
-
-                {/* =========================
-                FALLBACK
-            ========================= */}
-
-                <Route
-                  path="*"
-                  element={
-                    <Navigate
-                      to={getDefaultAuthRoute()}
-                      replace
-                    />
-                  }
-                />
 
               </Route>
 
-            </Route>
+            </Routes>
 
-          </Routes>
+          </BrowserRouter>
 
-        </BrowserRouter>
+        </AuthProvider>
 
       </LocalizationProvider>
 

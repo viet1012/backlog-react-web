@@ -24,12 +24,9 @@ import {
 } from '../../components/auth/loginStyles'
 import {
   AuthApiError,
-  getAuthenticatedUsername,
-  getDefaultAuthRoute,
-  isAuthenticated,
-  login,
   register,
 } from '../../services/authService'
+import { useAuth } from '../../components/auth/useAuth'
 import { useIsDaytime } from '../../hooks/useIsDaytime'
 import { useI18n } from '../../i18n/useI18n'
 import { LanguageToggleButton } from '../../components/common/LanguageToggleButton'
@@ -39,10 +36,14 @@ import { preloadRoute } from '../lazyPages'
 
 type AuthMode = 'login' | 'register'
 
+const HOME_ROUTE = '/user-home'
+
 // Chỉ nhận đường dẫn nội bộ ("/backlog?q=…"): chặn "//site-khac" hay URL đầy đủ
-// (tránh bị lợi dụng chuyển hướng ra ngoài) và chính trang /login
-function getReturnPath(state: unknown): string | null {
-  const from = (state as { from?: unknown } | null)?.from
+// (tránh bị lợi dụng chuyển hướng ra ngoài) và chính trang /login.
+// Nguồn: ?returnUrl= (ProtectedRoute / 401), hoặc state.from (link cũ)
+function getReturnPath(search: string, state: unknown): string | null {
+  const from = new URLSearchParams(search).get('returnUrl')
+    ?? (state as { from?: unknown } | null)?.from
 
   if (typeof from !== 'string' || !from.startsWith('/') || from.startsWith('//') || from.startsWith('/\\')) {
     return null
@@ -55,6 +56,7 @@ export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { t } = useI18n()
+  const { user, signIn } = useAuth()
   const [mode, setMode] = useState<AuthMode>('login')
   const [employeeId, setEmployeeId] = useState('')
   const [password, setPassword] = useState('')
@@ -93,10 +95,11 @@ export function LoginPage() {
   }, [])
 
   // Link đã mở trước khi bị chuyển sang đăng nhập (ProtectedRoute gửi kèm)
-  const returnTo = getReturnPath(location.state)
+  const returnTo = getReturnPath(location.search, location.state)
 
-  if (isAuthenticated()) {
-    return <Navigate to={returnTo ?? getDefaultAuthRoute()} replace />
+  // Đang đăng nhập (loading) thì chờ hiệu ứng chấm công rồi tự chuyển trang
+  if (user && !loading) {
+    return <Navigate to={returnTo ?? HOME_ROUTE} replace />
   }
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
@@ -105,11 +108,11 @@ export function LoginPage() {
     setLoading(true)
 
     try {
-      const session = await login(employeeId.trim(), password, remember)
+      const me = await signIn(employeeId.trim(), password, remember)
       // Quay lại đúng link đã mở (kèm bộ lọc); không có thì về trang chủ.
-      // Không đủ quyền với trang đó thì RoleRoute tự đưa về trang chủ.
-      const target = returnTo ?? getDefaultAuthRoute(session)
-      const username = getAuthenticatedUsername() ?? employeeId.trim()
+      // Không đủ quyền với trang đó thì PermRoute tự đưa về trang chủ.
+      const target = returnTo ?? HOME_ROUTE
+      const username = me.name || me.employeeId || employeeId.trim()
 
       // Download the landing page while the shutter is down
       preloadRoute(target.split(/[?#]/)[0])
@@ -128,7 +131,9 @@ export function LoginPage() {
       window.setTimeout(() => navigate(target, { replace: true }), CLOCK_IN_COVER_MS)
     } catch (requestError) {
       setError(
-        requestError instanceof AuthApiError && requestError.status === 401
+        requestError instanceof AuthApiError && requestError.status === 429
+          ? t.auth.tooManyAttempts
+          : requestError instanceof AuthApiError && requestError.status === 401
           ? t.auth.invalidCredentials
           : requestError instanceof Error
             ? requestError.message
@@ -167,9 +172,11 @@ export function LoginPage() {
       setConfirmPassword('')
     } catch (requestError) {
       setError(
-        requestError instanceof Error
-          ? requestError.message
-          : t.auth.registerFailed,
+        requestError instanceof AuthApiError && requestError.status === 403
+          ? t.auth.registerLocked
+          : requestError instanceof Error
+            ? requestError.message
+            : t.auth.registerFailed,
       )
     } finally {
       setLoading(false)

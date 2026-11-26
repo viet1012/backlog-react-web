@@ -13,7 +13,8 @@ import { alpha, useTheme } from '@mui/material/styles'
 import { useState, type ReactNode } from 'react'
 
 import { useI18n } from '../../i18n/useI18n'
-import { getAuthSession, type AuthSession } from '../../services/authService'
+import type { AuthUser } from '../../services/authService'
+import { useAuth } from '../auth/useAuth'
 import { codeFontFamily } from '../machineLocator/machineLocatorColors'
 import {
   Block,
@@ -384,10 +385,9 @@ function toActions(value: unknown): string[] {
   return list.map((a) => String(a).trim().toUpperCase()).filter(Boolean)
 }
 
-// Session hiện chưa có perms; khi /me trả perms (map feature → actions hoặc
-// mảng { feature, actions }) bảng tự hiện
-function readPerms(session: AuthSession | null): { feature: string; actions: Set<string> }[] | null {
-  const raw = (session as (AuthSession & { perms?: unknown }) | null)?.perms
+// User từ /me (AuthProvider); perms rỗng thì không hiện bảng feature
+function readPerms(session: AuthUser | null): { feature: string; actions: Set<string> }[] | null {
+  const raw: unknown = session?.perms
   if (!raw || typeof raw !== 'object') return null
 
   const byFeature = new Map<string, Set<string>>()
@@ -409,6 +409,8 @@ function readPerms(session: AuthSession | null): { feature: string; actions: Set
     Object.entries(raw as Record<string, unknown>).forEach(([feature, v]) => add(feature.trim(), toActions(v)))
   }
 
+  if (!byFeature.size) return null
+
   return [...byFeature.entries()]
     .map(([feature, actions]) => ({ feature, actions }))
     .sort((a, b) => a.feature.localeCompare(b.feature))
@@ -416,7 +418,7 @@ function readPerms(session: AuthSession | null): { feature: string; actions: Set
 
 function MyAccess() {
   const en = useEn()
-  const session = getAuthSession()
+  const { user: session } = useAuth()
   const perms = readPerms(session)
 
   if (!session) {
@@ -462,8 +464,8 @@ function MyAccess() {
       ) : (
         <Alert severity="info" variant="outlined" sx={{ py: 0 }}>
           {en
-            ? <>No perms in this session yet (<Code>/me</Code> returns roles only). The feature table appears once <Code>/me</Code> returns perms.</>
-            : <>Phiên chưa có perms (<Code>/me</Code> mới trả roles). Bảng feature sẽ tự hiện khi <Code>/me</Code> trả perms.</>}
+            ? <><Code>/me</Code> returned no perms for this account.</>
+            : <><Code>/me</Code> không trả perms nào cho tài khoản này.</>}
         </Alert>
       )}
     </>

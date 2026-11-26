@@ -20,6 +20,7 @@ import {
 } from '../../components/userHome/graphics/graphicsQuality'
 import { UserHomeBackdrop } from '../../components/userHome/UserHomeBackdrop'
 import { buildHomeMenu } from '../../components/userHome/userHomeMenu'
+import { useAuth } from '../../components/auth/useAuth'
 import { UserHomeTopBar } from '../../components/userHome/UserHomeTopBar'
 import { UserHomeRack } from '../../components/userHome/warehouse/UserHomeRack'
 import { loadWarehouse3D } from '../../components/userHome/warehouse3d/loadWarehouse3D'
@@ -65,7 +66,9 @@ export function UserHomePage({ mode, onToggleMode }: UserHomePageProps) {
   const g = t.userHome.graphics
 
   const dark = mode === 'dark'
-  const menu = useMemo(() => buildHomeMenu(), [])
+  // can đổi theo user (đăng nhập tài khoản khác khi trang vẫn được giữ) -> dựng lại menu
+  const { can } = useAuth()
+  const menu = useMemo(() => buildHomeMenu(can), [can])
   const [gpu] = useState(detectGpu)
   const wide = useMediaQuery((theme: Theme) => theme.breakpoints.up('md'))
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')

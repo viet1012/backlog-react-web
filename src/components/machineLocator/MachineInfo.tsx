@@ -330,9 +330,12 @@ export function MachineInfo({ ml }: MachineInfoProps) {
             </PanelButton>
           )}
 
-          <PanelButton appearance="destructive" onClick={() => ml.togglePanel('del')}>
-            {t.locator.info.deleteMachine}
-          </PanelButton>
+          {/* Xóa máy cần MACHINE_LOCATOR D */}
+          {ml.canDelete && (
+            <PanelButton appearance="destructive" onClick={() => ml.togglePanel('del')}>
+              {t.locator.info.deleteMachine}
+            </PanelButton>
+          )}
         </Actions>
 
         {panelMode === 'rename' && (
@@ -344,7 +347,7 @@ export function MachineInfo({ ml }: MachineInfoProps) {
           />
         )}
 
-        {panelMode === 'del' && (
+        {panelMode === 'del' && ml.canDelete && (
           <Box sx={{ display: 'flex', gap: 0.6, mt: 1, alignItems: 'center' }}>
             <Box component="span" sx={{ flex: 1 }}>
               {t.locator.info.confirmDelete(cur)}

@@ -25,6 +25,8 @@ import { Suspense, lazy, startTransition, useMemo, useState } from 'react'
 import { HeaderAction, HeaderActionBar, HeaderActionDivider } from '../../components/common/headerActions'
 import { PageSkeleton } from '../../components/common/loadState'
 import { notifyExport } from '../../components/common/notify'
+import { usePerm } from '../../components/auth/useAuth'
+import { ACTION, PERM } from '../../routes/appPages'
 import { PageHeader } from '../../components/common/PageHeader'
 import { PageShell } from '../../components/common/PageShell'
 import { UpdatedStatus } from '../../components/common/UpdatedStatus'
@@ -321,6 +323,8 @@ export function AiLogsPage({ mode, onToggleMode }: AiLogsPageProps) {
   const [flowLog, setFlowLog] = useState<AiLogDetail | null>(null)
 
   const [exporting, setExporting] = useState(false)
+  // Xuất Excel log cần ASSISTANT_LOG X
+  const canExport = usePerm(PERM.ASSISTANT_LOG, ACTION.EXPORT)
 
   // đổi bộ lọc → về trang đầu
   function changeFilters(next: AiLogFilters) {
@@ -399,14 +403,18 @@ export function AiLogsPage({ mode, onToggleMode }: AiLogsPageProps) {
         )}
         actions={tab === 'logs' && (
           <HeaderActionBar>
-            <HeaderAction
-              kind="exportExcel"
-              loading={exporting}
-              disabled={total === 0}
-              onClick={() => void handleExport()}
-            />
+            {canExport && (
+              <>
+                <HeaderAction
+                  kind="exportExcel"
+                  loading={exporting}
+                  disabled={total === 0}
+                  onClick={() => void handleExport()}
+                />
 
-            <HeaderActionDivider />
+                <HeaderActionDivider />
+              </>
+            )}
 
             <HeaderAction
               kind="refresh"

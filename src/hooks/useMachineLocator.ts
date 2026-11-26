@@ -241,7 +241,10 @@ function bboxOfOutline(p: Polygon[]): Pick<Box, 'x' | 'y' | 'w' | 'h'> {
 
 export function useMachineLocator(
   layout: MachineLayoutConfig,
+  // MACHINE_LOCATOR E: sửa / rename / confirm / revert / bulk / nhập JSON / xuất CSV-JSON-PNG
   canWrite: boolean,
+  // MACHINE_LOCATOR D: xóa máy (kể cả op del khi nhập JSON)
+  { canDelete = false }: { canDelete?: boolean } = {},
 ) {
   // dữ liệu floor đã lưu trên server + version để gửi ifVersion khi ghi
   const [data, setData] = useState<LayoutData>(EMPTY_DATA)
@@ -1740,7 +1743,7 @@ export function useMachineLocator(
   async function deleteMachine() {
     const c = cur
 
-    if (!c) return
+    if (!c || !canDelete) return
 
     // máy chưa lưu lên server: chỉ bỏ bản nháp
     const next = data.m[c]
@@ -1791,6 +1794,8 @@ export function useMachineLocator(
 
   // false: đang có thay đổi chưa lưu, không mở hộp chọn file
   function canStartImport(): boolean {
+    if (!canWrite) return false
+
     if (draft && draft.dirty) {
       setStatus(L().msg.saveOrCancelBeforeImport(draft.code), 'err')
       return false
@@ -1805,6 +1810,9 @@ export function useMachineLocator(
   }
 
   async function importJson(file: File) {
+    // Nhập JSON = POST /bulk: cần E
+    if (!canWrite) return
+
     const plan = planJsonImport(await file.text(), buildEffectiveMachines(data, base, null))
 
     if (!plan.ok) {
@@ -1821,6 +1829,12 @@ export function useMachineLocator(
 
     // máy có trên server nhưng không có trong file sẽ bị xoá: hỏi trước
     const dels = ops.filter((op) => op.type === 'del').map((op) => op.code).sort(compareCodes)
+
+    // File có op del: cần thêm quyền D
+    if (dels.length && !canDelete) {
+      setStatus(L().msg.importNeedsDelete(dels.length), 'err')
+      return
+    }
 
     if (dels.length && !window.confirm(
       L().msg.confirmImportDelete(
@@ -1974,6 +1988,7 @@ export function useMachineLocator(
 
   return {
     canWrite,
+    canDelete,
     loaded,
     // đã tải được floor từ server (mới vẽ bản đồ)
     ready: loaded && !loadFailed,

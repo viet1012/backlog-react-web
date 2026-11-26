@@ -70,12 +70,9 @@ import {
   SIDEBAR_WIDTH,
 } from './sidebarStyles'
 import { loadPreference, savePreference } from '../../utils/uiPreferences'
-import {
-  getAuthSession,
-  getAuthenticatedUsername,
-  hasAnyRole,
-  logout,
-} from '../../services/authService'
+import { useAuth } from '../auth/useAuth'
+import { getUserBadge } from '../auth/userBadge'
+import { canOpenPage } from '../../routes/appPages'
 
 import { randomAvatarSeed, readAvatarSeed, writeAvatarSeed } from '../shift/workerCharacter'
 import { FactoryAvatar } from './FactoryAvatar'
@@ -133,8 +130,8 @@ interface NavEntry {
 const indicatorSlide = 'transform 280ms cubic-bezier(.3,1.25,.5,1), width 180ms ease, height 180ms ease, opacity 160ms ease, background-color 220ms ease, border-color 220ms ease'
 const indicatorSnap = 'opacity 160ms ease, background-color 220ms ease, border-color 220ms ease'
 
-function isVisible(item: MenuItemConfig) {
-  return !item.disabled && (!item.roles || hasAnyRole(item.roles))
+function isVisible(item: MenuItemConfig, canOpen: (item: MenuItemConfig) => boolean) {
+  return !item.disabled && canOpen(item)
 }
 
 function isReady(item: MenuItemConfig) {
@@ -200,9 +197,11 @@ export function LeftSidebar({ onToggleMode, onWidthChange }: LeftSidebarProps) {
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const { t } = useI18n()
 
-  const session = getAuthSession()
-  const username = getAuthenticatedUsername() ?? t.sidebar.fallbackUser
-  const primaryRole = session?.roles[0]
+  const { user: session, can, signOut } = useAuth()
+  const username = session?.name || session?.employeeId || t.sidebar.fallbackUser
+  // Badge bộ phận (section/dept) chỉ để hiển thị; quyền dùng perms (can)
+  const badge = getUserBadge(session, t.sidebar)
+  const canOpen = (item: MenuItemConfig) => canOpenPage(item, can)
   const period = useDayPeriod()
 
   const [logoutOpen, setLogoutOpen] = useState(false)
@@ -227,7 +226,7 @@ export function LeftSidebar({ onToggleMode, onWidthChange }: LeftSidebarProps) {
 
   function handleLogout() {
     setLogoutOpen(false)
-    logout()
+    signOut()
     navigate('/login', { replace: true })
   }
 
@@ -240,13 +239,13 @@ export function LeftSidebar({ onToggleMode, onWidthChange }: LeftSidebarProps) {
   const groups = menuGroups
     .map((group) => ({
       id: group.id,
-      items: group.items.filter((item) => isVisible(item) && isReady(item)),
+      items: group.items.filter((item) => isVisible(item, canOpen) && isReady(item)),
     }))
     .filter((group) => group.items.length > 0)
 
   const upcoming: NavEntry[] = menuGroups.flatMap((group) =>
     group.items
-      .filter((item) => isVisible(item) && !isReady(item))
+      .filter((item) => isVisible(item, canOpen) && !isReady(item))
       .map((item) => ({ item, groupId: group.id })))
 
   // Router updates run in a transition, so location changes only after the
@@ -1234,9 +1233,10 @@ export function LeftSidebar({ onToggleMode, onWidthChange }: LeftSidebarProps) {
                 {username}
               </Typography>
 
-              <Box sx={{ mt: 0.4, display: 'flex', minWidth: 0 }}>
+              {badge && <Box sx={{ mt: 0.4, display: 'flex', minWidth: 0 }}>
                 <Box
                   component="span"
+                  title={badge.tooltip || undefined}
                   sx={{
                     px: 0.7,
                     py: 0.2,
@@ -1254,9 +1254,9 @@ export function LeftSidebar({ onToggleMode, onWidthChange }: LeftSidebarProps) {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {primaryRole ?? t.sidebar.fallbackRole}
+                  {badge.label}
                 </Box>
-              </Box>
+              </Box>}
             </Box>
 
             {/* Settings above sign-out: keeps the badge one column narrower */}
@@ -1271,7 +1271,7 @@ export function LeftSidebar({ onToggleMode, onWidthChange }: LeftSidebarProps) {
           open={logoutOpen}
           username={username}
           employeeId={session?.employeeId}
-          role={primaryRole}
+          badge={badge}
           avatarSeed={avatarSeed}
           onCancel={() => setLogoutOpen(false)}
           onConfirm={handleLogout}

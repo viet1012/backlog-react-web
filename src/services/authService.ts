@@ -1,40 +1,32 @@
 import { API_BASE_URL } from '../config/api'
 import { getMessages } from '../i18n/i18nContext'
 import { clearQueryCache } from '../utils/queryCache'
+import {
+  clearToken,
+  getCurrentUser,
+  getToken,
+  saveToken,
+  setCurrentUser,
+  type AuthUser,
+  type Perms,
+} from './authStore'
 
-const AUTH_STORAGE_KEY = 'production_control_auth'
+export {
+  can,
+  getAuthenticatedUsername,
+  getCurrentEmployeeId,
+  getCurrentUser,
+  getToken,
+} from './authStore'
+export type { AuthUser, Perms } from './authStore'
 
 const AUTH_API_URL =
   `${API_BASE_URL.replace(/\/$/, '')}/api/production-control/auth`
 
-export type UserRole =
-  | 'ADMIN'
-  | 'PC'
-  | 'PRO'
-  | 'USER'
-
-// Backend dùng chung tài khoản S-Patrol (HSE_Patrol_Account):
-// - accountId luôn null => định danh user bằng employeeId
-// - status luôn 'ACTIVE' (không còn LOCKED / not active)
-// - name, fac, dept, section, line, group: null khi MSNV không có trong HR
-// - roles tính lại từ HR mỗi lần login, luôn có ít nhất 1 role
-export interface AuthSession {
-  authenticated: true
-  accountId: number | null
-  employeeId: string
-  name: string | null
-  fac: string | null
-  dept: string | null
-  section: string | null
-  line: string | null
-  group: string | null
-  status: string
-  roles: UserRole[]
-  // Token đăng nhập do BE ký (Authorization: Bearer) cho API cần danh tính thật (vd /api/pdf2cad).
-  // Phiên đăng nhập từ trước khi BE cấp token: không có → các API đó yêu cầu đăng nhập lại.
-  token?: string | null
-  // ISO-8601, hết hạn thì coi như không có token
-  tokenExpiresAt?: string | null
+// Response login cũ + token. Chỉ token được giữ lại; quyền lấy từ /me.
+interface LoginResponse {
+  token: string
+  expiresAt?: string | null
 }
 
 export interface RegisterResponse {
@@ -62,6 +54,12 @@ export class AuthApiError extends Error {
 // API
 // =========================================================
 
+async function readJson<T>(response: Response): Promise<(T & { message?: string }) | null> {
+  return await response
+    .json()
+    .catch(() => null) as (T & { message?: string }) | null
+}
+
 async function postAuth<T>(
   path: string,
   body: object,
@@ -79,11 +77,7 @@ async function postAuth<T>(
     },
   )
 
-  const data = await response
-    .json()
-    .catch(() => null) as
-    | (T & { message?: string })
-    | null
+  const data = await readJson<T>(response)
 
   if (!response.ok) {
     throw new AuthApiError(
@@ -103,75 +97,16 @@ async function postAuth<T>(
 }
 
 // =========================================================
-// SESSION
-// =========================================================
-
-function readSession(
-  storage: Storage,
-): AuthSession | null {
-  try {
-    const value =
-      storage.getItem(
-        AUTH_STORAGE_KEY,
-      )
-
-    if (!value) {
-      return null
-    }
-
-    const session =
-      JSON.parse(value) as Partial<AuthSession>
-
-    if (
-      session.authenticated !== true
-      || typeof session.employeeId !== 'string'
-      || !Array.isArray(session.roles)
-    ) {
-      return null
-    }
-
-    return session as AuthSession
-  } catch {
-    return null
-  }
-}
-
-function saveSession(
-  session: AuthSession,
-  remember: boolean,
-): void {
-  localStorage.removeItem(
-    AUTH_STORAGE_KEY,
-  )
-
-  sessionStorage.removeItem(
-    AUTH_STORAGE_KEY,
-  )
-
-  const storage =
-    remember
-      ? localStorage
-      : sessionStorage
-
-  storage.setItem(
-    AUTH_STORAGE_KEY,
-    JSON.stringify(session),
-  )
-}
-
-// =========================================================
-// LOGIN
+// LOGIN (chỉ lưu token)
 // =========================================================
 
 export async function login(
   employeeId: string,
   password: string,
   remember: boolean,
-): Promise<AuthSession> {
+): Promise<void> {
   const response =
-    await postAuth<
-      Omit<AuthSession, 'authenticated'>
-    >(
+    await postAuth<LoginResponse>(
       'login',
       {
         employeeId,
@@ -179,17 +114,17 @@ export async function login(
       },
     )
 
-  const session: AuthSession = {
-    authenticated: true,
-    ...response,
+  if (typeof response.token !== 'string' || !response.token) {
+    throw new AuthApiError(
+      getMessages().misc.authInvalidResponse,
+    )
   }
 
-  saveSession(
-    session,
+  // Không tự logout theo expiresAt: BE tự gia hạn, hết hạn thật thì API trả 401
+  saveToken(
+    response.token,
     remember,
   )
-
-  return session
 }
 
 // =========================================================
@@ -210,116 +145,98 @@ export function register(
 }
 
 // =========================================================
+// ME
+// =========================================================
+
+function normalizePerms(value: unknown): Perms {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+
+  const perms: Perms = {}
+  for (const [feature, actions] of Object.entries(value)) {
+    if (Array.isArray(actions)) {
+      perms[feature] = actions.filter((action): action is string => typeof action === 'string')
+    }
+  }
+  return perms
+}
+
+/**
+ * GET /auth/me với token hiện tại. 401 -> AuthApiError(status 401), người gọi tự xóa token.
+ */
+export async function fetchMe(signal?: AbortSignal): Promise<AuthUser> {
+  const token = getToken()
+
+  if (!token) {
+    throw new AuthApiError(getMessages().misc.authFailed(401), 401)
+  }
+
+  const response = await fetch(`${AUTH_API_URL}/me`, {
+    method: 'GET',
+    cache: 'no-store',
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    signal,
+  })
+
+  const data = await readJson<Partial<AuthUser>>(response)
+
+  if (!response.ok) {
+    throw new AuthApiError(
+      data?.message || getMessages().misc.authFailed(response.status),
+      response.status,
+    )
+  }
+
+  if (!data || typeof data.employeeId !== 'string') {
+    throw new AuthApiError(getMessages().misc.authInvalidResponse)
+  }
+
+  // Chuỗi rỗng / sai kiểu coi như không có
+  const text = (value: unknown): string | null =>
+    typeof value === 'string' && value.trim() ? value.trim() : null
+
+  return {
+    employeeId: data.employeeId,
+    name: text(data.name),
+    fac: text(data.fac),
+    dept: text(data.dept),
+    section: text(data.section),
+    line: text(data.line),
+    group: text(data.group),
+    roles: Array.isArray(data.roles) ? data.roles.filter((role): role is string => typeof role === 'string') : [],
+    perms: normalizePerms(data.perms),
+  }
+}
+
+// =========================================================
 // AUTH
 // =========================================================
 
-export function getAuthSession():
-  AuthSession | null {
-  return (
-    readSession(localStorage)
-    ?? readSession(sessionStorage)
-  )
+export function hasToken(): boolean {
+  return Boolean(getToken())
 }
 
-export function isAuthenticated():
-  boolean {
-  return Boolean(
-    getAuthSession(),
-  )
-}
-
-export function getRoles():
-  UserRole[] {
-  return (
-    getAuthSession()?.roles
-    ?? []
-  )
-}
-
-// =========================================================
-// ROLE
-// =========================================================
-
-export function hasAnyRole(
-  requiredRoles: UserRole[],
-): boolean {
-  const roles = getRoles()
-
-  // ADMIN có toàn quyền
-  if (
-    roles.includes('ADMIN')
-  ) {
-    return true
-  }
-
-  return requiredRoles.some(
-    (role) =>
-      roles.includes(role),
-  )
+export function isAuthenticated(): boolean {
+  return Boolean(getCurrentUser())
 }
 
 // =========================================================
 // DEFAULT ROUTE
 // =========================================================
 
-export function getDefaultAuthRoute(
-  session: AuthSession | null =
-    getAuthSession(),
-): string {
-  // Mọi tài khoản vào trang chủ trước (route /user-home mở cho mọi role,
-  // nếu không RoleRoute sẽ chuyển hướng vòng lặp)
-  return session
+export function getDefaultAuthRoute(): string {
+  // Mọi tài khoản vào trang chủ trước (route /user-home mở cho mọi người đã đăng nhập,
+  // nếu không PermRoute sẽ chuyển hướng vòng lặp)
+  return hasToken()
     ? '/user-home'
     : '/login'
 }
 
-// =========================================================
-// USER INFO
-// =========================================================
-
-export function getAuthenticatedUsername():
-  string | null {
-  const session =
-    getAuthSession()
-
-  return (
-    session?.name
-    || session?.employeeId
-    || null
-  )
-}
-
-export function getCurrentEmployeeId():
-  string | null {
-  return (
-    getAuthSession()?.employeeId.trim()
-    || null
-  )
-}
-
-/** Token đăng nhập còn hạn; null → cần đăng nhập lại để gọi API yêu cầu token */
-export function getAuthToken():
-  string | null {
-  const session =
-    getAuthSession()
-
-  if (!session?.token) {
-    return null
-  }
-
-  const expiresAt =
-    session.tokenExpiresAt
-      ? Date.parse(session.tokenExpiresAt)
-      : Number.NaN
-
-  if (
-    Number.isFinite(expiresAt)
-    && expiresAt <= Date.now()
-  ) {
-    return null
-  }
-
-  return session.token
+/** /login?returnUrl=<đường dẫn nội bộ> */
+export function loginPathWithReturn(returnUrl: string): string {
+  return `/login?${new URLSearchParams({ returnUrl })}`
 }
 
 // =========================================================
@@ -327,14 +244,21 @@ export function getAuthToken():
 // =========================================================
 
 export function logout(): void {
+  const token = getToken()
+
+  // Báo BE hủy token; không chờ để thoát ngay (keepalive: vẫn gửi khi trang chuyển đi)
+  if (token) {
+    fetch(`${AUTH_API_URL}/logout`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      keepalive: true,
+    }).catch(() => {
+      // Mạng lỗi: token phía BE tự hết hạn
+    })
+  }
+
   // dữ liệu đã tải của phiên trước không được hiện cho người đăng nhập sau
   clearQueryCache()
-
-  localStorage.removeItem(
-    AUTH_STORAGE_KEY,
-  )
-
-  sessionStorage.removeItem(
-    AUTH_STORAGE_KEY,
-  )
+  clearToken()
+  setCurrentUser(null)
 }

@@ -13,7 +13,7 @@ interface MachineDataFooterProps {
   ml: MachineLocatorState
 }
 
-// Ghi chú nguồn dữ liệu + Xuất / Nhập (nút chỉ hiện với ADMIN)
+// Ghi chú nguồn dữ liệu + Xuất / Nhập (MACHINE_LOCATOR E; nhập có xóa máy cần thêm D)
 export function MachineDataFooter({ ml }: MachineDataFooterProps) {
   const { t } = useI18n()
 
@@ -68,6 +68,8 @@ export function MachineDataFooter({ ml }: MachineDataFooterProps) {
           <PanelButton onClick={ml.exportCsv}>{t.locator.footer.exportCsv}</PanelButton>
           <PanelButton onClick={ml.exportJson}>{t.locator.footer.exportJson}</PanelButton>
           <PanelButton onClick={ml.exportPng}>{t.locator.footer.layoutImage}</PanelButton>
+
+          {/* Nhập JSON (POST /bulk) cần E; file có op del cần thêm D (hook kiểm) */}
           <PanelButton disabled={ml.saving} onClick={openImport}>{t.locator.footer.importJson}</PanelButton>
 
           <input

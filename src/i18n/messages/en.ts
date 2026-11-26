@@ -148,7 +148,15 @@ export const en = {
         themeLight: 'Light',
         themeDark: 'Dark',
         fallbackUser: 'Production User',
-        fallbackRole: 'Production System',
+        // Department badge tooltip: role display names ('' = hidden, unlisted role shows its code)
+        permsLabel: 'Permissions: ',
+        roleNames: {
+            ADMIN: 'Administrator',
+            PC: 'PC',
+            PRO: 'Production',
+            COST_VIEW: 'Cost viewer',
+            USER: '',
+        } as Record<string, string>,
         comingSoon: 'Coming soon',
         online: 'Online',
         shuffleAvatar: 'Click for a new character',
@@ -245,6 +253,11 @@ export const en = {
         passwordRequired: 'Password is required.',
         passwordMismatch: 'Confirm Password does not match Password.',
         registerFailed: 'Unable to create account.',
+        tooManyAttempts: 'Too many failed attempts, try again in 5 minutes.',
+        registerLocked: 'Registration is temporarily locked, please contact IT.',
+        forbidden: 'You do not have permission to perform this action.',
+        loadingSession: 'Loading account…',
+        sessionLoadFailed: 'Could not load account permissions.',
     },
 
     placeholder: {
@@ -1811,6 +1824,7 @@ export const en = {
             confirmImportDelete: (file: string, count: number, list: string) =>
                 `File ${file} does not contain ${count} machines that exist on this layout. Importing will DELETE ${count} machines:\n${list}\n\nContinue?`,
             importCancelled: 'JSON import cancelled.',
+            importNeedsDelete: (count: number) => `The file would delete ${count} machine(s) — you do not have delete permission. Import cancelled.`,
             importing: (count: number) => `Importing ${count} changes…`,
             imported: (count: number, file: string) => `Imported ${count} changes from ${file}.`,
             redrawHint: (code: string) => `Drag on the drawing to redraw the frame of ${code}. Esc to cancel.`,

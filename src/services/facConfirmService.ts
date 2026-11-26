@@ -1,3 +1,4 @@
+import { apiFetch } from './apiClient'
 import {
     API_BASE_URL,
 } from '../config/api'
@@ -71,7 +72,7 @@ export async function getFacConfirm(
         `${API_BASE_URL}/api/fac-confirm?${query.toString()}`
 
 
-    const response = await fetch(
+    const response = await apiFetch(
         url,
         {
             method: 'GET',
@@ -120,7 +121,7 @@ export async function getFacConfirmProcessGroups(
         `${API_BASE_URL}/api/fac-confirm/process-groups`
 
 
-    const response = await fetch(
+    const response = await apiFetch(
         url,
         {
             method: 'POST',
@@ -170,7 +171,7 @@ export async function searchFacConfirm(
     signal?: AbortSignal,
 ): Promise<FacConfirmPageResponse> {
 
-    const response = await fetch(
+    const response = await apiFetch(
         `${API_BASE_URL}/api/fac-confirm/search`,
         {
             method: 'POST',
@@ -220,7 +221,7 @@ export async function getFacConfirmFilterOptions(
     signal?: AbortSignal,
 ): Promise<string[]> {
 
-    const response = await fetch(
+    const response = await apiFetch(
         `${API_BASE_URL}/api/fac-confirm/filter-options`,
         {
             method: 'POST',
@@ -320,7 +321,7 @@ export async function getFacConfirmConfirmedProcesses(
     }
 
 
-    const response = await fetch(
+    const response = await apiFetch(
         `${API_BASE_URL}/api/fac-confirm/confirmed-processes`,
         {
             method: 'POST',
@@ -380,7 +381,7 @@ export async function getFacConfirmDailySummary(
     })
 
 
-    const response = await fetch(
+    const response = await apiFetch(
         `${API_BASE_URL}/api/fac-confirm/daily-summary?${query.toString()}`,
         {
             method: 'GET',
@@ -468,12 +469,6 @@ export async function saveFacConfirmProcessTimes(
     signal?: AbortSignal,
 ): Promise<FacConfirmProcessTimeResponse> {
 
-    if (!request.employeeId?.trim()) {
-        throw new Error(
-            'Employee ID is required',
-        )
-    }
-
     if (
         !Array.isArray(request.changes)
         || request.changes.length === 0
@@ -483,7 +478,7 @@ export async function saveFacConfirmProcessTimes(
         )
     }
 
-    const response = await fetch(
+    const response = await apiFetch(
         `${API_BASE_URL}/api/fac-confirm/process-times`,
         {
             method: 'PATCH',
@@ -525,7 +520,7 @@ export async function exportFacConfirmExcel(
     onProgress?: DownloadProgress,
 ): Promise<string> {
 
-    const response = await fetch(
+    const response = await apiFetch(
         `${API_BASE_URL}/api/fac-confirm/export/excel`,
         {
             method: 'POST',

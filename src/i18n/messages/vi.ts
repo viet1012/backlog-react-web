@@ -115,7 +115,15 @@ export const vi: Messages = {
         themeLight: 'Sáng',
         themeDark: 'Tối',
         fallbackUser: 'Người dùng',
-        fallbackRole: 'Hệ thống sản xuất',
+        // Tooltip badge bộ phận: tên hiển thị của role ('' = ẩn, role không có ở đây hiện nguyên mã)
+        permsLabel: 'Quyền: ',
+        roleNames: {
+            ADMIN: 'Quản trị',
+            PC: 'PC',
+            PRO: 'Sản xuất',
+            COST_VIEW: 'Xem chi phí',
+            USER: '',
+        },
         comingSoon: 'Sắp ra mắt',
         online: 'Đang trực tuyến',
         shuffleAvatar: 'Bấm để đổi nhân vật',
@@ -208,6 +216,11 @@ export const vi: Messages = {
         passwordRequired: 'Vui lòng nhập mật khẩu.',
         passwordMismatch: 'Mật khẩu xác nhận không khớp.',
         registerFailed: 'Không thể tạo tài khoản.',
+        tooManyAttempts: 'Sai quá nhiều lần, thử lại sau 5 phút',
+        registerLocked: 'Đăng ký tạm khóa, liên hệ IT',
+        forbidden: 'Bạn không có quyền thực hiện thao tác này',
+        loadingSession: 'Đang tải tài khoản…',
+        sessionLoadFailed: 'Không tải được quyền của tài khoản.',
     },
 
     placeholder: {
@@ -1703,6 +1716,7 @@ export const vi: Messages = {
             confirmImportDelete: (file, count, list) =>
                 `File ${file} không có ${count} máy đang có trên layout này. Nhập sẽ XOÁ ${count} máy:\n${list}\n\nTiếp tục?`,
             importCancelled: 'Đã hủy nhập JSON.',
+            importNeedsDelete: (count) => `File sẽ xóa ${count} máy nhưng bạn không có quyền xóa. Đã hủy nhập.`,
             importing: (count) => `Đang nhập ${count} thay đổi…`,
             imported: (count, file) => `Đã nhập ${count} thay đổi từ ${file}.`,
             redrawHint: (code) => `Kéo trên bản vẽ để vẽ lại khung ${code}. Esc để hủy.`,

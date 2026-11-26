@@ -1,3 +1,4 @@
+import { apiFetch } from './apiClient'
 import { API_BASE_URL } from '../config/api'
 
 import type {
@@ -364,7 +365,7 @@ export async function getShipmentFulfillment(
         })
 
     const response =
-        await fetch(
+        await apiFetch(
             `${API_BASE_URL}/api/shipment-fulfillment?${query.toString()}`,
             {
                 method: 'GET',
@@ -452,7 +453,7 @@ export async function getShipmentDetail(
     }
 
     const response =
-        await fetch(
+        await apiFetch(
             `${API_BASE_URL}/api/shipment-fulfillment/detail?${query.toString()}`,
             {
                 method: 'GET',

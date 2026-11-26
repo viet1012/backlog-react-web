@@ -1,3 +1,4 @@
+import { apiFetch } from './apiClient'
 import {
   API_BASE_URL,
   HSE_IMAGE_BASE_URL,
@@ -20,7 +21,7 @@ async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
   let res: Response
 
   try {
-    res = await fetch(url, { cache: 'no-store', headers: { Accept: 'application/json' }, signal })
+    res = await apiFetch(url, { cache: 'no-store', headers: { Accept: 'application/json' }, signal })
   } catch (e) {
     if (e instanceof DOMException && e.name === 'AbortError') throw e
     throw new Error(e instanceof Error ? e.message : 'mất kết nối server')

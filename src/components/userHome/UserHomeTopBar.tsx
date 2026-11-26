@@ -5,7 +5,8 @@ import { keyframes } from '@mui/material/styles'
 import { PlaceRounded } from '@mui/icons-material'
 
 import { useI18n } from '../../i18n/useI18n'
-import { getAuthSession, getAuthenticatedUsername } from '../../services/authService'
+import { useAuth } from '../auth/useAuth'
+import { getUserBadge } from '../auth/userBadge'
 import { FactoryAvatar } from '../layout/FactoryAvatar'
 import { FACTORY_NAME } from '../shift/shiftParts'
 import { useDayPeriod } from '../shift/useDayPeriod'
@@ -65,12 +66,12 @@ function Identity() {
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const period = useDayPeriod()
 
-  // Không đổi trong lúc ở trang: đọc 1 lần
-  const [session] = useState(getAuthSession)
-  const [username] = useState(() => getAuthenticatedUsername() ?? t.sidebar.fallbackUser)
-  const roles = session?.roles.length ? session.roles : ['USER']
+  const { user: session } = useAuth()
+  const username = session?.name || session?.employeeId || t.sidebar.fallbackUser
+  // Badge bộ phận chỉ để hiển thị (từ /me); quyền dùng perms
+  const badge = getUserBadge(session, t.sidebar)
 
-  // Thông tin HR có dữ liệu: hiện khi rê chuột vào khối người dùng
+  // Thông tin HR từ /me: hiện khi rê chuột vào khối người dùng; field nào thiếu thì ẩn
   const details = [
     [t.userHome.employeeId, session?.employeeId],
     [t.userHome.factory, session?.fac],
@@ -101,15 +102,15 @@ function Identity() {
             <PlaceRounded sx={{ fontSize: 13 }} />
             {FACTORY_NAME}
           </Box>
-          {roles.map((role) => (
+          {badge && (
             <Box
-              key={role}
               component="span"
-              sx={{ flexShrink: 0, px: 0.6, borderRadius: '4px', fontSize: 9.5, fontWeight: 800, lineHeight: 1.6, letterSpacing: '0.08em', color: MUTED, border: `1px solid ${DIVIDER}`, whiteSpace: 'nowrap' }}
+              title={badge.tooltip || undefined}
+              sx={{ minWidth: 0, px: 0.6, borderRadius: '4px', fontSize: 9.5, fontWeight: 800, lineHeight: 1.6, letterSpacing: '0.08em', color: MUTED, border: `1px solid ${DIVIDER}`, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
             >
-              {role}
+              {badge.label}
             </Box>
-          ))}
+          )}
         </Box>
       </Box>
     </Box>

@@ -146,27 +146,31 @@ export function UserHomeTodayTasks() {
           />
         )}
 
-        <Tile
-          icon={<TrendingUpOutlinedIcon />}
-          label={labels.short.cost}
-          fullLabel={labels.cost}
-          task={tasks.cost}
-          value={(data) => data.over}
-          sub={(data) => labels.costSub(data.willExceed, data.month)}
-          link={(data) => data.link}
-          fallbackLink="/cost-monitoring"
-        />
+        {tasks.cost && (
+          <Tile
+            icon={<TrendingUpOutlinedIcon />}
+            label={labels.short.cost}
+            fullLabel={labels.cost}
+            task={tasks.cost}
+            value={(data) => data.over}
+            sub={(data) => labels.costSub(data.willExceed, data.month)}
+            link={(data) => data.link}
+            fallbackLink="/cost-monitoring"
+          />
+        )}
 
-        <Tile
-          icon={<MonitorHeartOutlinedIcon />}
-          label={labels.short.machine}
-          fullLabel={labels.machine}
-          task={tasks.machine}
-          value={(data) => data.active}
-          sub={(data) => labels.machineSub(data.overdue, data.topFloorName)}
-          link={(data) => data.link}
-          fallbackLink="/monitoring/machine"
-        />
+        {tasks.machine && (
+          <Tile
+            icon={<MonitorHeartOutlinedIcon />}
+            label={labels.short.machine}
+            fullLabel={labels.machine}
+            task={tasks.machine}
+            value={(data) => data.active}
+            sub={(data) => labels.machineSub(data.overdue, data.topFloorName)}
+            link={(data) => data.link}
+            fallbackLink="/monitoring/machine"
+          />
+        )}
       </Box>
     </Box>
   )
