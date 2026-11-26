@@ -25,6 +25,7 @@ export const MachineMonitorPage = lazyPage(() => import('./monitoring/MachineMon
 export const OdbfPage = lazyPage(() => import('./planning/OdbfPage').then((m) => m.OdbfPage))
 export const OtPage = lazyPage(() => import('./management/OtPage').then((m) => m.OtPage))
 export const PackingListPage = lazyPage(() => import('./planning/PackingListPage').then((m) => m.PackingListPage))
+export const Pdf2cadPage = lazyPage(() => import('./settings/Pdf2cadPage').then((m) => m.Pdf2cadPage))
 export const PcTrainingPage = lazyPage(() => import('./production/PcTrainingPage').then((m) => m.PcTrainingPage))
 export const PlPage = lazyPage(() => import('./management/PlPage').then((m) => m.PlPage))
 export const RemainPoControlPage = lazyPage(() => import('./planning/RemainPoControlPage').then((m) => m.RemainPoControlPage))
@@ -62,6 +63,7 @@ const pagesByRoute: Record<string, { preload: () => Promise<unknown> }> = {
   '/settings/machine-locator': MachineLocatorPage,
   '/settings/admin': AiLogsPage,
   '/utility-evn-compare': UtilityEvnComparePage,
+  '/settings/pdf2cad': Pdf2cadPage,
 }
 
 export function preloadRoute(path: string) {

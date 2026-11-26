@@ -39,6 +39,7 @@ import {
   OtPage,
   PackingListPage,
   PcTrainingPage,
+  Pdf2cadPage,
   PlPage,
   RemainPoControlPage,
   SaleFollowPage,
@@ -337,6 +338,16 @@ function App() {
                     path="utility-evn-compare"
                     element={
                       <UtilityEvnComparePage
+                        mode={mode}
+                        onToggleMode={toggleThemeMode}
+                      />
+                    }
+                  />
+
+                  <Route
+                    path="settings/pdf2cad"
+                    element={
+                      <Pdf2cadPage
                         mode={mode}
                         onToggleMode={toggleThemeMode}
                       />

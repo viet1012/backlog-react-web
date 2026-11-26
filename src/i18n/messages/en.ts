@@ -125,6 +125,7 @@ export const en = {
         machineLocator: 'Machine Locator',
         aiLogs: 'Admin',
         utilityEvnCompare: 'Utility · EVN Compare',
+        pdf2cad: 'PDF → CAD',
     },
 
     sidebar: {
@@ -867,6 +868,7 @@ export const en = {
             machineLocator: 'Place machines on the floor map',
             aiLogs: 'AI assistant logs and the permission guide',
             utilityEvnCompare: 'EVN GM vs. measured electricity by day, import EVN Excel',
+            pdf2cad: 'Convert drawing PDFs / scans to DXF, redraw from templates',
             pcTraining: 'Production Control training material',
         } as Record<string, string | undefined>,
         graphics: {

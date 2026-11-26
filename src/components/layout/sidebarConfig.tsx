@@ -26,6 +26,7 @@ import {
     SmartToyOutlined,
     TrackChangesOutlined,
     ElectricBoltOutlined,
+    ArchitectureOutlined,
 } from '@mui/icons-material'
 import type { UserRole } from '../../services/authService'
 import type { Messages } from '../../i18n/messages/en'
@@ -355,6 +356,17 @@ export const menuGroups:
                     roles: ['ADMIN'],
                     icon: (
                         <ElectricBoltOutlined />
+                    ),
+                },
+
+                {
+                    labelKey: 'pdf2cad',
+                    path: '/settings/pdf2cad',
+                    status: 'ready',
+                    action: 'input',
+                    roles: ['ADMIN'],
+                    icon: (
+                        <ArchitectureOutlined />
                     ),
                 },
             ],

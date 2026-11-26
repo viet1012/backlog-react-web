@@ -370,7 +370,8 @@ function dosDateTime(date: Date): { time: number; day: number } {
   }
 }
 
-function zipStore(files: { path: string; content: string }[]): Uint8Array<ArrayBuffer> {
+/** zip không nén (store) – dùng cho xlsx và các file text tải về cùng lúc (vd DXF mẫu của pdf2cad) */
+export function zipStore(files: { path: string; content: string }[]): Uint8Array<ArrayBuffer> {
   const encoder = new TextEncoder()
   const { time, day } = dosDateTime(new Date())
 

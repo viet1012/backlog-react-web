@@ -30,6 +30,11 @@ export interface AuthSession {
   group: string | null
   status: string
   roles: UserRole[]
+  // Token đăng nhập do BE ký (Authorization: Bearer) cho API cần danh tính thật (vd /api/pdf2cad).
+  // Phiên đăng nhập từ trước khi BE cấp token: không có → các API đó yêu cầu đăng nhập lại.
+  token?: string | null
+  // ISO-8601, hết hạn thì coi như không có token
+  tokenExpiresAt?: string | null
 }
 
 export interface RegisterResponse {
@@ -290,6 +295,31 @@ export function getCurrentEmployeeId():
     getAuthSession()?.employeeId.trim()
     || null
   )
+}
+
+/** Token đăng nhập còn hạn; null → cần đăng nhập lại để gọi API yêu cầu token */
+export function getAuthToken():
+  string | null {
+  const session =
+    getAuthSession()
+
+  if (!session?.token) {
+    return null
+  }
+
+  const expiresAt =
+    session.tokenExpiresAt
+      ? Date.parse(session.tokenExpiresAt)
+      : Number.NaN
+
+  if (
+    Number.isFinite(expiresAt)
+    && expiresAt <= Date.now()
+  ) {
+    return null
+  }
+
+  return session.token
 }
 
 // =========================================================

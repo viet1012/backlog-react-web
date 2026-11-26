@@ -766,6 +766,7 @@ export const vi: Messages = {
             machineLocator: 'Bố trí máy trên bản đồ xưởng',
             aiLogs: 'Log trợ lý AI và hướng dẫn phân quyền',
             utilityEvnCompare: 'So sánh số GM EVN với số đồng hồ theo ngày, import Excel EVN',
+            pdf2cad: 'Chuyển bản vẽ PDF / scan sang DXF, vẽ lại từ mẫu',
             pcTraining: 'Tài liệu đào tạo Production Control',
         },
         graphics: {

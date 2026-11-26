@@ -32,6 +32,7 @@ Frontend thuần (SPA). Dữ liệu và đăng nhập đi qua backend `backlog-b
 | `/cost-monitoring` | [Cost Monitoring](#11-cost-monitoring) | Mọi user | Hoạt động |
 | `/settings/admin` (cũ: `/settings/ai-logs`, tự chuyển) | [Admin](#12-ai-logs) (Trợ lý AI + Phân quyền) | ADMIN | Hoạt động |
 | `/utility-evn-compare` | [Utility · EVN Compare](#13-utility--evn-compare) | ADMIN | Hoạt động |
+| `/settings/pdf2cad` | [PDF → CAD](#14-pdf-to-cad) | ADMIN | Hoạt động (proxy backlog-be → server pdf2cad) |
 | `/sph`, `/asakai`, `/bosb`, `/deadstock`, `/pl`, `/kpi`, `/ot`, `/packing-list`, `/export-list`, `/sales-status` | Trang giữ chỗ | — | Chưa làm |
 
 `ADMIN` vào được mọi màn hình. Route cũ `/machine-locator` và `/machine-monitor` tự chuyển sang route mới (giữ nguyên query và `#hash`).
@@ -439,6 +440,23 @@ So sánh số GM (đồng hồ tổng EVN) với số đồng hồ thực tế t
 - **Link chia sẻ**: `/utility-evn-compare?month=YYYY-MM&scope=KVH&unit=MWh&view=overview[&tab=import]`. Tháng, phạm vi, đơn vị và chế độ xem luôn có trên link.
 - Đổi sang tab *Import Excel* (`tab=import`) không còn xóa các tham số khác trên link.
 - Phạm vi / đơn vị / chế độ xem vẫn được ghi nhớ trên máy như trước. Link mở từ ngoài sẽ ghi đè các giá trị này.
+
+### 14. PDF to CAD
+
+Làm lại giao diện web của tool **pdf2cad** (`D:\Viet\CAD\pdf2cad`) trong menu SETTING (chỉ ADMIN). Dữ liệu đi qua proxy `backlog-be` `/api/pdf2cad/**`, gửi `Authorization: Bearer <token>` (login trả `token` + `tokenExpiresAt`) và `X-Employee-Id`. **Hiện BE tạm tắt xác thực** (`pdf2cad.auth-required=false`): không chặn, `X-Employee-Id` chỉ dùng cho nhật ký + chủ job. Bật lại (`true`) thì BE kiểm tra token + role; phiên đăng nhập cũ / token hết hạn → banner *Đăng nhập lại*. Job chỉ người tạo mới xem / tải được. Đặt `VITE_PDF2CAD_API_BASE=mock` để chạy bằng dữ liệu mẫu trên trình duyệt, không cần BE (chip *Dữ liệu mẫu* trên header).
+
+- **Tab Chuyển sang DXF** (`/settings/pdf2cad`): kéo thả PDF / TIFF / PNG / JPG / BMP (thả vào bất kỳ đâu trong tab), tuỳ chọn (trang, tỷ lệ, DPI, nét đậm, OCR, fit cung, xoá mộc…; được ghi nhớ trên máy), thanh tiến độ + bước đang chạy + thời gian còn lại, dừng job, tải từng DXF / tải tất cả (zip). Khung xem trước: *Bản gốc* / *DXF kết quả*, lăn chuột zoom, kéo để di chuyển, bấm đúp vừa khung, bật / tắt từng layer.
+- **Dạy bot**: nút ở từng dòng kết quả → đọc bảng tham số thành mẫu nháp, tự chuyển sang tab Vẽ lại với mẫu đó.
+- **Tab Vẽ lại từ mẫu** (`?tab=redraw`): trợ lý dùng mascot hiện tại (tên + trang phục theo cài đặt; kéo ngang để xoay 360°; biểu cảm đổi theo trạng thái: đang vẽ / vẽ xong / lỗi). Chọn mẫu, gõ kích thước ("No.16 L=80", "tăng L thêm 10", "Có những size nào?"…), bot hỏi lại khoá còn thiếu, cảnh báo giá trị ngoài chuẩn, trả file DXF + xem trước ngay. Bấm 1 dòng bảng tham số để chọn size đó.
+- **Cấu hình**: mặc định `VITE_PDF2CAD_API_BASE` = `<VITE_API_BASE_URL>/api/pdf2cad`. Trỏ thẳng server pdf2cad (bỏ qua kiểm tra quyền, cần bật CORS bên đó): `http://<IP>:5020/api`.
+- File DXF / zip / ảnh trang gốc tải bằng `fetch` kèm header (không dùng link trực tiếp) vì BE yêu cầu `X-Employee-Id`.
+
+Việc tiếp theo:
+- Bật lại xác thực (`pdf2cad.auth-required=true` ở backlog-be, đặt `AUTH_TOKEN_SECRET`) khi cần; FE đã gửi sẵn token.
+- Chưa chạy thử trên trình duyệt với server pdf2cad thật (mới kiểm tra bằng dữ liệu mẫu + type-check / test).
+- Cải tiến độ chính xác đọc / vẽ lại CAD: xem mục *Cải tiến độ chính xác – việc tiếp theo* trong README của pdf2cad.
+
+API (backlog-be): `POST /api/pdf2cad/jobs`, `GET|DELETE /api/pdf2cad/jobs/{id}`, `…/files/{name}`, `…/zip`, `…/preview/{name}`, `…/pdf/{idx}/{page}.png`, `POST …/learn/{name}`, `GET /api/pdf2cad/templates`, `POST /api/pdf2cad/bot`, `GET /api/pdf2cad/health`
 
 ---
 
