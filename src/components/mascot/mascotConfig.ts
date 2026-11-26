@@ -205,6 +205,8 @@ export interface MascotTexts {
   dragHint: (name: string) => string
   /** nút đưa mascot về góc mặc định */
   resetPosition: string
+  /** bàn xoay 360° dưới chân mascot */
+  rotate: string
   /** nhãn biểu cảm (Phòng thay đồ – xem trước) */
   states: Record<MascotState, string>
 }
@@ -236,6 +238,7 @@ export const MASCOT_TEXTS: Record<Language, MascotTexts> = {
     selectionQuestion: (text) => `Giải thích giúp tôi: “${text}”`,
     dragHint: (name) => `Bấm để chat với ${name} · Kéo để di chuyển (Alt + mũi tên)`,
     resetPosition: 'Đưa về góc màn hình',
+    rotate: 'Kéo ngang để xoay 360° · Bấm để xoay một vòng (← → xoay từng nấc)',
     states: {
       idle: 'Vui vẻ',
       greeting: 'Chào',
@@ -273,6 +276,7 @@ export const MASCOT_TEXTS: Record<Language, MascotTexts> = {
     selectionQuestion: (text) => `Please explain: “${text}”`,
     dragHint: (name) => `Click to chat with ${name} · Drag to move (Alt + arrow keys)`,
     resetPosition: 'Move back to corner',
+    rotate: 'Drag sideways to spin 360° · Click to spin once (← → to step)',
     states: {
       idle: 'Idle',
       greeting: 'Greeting',

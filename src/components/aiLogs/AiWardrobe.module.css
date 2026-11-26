@@ -64,6 +64,14 @@
   z-index: 1;
   margin-bottom: 40px;
   --wave-count: 2;
+  /* kéo ngang trên hình để xoay 360° */
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.figure:active {
+  cursor: grabbing;
 }
 
 .figure svg {

@@ -1961,6 +1961,8 @@ export const en = {
             applied: 'Wearing',
             moods: { idle: 'Happy', thinking: 'Thinking', sad: 'Sad' },
             wave: 'Wave',
+            rotateHint: 'Drag sideways to spin 360° · Click the turntable to spin once (← → to step)',
+            views: { front: 'Front', side: 'Side', back: 'Back' },
             placesTitle: 'Shown in',
             places: { message: 'Message', header: 'Chat header', minimized: 'Minimized' },
             before: 'Before',

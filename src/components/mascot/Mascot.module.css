@@ -192,6 +192,18 @@
   transition: transform 0.12s ease-out;
 }
 
+/* Quay đầu giả 3D (parallax): mặt dịch theo con trỏ nhiều hơn mũ, khối đầu đứng yên.
+   Dùng lại --eye-x / --eye-y sẵn có → không thêm listener / JS mỗi frame. */
+.face {
+  transform: translate(calc(var(--eye-x, 0px) * 0.75), calc(var(--eye-y, 0px) * 0.5));
+  transition: transform 0.18s ease-out;
+}
+
+.hatTurn {
+  transform: translate(calc(var(--eye-x, 0px) * 0.3), calc(var(--eye-y, 0px) * 0.15));
+  transition: transform 0.18s ease-out;
+}
+
 .eyesStatic {
   transform-box: fill-box;
   transform-origin: center;
@@ -299,6 +311,129 @@
 .root:hover .minimize,
 .root:focus-within .minimize {
   opacity: 1;
+}
+
+/* Bàn xoay 360° dưới chân – chỉ hiện khi hover / focus (như nút thu nhỏ).
+   Kéo ngang để xoay, bấm để xoay 1 vòng; kéo thân mascot vẫn là di chuyển. */
+.turntable {
+  position: absolute;
+  left: 50%;
+  bottom: -9px;
+  z-index: 1;
+  display: block;
+  width: 80px;
+  height: 24px;
+  margin-left: -40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: #7a8796;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  pointer-events: auto;
+  opacity: 0;
+  transform: scale(0.92);
+  transition: opacity 0.18s ease, transform 0.18s ease, color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.turntable svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.root:hover .turntable,
+.root:focus-within .turntable,
+.turntable:active {
+  opacity: 1;
+  transform: none;
+}
+
+/* Phòng thay đồ: bàn xoay luôn hiện, to hơn, nằm dưới chân mascot trên sân khấu */
+.turntableStage {
+  bottom: 22px;
+  width: 200px;
+  height: 56px;
+  margin-left: -100px;
+  opacity: 1;
+  transform: none;
+  color: #8a7458;
+}
+
+/* rê vào chính bàn xoay → đổi màu nhấn */
+.turntable:hover,
+.turntable:focus-visible {
+  color: #378add;
+}
+
+.turntable:active {
+  cursor: grabbing;
+  color: #1f6fc0;
+}
+
+.turntable:focus-visible {
+  outline: 2px solid #378add;
+  outline-offset: 1px;
+}
+
+/* mặt bàn: lớp kính mờ rất nhạt, đậm hơn khi tương tác */
+.turntableDisc {
+  fill: currentColor;
+  fill-opacity: 0.08;
+  transition: fill-opacity 0.15s ease;
+}
+
+.turntable:hover .turntableDisc,
+.turntable:active .turntableDisc {
+  fill-opacity: 0.16;
+}
+
+.turntableBack {
+  fill: none;
+  stroke: currentColor;
+  stroke-opacity: 0.45;
+  stroke-width: 1.1;
+  stroke-dasharray: 1.6 2.4;
+  stroke-linecap: round;
+}
+
+/* viền trắng dưới nét trước → nổi trên cả nền sáng lẫn tối */
+.turntableHalo {
+  fill: none;
+  stroke: #fff;
+  stroke-opacity: 0.85;
+  stroke-width: 3.6;
+  stroke-linecap: round;
+}
+
+.turntableFront {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+}
+
+.turntableArrow {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* núm to lên khi đang kéo */
+.turntableKnob {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 0.15s ease;
+}
+
+.turntable:active .turntableKnob {
+  transform: scale(1.25);
 }
 
 /* Nút kết nối lại – góc trên trái mascot, chỉ hiện khi mất kết nối.
@@ -965,6 +1100,9 @@
   }
 
   .minimize,
+  .turntable,
+  .turntableKnob,
+  .turntableDisc,
   .avatar,
   .svg,
   .head,
@@ -990,8 +1128,11 @@
     rotate: none;
   }
 
-  .look {
+  .look,
+  .face,
+  .hatTurn {
     transform: none;
+    transition: none;
   }
 
   /* không nghiêng đầu – biểu cảm cười khi hover vẫn giữ */

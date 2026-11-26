@@ -1,6 +1,6 @@
 import CloudOffRoundedIcon from '@mui/icons-material/CloudOffRounded'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
-import { Suspense, lazy, useEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import type { AnimationEvent, CSSProperties } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useI18n } from '../../i18n/useI18n'
@@ -31,6 +31,8 @@ import { getMascotScreen } from './mascotMessages'
 import { MascotSpeechBubble } from './MascotSpeechBubble'
 import { MascotChatResume } from './MascotChatResume'
 import { MASCOT_VIEWBOX, MascotSvg } from './MascotSvg'
+import { createMascotSpin } from './mascotSpin'
+import { MascotTurntable, SpinningMascotSvg } from './MascotTurntable'
 import {
   prefersReducedMotion,
   useEyeFollow,
@@ -105,6 +107,9 @@ export function Mascot() {
   const { lastActivityRef, sleepy } = useUserActivity()
   // kéo thả mascot đi chỗ khác (vị trí lưu localStorage)
   const dragApi = useMascotDrag(MASCOT_SIZE)
+  // xoay 360° bằng bàn xoay dưới chân (kéo thân mascot vẫn là di chuyển như cũ)
+  const spin = useMemo(() => createMascotSpin(), [])
+  useEffect(() => () => spin.dispose(), [spin])
   // hover / focus vào mascot → tải trước gợi ý, mở panel là có ngay câu chào + gợi ý từ API
   const [warm, setWarm] = useState(false)
   const suggestions = useMascotSuggestions({
@@ -727,8 +732,11 @@ export function Mascot() {
         onClick={handleClick}
         onAnimationEnd={handleAnimationEnd}
       >
-        <MascotSvg waving={waveCount > 0} mood={mood} blink={blink} followCursor className={styles.svg} />
+        <SpinningMascotSvg spin={spin} waving={waveCount > 0} mood={mood} blink={blink} followCursor className={styles.svg} />
       </button>
+
+      {/* Bàn xoay dưới chân: kéo ngang để xoay 360°, bấm để xoay 1 vòng, ← → xoay từng nấc */}
+      <MascotTurntable spin={spin} label={texts.rotate} />
     </div>
   )
 }

@@ -24,18 +24,23 @@ import {
   Typography,
 } from '@mui/material'
 import { alpha } from '@mui/material/styles'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   DEFAULT_SKIN,
   MascotSvg,
+  MascotTurntable,
   SKIN_PRESETS,
   SKIN_SWATCHES,
+  SpinningMascotSvg,
+  createMascotSpin,
   sameSkin,
   useMascotContext,
   useMascotName,
+  useSpinAngle,
+  useSpinDrag,
 } from '../mascot'
-import type { MascotGlasses, MascotHat, MascotMood, MascotSkin } from '../mascot'
+import type { MascotGlasses, MascotHat, MascotMood, MascotSkin, MascotSpin } from '../mascot'
 import { MASCOT_STATES, MASCOT_TEXTS } from '../mascot/mascotConfig'
 import { AssistantSkinError, saveAssistantSkin } from '../../services/assistantService'
 import { errorDetail, notify } from '../common/notify'
@@ -101,6 +106,11 @@ export function AiWardrobePanel() {
   const [sparkleSeq, setSparkleSeq] = useState(0)
   const [section, setSection] = useState<Section>('outfit')
   const [saving, setSaving] = useState(false)
+
+  // xoay 360° để ngắm đồ: kéo ngang trên hình / bàn xoay; không tự quay về (để xem mặt sau)
+  const spin = useMemo(() => createMascotSpin({ autoReturn: false }), [])
+  useEffect(() => () => spin.dispose(), [spin])
+  const figureDrag = useSpinDrag(spin)
 
   /** animate: đổi kiểu (mũ / kính) → hình "pop" nhẹ; đổi màu thì không (kéo color picker sẽ giật) */
   function update(patch: Partial<MascotSkin>, animate = false) {
@@ -183,12 +193,17 @@ export function AiWardrobePanel() {
           <Box
             key={changeSeq}
             className={`${styles.figure} ${changeSeq > 0 ? styles.changed : ''}`}
+            title={w.rotateHint}
+            {...figureDrag.handlers}
             onAnimationEnd={(event) => {
               if (event.animationName.includes('wave')) setWaving(false)
             }}
           >
-            <MascotSvg waving={waving} mood={mood} skin={draft} />
+            <SpinningMascotSvg spin={spin} waving={waving} mood={mood} skin={draft} />
           </Box>
+
+          {/* bàn xoay dưới chân: kéo ngang / bấm xoay 1 vòng / ← → */}
+          <MascotTurntable spin={spin} label={w.rotateHint} variant="stage" />
 
           {sparkleSeq > 0 && SPARKLES.map((s, index) => (
             <span
@@ -218,18 +233,21 @@ export function AiWardrobePanel() {
               <ToggleButton key={m} value={m}>{MASCOT_TEXTS[language].states[m]}</ToggleButton>
             ))}
           </ToggleButtonGroup>
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<PanToolOutlinedIcon />}
-            onClick={() => {
-              setWaving(false)
-              window.requestAnimationFrame(() => setWaving(true))
-            }}
-            sx={{ textTransform: 'none', borderRadius: 999 }}
-          >
-            {w.wave}
-          </Button>
+          <Stack direction="row" sx={{ gap: 1, alignItems: 'center' }}>
+            <ViewButtons spin={spin} labels={w.views} />
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<PanToolOutlinedIcon />}
+              onClick={() => {
+                setWaving(false)
+                window.requestAnimationFrame(() => setWaving(true))
+              }}
+              sx={{ textTransform: 'none', borderRadius: 999 }}
+            >
+              {w.wave}
+            </Button>
+          </Stack>
         </Stack>
 
         <Divider />
@@ -440,6 +458,35 @@ export function AiWardrobePanel() {
 // =========================================================
 // Thành phần nhỏ
 // =========================================================
+
+const VIEWS = [
+  { key: 'front', deg: 0 },
+  { key: 'side', deg: 90 },
+  { key: 'back', deg: 180 },
+] as const
+
+/** Nút xem nhanh Trước / Nghiêng / Sau – sáng nút ứng với góc đang xem (component riêng: chỉ nó render lại khi xoay) */
+function ViewButtons({ spin, labels }: { spin: MascotSpin; labels: Record<(typeof VIEWS)[number]['key'], string> }) {
+  const turn = useSpinAngle(spin)
+  const wrapped = ((((turn + 180) % 360) + 360) % 360) - 180
+  const active = VIEWS.find((view) => Math.abs(((wrapped - view.deg + 540) % 360) - 180) < 20)?.key ?? null
+  return (
+    <ToggleButtonGroup
+      size="small"
+      exclusive
+      value={active}
+      onChange={(_, next: (typeof VIEWS)[number]['key'] | null) => {
+        const view = VIEWS.find((v) => v.key === (next ?? active))
+        if (view) spin.turnTo(view.deg)
+      }}
+      sx={{ '& .MuiToggleButton-root': { textTransform: 'none', px: 1.25, py: 0.25, fontSize: 12 } }}
+    >
+      {VIEWS.map((view) => (
+        <ToggleButton key={view.key} value={view.key}>{labels[view.key]}</ToggleButton>
+      ))}
+    </ToggleButtonGroup>
+  )
+}
 
 function SmallLabel({ children }: { children: string }) {
   return (

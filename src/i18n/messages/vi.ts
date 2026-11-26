@@ -1854,6 +1854,8 @@ export const vi: Messages = {
             applied: 'Đang mặc',
             moods: { idle: 'Vui vẻ', thinking: 'Suy nghĩ', sad: 'Buồn' },
             wave: 'Vẫy tay',
+            rotateHint: 'Kéo ngang để xoay 360° · Bấm bàn xoay để xoay một vòng (← → xoay từng nấc)',
+            views: { front: 'Trước', side: 'Nghiêng', back: 'Sau' },
             placesTitle: 'Hiển thị ở',
             places: { message: 'Tin nhắn', header: 'Header chat', minimized: 'Thu nhỏ' },
             before: 'Trước',
