@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import { Edges, RoundedBox } from '@react-three/drei'
-import { MathUtils, type Group, type MeshStandardMaterial, type Texture } from 'three'
+import { type Group, type MeshStandardMaterial, type Texture } from 'three'
 
 import { INK } from '../factoryScene/primitives'
 import { FitText } from './FitText'
@@ -18,7 +18,7 @@ import {
 import { RACK, type CratePlacement } from './rackModel'
 
 /*
- * Một thùng hàng 3D. Group ngoài giữ vị trí + hoạt ảnh (thả rơi, kéo ra khi chọn),
+ * Một thùng hàng 3D. Group ngoài giữ vị trí + hoạt ảnh (kéo ra khi rê chuột / chọn),
  * các mặt trang trí là plane dán sát mặt trước (polygonOffset để không nhấp nháy z-fighting).
  * frameloop="demand": chỉ xin vẽ tiếp (invalidate) khi còn đang chuyển động.
  */
@@ -53,8 +53,6 @@ interface Crate3DProps {
   picked: boolean
   dark: boolean
   quality: CrateQuality
-  // false: hiện ngay tại chỗ (vd. vừa đổi chất lượng), không thả rơi lại
-  intro: boolean
   onHover: (index: number | null) => void
   // Nhấn chuột lên thùng dùng ngay; chọn thật sự khi nhả (xem UserHomeWarehouse3D)
   onPress: (index: number, event: PointerEvent) => void
@@ -64,8 +62,6 @@ type CrateTextures =
   | { kind: 'ready'; sticker: Texture; icon: Texture | null }
   | { kind: 'upcoming'; face: Texture }
 
-const DROP_HEIGHT = 1.4
-const DROP_SECONDS = 0.75
 // Khoảng thùng nhô ra / nhích lên khi được chọn
 const HOVER_PULL = 0.26
 const HOVER_LIFT = 0.035
@@ -101,15 +97,6 @@ function sharpen(texture: Texture, anisotropy: number) {
 }
 const CARTON = { light: '#c99660', dark: '#b3844f' }
 
-function easeOutBounce(u: number) {
-  const n = 7.5625
-  const d = 2.75
-  if (u < 1 / d) return n * u * u
-  if (u < 2 / d) return n * (u -= 1.5 / d) * u + 0.75
-  if (u < 2.5 / d) return n * (u -= 2.25 / d) * u + 0.9375
-  return n * (u -= 2.625 / d) * u + 0.984375
-}
-
 function DecalPlane({ map, width, height, position, rotation = 0, roughness = 0.6 }: {
   map: Texture
   width: number
@@ -127,11 +114,10 @@ function DecalPlane({ map, width, height, position, rotation = 0, roughness = 0.
   )
 }
 
-export function Crate3D({ placement, index, texts, color, icon, highlighted, picked, dark, quality, intro, onHover, onPress }: Crate3DProps) {
+export function Crate3D({ placement, index, texts, color, icon, highlighted, picked, dark, quality, onHover, onPress }: Crate3DProps) {
   const { kind, w, h, d } = placement
   const group = useRef<Group>(null)
   const led = useRef<MeshStandardMaterial>(null)
-  const startRef = useRef<number | null>(null)
   const motion = useRef<Record<'y' | 'z' | 'rx', Axis>>({
     y: { value: 0, velocity: 0 },
     z: { value: 0, velocity: 0 },
@@ -164,16 +150,13 @@ export function Crate3D({ placement, index, texts, color, icon, highlighted, pic
     const g = group.current
     if (!g) return
     const now = state.clock.elapsedTime
-    // Không intro: coi như đã thả xong từ trước
-    if (startRef.current === null) startRef.current = intro ? now : now - placement.delay - DROP_SECONDS - 1
 
     if (quality.ambient && led.current) {
       led.current.emissiveIntensity = 1.4 + 1.2 * Math.max(0, Math.sin(now * 2.6 + index * 1.7))
     }
 
-    const u = (now - startRef.current - placement.delay) / DROP_SECONDS
-    g.visible = u >= 0
-    const dropY = u < 1 ? DROP_HEIGHT * (1 - easeOutBounce(MathUtils.clamp(u, 0, 1))) : 0
+    // Thùng nằm sẵn trên kệ (không có cảnh thả hàng); hiện từ frame đầu khi đã đặt đúng chỗ
+    g.visible = true
 
     const dt = Math.min(delta, MAX_DELTA)
     const smooth = picked ? PICK_SMOOTH : HOVER_SMOOTH
@@ -183,10 +166,10 @@ export function Crate3D({ placement, index, texts, color, icon, highlighted, pic
     const yDone = stepAxis(m.y, picked ? 0.14 : highlighted ? HOVER_LIFT : 0, smooth, dt)
     const rxDone = stepAxis(m.rx, picked ? -0.07 : 0, smooth, dt)
 
-    g.position.set(placement.x, placement.y + dropY + m.y.value, placement.z + m.z.value)
+    g.position.set(placement.x, placement.y + m.y.value, placement.z + m.z.value)
     g.rotation.x = m.rx.value
 
-    if (u < 1 || !zDone || !yDone || !rxDone) {
+    if (!zDone || !yDone || !rxDone) {
       // Bóng đổ chỉ vẽ lại khi hàng di chuyển (camera lệch theo chuột thì không cần)
       state.gl.shadowMap.needsUpdate = true
       state.invalidate()

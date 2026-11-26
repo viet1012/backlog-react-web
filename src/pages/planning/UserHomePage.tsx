@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useMemo, useRef, useState } from 'react'
 
 import { Alert, Box, Button, Snackbar, useMediaQuery } from '@mui/material'
 import type { PaletteMode, Theme } from '@mui/material/styles'
@@ -32,7 +32,7 @@ import { appScrollbarSx } from '../../theme/scrollbarStyle'
 // Chunk riêng: three.js chỉ tải khi thật sự dùng bản 3D (thường đã được tải trước lúc rê chuột vào menu)
 const UserHomeWarehouse3D = lazy(loadWarehouse3D)
 
-// Dưới ngưỡng này (FPS trung vị lúc thả hàng) thì coi là chưa mượt
+// Dưới ngưỡng này (FPS trung vị lúc cảnh chuyển động) thì coi là chưa mượt
 const SLOW_FPS = 30
 const TOAST_MS = 12000
 // Chân tường nền xưởng khi chưa có kệ 3D báo tầm mắt (kệ 2D / đang tải), và giới hạn khi kệ 3D báo
@@ -40,11 +40,6 @@ const DEFAULT_HORIZON = 62
 const HORIZON_RANGE: [number, number] = [40, 70]
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
-
-// Cảnh thả hàng chỉ chạy ở lần đầu vào trang trong phiên. Trang chủ được giữ lại
-// (KeepAliveOutlet) nhưng vẫn có thể bị bỏ khi mở quá nhiều trang; lúc dựng lại thì
-// hàng nằm sẵn trên kệ, không phát lại hoạt cảnh ~1.5s.
-let introPlayed = false
 
 interface UserHomePageProps {
   mode: PaletteMode
@@ -74,12 +69,6 @@ export function UserHomePage({ mode, onToggleMode }: UserHomePageProps) {
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
 
   const [setting, setSetting] = useState<GraphicsSetting>(loadGraphicsSetting)
-  // Đã đổi mức trong phiên này -> dựng lại kệ 3D không phát lại cảnh thả hàng
-  const [qualityChanged, setQualityChanged] = useState(false)
-  const [firstVisit] = useState(() => !introPlayed)
-  useEffect(() => {
-    introPlayed = true
-  }, [])
   const [renderSize, setRenderSize] = useState<RenderSize | null>(null)
   // Chân tường của nền xưởng (% chiều cao khung) = tầm mắt camera kệ 3D, để kệ và xưởng cùng phối cảnh
   const frameRef = useRef<HTMLDivElement>(null)
@@ -98,7 +87,6 @@ export function UserHomePage({ mode, onToggleMode }: UserHomePageProps) {
 
   function changeSetting(next: GraphicsSetting) {
     setSetting(next)
-    setQualityChanged(true)
     saveGraphicsSetting(next)
   }
 
@@ -125,7 +113,6 @@ export function UserHomePage({ mode, onToggleMode }: UserHomePageProps) {
             menu={menu}
             dark={dark}
             profile={GRAPHICS_PROFILES[level]}
-            intro={firstVisit && !qualityChanged}
             onMeasured={handleMeasured}
             onRenderSize={setRenderSize}
             onHorizon={handleHorizon}

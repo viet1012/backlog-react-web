@@ -8,7 +8,7 @@ import {
 } from 'react'
 import { useLocation, useOutlet } from 'react-router-dom'
 
-import { keepAliveKey } from '../../pages/lazyPages'
+import { isAlwaysKept, keepAliveKey } from '../../pages/lazyPages'
 
 // Số trang giữ lại tối đa (gồm trang đang xem); quá thì bỏ trang lâu không mở nhất
 const MAX_KEPT_PAGES = 6
@@ -23,7 +23,9 @@ interface KeptState {
 
 function visit(state: KeptState, key: string): KeptState {
   const recent = [...state.recent.filter((k) => k !== key), key]
-  const evicted = recent.length > MAX_KEPT_PAGES ? recent.shift() : undefined
+  // Bỏ trang lâu không mở nhất, trừ trang luôn giữ (trang chủ 3D)
+  const evictIndex = recent.length > MAX_KEPT_PAGES ? recent.findIndex((k) => !isAlwaysKept(k)) : -1
+  const evicted = evictIndex >= 0 ? recent.splice(evictIndex, 1)[0] : undefined
 
   return {
     keys: [

@@ -27,20 +27,17 @@ export interface TierSpec {
   // Chiều cao thông thuỷ của tầng
   clear: number
   maxSize: number
-  // Giây bắt đầu thả hàng của tầng
-  delay: number
 }
 
 // Từ dưới lên: dùng ngay -> sắp ra mắt
 export const TIERS: TierSpec[] = [
-  { kind: 'ready', code: 'A-02', clear: 1.15, maxSize: 1.05, delay: 0.15 },
-  { kind: 'upcoming', code: 'A-03', clear: 0.8, maxSize: 0.58, delay: 0.5 },
+  { kind: 'ready', code: 'A-02', clear: 1.15, maxSize: 1.05 },
+  { kind: 'upcoming', code: 'A-03', clear: 0.8, maxSize: 0.58 },
 ]
 
 export interface CratePlacement {
   entry: HomeMenuEntry
   kind: CrateKind
-  delay: number
   // Tâm thùng
   x: number
   y: number
@@ -102,7 +99,6 @@ export function buildRackLayout(menu: HomeMenu): RackLayout {
       crates.push({
         entry,
         kind: spec.kind,
-        delay: spec.delay + index * 0.07,
         x: -rowWidth / 2 + w / 2 + (gridColumn - 1) * (w + RACK.gap),
         y: deckY + h / 2 + level * h,
         z: -RACK.frontInset - d / 2,

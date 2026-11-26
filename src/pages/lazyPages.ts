@@ -105,6 +105,14 @@ export function preloadRoutesWhenIdle(paths: string[]) {
 // render loop while hidden (UserHomeWarehouse3D) so coming back is instant
 const NOT_KEPT_ALIVE = new Set(['/settings/machine-locator'])
 
+// Pages never evicted by KeepAliveOutlet's page limit: the 3D home would
+// otherwise reload three.js scene + show its loader again when revisited
+const ALWAYS_KEPT = new Set(['/user-home'])
+
+export function isAlwaysKept(key: string): boolean {
+  return ALWAYS_KEPT.has(key)
+}
+
 // Key under which KeepAliveOutlet keeps a page mounted (hidden) after leaving
 // it, so coming back is instant; null = render normally (redirects, unknown)
 export function keepAliveKey(pathname: string): string | null {

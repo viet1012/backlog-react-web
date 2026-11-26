@@ -36,11 +36,10 @@ interface RackTierProps {
   maxSize: number
   // perspective-origin: điểm nhìn của tầng này
   eye: string
-  delayBase: number
   dark: boolean
 }
 
-function RackTier({ kind, code, label, entries, empty, flex, maxSize, eye, delayBase, dark }: RackTierProps) {
+function RackTier({ kind, code, label, entries, empty, flex, maxSize, eye, dark }: RackTierProps) {
   const [stageRef, stage] = useElementSize<HTMLDivElement>()
   const rawFit = fitCrates(
     entries.length,
@@ -103,7 +102,6 @@ function RackTier({ kind, code, label, entries, empty, flex, maxSize, eye, delay
                   entry={entry}
                   kind={kind}
                   size={fit.size}
-                  delayMs={delayBase + index * 70}
                   dark={dark}
                 />
               </Box>
@@ -251,7 +249,6 @@ export function UserHomeRack({ menu, dark }: UserHomeRackProps) {
         flex={upcomingFlex(menu.upcoming.length)}
         maxSize={150}
         eye="50% 0%"
-        delayBase={500}
         dark={dark}
       />
       <RackTier
@@ -263,7 +260,6 @@ export function UserHomeRack({ menu, dark }: UserHomeRackProps) {
         flex={1.3}
         maxSize={250}
         eye="50% -55%"
-        delayBase={150}
         dark={dark}
       />
     </Box>

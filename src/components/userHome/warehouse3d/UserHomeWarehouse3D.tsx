@@ -40,14 +40,12 @@ const CLICK_SLOP = 8
 const PARALLAX = { x: 0.45, y: 0.22 }
 // Mắt người đứng xem kệ (m)
 const EYE_HEIGHT = 1.65
-// Đo FPS khi đã có đủ ngần này giây vẽ liên tục (lúc thả hàng / rê chuột)
+// Đo FPS khi đã có đủ ngần này giây vẽ liên tục (lúc rê chuột / thùng chuyển động)
 const PROBE_SECONDS = 1.2
 // Bỏ qua khoảng nghỉ giữa các lần vẽ ở chế độ demand
 const PROBE_MAX_DELTA = 0.5
 // Chặn delta frame đầu sau lúc đứng yên (demand) để chuyển động không nhảy cóc
 const MAX_DELTA = 1 / 30
-// Sau cảnh thả hàng thêm ngần này giây thì đóng băng bóng sàn
-const INTRO_TAIL = 1.2
 
 // Ẩn khỏi màn hình nhưng vẫn focus được bằng bàn phím / đọc được bằng trình đọc màn hình
 const visuallyHidden: CSSProperties = {
@@ -161,16 +159,6 @@ function SceneReady({ onReady }: { onReady: () => void }) {
     done.current = true
     onReady()
   })
-
-  return null
-}
-
-// Báo khi cảnh thả hàng đã xong (onDone phải ổn định, vd. setState)
-function IntroTimer({ seconds, onDone }: { seconds: number; onDone: (done: boolean) => void }) {
-  useEffect(() => {
-    const id = window.setTimeout(() => onDone(true), seconds * 1000)
-    return () => window.clearTimeout(id)
-  }, [seconds, onDone])
 
   return null
 }
@@ -317,15 +305,13 @@ interface UserHomeWarehouse3DProps {
   menu: HomeMenu
   dark: boolean
   profile: GraphicsProfile
-  // false: hàng đã nằm sẵn trên kệ (vd. vừa đổi chất lượng)
-  intro: boolean
   onMeasured: (fps: number) => void
   onRenderSize: (size: RenderSize) => void
   // Toạ độ Y (px, theo viewport) của tầm mắt camera, để nền xưởng đặt chân tường khớp
   onHorizon?: (clientY: number) => void
 }
 
-export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeasured, onRenderSize, onHorizon }: UserHomeWarehouse3DProps) {
+export default function UserHomeWarehouse3D({ menu, dark, profile, onMeasured, onRenderSize, onHorizon }: UserHomeWarehouse3DProps) {
   const { t } = useI18n()
   const navigate = useNavigate()
   const layout = useMemo(() => buildRackLayout(menu), [menu])
@@ -335,9 +321,6 @@ export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeas
   const [hovered, setHovered] = useState<number | null>(null)
   const [focused, setFocused] = useState<number | null>(null)
   const [picked, setPicked] = useState<number | null>(null)
-  // Bóng sàn chỉ cập nhật liên tục trong cảnh thả hàng; sau đó chụp lại khi cảnh vẽ lại (đổi thùng được chọn)
-  const [introDone, setIntroDone] = useState(!intro)
-  const introSeconds = Math.max(0, ...layout.crates.map((crate) => crate.delay)) + INTRO_TAIL
   const timerRef = useRef(0)
   // Canvas mờ dần hiện lên khi cảnh đã vẽ được frame đầu; khung chờ mờ đi rồi gỡ khỏi DOM
   const [sceneReady, setSceneReady] = useState(false)
@@ -497,7 +480,6 @@ export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeas
         <Suspense fallback={null}>
           <ShadowControl />
           <SceneReady onReady={markReady} />
-          {!introDone && <IntroTimer seconds={introSeconds} onDone={setIntroDone} />}
           <FloorZone />
           <Rack3D layout={layout} outlines={profile.outlines} />
 
@@ -514,7 +496,6 @@ export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeas
               picked={picked === index}
               dark={dark}
               quality={quality}
-              intro={intro}
               onHover={setHovered}
               onPress={press}
             />
@@ -526,9 +507,9 @@ export default function UserHomeWarehouse3D({ menu, dark, profile, intro, onMeas
           position={[0, 0.002, -0.3]}
           scale={[9, 4]}
           resolution={profile.contactResolution}
-          // Thấp: chụp 1 lần. Còn lại: cập nhật liên tục lúc thả hàng, sau đó chụp 1 lần mỗi khi đổi thùng được chọn
+          // Chụp 1 lần mỗi khi cảnh vẽ lại (cảnh sẵn sàng, đổi thùng được chọn), không vẽ lại mỗi frame
           // (không tốn thêm 1 lượt vẽ cả cảnh + làm mờ cho mỗi frame camera lệch theo chuột)
-          frames={profile.contactShadow === 'live' && !introDone ? Infinity : 1}
+          frames={1}
           blur={2.4}
           far={2.5}
           opacity={dark ? 0.75 : 0.5}

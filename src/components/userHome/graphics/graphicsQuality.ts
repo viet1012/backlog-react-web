@@ -23,7 +23,6 @@ export interface GraphicsProfile {
   shadowMapSize: number
   // 0 = tắt môi trường phản chiếu
   envResolution: number
-  contactShadow: 'baked' | 'live'
   contactResolution: number
   // 0 = hộp vuông cạnh (không bo)
   roundedSmoothness: number
@@ -41,7 +40,6 @@ export const GRAPHICS_PROFILES: Record<Graphics3DLevel, GraphicsProfile> = {
     antialias: true,
     shadowMapSize: 0,
     envResolution: 0,
-    contactShadow: 'baked',
     contactResolution: 256,
     roundedSmoothness: 0,
     film: false,
@@ -55,7 +53,6 @@ export const GRAPHICS_PROFILES: Record<Graphics3DLevel, GraphicsProfile> = {
     antialias: true,
     shadowMapSize: 1024,
     envResolution: 64,
-    contactShadow: 'live',
     contactResolution: 512,
     roundedSmoothness: 3,
     film: true,
@@ -69,7 +66,6 @@ export const GRAPHICS_PROFILES: Record<Graphics3DLevel, GraphicsProfile> = {
     antialias: true,
     shadowMapSize: 2048,
     envResolution: 128,
-    contactShadow: 'live',
     contactResolution: 1024,
     roundedSmoothness: 4,
     film: true,
@@ -83,7 +79,6 @@ export const GRAPHICS_PROFILES: Record<Graphics3DLevel, GraphicsProfile> = {
     antialias: true,
     shadowMapSize: 4096,
     envResolution: 256,
-    contactShadow: 'live',
     contactResolution: 1024,
     roundedSmoothness: 5,
     film: true,

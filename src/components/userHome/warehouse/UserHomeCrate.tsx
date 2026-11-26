@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 're
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 
 import { Box, Tooltip, Typography, useMediaQuery } from '@mui/material'
-import { keyframes } from '@mui/material/styles'
 
 import { useI18n } from '../../../i18n/useI18n'
 import { preloadRoute } from '../../../pages/lazyPages'
@@ -21,14 +20,6 @@ export type CrateKind = 'ready' | 'upcoming'
 
 // Thời gian thùng trượt ra trước khi chuyển trang
 const PICK_MS = 380
-
-const crateDrop = keyframes`
-  0%   { visibility: hidden; transform: translate3d(0, -80px, 0); }
-  1%   { visibility: visible; }
-  62%  { transform: translate3d(0, 5px, 0); }
-  82%  { transform: translate3d(0, -2px, 0); }
-  100% { transform: translate3d(0, 0, 0); }
-`
 
 const SKINS = {
   carton: {
@@ -94,16 +85,14 @@ interface UserHomeCrateProps {
   entry: HomeMenuEntry
   kind: CrateKind
   size: number
-  delayMs: number
   dark: boolean
 }
 
-export function UserHomeCrate({ entry, kind, size, delayMs, dark }: UserHomeCrateProps) {
+export function UserHomeCrate({ entry, kind, size, dark }: UserHomeCrateProps) {
   const { t } = useI18n()
   const navigate = useNavigate()
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const [picked, setPicked] = useState(false)
-  const [landed, setLanded] = useState(false)
   const timerRef = useRef(0)
 
   // Ẩn trang (giữ lại bằng Activity): quay lại thì thùng đã nằm lại trên kệ
@@ -327,20 +316,6 @@ export function UserHomeCrate({ entry, kind, size, delayMs, dark }: UserHomeCrat
     )
   }
 
-  // Lớp ngoài: hàng "được thả" xuống kệ lúc vào trang (tách khỏi transform hover ở lớp trong).
-  // Thả xong thì gỡ animation: trang được giữ lại (ẩn bằng display:none), hiện lại sẽ không thả lần nữa
-  return (
-    <Box
-      onAnimationEnd={(event) => {
-        if (event.target === event.currentTarget) setLanded(true)
-      }}
-      sx={{
-        transformStyle: 'preserve-3d',
-        animation: landed ? 'none' : `${crateDrop} 640ms cubic-bezier(0.3, 0.9, 0.4, 1) ${delayMs}ms both`,
-        '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
-      }}
-    >
-      {content}
-    </Box>
-  )
+  // Hàng nằm sẵn trên kệ ngay khi vào trang (không có cảnh thả hàng)
+  return content
 }
